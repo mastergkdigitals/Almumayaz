@@ -90,43 +90,73 @@ class _DesignSystemGalleryScreenState
             const SizedBox(height: AppSpacing.lg),
             _GallerySection(
               title: 'الأزرار',
-              child: Wrap(
-                spacing: AppSpacing.md,
-                runSpacing: AppSpacing.md,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  AppButton(
-                    key: const Key('designPrimaryButton'),
-                    label: 'حفظ',
-                    icon: Icons.save_rounded,
-                    onPressed: () =>
-                        AppToast.showSuccess(context, 'تم الحفظ بنجاح'),
+                  Wrap(
+                    spacing: AppSpacing.md,
+                    runSpacing: AppSpacing.md,
+                    children: [
+                      AppButton(
+                        key: const Key('designPrimaryButton'),
+                        label: 'حفظ',
+                        icon: Icons.save_rounded,
+                        onPressed: () =>
+                            AppToast.showSuccess(context, 'تم الحفظ بنجاح'),
+                      ),
+                      AppButton(
+                        label: 'إجراء ثانوي',
+                        icon: Icons.tune_rounded,
+                        variant: AppButtonVariant.secondary,
+                        onPressed: () {},
+                      ),
+                      AppButton(
+                        label: 'حذف',
+                        icon: Icons.delete_rounded,
+                        variant: AppButtonVariant.danger,
+                        onPressed: _showConfirmation,
+                      ),
+                      AppButton(
+                        label: 'زر نصي',
+                        icon: Icons.open_in_new_rounded,
+                        variant: AppButtonVariant.ghost,
+                        onPressed: () {},
+                      ),
+                      AppButton(
+                        label: 'جاري الحفظ',
+                        isLoading: true,
+                        onPressed: () {},
+                      ),
+                      const AppButton(
+                        label: 'غير متاح',
+                        onPressed: null,
+                      ),
+                    ],
                   ),
-                  AppButton(
-                    label: 'إجراء ثانوي',
-                    icon: Icons.tune_rounded,
-                    variant: AppButtonVariant.secondary,
-                    onPressed: () {},
+                  const SizedBox(height: AppSpacing.lg),
+                  Text(
+                    'أزرار التنقل بين السجلات',
+                    style: AppTypography.fieldText.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                  AppButton(
-                    label: 'حذف',
-                    icon: Icons.delete_rounded,
-                    variant: AppButtonVariant.danger,
-                    onPressed: _showConfirmation,
-                  ),
-                  AppButton(
-                    label: 'زر نصي',
-                    icon: Icons.open_in_new_rounded,
-                    variant: AppButtonVariant.ghost,
-                    onPressed: () {},
-                  ),
-                  AppButton(
-                    label: 'جاري الحفظ',
-                    isLoading: true,
-                    onPressed: () {},
-                  ),
-                  const AppButton(
-                    label: 'غير متاح',
-                    onPressed: null,
+                  const SizedBox(height: AppSpacing.md),
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: AppRecordNavigation(
+                      firstButtonKey:
+                          const Key('designNavigationFirst'),
+                      previousButtonKey:
+                          const Key('designNavigationPrevious'),
+                      nextButtonKey:
+                          const Key('designNavigationNext'),
+                      lastButtonKey:
+                          const Key('designNavigationLast'),
+                      onFirst: () {},
+                      onPrevious: () {},
+                      onNext: () {},
+                      onLast: () {},
+                    ),
                   ),
                 ],
               ),
