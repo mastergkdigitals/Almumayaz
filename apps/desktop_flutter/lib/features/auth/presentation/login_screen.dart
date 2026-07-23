@@ -14,12 +14,16 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _username = TextEditingController();
   final _password = TextEditingController();
+  final _usernameFocusNode = FocusNode();
+  final _passwordFocusNode = FocusNode();
   bool _hidePassword = true;
 
   @override
   void dispose() {
     _username.dispose();
     _password.dispose();
+    _usernameFocusNode.dispose();
+    _passwordFocusNode.dispose();
     super.dispose();
   }
 
@@ -87,9 +91,10 @@ class _LoginScreenState extends State<LoginScreen> {
               controller: _username,
               label: 'اسم المستخدم',
               icon: Icons.person_outline_rounded,
+              focusNode: _usernameFocusNode,
               autofocus: true,
               textInputAction: TextInputAction.next,
-              onSubmitted: (_) => AppFocusTraversal.next(context),
+              onSubmitted: (_) => _passwordFocusNode.requestFocus(),
               validator: (value) => value == null || value.trim().isEmpty
                   ? 'أدخل اسم المستخدم'
                   : null,
@@ -100,16 +105,15 @@ class _LoginScreenState extends State<LoginScreen> {
               controller: _password,
               label: 'كلمة المرور',
               icon: Icons.lock_outline_rounded,
+              focusNode: _passwordFocusNode,
               obscureText: _hidePassword,
               textInputAction: TextInputAction.done,
               onSubmitted: (_) => _login(),
               suffixIcon: AppFieldIconButton(
+                buttonKey: const Key('passwordVisibilityButton'),
                 icon: _hidePassword
-                    ? Icons.visibility_rounded
-                    : Icons.visibility_off_rounded,
-                tooltip: _hidePassword
-                    ? 'إظهار كلمة المرور'
-                    : 'إخفاء كلمة المرور',
+                    ? Icons.visibility_off_rounded
+                    : Icons.visibility_rounded,
                 onPressed: () =>
                     setState(() => _hidePassword = !_hidePassword),
               ),
