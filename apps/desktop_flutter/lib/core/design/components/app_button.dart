@@ -96,7 +96,7 @@ class _AppButtonState extends State<AppButton> {
               ],
               Text(
                 widget.label,
-                style: const TextStyle(fontWeight: FontWeight.w700),
+                style: AppTypography.buttonText,
               ),
               if (widget.icon != null &&
                   widget.iconPosition == AppButtonIconPosition.afterLabel) ...[
