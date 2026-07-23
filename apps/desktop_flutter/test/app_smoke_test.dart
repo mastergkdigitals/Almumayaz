@@ -144,6 +144,41 @@ void main() {
     expect(nextPosition.dy, closeTo(firstPosition.dy, 0.1));
     expect(lastPosition.dy, closeTo(firstPosition.dy, 0.1));
 
+    final previousButton =
+        find.byKey(const Key('designNavigationPrevious'));
+    final nextButton = find.byKey(const Key('designNavigationNext'));
+    final lastButton = find.byKey(const Key('designNavigationLast'));
+
+    final previousIcon = find.descendant(
+      of: previousButton,
+      matching: find.byType(Icon),
+    );
+    final nextIcon = find.descendant(
+      of: nextButton,
+      matching: find.byType(Icon),
+    );
+    final lastIcon = find.descendant(
+      of: lastButton,
+      matching: find.byType(Icon),
+    );
+
+    expect(
+      tester.widget<Icon>(previousIcon).icon,
+      Icons.chevron_left_rounded,
+    );
+    expect(
+      tester.widget<Icon>(nextIcon).icon,
+      Icons.chevron_right_rounded,
+    );
+    expect(
+      tester.getCenter(find.text('التالي')).dx,
+      greaterThan(tester.getCenter(nextIcon).dx),
+    );
+    expect(
+      tester.getCenter(find.text('الأخير')).dx,
+      greaterThan(tester.getCenter(lastIcon).dx),
+    );
+
     final currencyDropdown =
         find.byKey(const Key('designCurrencyDropdown'));
     await tester.ensureVisible(currencyDropdown);
