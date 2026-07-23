@@ -216,13 +216,13 @@ abstract final class AppToast {
             key: const Key('appToastContent'),
             child: Row(
               children: [
-                Icon(icon, color: Colors.white),
+                Icon(icon, color: AppColors.onStrong),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: Text(
                     message,
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: AppColors.onStrong,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
