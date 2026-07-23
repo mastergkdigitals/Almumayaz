@@ -21,26 +21,33 @@ class AppShortcutScope extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bindings = <ShortcutActivator, VoidCallback>{
-      if (onSearch != null)
-        const SingleActivator(LogicalKeyboardKey.keyF, control: true):
-            onSearch!,
-      if (onSave != null)
-        const SingleActivator(LogicalKeyboardKey.keyS, control: true): onSave!,
-      if (onNew != null)
-        const SingleActivator(LogicalKeyboardKey.keyN, control: true): onNew!,
-      if (onRefresh != null)
-        const SingleActivator(LogicalKeyboardKey.f5): onRefresh!,
-      if (onEscape != null)
-        const SingleActivator(LogicalKeyboardKey.escape): onEscape!,
-    };
+    final bindings = <ShortcutActivator, VoidCallback>{};
+
+    void addBinding(ShortcutActivator activator, VoidCallback? callback) {
+      if (callback != null) bindings[activator] = callback;
+    }
+
+    addBinding(
+      const SingleActivator(LogicalKeyboardKey.keyF, control: true),
+      onSearch,
+    );
+    addBinding(
+      const SingleActivator(LogicalKeyboardKey.keyS, control: true),
+      onSave,
+    );
+    addBinding(
+      const SingleActivator(LogicalKeyboardKey.keyN, control: true),
+      onNew,
+    );
+    addBinding(const SingleActivator(LogicalKeyboardKey.f5), onRefresh);
+    addBinding(const SingleActivator(LogicalKeyboardKey.escape), onEscape);
 
     if (bindings.isEmpty) return child;
 
-    return Focus(
-      autofocus: true,
-      child: CallbackShortcuts(
-        bindings: bindings,
+    return CallbackShortcuts(
+      bindings: bindings,
+      child: Focus(
+        autofocus: true,
         child: child,
       ),
     );
