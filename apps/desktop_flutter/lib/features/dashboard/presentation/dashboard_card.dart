@@ -56,7 +56,7 @@ class _DashboardCardState extends State<DashboardCard> {
               colors: widget.colors,
             ),
             border: _focused
-                ? Border.all(color: Colors.white, width: 2)
+                ? Border.all(color: AppColors.onStrong, width: 2)
                 : null,
             boxShadow: [
               BoxShadow(
@@ -121,15 +121,16 @@ class _DashboardCardState extends State<DashboardCard> {
                           width: 66,
                           height: 66,
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.18),
+                            color: AppColors.onStrong.withValues(alpha: 0.18),
                             borderRadius: BorderRadius.circular(AppRadii.lg),
                             border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.25),
+                              color:
+                                  AppColors.onStrong.withValues(alpha: 0.25),
                             ),
                           ),
                           child: Icon(
                             widget.icon,
-                            color: Colors.white,
+                            color: AppColors.onStrong,
                             size: 34,
                           ),
                         ),
@@ -142,7 +143,7 @@ class _DashboardCardState extends State<DashboardCard> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: AppColors.onStrong,
                               fontSize: 22,
                               fontWeight: FontWeight.w800,
                             ),
@@ -191,7 +192,7 @@ class _DecorativeIcon extends StatelessWidget {
         child: Icon(
           icon,
           size: size,
-          color: Colors.white.withValues(alpha: opacity),
+          color: AppColors.onStrong.withValues(alpha: opacity),
         ),
       ),
     );
