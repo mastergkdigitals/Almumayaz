@@ -1,31 +1,8 @@
 import 'package:flutter/material.dart';
 
-abstract final class AppColors {
-  static const primary = Color(0xFF1D4ED8);
-  static const primaryDark = Color(0xFF102A56);
-  static const accent = Color(0xFFC89B3C);
-  static const background = Color(0xFFF5F9FF);
-  static const surface = Colors.white;
-  static const border = Color(0xFFD6E3F0);
-  static const textPrimary = Color(0xFF142033);
-  static const textSecondary = Color(0xFF5F7085);
-  static const danger = Color(0xFFB42318);
-}
+import 'app_tokens.dart';
 
-abstract final class AppSpacing {
-  static const xs = 4.0;
-  static const sm = 8.0;
-  static const md = 16.0;
-  static const lg = 24.0;
-  static const xl = 32.0;
-  static const xxl = 48.0;
-}
-
-abstract final class AppRadii {
-  static const sm = 8.0;
-  static const md = 12.0;
-  static const lg = 18.0;
-}
+export 'app_tokens.dart';
 
 abstract final class AppTheme {
   static ThemeData light() {
@@ -43,6 +20,7 @@ abstract final class AppTheme {
       fontFamily: 'Tajawal',
       fontFamilyFallback: const ['Segoe UI', 'Arial'],
     );
+
     return base.copyWith(
       textTheme: base.textTheme.apply(
         bodyColor: AppColors.textPrimary,
@@ -51,7 +29,10 @@ abstract final class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.surface,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: 14,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadii.md),
           borderSide: const BorderSide(color: AppColors.border),
@@ -62,14 +43,33 @@ abstract final class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadii.md),
-          borderSide: const BorderSide(color: AppColors.primary, width: 1.6),
+          borderSide: const BorderSide(
+            color: AppColors.primary,
+            width: 1.6,
+          ),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          minimumSize: const Size(120, 48),
+          minimumSize: const Size(120, AppControlHeights.standard),
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadii.md),
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(120, AppControlHeights.standard),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadii.md),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          minimumSize: const Size(96, AppControlHeights.standard),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadii.md),
           ),
