@@ -25,11 +25,11 @@ class AppStatusBadge extends StatelessWidget {
       };
 
   Color get _background => switch (tone) {
-        AppStatusTone.success => const Color(0xFFE8F7EF),
-        AppStatusTone.warning => const Color(0xFFFFF3E5),
-        AppStatusTone.danger => const Color(0xFFFDECEC),
-        AppStatusTone.info => const Color(0xFFE8F1FF),
-        AppStatusTone.neutral => const Color(0xFFF1F5F9),
+        AppStatusTone.success => AppColors.successSurface,
+        AppStatusTone.warning => AppColors.warningSurface,
+        AppStatusTone.danger => AppColors.dangerSurface,
+        AppStatusTone.info => AppColors.infoSurface,
+        AppStatusTone.neutral => AppColors.neutralSurface,
       };
 
   @override
@@ -52,6 +52,55 @@ class AppStatusBadge extends StatelessWidget {
             fontWeight: FontWeight.w700,
           ),
         ),
+      ),
+    );
+  }
+}
+
+
+class AppInfoBanner extends StatelessWidget {
+  const AppInfoBanner({
+    required this.message,
+    super.key,
+    this.icon = Icons.info_rounded,
+    this.foregroundColor = AppColors.info,
+    this.backgroundColor = AppColors.infoSurface,
+    this.textAlign = TextAlign.start,
+  });
+
+  final String message;
+  final IconData? icon;
+  final Color foregroundColor;
+  final Color backgroundColor;
+  final TextAlign textAlign;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(AppRadii.sm),
+        border: Border.all(color: foregroundColor.withAlpha(40)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, color: foregroundColor, size: AppIconSizes.md),
+            const SizedBox(width: AppSpacing.sm),
+          ],
+          Expanded(
+            child: Text(
+              message,
+              textAlign: textAlign,
+              style: TextStyle(
+                color: foregroundColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
