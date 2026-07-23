@@ -3,7 +3,15 @@ import 'package:flutter/material.dart';
 import '../app_tokens.dart';
 import 'app_loading_indicator.dart';
 
-enum AppButtonVariant { primary, success, warning, secondary, danger, ghost }
+enum AppButtonVariant {
+  primary,
+  success,
+  warning,
+  secondary,
+  navigation,
+  danger,
+  ghost,
+}
 
 enum AppButtonIconPosition { beforeLabel, afterLabel }
 
@@ -14,6 +22,7 @@ class AppButton extends StatefulWidget {
     super.key,
     this.icon,
     this.iconPosition = AppButtonIconPosition.beforeLabel,
+    this.flipIconHorizontally = false,
     this.iconSize = AppIconSizes.md,
     this.iconSpacing = AppSpacing.sm,
     this.padding,
@@ -27,6 +36,7 @@ class AppButton extends StatefulWidget {
   final VoidCallback? onPressed;
   final IconData? icon;
   final AppButtonIconPosition iconPosition;
+  final bool flipIconHorizontally;
   final double iconSize;
   final double iconSpacing;
   final EdgeInsetsGeometry? padding;
@@ -71,6 +81,14 @@ class _AppButtonState extends State<AppButton> {
   @override
   Widget build(BuildContext context) {
     final effectiveOnPressed = widget.isLoading ? null : widget.onPressed;
+    final hasLabel = widget.label.isNotEmpty;
+    final rawIcon = widget.icon == null
+        ? null
+        : Icon(widget.icon, size: widget.iconSize);
+    final icon = rawIcon == null || !widget.flipIconHorizontally
+        ? rawIcon
+        : Transform.flip(flipX: true, child: rawIcon);
+
     final content = widget.isLoading
         ? const SizedBox.square(
             dimension: 24,
@@ -89,19 +107,20 @@ class _AppButtonState extends State<AppButton> {
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (widget.icon != null &&
+              if (icon != null &&
                   widget.iconPosition == AppButtonIconPosition.beforeLabel) ...[
-                Icon(widget.icon, size: widget.iconSize),
-                SizedBox(width: widget.iconSpacing),
+                icon,
+                if (hasLabel) SizedBox(width: widget.iconSpacing),
               ],
-              Text(
-                widget.label,
-                style: AppTypography.buttonText,
-              ),
-              if (widget.icon != null &&
+              if (hasLabel)
+                Text(
+                  widget.label,
+                  style: AppTypography.buttonText,
+                ),
+              if (icon != null &&
                   widget.iconPosition == AppButtonIconPosition.afterLabel) ...[
-                SizedBox(width: widget.iconSpacing),
-                Icon(widget.icon, size: widget.iconSize),
+                if (hasLabel) SizedBox(width: widget.iconSpacing),
+                icon,
               ],
             ],
           );
@@ -165,6 +184,17 @@ class _AppButtonState extends State<AppButton> {
               foregroundColor: AppColors.primary,
               backgroundColor: Colors.white,
               side: const BorderSide(color: AppColors.primary),
+            ),
+          ),
+          child: content,
+        ),
+      AppButtonVariant.navigation => OutlinedButton(
+          onPressed: effectiveOnPressed,
+          style: withoutShadow(
+            OutlinedButton.styleFrom(
+              foregroundColor: Colors.black,
+              backgroundColor: Colors.white,
+              side: const BorderSide(color: Colors.black),
             ),
           ),
           child: content,
@@ -236,7 +266,7 @@ class AppRecordNavigation extends StatelessWidget {
     this.previousButtonKey,
     this.nextButtonKey,
     this.lastButtonKey,
-    this.variant = AppButtonVariant.secondary,
+    this.variant = AppButtonVariant.navigation,
     this.buttonWidth = 108,
     this.buttonPadding = const EdgeInsets.symmetric(horizontal: 2),
     this.iconSize = 16,
