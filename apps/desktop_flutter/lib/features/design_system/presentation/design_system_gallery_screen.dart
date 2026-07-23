@@ -42,7 +42,7 @@ class _DesignSystemGalleryScreenState
     );
 
     if (!mounted || !confirmed) return;
-    AppToast.showSuccess(context, 'تم تأكيد العملية');
+    AppToast.showDanger(context, 'تم الحذف بنجاح');
   }
 
   @override
@@ -242,11 +242,11 @@ class _DesignSystemGalleryScreenState
                 onNext: () {},
                 onLast: () {},
                 onSave: () =>
-                    AppToast.showSuccess(context, 'تم الحفظ بنجاح'),
+                    AppToast.showInfo(context, 'تم الحفظ بنجاح'),
                 onUpdate: () =>
-                    AppToast.showInfo(context, 'تم تحديث السجل'),
+                    AppToast.showSuccess(context, 'تم تحديث السجل'),
                 onUndo: () =>
-                    AppToast.showInfo(context, 'تم التراجع عن التغييرات'),
+                    AppToast.showWarning(context, 'تم التراجع عن التغييرات'),
                 onDelete: _showConfirmation,
               ),
             ),
