@@ -18,22 +18,25 @@ void main() {
     expect(find.byKey(const Key('designTimeField')), findsOneWidget);
     expect(find.byKey(const Key('designNotesField')), findsOneWidget);
 
-    final readOnly = tester.widget<TextFormField>(
-      find.byKey(const Key('designReadOnlyField')),
+    final readOnly = tester.widget<EditableText>(
+      find.descendant(
+        of: find.byKey(const Key('designReadOnlyField')),
+        matching: find.byType(EditableText),
+      ),
     );
     final disabled = tester.widget<TextFormField>(
       find.byKey(const Key('designDisabledField')),
     );
-    final error = tester.widget<TextFormField>(
-      find.byKey(const Key('designErrorField')),
-    );
-    final notes = tester.widget<TextFormField>(
-      find.byKey(const Key('designNotesField')),
+    final notes = tester.widget<EditableText>(
+      find.descendant(
+        of: find.byKey(const Key('designNotesField')),
+        matching: find.byType(EditableText),
+      ),
     );
 
     expect(readOnly.readOnly, isTrue);
     expect(disabled.enabled, isFalse);
-    expect(error.decoration.errorText, 'هذا الحقل مطلوب');
+    expect(find.text('هذا الحقل مطلوب'), findsOneWidget);
     expect(notes.maxLines, 5);
   });
 
