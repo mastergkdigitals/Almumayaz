@@ -117,5 +117,35 @@ void main() {
     await tester.pump(const Duration(milliseconds: 250));
 
     expect(find.text('دولار'), findsOneWidget);
+    await tester.tap(find.text('دولار'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+
+    final searchField = find.byKey(const Key('designSearchField'));
+    await tester.ensureVisible(searchField);
+    await tester.pump();
+
+    expect(
+      find.byKey(const Key('designSearchClearButton')),
+      findsNothing,
+    );
+
+    await tester.enterText(searchField, 'مادة');
+    await tester.pump();
+
+    expect(
+      find.byKey(const Key('designSearchClearButton')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const Key('designSearchClearButton')));
+    await tester.pump();
+
+    final textField = tester.widget<TextFormField>(searchField);
+    expect(textField.controller?.text, isEmpty);
+    expect(
+      find.byKey(const Key('designSearchClearButton')),
+      findsNothing,
+    );
   });
 }
