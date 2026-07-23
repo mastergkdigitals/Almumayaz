@@ -179,7 +179,6 @@ class _DesignSystemGalleryScreenState
                     tooltipKey: const Key('designHeaderBackTooltip'),
                     icon: Icons.arrow_back_rounded,
                     tooltip: 'رجوع',
-                    flipIconHorizontally: true,
                     onPressed: () {},
                   ),
                   AppHeaderIconButton(
