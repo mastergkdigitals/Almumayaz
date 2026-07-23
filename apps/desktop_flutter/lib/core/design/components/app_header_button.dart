@@ -40,7 +40,7 @@ class AppHeaderIconButton extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: tooltipBackgroundColor,
-        borderRadius: BorderRadius.circular(AppRadii.sm),
+        borderRadius: BorderRadius.circular(AppRadii.md),
         border: Border.all(color: tooltipBorderColor),
       ),
       textStyle: const TextStyle(
