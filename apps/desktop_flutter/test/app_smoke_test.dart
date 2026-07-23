@@ -1,4 +1,5 @@
 import 'package:erp/app/app.dart';
+import 'package:erp/core/design/components/app_screen_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -24,7 +25,7 @@ void main() {
         find.byKey(const Key('passwordVisibilityButton'));
 
     await tester.enterText(username, 'admin');
-    tester.testTextInput.receiveAction(TextInputAction.next);
+    await tester.testTextInput.receiveAction(TextInputAction.next);
     await tester.pump();
 
     EditableText passwordInput() => tester.widget<EditableText>(
@@ -138,7 +139,7 @@ void main() {
     expect(find.byKey(const Key('appScreenBackButton')), findsOneWidget);
     expect(
       tester.getCenter(find.text('حول البرنامج')).dx,
-      closeTo(720, 0.1),
+      closeTo(tester.getCenter(find.byType(AppScreenHeader)).dx, 0.1),
     );
 
     await tester.tap(find.byKey(const Key('openDesignSystemGallery')));
@@ -148,13 +149,13 @@ void main() {
     expect(find.byKey(const Key('designSystemGallery')), findsOneWidget);
     expect(
       tester.getCenter(find.text('دليل نظام التصميم')).dx,
-      closeTo(720, 0.1),
+      closeTo(tester.getCenter(find.byType(AppScreenHeader)).dx, 0.1),
     );
     expect(
       tester
           .getCenter(find.text('مرجع موحد لعناصر الواجهة وحالاتها'))
           .dx,
-      closeTo(720, 0.1),
+      closeTo(tester.getCenter(find.byType(AppScreenHeader)).dx, 0.1),
     );
   });
 }
