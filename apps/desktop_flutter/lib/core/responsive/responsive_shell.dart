@@ -3,9 +3,11 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:responsive_framework/responsive_framework.dart';
 
+import '../design/app_tokens.dart';
+
 abstract final class ResponsiveDesktopConfig {
-  static const double designWidth = 1440;
-  static const double compactBreakpoint = 1280;
+  static const double designWidth = AppBreakpoints.designWidth;
+  static const double compactBreakpoint = AppBreakpoints.compactDesktop;
 
   static const String compactDesktop = 'COMPACT_DESKTOP';
   static const String desktop = 'DESKTOP';
