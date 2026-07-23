@@ -5,29 +5,39 @@ import 'package:flutter_test/flutter_test.dart';
 import 'design_system_test_harness.dart';
 
 void main() {
-  testWidgets('uses consistent buttons and record navigation', (tester) async {
+  testWidgets('shows unduplicated black secondary button variants',
+      (tester) async {
     await pumpDesignSystemGallery(tester);
 
     expect(find.text('الأزرار'), findsOneWidget);
-    expect(find.text('الأول'), findsNWidgets(2));
+    expect(find.text('حفظ'), findsOneWidget);
+    expect(find.text('حذف'), findsOneWidget);
+    expect(find.text('الأول'), findsOneWidget);
+    expect(find.byKey(const Key('designNavigationFirst')), findsNothing);
 
-    for (final key in const [
-      Key('designNavigationFirst'),
-      Key('designNavigationPrevious'),
-      Key('designNavigationNext'),
-      Key('designNavigationLast'),
-    ]) {
-      expect(tester.getSize(find.byKey(key)).width, 108);
-    }
-
-    final primaryButton = tester.widget<ElevatedButton>(
+    final secondaryButton = tester.widget<OutlinedButton>(
       find.descendant(
-        of: find.byKey(const Key('designPrimaryButton')),
-        matching: find.byType(ElevatedButton),
+        of: find.byKey(const Key('designSecondaryButton')),
+        matching: find.byType(OutlinedButton),
       ),
     );
+    final ghostButton = tester.widget<TextButton>(
+      find.descendant(
+        of: find.byKey(const Key('designGhostButton')),
+        matching: find.byType(TextButton),
+      ),
+    );
+
     expect(
-      primaryButton.style?.mouseCursor?.resolve(<WidgetState>{}),
+      secondaryButton.style?.foregroundColor?.resolve(<WidgetState>{}),
+      AppColors.navigation,
+    );
+    expect(
+      ghostButton.style?.foregroundColor?.resolve(<WidgetState>{}),
+      AppColors.navigation,
+    );
+    expect(
+      secondaryButton.style?.mouseCursor?.resolve(<WidgetState>{}),
       SystemMouseCursors.click,
     );
   });
