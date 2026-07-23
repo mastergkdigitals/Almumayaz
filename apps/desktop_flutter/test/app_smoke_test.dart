@@ -87,4 +87,25 @@ void main() {
     expect(salesY, closeTo(purchasesY, 0.1));
     expect(cashboxY, closeTo(purchasesY, 0.1));
   });
+
+  testWidgets('opens the design system gallery from settings', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(const AlmumayazApp());
+    await tester.enterText(find.byKey(const Key('usernameField')), 'admin');
+    await tester.enterText(find.byKey(const Key('passwordField')), 'password');
+    await tester.tap(find.byKey(const Key('loginButton')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('dashboardCard_settings')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('designSystemGallery')), findsOneWidget);
+    expect(find.text('دليل نظام التصميم'), findsOneWidget);
+    expect(find.text('الأزرار'), findsOneWidget);
+    expect(find.text('حقول الإدخال'), findsOneWidget);
+    expect(find.text('الجدول والترقيم'), findsOneWidget);
+  });
+
 }
