@@ -78,7 +78,7 @@ abstract final class AppTypography {
 
   static const fieldText = TextStyle(
     color: AppColors.textPrimary,
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: FontWeight.w600,
   );
 
