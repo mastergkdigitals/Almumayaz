@@ -57,12 +57,17 @@ class _AppDataTableState extends State<AppDataTable> {
       'Every table row must contain one cell for each column.',
     );
 
+    final borderRadius = BorderRadius.circular(AppRadii.lg);
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-        border: Border.all(color: AppColors.border),
+        borderRadius: borderRadius,
         boxShadow: AppShadows.soft,
+      ),
+      foregroundDecoration: BoxDecoration(
+        borderRadius: borderRadius,
+        border: Border.all(color: AppColors.border),
       ),
       clipBehavior: Clip.antiAlias,
       child: LayoutBuilder(
