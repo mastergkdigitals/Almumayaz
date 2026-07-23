@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'app_theme.dart';
+import 'app_tokens.dart';
 
 class AppLogo extends StatelessWidget {
   const AppLogo({
@@ -37,7 +37,7 @@ class AppLogo extends StatelessWidget {
       height: size,
       padding: EdgeInsets.all(padding),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadii.md),
       ),
       child: image,
