@@ -111,7 +111,7 @@ void main() {
     expect(find.text('الجدول والترقيم'), findsOneWidget);
     expect(AppTypography.fieldText.fontSize, 20);
     expect(AppTypography.fieldText.fontWeight, FontWeight.w600);
-    expect(AppTypography.buttonText.fontSize, 16);
+    expect(AppTypography.buttonText.fontSize, 14);
     expect(AppTypography.buttonText.fontWeight, FontWeight.w700);
 
     final primaryButton = tester.widget<ElevatedButton>(
@@ -264,7 +264,7 @@ void main() {
       ),
     );
 
-    expect(navigationLabel.style?.fontSize, 16);
+    expect(navigationLabel.style?.fontSize, 14);
     expect(navigationLabel.style?.fontWeight, FontWeight.w700);
     expect(actionLabel.style?.fontSize, navigationLabel.style?.fontSize);
     expect(actionLabel.style?.fontWeight, navigationLabel.style?.fontWeight);
