@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app_tokens.dart';
+import 'app_loading_indicator.dart';
 
 enum AppButtonVariant { primary, secondary, danger, ghost }
 
@@ -35,11 +36,17 @@ class AppButton extends StatelessWidget {
     };
 
     final content = isLoading
-        ? SizedBox.square(
-            dimension: AppIconSizes.md,
-            child: CircularProgressIndicator(
-              strokeWidth: 2.2,
-              color: foregroundColor,
+        ? const SizedBox.square(
+            dimension: 24,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+              child: Padding(
+                padding: EdgeInsets.all(3),
+                child: AppLoadingIndicator(size: 18, strokeWidth: 2.2),
+              ),
             ),
           )
         : Row(
