@@ -6,6 +6,7 @@ export 'components/app_button.dart';
 export 'components/app_dialogs.dart';
 export 'components/app_feedback.dart';
 export 'components/app_fields.dart';
+export 'components/app_header_button.dart';
 export 'components/app_loading_indicator.dart';
 export 'components/app_screen_shell.dart';
 export 'components/app_table.dart';
