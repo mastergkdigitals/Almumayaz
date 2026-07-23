@@ -44,7 +44,7 @@ class _LoginScreenState extends State<LoginScreen> {
         const SingleActivator(LogicalKeyboardKey.keyS, control: true): _login,
       },
       child: Scaffold(
-        body: ResponsiveShell(
+        body: ResponsiveLayout(
           builder: (context, info) => Row(
             children: [
               if (!info.isCompact) const Expanded(flex: 6, child: _BrandPanel()),
