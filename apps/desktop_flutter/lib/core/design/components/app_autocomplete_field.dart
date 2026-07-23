@@ -62,7 +62,7 @@ class _AppAutocompleteFieldState<T extends Object>
           focusNode: _focusNode,
           displayStringForOption: widget.displayStringForOption,
           optionsBuilder: (value) {
-            if (!widget.enabled) return const Iterable<T>.empty();
+            if (!widget.enabled) return Iterable<T>.empty();
             final query = value.text.trim().toLowerCase();
             if (query.isEmpty) return widget.options;
             return widget.options.where(
