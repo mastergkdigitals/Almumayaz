@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../app_tokens.dart';
 import 'app_button.dart';
 
+enum AppDialogSize { small, medium, large }
+
 abstract final class AppDialogs {
   static Future<bool> confirm({
     required BuildContext context,
@@ -11,18 +13,25 @@ abstract final class AppDialogs {
     String confirmLabel = 'تأكيد',
     String cancelLabel = 'إلغاء',
     bool isDanger = false,
+    AppDialogSize size = AppDialogSize.small,
   }) async {
     final result = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {
+        final viewport = MediaQuery.sizeOf(dialogContext);
+
         return Dialog(
           key: const Key('appConfirmDialog'),
-          backgroundColor: Colors.white,
+          backgroundColor: AppColors.surface,
           surfaceTintColor: Colors.transparent,
+          clipBehavior: Clip.antiAlias,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: AppDialogSizes.small),
-            child: Padding(
+            constraints: BoxConstraints(
+              maxWidth: _widthFor(size),
+              maxHeight: viewport.height * AppDialogSizes.maxHeightFactor,
+            ),
+            child: SingleChildScrollView(
               padding: const EdgeInsets.all(AppSpacing.lg),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -64,7 +73,9 @@ abstract final class AppDialogs {
                         label: confirmLabel,
                         onPressed: () =>
                             Navigator.of(dialogContext).pop(true),
-                        variant: AppButtonVariant.danger,
+                        variant: isDanger
+                            ? AppButtonVariant.danger
+                            : AppButtonVariant.primary,
                         width: 120,
                       ),
                     ],
@@ -79,4 +90,10 @@ abstract final class AppDialogs {
 
     return result ?? false;
   }
+
+  static double _widthFor(AppDialogSize size) => switch (size) {
+        AppDialogSize.small => AppDialogSizes.small,
+        AppDialogSize.medium => AppDialogSizes.medium,
+        AppDialogSize.large => AppDialogSizes.large,
+      };
 }
