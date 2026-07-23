@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../core/design/app_design_system.dart';
 import '../../../core/design/components/app_header_button.dart';
+import '../../about/presentation/about_screen.dart';
 import '../../auth/presentation/login_screen.dart';
-import '../../design_system/presentation/design_system_gallery_screen.dart';
 import 'dashboard_card.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -73,7 +73,7 @@ class DashboardScreen extends StatelessWidget {
     if (item.isAbout) {
       Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => const DesignSystemGalleryScreen(),
+          builder: (_) => const AboutScreen(),
         ),
       );
       return;
