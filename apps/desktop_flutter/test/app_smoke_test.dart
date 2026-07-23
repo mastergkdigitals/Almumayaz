@@ -108,7 +108,7 @@ void main() {
     expect(find.text('الأزرار'), findsOneWidget);
     expect(find.text('شريط الإجراءات'), findsOneWidget);
     expect(find.text('حقول الإدخال'), findsOneWidget);
-    expect(find.text('الجدول والترقيم'), findsOneWidget);
+    expect(find.text('الجدول'), findsOneWidget);
     expect(AppTypography.fieldText.fontSize, 18);
     expect(AppTypography.fieldText.fontWeight, FontWeight.w600);
     expect(AppTypography.buttonText.fontSize, 14);
@@ -326,6 +326,39 @@ void main() {
       findsOneWidget,
     );
 
+    await tester.tap(actionBarDelete);
+    await tester.pumpAndSettle();
+
+    final confirmDialog =
+        find.byKey(const Key('appConfirmDialog'));
+    final cancelDialogButton =
+        find.byKey(const Key('appDialogCancelButton'));
+    final confirmDialogButton =
+        find.byKey(const Key('appDialogConfirmButton'));
+
+    expect(
+      tester.widget<Dialog>(confirmDialog).backgroundColor,
+      Colors.white,
+    );
+    expect(
+      tester.getCenter(cancelDialogButton).dx,
+      greaterThan(tester.getCenter(confirmDialogButton).dx),
+    );
+
+    final dangerConfirmButton = tester.widget<ElevatedButton>(
+      find.descendant(
+        of: confirmDialogButton,
+        matching: find.byType(ElevatedButton),
+      ),
+    );
+    expect(
+      dangerConfirmButton.style?.backgroundColor?.resolve(<WidgetState>{}),
+      AppColors.danger,
+    );
+
+    await tester.tap(cancelDialogButton);
+    await tester.pumpAndSettle();
+
     final currencyDropdown =
         find.byKey(const Key('designCurrencyDropdown'));
     await tester.ensureVisible(currencyDropdown);
@@ -397,6 +430,35 @@ void main() {
     expect(
       find.byKey(const Key('designSearchClearButton')),
       findsNothing,
+    );
+
+    final materialsTable =
+        find.byKey(const Key('designMaterialsTable'));
+    await Scrollable.ensureVisible(
+      tester.element(materialsTable),
+      alignment: 0.5,
+      duration: Duration.zero,
+    );
+    await tester.pump();
+
+    expect(find.text('مواد تجريبية'), findsNothing);
+    expect(find.byTooltip('الصفحة السابقة'), findsNothing);
+    expect(find.byTooltip('الصفحة التالية'), findsNothing);
+    expect(find.text('P-012'), findsOneWidget);
+
+    final tableScrollables = tester.widgetList<Scrollable>(
+      find.descendant(
+        of: materialsTable,
+        matching: find.byType(Scrollable),
+      ),
+    );
+    expect(
+      tableScrollables.any(
+        (scrollable) =>
+            scrollable.axisDirection == AxisDirection.down ||
+            scrollable.axisDirection == AxisDirection.up,
+      ),
+      isTrue,
     );
   });
 }
