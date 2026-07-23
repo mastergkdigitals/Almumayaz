@@ -115,7 +115,11 @@ class DesignGalleryFeedbackGroup extends StatelessWidget {
                       label: material.status,
                       tone: material.tone,
                     ),
-                    const _StatementActionButton(),
+                    const AppTableActionButton(
+                      icon: Icons.receipt_long_rounded,
+                      tooltip: 'كشف',
+                      onPressed: _handleStatementPressed,
+                    ),
                   ],
                 ),
             ],
@@ -142,18 +146,4 @@ class _SampleMaterial {
   final AppStatusTone tone;
 }
 
-class _StatementActionButton extends StatelessWidget {
-  const _StatementActionButton();
-
-  static void _handlePressed() {}
-
-  @override
-  Widget build(BuildContext context) {
-    return AppHeaderIconButton(
-      icon: Icons.receipt_long_rounded,
-      tooltip: 'كشف',
-      size: AppControlHeights.compact,
-      onPressed: _handlePressed,
-    );
-  }
-}
+void _handleStatementPressed() {}
