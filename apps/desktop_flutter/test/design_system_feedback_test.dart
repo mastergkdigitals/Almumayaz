@@ -13,7 +13,10 @@ void main() {
 
     expect(find.text('مواد تجريبية'), findsNothing);
     expect(find.text('رمز المادة'), findsOneWidget);
-    expect(find.text('P-001'), findsOneWidget);
+    expect(
+      find.descendant(of: table, matching: find.text('P-001')),
+      findsOneWidget,
+    );
     expect(find.byTooltip('كشف'), findsWidgets);
 
     final headerY = tester.getTopLeft(find.text('رمز المادة')).dy;
@@ -63,7 +66,9 @@ void main() {
     expect(toast.dismissDirection, DismissDirection.none);
     expect(find.byKey(const Key('appToastContent')), findsOneWidget);
 
-    await tester.pump(const Duration(seconds: 3));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(AppToast.duration);
+    await tester.pump(const Duration(milliseconds: 300));
     expect(find.byKey(const Key('appToast')), findsNothing);
   });
 }
