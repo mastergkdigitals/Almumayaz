@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/design/app_logo.dart';
 import '../../../core/design/app_theme.dart';
 import '../../../core/responsive/responsive_shell.dart';
 import '../../auth/presentation/login_screen.dart';
@@ -45,7 +46,7 @@ class DashboardScreen extends StatelessWidget {
           title: const Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.auto_graph_rounded, color: AppColors.primary),
+              AppLogo(size: 38, padding: 4),
               SizedBox(width: AppSpacing.sm),
               Text('المميز ERP',
                   style: TextStyle(fontWeight: FontWeight.w700)),
