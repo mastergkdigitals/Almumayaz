@@ -73,14 +73,14 @@ class _ColorSample extends StatelessWidget {
           Text(
             name,
             style: const TextStyle(
-              color: Colors.white,
+              color: AppColors.onStrong,
               fontWeight: FontWeight.w700,
             ),
           ),
           Text(
             value,
             textDirection: TextDirection.ltr,
-            style: const TextStyle(color: Colors.white70),
+            style: TextStyle(color: AppColors.onStrong.withAlpha(179)),
           ),
         ],
       ),
