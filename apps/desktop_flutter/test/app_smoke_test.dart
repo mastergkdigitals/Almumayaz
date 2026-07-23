@@ -1,4 +1,5 @@
 import 'package:erp/app/app.dart';
+import 'package:erp/core/design/app_design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -252,19 +253,26 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(
+    final updateButton = tester.widget<ElevatedButton>(
       find.descendant(
         of: actionBarUpdate,
-        matching: find.byType(OutlinedButton),
+        matching: find.byType(ElevatedButton),
       ),
-      findsOneWidget,
     );
-    expect(
+    final undoButton = tester.widget<ElevatedButton>(
       find.descendant(
         of: actionBarUndo,
-        matching: find.byType(TextButton),
+        matching: find.byType(ElevatedButton),
       ),
-      findsOneWidget,
+    );
+
+    expect(
+      updateButton.style?.backgroundColor?.resolve(<WidgetState>{}),
+      AppColors.success,
+    );
+    expect(
+      undoButton.style?.backgroundColor?.resolve(<WidgetState>{}),
+      AppColors.warning,
     );
     expect(
       find.descendant(
