@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/design/app_logo.dart';
 import '../../../core/design/app_theme.dart';
 
 class DashboardCard extends StatefulWidget {
@@ -10,7 +9,6 @@ class DashboardCard extends StatefulWidget {
     required this.colors,
     required this.shadowColor,
     this.subtitle,
-    this.showLogo = false,
     this.onTap,
     super.key,
   });
@@ -20,7 +18,6 @@ class DashboardCard extends StatefulWidget {
   final IconData icon;
   final List<Color> colors;
   final Color shadowColor;
-  final bool showLogo;
   final VoidCallback? onTap;
 
   @override
@@ -122,27 +119,22 @@ class _DashboardCardState extends State<DashboardCard> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        if (widget.showLogo)
-                          const AppLogo(size: 66, padding: 7)
-                        else
-                          Container(
-                            width: 66,
-                            height: 66,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.18),
-                              borderRadius:
-                                  BorderRadius.circular(AppRadii.lg),
-                              border: Border.all(
-                                color:
-                                    Colors.white.withValues(alpha: 0.25),
-                              ),
-                            ),
-                            child: Icon(
-                              widget.icon,
-                              color: Colors.white,
-                              size: 34,
+                        Container(
+                          width: 66,
+                          height: 66,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.18),
+                            borderRadius: BorderRadius.circular(AppRadii.lg),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.25),
                             ),
                           ),
+                          child: Icon(
+                            widget.icon,
+                            color: Colors.white,
+                            size: 34,
+                          ),
+                        ),
                         const SizedBox(height: AppSpacing.md),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 18),
