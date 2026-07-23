@@ -31,7 +31,7 @@ class AppHeaderIconButton extends StatelessWidget {
       key: tooltipKey,
       message: tooltip,
       preferBelow: true,
-      verticalOffset: AppSpacing.sm,
+      verticalOffset: size / 2 + AppSpacing.sm,
       waitDuration: AppDurations.normal,
       showDuration: const Duration(seconds: 2),
       padding: const EdgeInsets.symmetric(
