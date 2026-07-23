@@ -5,12 +5,15 @@ import 'app_loading_indicator.dart';
 
 enum AppButtonVariant { primary, secondary, danger, ghost }
 
+enum AppButtonIconPosition { beforeLabel, afterLabel }
+
 class AppButton extends StatefulWidget {
   const AppButton({
     required this.label,
     required this.onPressed,
     super.key,
     this.icon,
+    this.iconPosition = AppButtonIconPosition.beforeLabel,
     this.variant = AppButtonVariant.primary,
     this.isLoading = false,
     this.width,
@@ -20,6 +23,7 @@ class AppButton extends StatefulWidget {
   final String label;
   final VoidCallback? onPressed;
   final IconData? icon;
+  final AppButtonIconPosition iconPosition;
   final AppButtonVariant variant;
   final bool isLoading;
   final double? width;
@@ -79,7 +83,8 @@ class _AppButtonState extends State<AppButton> {
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (widget.icon != null) ...[
+              if (widget.icon != null &&
+                  widget.iconPosition == AppButtonIconPosition.beforeLabel) ...[
                 Icon(widget.icon, size: AppIconSizes.md),
                 const SizedBox(width: AppSpacing.sm),
               ],
@@ -87,6 +92,11 @@ class _AppButtonState extends State<AppButton> {
                 widget.label,
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),
+              if (widget.icon != null &&
+                  widget.iconPosition == AppButtonIconPosition.afterLabel) ...[
+                const SizedBox(width: AppSpacing.sm),
+                Icon(widget.icon, size: AppIconSizes.md),
+              ],
             ],
           );
 
@@ -234,7 +244,7 @@ class AppRecordNavigation extends StatelessWidget {
           AppButton(
             key: previousButtonKey,
             label: 'السابق',
-            icon: Icons.chevron_right_rounded,
+            icon: Icons.chevron_left_rounded,
             variant: variant,
             width: buttonWidth,
             onPressed: onPrevious,
@@ -242,7 +252,8 @@ class AppRecordNavigation extends StatelessWidget {
           AppButton(
             key: nextButtonKey,
             label: 'التالي',
-            icon: Icons.chevron_left_rounded,
+            icon: Icons.chevron_right_rounded,
+            iconPosition: AppButtonIconPosition.afterLabel,
             variant: variant,
             width: buttonWidth,
             onPressed: onNext,
@@ -251,6 +262,7 @@ class AppRecordNavigation extends StatelessWidget {
             key: lastButtonKey,
             label: 'الأخير',
             icon: Icons.last_page_rounded,
+            iconPosition: AppButtonIconPosition.afterLabel,
             variant: variant,
             width: buttonWidth,
             onPressed: onLast,
