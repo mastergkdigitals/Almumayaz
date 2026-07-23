@@ -6,15 +6,15 @@ import '../app_tokens.dart';
 class AppFieldIconButton extends StatelessWidget {
   const AppFieldIconButton({
     required this.icon,
-    required this.tooltip,
     required this.onPressed,
     super.key,
     this.buttonKey,
+    this.tooltip,
     this.color = AppColors.textSecondary,
   });
 
   final IconData icon;
-  final String tooltip;
+  final String? tooltip;
   final VoidCallback? onPressed;
   final Key? buttonKey;
   final Color color;
