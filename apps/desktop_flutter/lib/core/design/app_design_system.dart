@@ -1,6 +1,7 @@
 export 'app_logo.dart';
 export 'app_theme.dart';
 export 'app_tokens.dart';
+export 'components/app_action_bar.dart';
 export 'components/app_button.dart';
 export 'components/app_dialogs.dart';
 export 'components/app_feedback.dart';
