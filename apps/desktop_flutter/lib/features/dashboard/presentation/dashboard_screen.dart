@@ -68,7 +68,7 @@ class DashboardScreen extends StatelessWidget {
             const SizedBox(width: AppSpacing.md),
           ],
         ),
-        body: ResponsiveShell(
+        body: ResponsiveLayout(
           builder: (context, info) {
             final columns = info.availableWidth >= 1320
                 ? 4
