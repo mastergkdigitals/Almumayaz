@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 
 import '../../../core/design/app_logo.dart';
 import '../../../core/design/app_theme.dart';
-import '../../../core/responsive/responsive_shell.dart';
 import '../../dashboard/presentation/dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -44,40 +43,34 @@ class _LoginScreenState extends State<LoginScreen> {
         const SingleActivator(LogicalKeyboardKey.keyS, control: true): _login,
       },
       child: Scaffold(
-        body: ResponsiveLayout(
-          builder: (context, info) => Row(
-            children: [
-              if (!info.isCompact) const Expanded(flex: 6, child: _BrandPanel()),
-              Expanded(
-                flex: info.isCompact ? 1 : 5,
-                child: Center(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(AppSpacing.xl),
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 430),
-                      child: _buildForm(context, info.isCompact),
-                    ),
+        body: Row(
+          children: [
+            const Expanded(flex: 6, child: _BrandPanel()),
+            Expanded(
+              flex: 5,
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(AppSpacing.xl),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 430),
+                    child: _buildForm(context),
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildForm(BuildContext context, bool compact) {
+  Widget _buildForm(BuildContext context) {
     return Form(
       key: _formKey,
       child: FocusTraversalGroup(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (compact) ...[
-              const Center(child: AppLogo(size: 64)),
-              const SizedBox(height: AppSpacing.md),
-            ],
             Text(
               'تسجيل الدخول',
               style: Theme.of(context)
@@ -121,9 +114,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       _hidePassword ? 'إظهار كلمة المرور' : 'إخفاء كلمة المرور',
                   onPressed: () =>
                       setState(() => _hidePassword = !_hidePassword),
-                  icon: Icon(_hidePassword
-                      ? Icons.visibility_outlined
-                      : Icons.visibility_off_outlined),
+                  icon: Icon(
+                    _hidePassword
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                  ),
                 ),
               ),
               validator: (value) =>
@@ -189,8 +184,10 @@ class _BrandPanel extends StatelessWidget {
                   ?.copyWith(color: Colors.white70),
             ),
             const Spacer(),
-            const Text('نسخة تصميمية أولية',
-                style: TextStyle(color: Colors.white54)),
+            const Text(
+              'نسخة تصميمية أولية',
+              style: TextStyle(color: Colors.white54),
+            ),
           ],
         ),
       ),
