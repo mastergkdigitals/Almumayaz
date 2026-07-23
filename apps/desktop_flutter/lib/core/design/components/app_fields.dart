@@ -76,6 +76,125 @@ class AppTextField extends StatelessWidget {
   }
 }
 
+class AppSearchField extends StatefulWidget {
+  const AppSearchField({
+    required this.controller,
+    super.key,
+    this.label = 'بحث',
+    this.fieldKey,
+    this.clearButtonKey,
+    this.hint,
+    this.focusNode,
+    this.onChanged,
+    this.onSubmitted,
+    this.enabled = true,
+    this.autofocus = false,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final Key? fieldKey;
+  final Key? clearButtonKey;
+  final String? hint;
+  final FocusNode? focusNode;
+  final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
+  final bool enabled;
+  final bool autofocus;
+
+  @override
+  State<AppSearchField> createState() => _AppSearchFieldState();
+}
+
+class _AppSearchFieldState extends State<AppSearchField> {
+  final FocusNode _internalFocusNode = FocusNode();
+  late bool _hasText;
+
+  FocusNode get _effectiveFocusNode =>
+      widget.focusNode ?? _internalFocusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _hasText = widget.controller.text.isNotEmpty;
+    widget.controller.addListener(_handleControllerChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant AppSearchField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller == widget.controller) return;
+
+    oldWidget.controller.removeListener(_handleControllerChanged);
+    widget.controller.addListener(_handleControllerChanged);
+    _hasText = widget.controller.text.isNotEmpty;
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_handleControllerChanged);
+    _internalFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _handleControllerChanged() {
+    final hasText = widget.controller.text.isNotEmpty;
+    if (_hasText == hasText) return;
+    setState(() => _hasText = hasText);
+  }
+
+  void _clear() {
+    if (!widget.enabled || widget.controller.text.isEmpty) return;
+
+    widget.controller.clear();
+    widget.onChanged?.call('');
+    _effectiveFocusNode.requestFocus();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AppTextField(
+      controller: widget.controller,
+      label: widget.label,
+      fieldKey: widget.fieldKey,
+      hint: widget.hint,
+      icon: Icons.search_rounded,
+      focusNode: _effectiveFocusNode,
+      onChanged: widget.onChanged,
+      onSubmitted: widget.onSubmitted,
+      textInputAction: TextInputAction.search,
+      enabled: widget.enabled,
+      autofocus: widget.autofocus,
+      suffixIcon: _hasText && widget.enabled
+          ? IconButton(
+              key: widget.clearButtonKey,
+              onPressed: _clear,
+              icon: const Icon(Icons.close_rounded),
+              style: ButtonStyle(
+                foregroundColor:
+                    const WidgetStatePropertyAll<Color>(AppColors.danger),
+                elevation: const WidgetStatePropertyAll<double>(0),
+                shadowColor:
+                    const WidgetStatePropertyAll<Color>(Colors.transparent),
+                overlayColor: WidgetStateProperty.resolveWith<Color?>(
+                  (states) {
+                    if (states.contains(WidgetState.pressed)) {
+                      return const Color(0xFFFFDAD6);
+                    }
+                    if (states.contains(WidgetState.hovered) ||
+                        states.contains(WidgetState.focused)) {
+                      return const Color(0xFFFFE9E7);
+                    }
+                    return Colors.transparent;
+                  },
+                ),
+              ),
+            )
+          : null,
+    );
+  }
+}
+
 class AppIntegerField extends StatelessWidget {
   const AppIntegerField({
     required this.controller,
