@@ -93,6 +93,21 @@ class DesignGalleryFeedbackGroup extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.lg),
+        const DesignGallerySection(
+          title: 'طبقة التحميل',
+          child: SizedBox(
+            height: 180,
+            child: AppLoadingOverlay(
+              isLoading: true,
+              message: 'جاري حفظ البيانات',
+              child: AppInfoBanner(
+                message: 'يتم تعطيل المحتوى أثناء العمليات المهمة.',
+                icon: Icons.inventory_2_rounded,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
         DesignGallerySection(
           title: 'الجدول',
           child: AppDataTable(
