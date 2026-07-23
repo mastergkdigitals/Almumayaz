@@ -49,7 +49,7 @@ class ResponsiveDesktopShell extends StatelessWidget {
       ],
       child: MaxWidthBox(
         maxWidth: ResponsiveDesktopConfig.maximumScaledWidth,
-        background: const ColoredBox(color: AppColors.background),
+        backgroundColor: AppColors.background,
         child: ResponsiveScaledBox(
           width: ResponsiveDesktopConfig.designWidth,
           autoCalculateMediaQueryData: true,
