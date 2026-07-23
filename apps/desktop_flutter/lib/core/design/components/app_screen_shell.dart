@@ -138,9 +138,9 @@ class _HeaderIconButton extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onPressed,
-          child: const SizedBox.square(
+          child: SizedBox.square(
             dimension: AppControlHeights.standard,
-            child: Icon(Icons.arrow_forward_rounded),
+            child: Icon(icon),
           ),
         ),
       ),
