@@ -82,6 +82,11 @@ abstract final class AppTypography {
     fontWeight: FontWeight.w600,
   );
 
+  static const buttonText = TextStyle(
+    fontSize: 16,
+    fontWeight: FontWeight.w700,
+  );
+
   static const tableHeader = TextStyle(
     color: AppColors.textPrimary,
     fontSize: 14,
