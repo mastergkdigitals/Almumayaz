@@ -107,6 +107,15 @@ void main() {
     expect(find.text('الأزرار'), findsOneWidget);
     expect(find.text('حقول الإدخال'), findsOneWidget);
     expect(find.text('الجدول والترقيم'), findsOneWidget);
-  });
 
+    final currencyDropdown =
+        find.byKey(const Key('designCurrencyDropdown'));
+    await tester.ensureVisible(currencyDropdown);
+    await tester.pump();
+    await tester.tap(currencyDropdown);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+
+    expect(find.text('دولار'), findsOneWidget);
+  });
 }
