@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../app_tokens.dart';
 import 'app_button.dart';
+import 'app_loading_indicator.dart';
 
 enum AppStatusTone { success, warning, danger, info, neutral }
 
@@ -99,10 +100,7 @@ class AppStatePanel extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (type == AppStateType.loading)
-            const SizedBox.square(
-              dimension: AppIconSizes.xl,
-              child: CircularProgressIndicator(strokeWidth: 3),
-            )
+            const AppLoadingIndicator(size: 40, strokeWidth: 4)
           else
             Icon(_icon, size: 40, color: _color),
           const SizedBox(height: AppSpacing.md),
