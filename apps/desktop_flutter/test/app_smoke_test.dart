@@ -119,10 +119,14 @@ void main() {
     expect(find.text('دولار'), findsOneWidget);
     await tester.tap(find.text('دولار'));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pump(const Duration(milliseconds: 500));
 
     final searchField = find.byKey(const Key('designSearchField'));
-    await tester.ensureVisible(searchField);
+    await Scrollable.ensureVisible(
+      tester.element(searchField),
+      alignment: 0.5,
+      duration: Duration.zero,
+    );
     await tester.pump();
 
     expect(
@@ -138,7 +142,17 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.tap(find.byKey(const Key('designSearchClearButton')));
+    final clearButton =
+        find.byKey(const Key('designSearchClearButton'));
+    await Scrollable.ensureVisible(
+      tester.element(clearButton),
+      alignment: 0.5,
+      duration: Duration.zero,
+    );
+    await tester.pump();
+
+    expect(tester.widget<IconButton>(clearButton).onPressed, isNotNull);
+    await tester.tap(clearButton);
     await tester.pump();
 
     final textField = tester.widget<TextFormField>(searchField);
