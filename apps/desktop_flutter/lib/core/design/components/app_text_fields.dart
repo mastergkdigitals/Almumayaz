@@ -259,6 +259,49 @@ class _AppSearchFieldState extends State<AppSearchField> {
   }
 }
 
+
+class AppTextArea extends StatelessWidget {
+  const AppTextArea({
+    required this.controller,
+    required this.label,
+    super.key,
+    this.fieldKey,
+    this.icon = Icons.notes_rounded,
+    this.minLines = 3,
+    this.maxLines = 5,
+    this.enabled = true,
+    this.validator,
+    this.onChanged,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final Key? fieldKey;
+  final IconData icon;
+  final int minLines;
+  final int maxLines;
+  final bool enabled;
+  final String? Function(String?)? validator;
+  final ValueChanged<String>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppTextField(
+      fieldKey: fieldKey,
+      controller: controller,
+      label: label,
+      icon: icon,
+      enabled: enabled,
+      minLines: minLines,
+      maxLines: maxLines,
+      keyboardType: TextInputType.multiline,
+      textInputAction: TextInputAction.newline,
+      validator: validator,
+      onChanged: onChanged,
+    );
+  }
+}
+
 class AppIntegerField extends StatelessWidget {
   const AppIntegerField({
     required this.controller,
