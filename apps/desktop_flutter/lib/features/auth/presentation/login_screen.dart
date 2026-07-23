@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/design/app_logo.dart';
 import '../../../core/design/app_theme.dart';
 import '../../../core/responsive/responsive_shell.dart';
 import '../../dashboard/presentation/dashboard_screen.dart';
@@ -74,8 +75,7 @@ class _LoginScreenState extends State<LoginScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (compact) ...[
-              const Icon(Icons.auto_graph_rounded,
-                  size: 56, color: AppColors.primary),
+              const Center(child: AppLogo(size: 64)),
               const SizedBox(height: AppSpacing.md),
             ],
             Text(
@@ -171,16 +171,7 @@ class _BrandPanel extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Spacer(),
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                color: AppColors.accent,
-                borderRadius: BorderRadius.circular(AppRadii.lg),
-              ),
-              child: const Icon(Icons.auto_graph_rounded,
-                  size: 38, color: AppColors.primaryDark),
-            ),
+            const AppLogo(size: 72, padding: 8),
             const SizedBox(height: AppSpacing.lg),
             Text(
               'المميز ERP',
