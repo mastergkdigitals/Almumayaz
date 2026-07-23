@@ -17,6 +17,9 @@ abstract final class AppDialogs {
       barrierDismissible: false,
       builder: (dialogContext) {
         return Dialog(
+          key: const Key('appConfirmDialog'),
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: AppDialogSizes.small),
             child: Padding(
@@ -48,20 +51,20 @@ abstract final class AppDialogs {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       AppButton(
-                        label: confirmLabel,
-                        onPressed: () =>
-                            Navigator.of(dialogContext).pop(true),
-                        variant: isDanger
-                            ? AppButtonVariant.danger
-                            : AppButtonVariant.primary,
-                        width: 120,
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      AppButton(
+                        key: const Key('appDialogCancelButton'),
                         label: cancelLabel,
                         onPressed: () =>
                             Navigator.of(dialogContext).pop(false),
                         variant: AppButtonVariant.secondary,
+                        width: 120,
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      AppButton(
+                        key: const Key('appDialogConfirmButton'),
+                        label: confirmLabel,
+                        onPressed: () =>
+                            Navigator.of(dialogContext).pop(true),
+                        variant: AppButtonVariant.danger,
                         width: 120,
                       ),
                     ],
