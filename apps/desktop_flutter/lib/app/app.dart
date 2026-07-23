@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/design/app_theme.dart';
+import '../core/responsive/responsive_shell.dart';
 import '../features/auth/presentation/login_screen.dart';
 
 class AlmumayazApp extends StatelessWidget {
@@ -15,7 +16,9 @@ class AlmumayazApp extends StatelessWidget {
       locale: const Locale('ar', 'IQ'),
       builder: (context, child) => Directionality(
         textDirection: TextDirection.rtl,
-        child: child ?? const SizedBox.shrink(),
+        child: ResponsiveDesktopShell(
+          child: child ?? const SizedBox.shrink(),
+        ),
       ),
       home: const LoginScreen(),
     );
