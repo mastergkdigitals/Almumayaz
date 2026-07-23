@@ -105,6 +105,7 @@ void main() {
     expect(find.byKey(const Key('designSystemGallery')), findsOneWidget);
     expect(find.text('دليل نظام التصميم'), findsOneWidget);
     expect(find.text('الأزرار'), findsOneWidget);
+    expect(find.text('شريط الإجراءات'), findsOneWidget);
     expect(find.text('حقول الإدخال'), findsOneWidget);
     expect(find.text('الجدول والترقيم'), findsOneWidget);
 
@@ -119,10 +120,10 @@ void main() {
       SystemMouseCursors.click,
     );
 
-    expect(find.text('الأول'), findsOneWidget);
-    expect(find.text('السابق'), findsOneWidget);
-    expect(find.text('التالي'), findsOneWidget);
-    expect(find.text('الأخير'), findsOneWidget);
+    expect(find.text('الأول'), findsNWidgets(2));
+    expect(find.text('السابق'), findsNWidgets(2));
+    expect(find.text('التالي'), findsNWidgets(2));
+    expect(find.text('الأخير'), findsNWidgets(2));
 
     final firstPosition = tester.getCenter(
       find.byKey(const Key('designNavigationFirst')),
@@ -180,12 +181,97 @@ void main() {
       Icons.chevron_right_rounded,
     );
     expect(
-      tester.getCenter(find.text('التالي')).dx,
+      tester
+          .getCenter(
+            find.descendant(
+              of: nextButton,
+              matching: find.text('التالي'),
+            ),
+          )
+          .dx,
       greaterThan(tester.getCenter(nextIcon).dx),
     );
     expect(
-      tester.getCenter(find.text('الأخير')).dx,
+      tester
+          .getCenter(
+            find.descendant(
+              of: lastButton,
+              matching: find.text('الأخير'),
+            ),
+          )
+          .dx,
       greaterThan(tester.getCenter(lastIcon).dx),
+    );
+
+    final actionBar = find.byKey(const Key('designActionBar'));
+    await Scrollable.ensureVisible(
+      tester.element(actionBar),
+      alignment: 0.5,
+      duration: Duration.zero,
+    );
+    await tester.pump();
+
+    final actionBarFirst =
+        find.byKey(const Key('designActionBarFirst'));
+    final actionBarSearch =
+        find.byKey(const Key('designActionBarSearch'));
+    final actionBarSave =
+        find.byKey(const Key('designActionBarSave'));
+    final actionBarUpdate =
+        find.byKey(const Key('designActionBarUpdate'));
+    final actionBarUndo =
+        find.byKey(const Key('designActionBarUndo'));
+    final actionBarDelete =
+        find.byKey(const Key('designActionBarDelete'));
+
+    expect(
+      tester.getCenter(actionBarFirst).dx,
+      greaterThan(tester.getCenter(actionBarSearch).dx),
+    );
+    expect(
+      tester.getCenter(actionBarSearch).dx,
+      greaterThan(tester.getCenter(actionBarSave).dx),
+    );
+    expect(
+      tester.getCenter(actionBarSave).dx,
+      greaterThan(tester.getCenter(actionBarUpdate).dx),
+    );
+    expect(
+      tester.getCenter(actionBarUpdate).dx,
+      greaterThan(tester.getCenter(actionBarUndo).dx),
+    );
+    expect(
+      tester.getCenter(actionBarUndo).dx,
+      greaterThan(tester.getCenter(actionBarDelete).dx),
+    );
+
+    expect(
+      find.descendant(
+        of: actionBarSave,
+        matching: find.byType(ElevatedButton),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: actionBarUpdate,
+        matching: find.byType(OutlinedButton),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: actionBarUndo,
+        matching: find.byType(TextButton),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: actionBarDelete,
+        matching: find.byType(ElevatedButton),
+      ),
+      findsOneWidget,
     );
 
     final currencyDropdown =
