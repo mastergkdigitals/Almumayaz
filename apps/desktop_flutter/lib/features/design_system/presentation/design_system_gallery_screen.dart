@@ -162,6 +162,7 @@ class _DesignSystemGalleryScreenState
                   SizedBox(
                     width: 320,
                     child: AppDropdownField<String>(
+                      fieldKey: const Key('designCurrencyDropdown'),
                       label: 'العملة',
                       icon: Icons.currency_exchange_rounded,
                       value: _currency,
