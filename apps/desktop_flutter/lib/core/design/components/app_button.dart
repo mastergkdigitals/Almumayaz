@@ -185,3 +185,78 @@ class _AppButtonState extends State<AppButton> {
     );
   }
 }
+
+class AppRecordNavigation extends StatelessWidget {
+  const AppRecordNavigation({
+    required this.onFirst,
+    required this.onPrevious,
+    required this.onNext,
+    required this.onLast,
+    super.key,
+    this.firstButtonKey,
+    this.previousButtonKey,
+    this.nextButtonKey,
+    this.lastButtonKey,
+    this.variant = AppButtonVariant.secondary,
+    this.buttonWidth = 112,
+    this.spacing = AppSpacing.sm,
+  });
+
+  final VoidCallback? onFirst;
+  final VoidCallback? onPrevious;
+  final VoidCallback? onNext;
+  final VoidCallback? onLast;
+  final Key? firstButtonKey;
+  final Key? previousButtonKey;
+  final Key? nextButtonKey;
+  final Key? lastButtonKey;
+  final AppButtonVariant variant;
+  final double buttonWidth;
+  final double spacing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Wrap(
+        textDirection: TextDirection.rtl,
+        spacing: spacing,
+        runSpacing: spacing,
+        children: [
+          AppButton(
+            key: firstButtonKey,
+            label: 'الأول',
+            icon: Icons.first_page_rounded,
+            variant: variant,
+            width: buttonWidth,
+            onPressed: onFirst,
+          ),
+          AppButton(
+            key: previousButtonKey,
+            label: 'السابق',
+            icon: Icons.chevron_right_rounded,
+            variant: variant,
+            width: buttonWidth,
+            onPressed: onPrevious,
+          ),
+          AppButton(
+            key: nextButtonKey,
+            label: 'التالي',
+            icon: Icons.chevron_left_rounded,
+            variant: variant,
+            width: buttonWidth,
+            onPressed: onNext,
+          ),
+          AppButton(
+            key: lastButtonKey,
+            label: 'الأخير',
+            icon: Icons.last_page_rounded,
+            variant: variant,
+            width: buttonWidth,
+            onPressed: onLast,
+          ),
+        ],
+      ),
+    );
+  }
+}
