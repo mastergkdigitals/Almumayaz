@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/design/app_theme.dart';
+import '../../../core/design/components/app_header_button.dart';
 import '../../auth/presentation/login_screen.dart';
 import '../../design_system/presentation/design_system_gallery_screen.dart';
 import 'dashboard_card.dart';
@@ -212,35 +213,13 @@ class _DashboardHeader extends StatelessWidget {
           ),
           Align(
             alignment: Alignment.centerLeft,
-            child: Semantics(
-              button: true,
-              label: 'تسجيل الخروج',
-              child: Material(
-                color: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  side: const BorderSide(color: Color(0xFFD1D5DB)),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(
-                  key: const Key('dashboardLogout'),
-                  onTap: onLogout,
-                  hoverColor: Colors.transparent,
-                  highlightColor: Colors.transparent,
-                  splashColor: Colors.transparent,
-                  child: SizedBox.square(
-                    dimension: 52,
-                    child: Transform.flip(
-                      flipX: true,
-                      child: const Icon(
-                        Icons.logout_rounded,
-                        size: 24,
-                        color: Color(0xFF111827),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+            child: AppHeaderIconButton(
+              key: const Key('dashboardLogout'),
+              tooltipKey: const Key('dashboardLogoutTooltip'),
+              icon: Icons.logout_rounded,
+              tooltip: 'تسجيل الخروج',
+              flipIconHorizontally: true,
+              onPressed: onLogout,
             ),
           ),
         ],
