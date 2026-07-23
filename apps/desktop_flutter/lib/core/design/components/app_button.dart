@@ -14,6 +14,9 @@ class AppButton extends StatefulWidget {
     super.key,
     this.icon,
     this.iconPosition = AppButtonIconPosition.beforeLabel,
+    this.iconSize = AppIconSizes.md,
+    this.iconSpacing = AppSpacing.sm,
+    this.padding,
     this.variant = AppButtonVariant.primary,
     this.isLoading = false,
     this.width,
@@ -24,6 +27,9 @@ class AppButton extends StatefulWidget {
   final VoidCallback? onPressed;
   final IconData? icon;
   final AppButtonIconPosition iconPosition;
+  final double iconSize;
+  final double iconSpacing;
+  final EdgeInsetsGeometry? padding;
   final AppButtonVariant variant;
   final bool isLoading;
   final double? width;
@@ -85,8 +91,8 @@ class _AppButtonState extends State<AppButton> {
             children: [
               if (widget.icon != null &&
                   widget.iconPosition == AppButtonIconPosition.beforeLabel) ...[
-                Icon(widget.icon, size: AppIconSizes.md),
-                const SizedBox(width: AppSpacing.sm),
+                Icon(widget.icon, size: widget.iconSize),
+                SizedBox(width: widget.iconSpacing),
               ],
               Text(
                 widget.label,
@@ -94,8 +100,8 @@ class _AppButtonState extends State<AppButton> {
               ),
               if (widget.icon != null &&
                   widget.iconPosition == AppButtonIconPosition.afterLabel) ...[
-                const SizedBox(width: AppSpacing.sm),
-                Icon(widget.icon, size: AppIconSizes.md),
+                SizedBox(width: widget.iconSpacing),
+                Icon(widget.icon, size: widget.iconSize),
               ],
             ],
           );
@@ -109,6 +115,9 @@ class _AppButtonState extends State<AppButton> {
             const WidgetStatePropertyAll<Color>(Colors.transparent),
         overlayColor:
             const WidgetStatePropertyAll<Color>(Colors.transparent),
+        padding: widget.padding == null
+            ? null
+            : WidgetStatePropertyAll<EdgeInsetsGeometry>(widget.padding!),
         mouseCursor: WidgetStateProperty.resolveWith<MouseCursor?>(
           (states) => states.contains(WidgetState.disabled)
               ? SystemMouseCursors.basic
@@ -208,7 +217,10 @@ class AppRecordNavigation extends StatelessWidget {
     this.nextButtonKey,
     this.lastButtonKey,
     this.variant = AppButtonVariant.secondary,
-    this.buttonWidth = 128,
+    this.buttonWidth = 116,
+    this.buttonPadding = const EdgeInsets.symmetric(horizontal: 2),
+    this.iconSize = 18,
+    this.iconSpacing = AppSpacing.xs,
     this.spacing = AppSpacing.sm,
   });
 
@@ -222,6 +234,9 @@ class AppRecordNavigation extends StatelessWidget {
   final Key? lastButtonKey;
   final AppButtonVariant variant;
   final double buttonWidth;
+  final EdgeInsetsGeometry buttonPadding;
+  final double iconSize;
+  final double iconSpacing;
   final double spacing;
 
   @override
@@ -239,6 +254,9 @@ class AppRecordNavigation extends StatelessWidget {
             icon: Icons.first_page_rounded,
             variant: variant,
             width: buttonWidth,
+            padding: buttonPadding,
+            iconSize: iconSize,
+            iconSpacing: iconSpacing,
             onPressed: onFirst,
           ),
           AppButton(
@@ -247,6 +265,9 @@ class AppRecordNavigation extends StatelessWidget {
             icon: Icons.chevron_left_rounded,
             variant: variant,
             width: buttonWidth,
+            padding: buttonPadding,
+            iconSize: iconSize,
+            iconSpacing: iconSpacing,
             onPressed: onPrevious,
           ),
           AppButton(
@@ -256,6 +277,9 @@ class AppRecordNavigation extends StatelessWidget {
             iconPosition: AppButtonIconPosition.afterLabel,
             variant: variant,
             width: buttonWidth,
+            padding: buttonPadding,
+            iconSize: iconSize,
+            iconSpacing: iconSpacing,
             onPressed: onNext,
           ),
           AppButton(
@@ -265,6 +289,9 @@ class AppRecordNavigation extends StatelessWidget {
             iconPosition: AppButtonIconPosition.afterLabel,
             variant: variant,
             width: buttonWidth,
+            padding: buttonPadding,
+            iconSize: iconSize,
+            iconSpacing: iconSpacing,
             onPressed: onLast,
           ),
         ],
