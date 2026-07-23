@@ -78,8 +78,8 @@ abstract final class AppTypography {
 
   static const fieldText = TextStyle(
     color: AppColors.textPrimary,
-    fontSize: 16,
-    fontWeight: FontWeight.w500,
+    fontSize: 20,
+    fontWeight: FontWeight.w600,
   );
 
   static const tableHeader = TextStyle(
