@@ -174,20 +174,18 @@ class _AppSearchFieldState extends State<AppSearchField> {
                 foregroundColor:
                     const WidgetStatePropertyAll<Color>(AppColors.danger),
                 elevation: const WidgetStatePropertyAll<double>(0),
+                backgroundColor:
+                    const WidgetStatePropertyAll<Color>(Colors.transparent),
                 shadowColor:
                     const WidgetStatePropertyAll<Color>(Colors.transparent),
-                overlayColor: WidgetStateProperty.resolveWith<Color?>(
-                  (states) {
-                    if (states.contains(WidgetState.pressed)) {
-                      return const Color(0xFFFFDAD6);
-                    }
-                    if (states.contains(WidgetState.hovered) ||
-                        states.contains(WidgetState.focused)) {
-                      return const Color(0xFFFFE9E7);
-                    }
-                    return Colors.transparent;
-                  },
+                surfaceTintColor:
+                    const WidgetStatePropertyAll<Color>(Colors.transparent),
+                overlayColor:
+                    const WidgetStatePropertyAll<Color>(Colors.transparent),
+                mouseCursor: const WidgetStatePropertyAll<MouseCursor>(
+                  SystemMouseCursors.click,
                 ),
+                splashFactory: NoSplash.splashFactory,
               ),
             )
           : null,
