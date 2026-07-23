@@ -14,6 +14,7 @@ class _DesignSystemGalleryScreenState
     extends State<DesignSystemGalleryScreen> {
   final _nameController = TextEditingController(text: 'مادة تجريبية');
   final _searchController = TextEditingController();
+  final _actionBarSearchController = TextEditingController();
   final _quantityController = TextEditingController(text: '100');
   final _moneyController = TextEditingController(text: '25000');
 
@@ -24,6 +25,7 @@ class _DesignSystemGalleryScreenState
   void dispose() {
     _nameController.dispose();
     _searchController.dispose();
+    _actionBarSearchController.dispose();
     _quantityController.dispose();
     _moneyController.dispose();
     super.dispose();
@@ -159,6 +161,38 @@ class _DesignSystemGalleryScreenState
                     ),
                   ),
                 ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            _GallerySection(
+              title: 'شريط الإجراءات',
+              child: AppActionBar(
+                key: const Key('designActionBar'),
+                searchController: _actionBarSearchController,
+                searchFieldKey: const Key('designActionBarSearch'),
+                searchClearButtonKey:
+                    const Key('designActionBarSearchClear'),
+                firstButtonKey: const Key('designActionBarFirst'),
+                previousButtonKey:
+                    const Key('designActionBarPrevious'),
+                nextButtonKey: const Key('designActionBarNext'),
+                lastButtonKey: const Key('designActionBarLast'),
+                saveButtonKey: const Key('designActionBarSave'),
+                updateButtonKey: const Key('designActionBarUpdate'),
+                undoButtonKey: const Key('designActionBarUndo'),
+                deleteButtonKey: const Key('designActionBarDelete'),
+                searchHint: 'ابحث في السجلات',
+                onFirst: () {},
+                onPrevious: () {},
+                onNext: () {},
+                onLast: () {},
+                onSave: () =>
+                    AppToast.showSuccess(context, 'تم الحفظ بنجاح'),
+                onUpdate: () =>
+                    AppToast.showInfo(context, 'تم تحديث السجل'),
+                onUndo: () =>
+                    AppToast.showInfo(context, 'تم التراجع عن التغييرات'),
+                onDelete: _showConfirmation,
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
