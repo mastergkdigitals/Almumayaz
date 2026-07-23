@@ -71,6 +71,20 @@ void main() {
     expect(find.byKey(const Key('dashboardCard_purchases')), findsOneWidget);
     expect(find.byKey(const Key('dashboardCard_about')), findsOneWidget);
     expect(find.byKey(const Key('appScreenBackButton')), findsNothing);
+
+    final purchasesInkWell = tester.widget<InkWell>(
+      find.descendant(
+        of: find.byKey(const Key('dashboardCard_purchases')),
+        matching: find.byType(InkWell),
+      ),
+    );
+    expect(
+      purchasesInkWell.overlayColor?.resolve(
+        <WidgetState>{WidgetState.pressed},
+      ),
+      Colors.transparent,
+    );
+    expect(purchasesInkWell.splashFactory, NoSplash.splashFactory);
   });
 
   testWidgets('keeps full login layout at 1440 width', (tester) async {
