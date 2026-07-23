@@ -237,10 +237,10 @@ class AppRecordNavigation extends StatelessWidget {
     this.nextButtonKey,
     this.lastButtonKey,
     this.variant = AppButtonVariant.secondary,
-    this.buttonWidth = 116,
+    this.buttonWidth = 108,
     this.buttonPadding = const EdgeInsets.symmetric(horizontal: 2),
-    this.iconSize = 18,
-    this.iconSpacing = AppSpacing.xs,
+    this.iconSize = 16,
+    this.iconSpacing = AppSpacing.xs / 2,
     this.spacing = AppSpacing.sm,
   });
 
