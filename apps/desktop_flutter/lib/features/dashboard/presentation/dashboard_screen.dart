@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../core/design/app_theme.dart';
+import '../../../core/design/app_design_system.dart';
 import '../../../core/design/components/app_header_button.dart';
 import '../../auth/presentation/login_screen.dart';
 import '../../design_system/presentation/design_system_gallery_screen.dart';
@@ -17,65 +17,56 @@ class DashboardScreen extends StatelessWidget {
       'purchases',
       'المشتريات',
       Icons.shopping_cart_checkout_rounded,
-      colors: [Color(0xFF064E3B), AppModuleColors.purchases, Color(0xFFA7F3D0)],
-      shadowColor: Color(0xFF059669),
+      palette: AppModulePalettes.purchases,
     ),
     _ModuleItem(
       'sales',
       'المبيعات',
       Icons.point_of_sale_rounded,
-      colors: [Color(0xFF4C1D95), AppModuleColors.sales, Color(0xFFC4B5FD)],
-      shadowColor: AppModuleColors.sales,
+      palette: AppModulePalettes.sales,
     ),
     _ModuleItem(
       'cashbox',
       'الصندوق',
       Icons.account_balance_wallet_rounded,
-      colors: [Color(0xFF9A3412), AppModuleColors.cashbox, Color(0xFFFED7AA)],
-      shadowColor: AppModuleColors.cashbox,
+      palette: AppModulePalettes.cashbox,
     ),
     _ModuleItem(
       'parties',
       'الأطراف',
-      Icons.group_rounded,
-      colors: [Color(0xFF0B1F3A), AppModuleColors.parties, Color(0xFFBFDBFE)],
-      shadowColor: AppModuleColors.parties,
+      Icons.groups_rounded,
+      palette: AppModulePalettes.parties,
     ),
     _ModuleItem(
       'company',
       'اسم الشركة + الشعار',
       Icons.apartment_rounded,
-      colors: [Color(0xFF6B4F00), Color(0xFFD4A72C), Color(0xFFFFE69A)],
-      shadowColor: Color(0xFFB8860B),
+      palette: AppModulePalettes.company,
       displayOnly: true,
     ),
     _ModuleItem(
       'warehouses',
       'المخازن',
       Icons.warehouse_rounded,
-      colors: [Color(0xFF5C2E0E), AppModuleColors.warehouses, Color(0xFFD6A36A)],
-      shadowColor: AppModuleColors.warehouses,
+      palette: AppModulePalettes.warehouses,
     ),
     _ModuleItem(
       'reports',
       'التقارير',
       Icons.analytics_rounded,
-      colors: [Color(0xFF115E59), Color(0xFF14B8A6), Color(0xFF99F6E4)],
-      shadowColor: Color(0xFF14B8A6),
+      palette: AppModulePalettes.reports,
     ),
     _ModuleItem(
       'settings',
       'الإعدادات',
       Icons.settings_rounded,
-      colors: [Color(0xFF374151), Color(0xFF6B7280), Color(0xFFD1D5DB)],
-      shadowColor: Color(0xFF6B7280),
+      palette: AppModulePalettes.settings,
     ),
     _ModuleItem(
       'about',
       'حول',
       Icons.info_rounded,
-      colors: [Color(0xFF155E75), Color(0xFF06B6D4), Color(0xFFA5F3FC)],
-      shadowColor: Color(0xFF06B6D4),
+      palette: AppModulePalettes.about,
       isAbout: true,
     ),
   ];
@@ -90,9 +81,7 @@ class DashboardScreen extends StatelessWidget {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('سيتم تصميم شاشة ${item.title} في مرحلتها')),
-    );
+    AppToast.showInfo(context, 'سيتم تصميم شاشة ${item.title} في مرحلتها');
   }
 
   @override
@@ -100,9 +89,7 @@ class DashboardScreen extends StatelessWidget {
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.f5): () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('تم تحديث الشاشة')),
-          );
+          AppToast.showInfo(context, 'تم تحديث الشاشة');
         },
       },
       child: Scaffold(
@@ -147,8 +134,8 @@ class DashboardScreen extends StatelessWidget {
                           key: Key('dashboardCard_${item.id}'),
                           title: item.title,
                           icon: item.icon,
-                          colors: item.colors,
-                          shadowColor: item.shadowColor,
+                          colors: item.palette.gradient,
+                          shadowColor: item.palette.shadow,
                           onTap: item.displayOnly
                               ? null
                               : () => _openModule(context, item),
@@ -178,12 +165,12 @@ class _DashboardHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 112,
+      height: AppHeaderSizes.dashboard,
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
       decoration: const BoxDecoration(
-        color: Color(0xFFFAF8F3),
+        color: AppColors.headerBackground,
         border: Border(
-          bottom: BorderSide(color: Color(0xFFE4E0D7)),
+          bottom: BorderSide(color: AppColors.headerBorder),
         ),
       ),
       child: Stack(
@@ -233,8 +220,7 @@ class _ModuleItem {
     this.id,
     this.title,
     this.icon, {
-    required this.colors,
-    required this.shadowColor,
+    required this.palette,
     this.displayOnly = false,
     this.isAbout = false,
   });
@@ -242,8 +228,7 @@ class _ModuleItem {
   final String id;
   final String title;
   final IconData icon;
-  final List<Color> colors;
-  final Color shadowColor;
+  final AppModulePalette palette;
   final bool displayOnly;
   final bool isAbout;
 }
