@@ -69,10 +69,10 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
     final borderColor = _isOpen
         ? accentColor
         : _isHovered
-            ? const Color(0xFFB8CAE0)
+            ? AppColors.controlHoverBorder
             : AppColors.border;
     final backgroundColor = !widget.enabled
-        ? const Color(0xFFF8FAFC)
+        ? AppColors.disabledSurface
         : _isOpen
             ? openBackgroundColor
             : _isHovered
@@ -95,7 +95,7 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
             surfaceTintColor:
                 const WidgetStatePropertyAll<Color>(Colors.transparent),
             shadowColor:
-                const WidgetStatePropertyAll<Color>(Color(0x24102A56)),
+                const WidgetStatePropertyAll<Color>(AppColors.menuShadow),
             elevation: const WidgetStatePropertyAll<double>(4),
             fixedSize: WidgetStatePropertyAll<Size>(
               Size.fromWidth(menuWidth),
@@ -136,7 +136,7 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
                     if (isSelected) return selectedBackgroundColor;
                     if (states.contains(WidgetState.hovered) ||
                         states.contains(WidgetState.focused)) {
-                      return const Color(0xFFF3F7FC);
+                      return AppColors.controlHoverSurface;
                     }
                     return Colors.transparent;
                   },
