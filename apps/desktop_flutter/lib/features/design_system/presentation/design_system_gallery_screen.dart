@@ -203,7 +203,7 @@ class _DesignSystemGalleryScreenState
                   AppHeaderIconButton(
                     key: const Key('designHeaderUsersButton'),
                     tooltipKey: const Key('designHeaderUsersTooltip'),
-                    icon: Icons.group_rounded,
+                    icon: Icons.groups_rounded,
                     tooltip: 'المستخدمون',
                     onPressed: () {},
                   ),
