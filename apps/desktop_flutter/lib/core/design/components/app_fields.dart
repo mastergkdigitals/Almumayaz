@@ -254,7 +254,7 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
           ),
           menuChildren: widget.options.map((option) {
             final isSelected = option.value == widget.value;
-    
+
             return MenuItemButton(
               requestFocusOnHover: false,
               onPressed:
@@ -438,7 +438,7 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
                 ),
               ),
             );
-              },
+          },
         );
       },
     );
