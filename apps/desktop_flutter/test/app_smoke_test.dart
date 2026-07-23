@@ -225,6 +225,15 @@ void main() {
     final actionBarDelete =
         find.byKey(const Key('designActionBarDelete'));
 
+    for (final button in [
+      actionBarSave,
+      actionBarUpdate,
+      actionBarUndo,
+      actionBarDelete,
+    ]) {
+      expect(tester.getSize(button).width, 104);
+    }
+
     expect(
       tester.getCenter(actionBarFirst).dx,
       greaterThan(tester.getCenter(actionBarSearch).dx),
