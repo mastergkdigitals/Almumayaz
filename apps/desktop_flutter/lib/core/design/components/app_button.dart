@@ -94,7 +94,7 @@ class _AppButtonState extends State<AppButton> {
             dimension: 24,
             child: DecoratedBox(
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.surface,
                 shape: BoxShape.circle,
               ),
               child: Padding(
@@ -152,7 +152,7 @@ class _AppButtonState extends State<AppButton> {
           style: withoutShadow(
             ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
+              foregroundColor: AppColors.onStrong,
             ),
           ),
           child: content,
@@ -162,7 +162,7 @@ class _AppButtonState extends State<AppButton> {
           style: withoutShadow(
             ElevatedButton.styleFrom(
               backgroundColor: AppColors.success,
-              foregroundColor: Colors.white,
+              foregroundColor: AppColors.onStrong,
             ),
           ),
           child: content,
@@ -172,7 +172,7 @@ class _AppButtonState extends State<AppButton> {
           style: withoutShadow(
             ElevatedButton.styleFrom(
               backgroundColor: AppColors.warning,
-              foregroundColor: Colors.white,
+              foregroundColor: AppColors.onStrong,
             ),
           ),
           child: content,
@@ -182,7 +182,7 @@ class _AppButtonState extends State<AppButton> {
           style: withoutShadow(
             OutlinedButton.styleFrom(
               foregroundColor: AppColors.primary,
-              backgroundColor: Colors.white,
+              backgroundColor: AppColors.surface,
               side: const BorderSide(color: AppColors.primary),
             ),
           ),
@@ -193,7 +193,7 @@ class _AppButtonState extends State<AppButton> {
           style: withoutShadow(
             OutlinedButton.styleFrom(
               foregroundColor: Colors.black,
-              backgroundColor: Colors.white,
+              backgroundColor: AppColors.surface,
               side: const BorderSide(color: Colors.black),
             ),
           ),
@@ -204,7 +204,7 @@ class _AppButtonState extends State<AppButton> {
           style: withoutShadow(
             ElevatedButton.styleFrom(
               backgroundColor: AppColors.danger,
-              foregroundColor: Colors.white,
+              foregroundColor: AppColors.onStrong,
             ),
           ),
           child: content,
