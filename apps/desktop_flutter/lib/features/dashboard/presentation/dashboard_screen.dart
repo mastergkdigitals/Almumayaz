@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../../core/design/app_logo.dart';
 import '../../../core/design/app_theme.dart';
 import '../../auth/presentation/login_screen.dart';
+import 'dashboard_card.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({required this.username, super.key});
@@ -11,102 +12,76 @@ class DashboardScreen extends StatelessWidget {
   final String username;
 
   static const modules = <_ModuleItem>[
-    _ModuleItem('purchases', 'المشتريات', Icons.shopping_cart_outlined,
-        Color(0xFFB86B25)),
-    _ModuleItem('sales', 'المبيعات', Icons.point_of_sale_outlined,
-        Color(0xFF1F7A65)),
-    _ModuleItem('cashbox', 'الصندوق', Icons.account_balance_wallet_outlined,
-        Color(0xFF315D9B)),
     _ModuleItem(
-        'parties', 'الأطراف', Icons.groups_outlined, Color(0xFF7257A5)),
+      'purchases',
+      'المشتريات',
+      Icons.shopping_cart_checkout_rounded,
+      colors: [Color(0xFF064E3B), Color(0xFF10B981), Color(0xFFA7F3D0)],
+      shadowColor: Color(0xFF059669),
+    ),
+    _ModuleItem(
+      'sales',
+      'المبيعات',
+      Icons.point_of_sale_rounded,
+      colors: [Color(0xFF4C1D95), Color(0xFF7C3AED), Color(0xFFC4B5FD)],
+      shadowColor: Color(0xFF7C3AED),
+    ),
+    _ModuleItem(
+      'cashbox',
+      'الصندوق',
+      Icons.account_balance_wallet_rounded,
+      colors: [Color(0xFF9A3412), Color(0xFFF97316), Color(0xFFFED7AA)],
+      shadowColor: Color(0xFFF97316),
+    ),
+    _ModuleItem(
+      'parties',
+      'الأطراف',
+      Icons.group_rounded,
+      colors: [Color(0xFF0B1F3A), Color(0xFF1D4ED8), Color(0xFFBFDBFE)],
+      shadowColor: Color(0xFF1D4ED8),
+    ),
     _ModuleItem(
       'company',
       'اسم الشركة',
-      Icons.business_outlined,
-      AppColors.primary,
+      Icons.apartment_rounded,
+      colors: [Color(0xFF6B4F00), Color(0xFFD4A72C), Color(0xFFFFE69A)],
+      shadowColor: Color(0xFFB8860B),
       subtitle: 'يُحدد من الإعدادات',
-      isCompany: true,
+      showLogo: true,
+      displayOnly: true,
     ),
     _ModuleItem(
-        'warehouses', 'المخازن', Icons.warehouse_outlined, Color(0xFF5C6B3D)),
+      'warehouses',
+      'المخازن',
+      Icons.warehouse_rounded,
+      colors: [Color(0xFF5C2E0E), Color(0xFF92400E), Color(0xFFD6A36A)],
+      shadowColor: Color(0xFF92400E),
+    ),
     _ModuleItem(
-        'reports', 'التقارير', Icons.bar_chart_rounded, Color(0xFF385D76)),
+      'reports',
+      'التقارير',
+      Icons.analytics_rounded,
+      colors: [Color(0xFF115E59), Color(0xFF14B8A6), Color(0xFF99F6E4)],
+      shadowColor: Color(0xFF14B8A6),
+    ),
     _ModuleItem(
-        'settings', 'الإعدادات', Icons.settings_outlined, Color(0xFF5D6865)),
-    _ModuleItem('about', 'حول', Icons.info_outline_rounded, Color(0xFF8B5E3C),
-        isAbout: true),
+      'settings',
+      'الإعدادات',
+      Icons.settings_rounded,
+      colors: [Color(0xFF374151), Color(0xFF6B7280), Color(0xFFD1D5DB)],
+      shadowColor: Color(0xFF6B7280),
+    ),
+    _ModuleItem(
+      'about',
+      'حول',
+      Icons.info_rounded,
+      colors: [Color(0xFF155E75), Color(0xFF06B6D4), Color(0xFFA5F3FC)],
+      shadowColor: Color(0xFF06B6D4),
+      isAbout: true,
+    ),
   ];
 
-  @override
-  Widget build(BuildContext context) {
-    return CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.f5): () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('تم تحديث الشاشة')),
-          );
-        },
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          toolbarHeight: 72,
-          backgroundColor: AppColors.surface,
-          surfaceTintColor: Colors.transparent,
-          title: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AppLogo(size: 38, padding: 4),
-              SizedBox(width: AppSpacing.sm),
-              Text(
-                'المميز ERP',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-            ],
-          ),
-          actions: [
-            Center(
-              child: Text(
-                'مرحباً، $username',
-                style: const TextStyle(color: AppColors.textSecondary),
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            IconButton(
-              tooltip: 'تسجيل الخروج',
-              onPressed: () => Navigator.of(context).pushReplacement(
-                MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
-              ),
-              icon: const Icon(Icons.logout_rounded),
-            ),
-            const SizedBox(width: AppSpacing.md),
-          ],
-        ),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpacing.xl),
-          child: GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: modules.length,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              mainAxisSpacing: AppSpacing.md,
-              crossAxisSpacing: AppSpacing.md,
-              childAspectRatio: 2.25,
-            ),
-            itemBuilder: (_, index) => _DashboardCard(item: modules[index]),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _DashboardCard extends StatelessWidget {
-  const _DashboardCard({required this.item});
-
-  final _ModuleItem item;
-
-  void _open(BuildContext context) {
+  void _openModule(BuildContext context, _ModuleItem item) {
     if (item.isAbout) {
       showAboutDialog(
         context: context,
@@ -120,69 +95,154 @@ class _DashboardCard extends StatelessWidget {
       return;
     }
 
-    final message = item.isCompany
-        ? 'سيظهر اسم الشركة بعد ضبط الإعدادات'
-        : 'سيتم تصميم شاشة ${item.title} في مرحلتها';
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+      SnackBar(content: Text('سيتم تصميم شاشة ${item.title} في مرحلتها')),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      key: Key('dashboardCard_${item.id}'),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => _open(context),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Row(
-            children: [
-              if (item.isCompany)
-                const AppLogo(size: 58, padding: 5)
-              else
-                Container(
-                  width: 58,
-                  height: 58,
-                  decoration: BoxDecoration(
-                    color: item.color.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(AppRadii.md),
-                  ),
-                  child: Icon(item.icon, color: item.color, size: 30),
-                ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.title,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                    ),
-                    if (item.subtitle != null) ...[
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        item.subtitle!,
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                        ),
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.f5): () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('تم تحديث الشاشة')),
+          );
+        },
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: Column(
+          children: [
+            _DashboardHeader(
+              username: username,
+              onLogout: () => Navigator.of(context).pushReplacement(
+                MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.xl),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    const columns = 3;
+                    const rows = 3;
+                    const spacing = AppSpacing.lg;
+                    final cardWidth =
+                        (constraints.maxWidth - spacing * (columns - 1)) /
+                            columns;
+                    final cardHeight =
+                        (constraints.maxHeight - spacing * (rows - 1)) / rows;
+                    final aspectRatio =
+                        cardHeight > 0 ? cardWidth / cardHeight : 1.6;
+
+                    return GridView.builder(
+                      clipBehavior: Clip.none,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: modules.length,
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: columns,
+                        crossAxisSpacing: spacing,
+                        mainAxisSpacing: spacing,
+                        childAspectRatio: aspectRatio,
                       ),
-                    ],
-                  ],
+                      itemBuilder: (context, index) {
+                        final item = modules[index];
+                        return DashboardCard(
+                          key: Key('dashboardCard_${item.id}'),
+                          title: item.title,
+                          subtitle: item.subtitle,
+                          icon: item.icon,
+                          colors: item.colors,
+                          shadowColor: item.shadowColor,
+                          showLogo: item.showLogo,
+                          onTap: item.displayOnly
+                              ? null
+                              : () => _openModule(context, item),
+                        );
+                      },
+                    );
+                  },
                 ),
               ),
-              const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                size: 16,
-                color: AppColors.textSecondary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DashboardHeader extends StatelessWidget {
+  const _DashboardHeader({
+    required this.username,
+    required this.onLogout,
+  });
+
+  final String username;
+  final VoidCallback onLogout;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 112,
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+      decoration: const BoxDecoration(
+        color: Color(0xFFEAF4FF),
+        border: Border(
+          bottom: BorderSide(color: Color(0xFFD1D5DB)),
+        ),
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppLogo(size: 48, padding: 5),
+              SizedBox(width: AppSpacing.md),
+              Text(
+                'المميز ERP',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 30,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ],
           ),
-        ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              textDirection: TextDirection.ltr,
+              children: [
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.72),
+                    borderRadius: BorderRadius.circular(AppRadii.md),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: IconButton(
+                    tooltip: 'تسجيل الخروج',
+                    onPressed: onLogout,
+                    icon: const Icon(Icons.logout_rounded),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Text(
+                  'مرحباً، $username',
+                  textDirection: TextDirection.rtl,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -192,18 +252,22 @@ class _ModuleItem {
   const _ModuleItem(
     this.id,
     this.title,
-    this.icon,
-    this.color, {
+    this.icon, {
+    required this.colors,
+    required this.shadowColor,
     this.subtitle,
-    this.isCompany = false,
+    this.showLogo = false,
+    this.displayOnly = false,
     this.isAbout = false,
   });
 
   final String id;
   final String title;
   final IconData icon;
-  final Color color;
+  final List<Color> colors;
+  final Color shadowColor;
   final String? subtitle;
-  final bool isCompany;
+  final bool showLogo;
+  final bool displayOnly;
   final bool isAbout;
 }
