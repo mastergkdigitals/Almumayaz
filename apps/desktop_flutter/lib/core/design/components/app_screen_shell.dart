@@ -81,26 +81,23 @@ class AppScreenHeader extends StatelessWidget {
           bottom: BorderSide(color: AppColors.headerBorder),
         ),
       ),
-      child: Row(
+      child: Stack(
+        alignment: Alignment.center,
         children: [
-          if (onBack != null) ...[
-            AppHeaderIconButton(
-              icon: Icons.arrow_forward_rounded,
-              tooltip: 'رجوع',
-              size: AppControlHeights.standard,
-              onPressed: onBack,
-            ),
-            const SizedBox(width: AppSpacing.md),
-          ],
-          Expanded(
+          Center(
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: AppTypography.screenTitle),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: AppTypography.screenTitle,
+                ),
                 if (subtitle != null)
                   Text(
                     subtitle!,
+                    textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: AppColors.textSecondary,
                       fontSize: 14,
@@ -109,10 +106,32 @@ class AppScreenHeader extends StatelessWidget {
               ],
             ),
           ),
-          for (final action in actions)
-            Padding(
-              padding: const EdgeInsetsDirectional.only(start: AppSpacing.sm),
-              child: action,
+          if (onBack != null)
+            Align(
+              alignment: Alignment.centerRight,
+              child: AppHeaderIconButton(
+                key: const Key('appScreenBackButton'),
+                tooltipKey: const Key('appScreenBackTooltip'),
+                icon: Icons.arrow_back_rounded,
+                tooltip: 'رجوع',
+                onPressed: onBack,
+              ),
+            ),
+          if (actions.isNotEmpty)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (final action in actions)
+                    Padding(
+                      padding: const EdgeInsetsDirectional.only(
+                        start: AppSpacing.sm,
+                      ),
+                      child: action,
+                    ),
+                ],
+              ),
             ),
         ],
       ),
