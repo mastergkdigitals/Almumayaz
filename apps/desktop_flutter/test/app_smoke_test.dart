@@ -327,7 +327,8 @@ void main() {
     );
 
     await tester.tap(actionBarDelete);
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
     final confirmDialog =
         find.byKey(const Key('appConfirmDialog'));
@@ -357,7 +358,8 @@ void main() {
     );
 
     await tester.tap(cancelDialogButton);
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
     final currencyDropdown =
         find.byKey(const Key('designCurrencyDropdown'));
