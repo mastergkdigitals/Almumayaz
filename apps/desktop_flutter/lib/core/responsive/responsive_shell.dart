@@ -1,54 +1,27 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:responsive_framework/responsive_framework.dart';
+
+import '../design/app_theme.dart';
 
 abstract final class ResponsiveDesktopConfig {
   static const double designWidth = 1440;
-  static const double minimumScale = 0.88;
-  static const double maximumScale = 1.12;
-  static const double compactBreakpoint = 1180;
+  static const double maximumScaledWidth = 1728;
+  static const double compactBreakpoint = 1280;
+
+  static const String compactDesktop = 'COMPACT_DESKTOP';
+  static const String desktop = 'DESKTOP';
 }
 
 class ResponsiveInfo {
   const ResponsiveInfo({
     required this.isCompact,
     required this.availableWidth,
-    required this.viewportWidth,
-    required this.viewportHeight,
-    required this.scale,
   });
 
   final bool isCompact;
   final double availableWidth;
-  final double viewportWidth;
-  final double viewportHeight;
-  final double scale;
-}
-
-class ResponsiveDesktopScope extends InheritedWidget {
-  const ResponsiveDesktopScope({
-    required this.info,
-    required super.child,
-    super.key,
-  });
-
-  final ResponsiveInfo info;
-
-  static ResponsiveInfo of(BuildContext context) {
-    final scope =
-        context.dependOnInheritedWidgetOfExactType<ResponsiveDesktopScope>();
-    assert(scope != null, 'ResponsiveDesktopShell is missing above this widget.');
-    return scope!.info;
-  }
-
-  @override
-  bool updateShouldNotify(ResponsiveDesktopScope oldWidget) {
-    return oldWidget.info.isCompact != info.isCompact ||
-        oldWidget.info.availableWidth != info.availableWidth ||
-        oldWidget.info.viewportWidth != info.viewportWidth ||
-        oldWidget.info.viewportHeight != info.viewportHeight ||
-        oldWidget.info.scale != info.scale;
-  }
 }
 
 class ResponsiveDesktopShell extends StatelessWidget {
@@ -61,71 +34,28 @@ class ResponsiveDesktopShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final mediaQuery = MediaQuery.of(context);
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final physicalWidth = constraints.maxWidth.isFinite
-            ? constraints.maxWidth
-            : mediaQuery.size.width;
-        final physicalHeight = constraints.maxHeight.isFinite
-            ? constraints.maxHeight
-            : mediaQuery.size.height;
-
-        final scale = (physicalWidth / ResponsiveDesktopConfig.designWidth)
-            .clamp(
-              ResponsiveDesktopConfig.minimumScale,
-              ResponsiveDesktopConfig.maximumScale,
-            )
-            .toDouble();
-
-        final viewportWidth = physicalWidth / scale;
-        final viewportHeight = physicalHeight / scale;
-        final info = ResponsiveInfo(
-          isCompact:
-              physicalWidth < ResponsiveDesktopConfig.compactBreakpoint,
-          availableWidth: math.min(
-            viewportWidth,
-            ResponsiveDesktopConfig.designWidth,
-          ),
-          viewportWidth: viewportWidth,
-          viewportHeight: viewportHeight,
-          scale: scale,
-        );
-
-        final scaledContent = MediaQuery(
-          data: mediaQuery.copyWith(
-            size: Size(viewportWidth, viewportHeight),
-          ),
-          child: ResponsiveDesktopScope(
-            info: info,
-            child: child,
-          ),
-        );
-
-        return SizedBox(
-          width: physicalWidth,
-          height: physicalHeight,
-          child: ClipRect(
-            child: OverflowBox(
-              alignment: Alignment.topCenter,
-              minWidth: viewportWidth,
-              maxWidth: viewportWidth,
-              minHeight: viewportHeight,
-              maxHeight: viewportHeight,
-              child: Transform.scale(
-                scale: scale,
-                alignment: Alignment.topCenter,
-                child: SizedBox(
-                  width: viewportWidth,
-                  height: viewportHeight,
-                  child: scaledContent,
-                ),
-              ),
-            ),
-          ),
-        );
-      },
+    return ResponsiveBreakpoints.builder(
+      breakpoints: const [
+        Breakpoint(
+          start: 0,
+          end: ResponsiveDesktopConfig.compactBreakpoint - 1,
+          name: ResponsiveDesktopConfig.compactDesktop,
+        ),
+        Breakpoint(
+          start: ResponsiveDesktopConfig.compactBreakpoint,
+          end: double.infinity,
+          name: ResponsiveDesktopConfig.desktop,
+        ),
+      ],
+      child: MaxWidthBox(
+        maxWidth: ResponsiveDesktopConfig.maximumScaledWidth,
+        background: const ColoredBox(color: AppColors.background),
+        child: ResponsiveScaledBox(
+          width: ResponsiveDesktopConfig.designWidth,
+          autoCalculateMediaQueryData: true,
+          child: child,
+        ),
+      ),
     );
   }
 }
@@ -142,7 +72,17 @@ class ResponsiveLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final info = ResponsiveDesktopScope.of(context);
+    final breakpoints = ResponsiveBreakpoints.of(context);
+    final info = ResponsiveInfo(
+      isCompact: breakpoints.equals(
+        ResponsiveDesktopConfig.compactDesktop,
+      ),
+      availableWidth: math.min(
+        MediaQuery.sizeOf(context).width,
+        maxContentWidth,
+      ),
+    );
+
     return Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
