@@ -8,6 +8,8 @@ const _currencyOptions = [
   AppDropdownOption(value: 'USD', label: 'دولار'),
 ];
 
+const _cityOptions = ['بغداد', 'البصرة', 'أربيل', 'النجف', 'الموصل'];
+
 class DesignGalleryFieldsGroup extends StatefulWidget {
   const DesignGalleryFieldsGroup({super.key});
 
@@ -21,10 +23,17 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
   final _searchController = TextEditingController();
   final _quantityController = TextEditingController(text: '100');
   final _moneyController = TextEditingController(text: '25000');
+  final _notesController = TextEditingController();
+  final _cityController = TextEditingController();
+  final _readOnlyController = TextEditingController(text: 'P-001');
+  final _disabledController = TextEditingController(text: 'غير متاح');
+  final _errorController = TextEditingController();
 
   late final List<_ModulePreviewData> _modules;
   String _currency = 'IQD';
   bool _allowNegativeStock = false;
+  DateTime _date = DateTime(2026, 7, 24);
+  TimeOfDay _time = const TimeOfDay(hour: 9, minute: 30);
 
   @override
   void initState() {
@@ -64,6 +73,11 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
     _searchController.dispose();
     _quantityController.dispose();
     _moneyController.dispose();
+    _notesController.dispose();
+    _cityController.dispose();
+    _readOnlyController.dispose();
+    _disabledController.dispose();
+    _errorController.dispose();
     for (final module in _modules) {
       module.dispose();
     }
@@ -126,6 +140,68 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
                     if (value == null) return;
                     setState(() => _currency = value);
                   },
+                ),
+              ),
+              SizedBox(
+                width: 320,
+                child: AppSearchableDropdownField<String>(
+                  controller: _cityController,
+                  label: 'المدينة',
+                  options: _cityOptions,
+                  displayStringForOption: (city) => city,
+                  onSelected: (_) {},
+                  icon: Icons.location_city_rounded,
+                ),
+              ),
+              SizedBox(
+                width: 320,
+                child: AppDateField(
+                  label: 'التاريخ',
+                  value: _date,
+                  onChanged: (value) => setState(() => _date = value),
+                ),
+              ),
+              SizedBox(
+                width: 320,
+                child: AppTimeField(
+                  label: 'الوقت',
+                  value: _time,
+                  onChanged: (value) => setState(() => _time = value),
+                ),
+              ),
+              SizedBox(
+                width: 320,
+                child: AppTextField(
+                  controller: _readOnlyController,
+                  label: 'رمز للقراءة فقط',
+                  helperText: 'قيمة يولدها النظام',
+                  icon: Icons.lock_outline_rounded,
+                  readOnly: true,
+                ),
+              ),
+              SizedBox(
+                width: 320,
+                child: AppTextField(
+                  controller: _disabledController,
+                  label: 'حقل غير متاح',
+                  icon: Icons.block_rounded,
+                  enabled: false,
+                ),
+              ),
+              SizedBox(
+                width: 320,
+                child: AppTextField(
+                  controller: _errorController,
+                  label: 'حقل مطلوب',
+                  icon: Icons.error_outline_rounded,
+                  errorText: 'هذا الحقل مطلوب',
+                ),
+              ),
+              SizedBox(
+                width: 660,
+                child: AppTextArea(
+                  controller: _notesController,
+                  label: 'الملاحظات',
                 ),
               ),
               SizedBox(
