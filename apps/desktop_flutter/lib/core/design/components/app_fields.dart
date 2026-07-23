@@ -344,7 +344,7 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
 
         return MenuAnchor(
           crossAxisUnconstrained: false,
-          animated: true,
+          animated: false,
           onOpen: () => setState(() => _isOpen = true),
           onClose: () => setState(() => _isOpen = false),
           style: MenuStyle(
