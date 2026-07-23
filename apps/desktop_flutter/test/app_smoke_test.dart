@@ -109,6 +109,8 @@ void main() {
     expect(find.text('شريط الإجراءات'), findsOneWidget);
     expect(find.text('حقول الإدخال'), findsOneWidget);
     expect(find.text('الجدول والترقيم'), findsOneWidget);
+    expect(AppTypography.fieldText.fontSize, 20);
+    expect(AppTypography.fieldText.fontWeight, FontWeight.w600);
 
     final primaryButton = tester.widget<ElevatedButton>(
       find.descendant(
@@ -313,6 +315,10 @@ void main() {
     await tester.pump(const Duration(milliseconds: 250));
 
     expect(find.text('دولار'), findsOneWidget);
+    final dollarOption = tester.widget<Text>(find.text('دولار'));
+    expect(dollarOption.style?.fontSize, 20);
+    expect(dollarOption.style?.fontWeight, FontWeight.w600);
+
     await tester.tap(find.text('دولار'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
@@ -352,6 +358,15 @@ void main() {
     await tester.pump();
 
     final textField = tester.widget<TextFormField>(searchField);
+    final inputTheme =
+        Theme.of(tester.element(searchField)).inputDecorationTheme;
+
+    expect(textField.style?.fontSize, 20);
+    expect(textField.style?.fontWeight, FontWeight.w600);
+    expect(inputTheme.labelStyle?.fontSize, 20);
+    expect(inputTheme.labelStyle?.fontWeight, FontWeight.w600);
+    expect(inputTheme.hintStyle?.fontSize, 20);
+    expect(inputTheme.hintStyle?.fontWeight, FontWeight.w600);
     expect(textField.controller?.text, isEmpty);
     expect(
       find.byKey(const Key('designSearchClearButton')),
