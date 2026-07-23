@@ -465,7 +465,7 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
                       ),
                     ),
                     if (isSelected)
-                      const Align(
+                      Align(
                         alignment: AlignmentDirectional.centerStart,
                         child: Icon(
                           Icons.check_rounded,
