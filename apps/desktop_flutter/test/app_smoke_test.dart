@@ -27,7 +27,8 @@ void main() {
     expect(find.text('المشتريات'), findsOneWidget);
     expect(find.text('الصندوق'), findsOneWidget);
     expect(find.text('الأطراف'), findsOneWidget);
-    expect(find.text('اسم الشركة'), findsOneWidget);
+    expect(find.text('اسم الشركة + الشعار'), findsOneWidget);
+    expect(find.text('المميز للمحاسبة'), findsOneWidget);
     expect(find.text('المخازن'), findsOneWidget);
     expect(find.text('التقارير'), findsOneWidget);
     expect(find.text('الإعدادات'), findsOneWidget);
