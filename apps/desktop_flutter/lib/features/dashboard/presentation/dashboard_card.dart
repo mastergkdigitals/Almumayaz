@@ -8,13 +8,11 @@ class DashboardCard extends StatefulWidget {
     required this.icon,
     required this.colors,
     required this.shadowColor,
-    this.subtitle,
     this.onTap,
     super.key,
   });
 
   final String title;
-  final String? subtitle;
   final IconData icon;
   final List<Color> colors;
   final Color shadowColor;
@@ -150,18 +148,6 @@ class _DashboardCardState extends State<DashboardCard> {
                             ),
                           ),
                         ),
-                        if (widget.subtitle != null) ...[
-                          const SizedBox(height: AppSpacing.xs),
-                          Text(
-                            widget.subtitle!,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.78),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
                       ],
                     ),
                   ),
