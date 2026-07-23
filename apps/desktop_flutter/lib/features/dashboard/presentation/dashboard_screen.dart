@@ -149,7 +149,6 @@ class DashboardScreen extends StatelessWidget {
                         return DashboardCard(
                           key: Key('dashboardCard_${item.id}'),
                           title: item.title,
-                          subtitle: item.subtitle,
                           icon: item.icon,
                           colors: item.colors,
                           shadowColor: item.shadowColor,
@@ -233,12 +232,15 @@ class _DashboardHeader extends StatelessWidget {
                   hoverColor: Colors.transparent,
                   highlightColor: Colors.transparent,
                   splashColor: Colors.transparent,
-                  child: const SizedBox.square(
+                  child: SizedBox.square(
                     dimension: 52,
-                    child: Icon(
-                      Icons.logout_rounded,
-                      size: 24,
-                      color: Color(0xFF111827),
+                    child: Transform.flip(
+                      flipX: true,
+                      child: const Icon(
+                        Icons.logout_rounded,
+                        size: 24,
+                        color: Color(0xFF111827),
+                      ),
                     ),
                   ),
                 ),
@@ -258,7 +260,6 @@ class _ModuleItem {
     this.icon, {
     required this.colors,
     required this.shadowColor,
-    this.subtitle,
     this.displayOnly = false,
     this.isAbout = false,
   });
@@ -268,7 +269,6 @@ class _ModuleItem {
   final IconData icon;
   final List<Color> colors;
   final Color shadowColor;
-  final String? subtitle;
   final bool displayOnly;
   final bool isAbout;
 }
