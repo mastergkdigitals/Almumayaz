@@ -162,7 +162,7 @@ class _BrandPanel extends StatelessWidget {
                 'المميز للمحاسبة',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                      color: Colors.white,
+                      color: AppColors.onStrong,
                       fontWeight: FontWeight.w700,
                     ),
               ),
@@ -173,7 +173,7 @@ class _BrandPanel extends StatelessWidget {
                 style: Theme.of(context)
                     .textTheme
                     .titleLarge
-                    ?.copyWith(color: Colors.white70),
+                    ?.copyWith(color: AppColors.onStrong.withAlpha(179)),
               ),
             ],
           ),
