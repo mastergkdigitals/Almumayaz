@@ -166,6 +166,21 @@ class _DesignSystemGalleryScreenState
             ),
             const SizedBox(height: AppSpacing.lg),
             _GallerySection(
+              title: 'أزرار رأس التطبيق والتلميحات',
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: AppHeaderIconButton(
+                  key: const Key('designHeaderLogoutButton'),
+                  tooltipKey: const Key('designHeaderLogoutTooltip'),
+                  icon: Icons.logout_rounded,
+                  tooltip: 'تسجيل الخروج',
+                  flipIconHorizontally: true,
+                  onPressed: () {},
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            _GallerySection(
               title: 'شريط الإجراءات',
               child: AppActionBar(
                 key: const Key('designActionBar'),
