@@ -88,7 +88,7 @@ void main() {
     expect(cashboxY, closeTo(purchasesY, 0.1));
   });
 
-  testWidgets('opens the design system gallery from settings', (tester) async {
+  testWidgets('opens the design system gallery from about', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -98,7 +98,7 @@ void main() {
     await tester.tap(find.byKey(const Key('loginButton')));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('dashboardCard_settings')));
+    await tester.tap(find.byKey(const Key('dashboardCard_about')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
