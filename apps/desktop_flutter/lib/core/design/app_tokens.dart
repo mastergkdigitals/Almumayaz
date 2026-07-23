@@ -21,6 +21,7 @@ abstract final class AppModuleColors {
   static const purchases = Color(0xFF10B981);
   static const sales = Color(0xFF7C3AED);
   static const cashbox = Color(0xFFF97316);
+  static const warehouses = Color(0xFF92400E);
 }
 
 abstract final class AppSpacing {
