@@ -44,16 +44,21 @@ class _LoginScreenState extends State<LoginScreen> {
       },
       child: Scaffold(
         body: Row(
+          textDirection: TextDirection.ltr,
           children: [
             const Expanded(flex: 6, child: _BrandPanel()),
             Expanded(
               flex: 5,
-              child: Center(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(AppSpacing.xl),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 430),
-                    child: _buildForm(context),
+              child: ColoredBox(
+                key: const Key('loginFormSection'),
+                color: AppColors.background,
+                child: Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(AppSpacing.xl),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 430),
+                      child: _buildForm(context),
+                    ),
                   ),
                 ),
               ),
@@ -73,6 +78,7 @@ class _LoginScreenState extends State<LoginScreen> {
           children: [
             Text(
               'تسجيل الدخول',
+              textAlign: TextAlign.center,
               style: Theme.of(context)
                   .textTheme
                   .headlineMedium
@@ -81,6 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: AppSpacing.sm),
             const Text(
               'أدخل بيانات المستخدم للوصول إلى النظام',
+              textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.textSecondary),
             ),
             const SizedBox(height: AppSpacing.xl),
@@ -134,7 +141,7 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: AppSpacing.md),
             const DecoratedBox(
               decoration: BoxDecoration(
-                color: Color(0xFFEAF3F1),
+                color: Color(0xFFE8F1FF),
                 borderRadius: BorderRadius.all(Radius.circular(AppRadii.sm)),
               ),
               child: Padding(
@@ -159,36 +166,40 @@ class _BrandPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
+      key: const Key('loginBrandSection'),
       color: AppColors.primaryDark,
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.xxl),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Spacer(),
-            const AppLogo(size: 72, padding: 8),
-            const SizedBox(height: AppSpacing.lg),
-            Text(
-              'المميز ERP',
-              style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                  ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Text(
-              'إدارة أعمالك بثقة، حتى بدون إنترنت',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleLarge
-                  ?.copyWith(color: Colors.white70),
-            ),
-            const Spacer(),
-            const Text(
-              'نسخة تصميمية أولية',
-              style: TextStyle(color: Colors.white54),
-            ),
-          ],
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.xxl),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const AppLogo(
+                size: 112,
+                padding: 0,
+                showBackground: false,
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Text(
+                'المميز للمحاسبة',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                'إدارة أعمالك بثقة، حتى بدون إنترنت',
+                textAlign: TextAlign.center,
+                style: Theme.of(context)
+                    .textTheme
+                    .titleLarge
+                    ?.copyWith(color: Colors.white70),
+              ),
+            ],
+          ),
         ),
       ),
     );
