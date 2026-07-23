@@ -13,6 +13,7 @@ class DesignSystemGalleryScreen extends StatefulWidget {
 class _DesignSystemGalleryScreenState
     extends State<DesignSystemGalleryScreen> {
   final _nameController = TextEditingController(text: 'مادة تجريبية');
+  final _searchController = TextEditingController();
   final _quantityController = TextEditingController(text: '100');
   final _moneyController = TextEditingController(text: '25000');
 
@@ -22,6 +23,7 @@ class _DesignSystemGalleryScreenState
   @override
   void dispose() {
     _nameController.dispose();
+    _searchController.dispose();
     _quantityController.dispose();
     _moneyController.dispose();
     super.dispose();
@@ -93,6 +95,7 @@ class _DesignSystemGalleryScreenState
                 runSpacing: AppSpacing.md,
                 children: [
                   AppButton(
+                    key: const Key('designPrimaryButton'),
                     label: 'حفظ',
                     icon: Icons.save_rounded,
                     onPressed: () =>
@@ -142,6 +145,15 @@ class _DesignSystemGalleryScreenState
                       label: 'اسم المادة',
                       icon: Icons.inventory_2_rounded,
                       textInputAction: TextInputAction.next,
+                    ),
+                  ),
+                  SizedBox(
+                    width: 320,
+                    child: AppSearchField(
+                      controller: _searchController,
+                      fieldKey: const Key('designSearchField'),
+                      clearButtonKey: const Key('designSearchClearButton'),
+                      label: 'البحث عن مادة',
                     ),
                   ),
                   SizedBox(
