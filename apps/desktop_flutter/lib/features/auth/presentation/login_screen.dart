@@ -13,12 +13,6 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  static const _inputTextStyle = TextStyle(
-    color: AppColors.textPrimary,
-    fontSize: 16,
-    fontWeight: FontWeight.w500,
-  );
-
   final _formKey = GlobalKey<FormState>();
   final _username = TextEditingController();
   final _password = TextEditingController();
@@ -100,7 +94,7 @@ class _LoginScreenState extends State<LoginScreen> {
             TextFormField(
               key: const Key('usernameField'),
               controller: _username,
-              style: _inputTextStyle,
+              style: AppTypography.fieldText,
               autofocus: true,
               textInputAction: TextInputAction.next,
               onFieldSubmitted: (_) => _passwordFocus.requestFocus(),
@@ -117,7 +111,7 @@ class _LoginScreenState extends State<LoginScreen> {
               key: const Key('passwordField'),
               controller: _password,
               focusNode: _passwordFocus,
-              style: _inputTextStyle,
+              style: AppTypography.fieldText,
               obscureText: _hidePassword,
               textInputAction: TextInputAction.done,
               onFieldSubmitted: (_) => _login(),
