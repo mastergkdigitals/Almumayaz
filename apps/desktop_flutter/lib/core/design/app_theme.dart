@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'app_tokens.dart';
 
-export 'app_tokens.dart';
 
 abstract final class AppTheme {
   static ThemeData light() {
