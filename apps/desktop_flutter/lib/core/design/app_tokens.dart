@@ -7,6 +7,8 @@ abstract final class AppColors {
   static const background = Color(0xFFF5F9FF);
   static const surface = Colors.white;
   static const onStrong = Colors.white;
+  static const navigation = Colors.black;
+  static const cursor = Colors.black;
   static const border = Color(0xFFD6E3F0);
   static const textPrimary = Color(0xFF142033);
   static const textSecondary = Color(0xFF5F7085);
@@ -30,6 +32,15 @@ abstract final class AppColors {
   static const menuShadow = Color(0x24102A56);
   static const switchTrack = Color(0xFFE2E8F0);
   static const switchTrackSelected = Color(0xFFBFDBFE);
+}
+
+abstract final class AppLoadingColors {
+  static const blue = Color(0xFF4285F4);
+  static const red = Color(0xFFEA4335);
+  static const yellow = Color(0xFFFBBC05);
+  static const green = Color(0xFF34A853);
+
+  static const ring = <Color>[blue, red, yellow, green];
 }
 
 abstract final class AppModuleColors {
