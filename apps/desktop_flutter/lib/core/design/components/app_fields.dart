@@ -220,8 +220,13 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
                 ? const Color(0xFFF8FBFF)
                 : AppColors.surface;
 
-    return MenuAnchor(
-      crossAxisUnconstrained: false,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final menuWidth =
+            constraints.hasBoundedWidth ? constraints.maxWidth : 320.0;
+
+        return MenuAnchor(
+          crossAxisUnconstrained: false,
       animated: true,
       onOpen: () => setState(() => _isOpen = true),
       onClose: () => setState(() => _isOpen = false),
@@ -233,6 +238,9 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
         shadowColor:
             const WidgetStatePropertyAll<Color>(Color(0x24102A56)),
         elevation: const WidgetStatePropertyAll<double>(4),
+        fixedSize: WidgetStatePropertyAll<Size>(
+          Size.fromWidth(menuWidth),
+        ),
         padding:
             const WidgetStatePropertyAll<EdgeInsetsGeometry>(
           EdgeInsets.all(AppSpacing.xs),
@@ -429,6 +437,8 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
               ),
             ),
           ),
+        );
+          },
         );
       },
     );
