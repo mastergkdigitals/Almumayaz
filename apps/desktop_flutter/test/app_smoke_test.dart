@@ -137,6 +137,15 @@ void main() {
       find.byKey(const Key('designNavigationLast')),
     );
 
+    for (final key in const [
+      Key('designNavigationFirst'),
+      Key('designNavigationPrevious'),
+      Key('designNavigationNext'),
+      Key('designNavigationLast'),
+    ]) {
+      expect(tester.getSize(find.byKey(key)).width, 116);
+    }
+
     expect(firstPosition.dx, greaterThan(previousPosition.dx));
     expect(previousPosition.dx, greaterThan(nextPosition.dx));
     expect(nextPosition.dx, greaterThan(lastPosition.dx));
