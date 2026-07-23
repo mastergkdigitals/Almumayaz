@@ -17,8 +17,16 @@ class _DesignSystemGalleryScreenState
   final _actionBarSearchController = TextEditingController();
   final _quantityController = TextEditingController(text: '100');
   final _moneyController = TextEditingController(text: '25000');
+  final _partiesNameController = TextEditingController();
+  final _purchasesNameController = TextEditingController();
+  final _salesNameController = TextEditingController();
+  final _cashboxNameController = TextEditingController();
 
   String _currency = 'IQD';
+  String _partiesCurrency = 'IQD';
+  String _purchasesCurrency = 'IQD';
+  String _salesCurrency = 'IQD';
+  String _cashboxCurrency = 'IQD';
   bool _allowNegativeStock = false;
   bool _isDarkThemePreview = false;
 
@@ -29,6 +37,10 @@ class _DesignSystemGalleryScreenState
     _actionBarSearchController.dispose();
     _quantityController.dispose();
     _moneyController.dispose();
+    _partiesNameController.dispose();
+    _purchasesNameController.dispose();
+    _salesNameController.dispose();
+    _cashboxNameController.dispose();
     super.dispose();
   }
 
@@ -322,6 +334,57 @@ class _DesignSystemGalleryScreenState
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
+            _GallerySection(
+              title: 'حقول الأقسام',
+              child: Column(
+                children: [
+                  _ModuleFieldsPreview(
+                    title: 'الأطراف',
+                    accentColor: AppModuleColors.parties,
+                    nameController: _partiesNameController,
+                    currency: _partiesCurrency,
+                    onCurrencyChanged: (value) {
+                      if (value == null) return;
+                      setState(() => _partiesCurrency = value);
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  _ModuleFieldsPreview(
+                    title: 'المشتريات',
+                    accentColor: AppModuleColors.purchases,
+                    nameController: _purchasesNameController,
+                    currency: _purchasesCurrency,
+                    onCurrencyChanged: (value) {
+                      if (value == null) return;
+                      setState(() => _purchasesCurrency = value);
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  _ModuleFieldsPreview(
+                    title: 'المبيعات',
+                    accentColor: AppModuleColors.sales,
+                    nameController: _salesNameController,
+                    currency: _salesCurrency,
+                    onCurrencyChanged: (value) {
+                      if (value == null) return;
+                      setState(() => _salesCurrency = value);
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  _ModuleFieldsPreview(
+                    title: 'الصندوق',
+                    accentColor: AppModuleColors.cashbox,
+                    nameController: _cashboxNameController,
+                    currency: _cashboxCurrency,
+                    onCurrencyChanged: (value) {
+                      if (value == null) return;
+                      setState(() => _cashboxCurrency = value);
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
             const _GallerySection(
               title: 'شارات الحالة',
               child: Wrap(
@@ -551,6 +614,90 @@ class _DesignSystemGalleryScreenState
             const SizedBox(height: AppSpacing.xl),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ModuleFieldsPreview extends StatelessWidget {
+  const _ModuleFieldsPreview({
+    required this.title,
+    required this.accentColor,
+    required this.nameController,
+    required this.currency,
+    required this.onCurrencyChanged,
+  });
+
+  final String title;
+  final Color accentColor;
+  final TextEditingController nameController;
+  final String currency;
+  final ValueChanged<String?> onCurrencyChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final borderColor = Color.alphaBlend(
+      accentColor.withAlpha(96),
+      AppColors.border,
+    );
+    final backgroundColor = Color.alphaBlend(
+      accentColor.withAlpha(8),
+      AppColors.surface,
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 5,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: accentColor,
+                  borderRadius: BorderRadius.circular(AppRadii.sm),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Text(title, style: AppTypography.sectionTitle),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: AppTextField(
+                  controller: nameController,
+                  label: 'الاسم',
+                  icon: Icons.person_rounded,
+                  accentColor: accentColor,
+                  textInputAction: TextInputAction.next,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.lg),
+              Expanded(
+                child: AppDropdownField<String>(
+                  label: 'العملة',
+                  icon: Icons.currency_exchange_rounded,
+                  accentColor: accentColor,
+                  value: currency,
+                  options: const [
+                    AppDropdownOption(value: 'IQD', label: 'دينار'),
+                    AppDropdownOption(value: 'USD', label: 'دولار'),
+                  ],
+                  onChanged: onCurrencyChanged,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
