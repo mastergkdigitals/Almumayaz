@@ -116,8 +116,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       setState(() => _hidePassword = !_hidePassword),
                   icon: Icon(
                     _hidePassword
-                        ? Icons.visibility_outlined
-                        : Icons.visibility_off_outlined,
+                        ? Icons.visibility_rounded
+                        : Icons.visibility_off_rounded,
                   ),
                 ),
               ),
