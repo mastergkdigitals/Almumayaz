@@ -126,6 +126,8 @@ class AppStatePanel extends StatelessWidget {
 }
 
 abstract final class AppToast {
+  static const duration = Duration(seconds: 2);
+
   static void showSuccess(BuildContext context, String message) {
     _show(context, message, AppColors.success, Icons.check_circle_rounded);
   }
@@ -148,22 +150,28 @@ abstract final class AppToast {
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
+          key: const Key('appToast'),
           backgroundColor: color,
           behavior: SnackBarBehavior.floating,
-          content: Row(
-            children: [
-              Icon(icon, color: Colors.white),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Text(
-                  message,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
+          duration: duration,
+          dismissDirection: DismissDirection.none,
+          content: IgnorePointer(
+            key: const Key('appToastContent'),
+            child: Row(
+              children: [
+                Icon(icon, color: Colors.white),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    message,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       );
