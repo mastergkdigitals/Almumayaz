@@ -25,7 +25,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
     return EXIT_FAILURE;
   }
 
-  ::ShowWindow(window.GetHandle(), SW_MAXIMIZE);
   window.SetQuitOnClose(true);
 
   ::MSG msg;
