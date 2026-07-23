@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../app_tokens.dart';
 import 'app_header_button.dart';
+import 'app_shortcuts.dart';
 
 class AppScreenShell extends StatelessWidget {
   const AppScreenShell({
@@ -11,6 +11,10 @@ class AppScreenShell extends StatelessWidget {
     super.key,
     this.subtitle,
     this.onBack,
+    this.onSearch,
+    this.onSave,
+    this.onNew,
+    this.onRefresh,
     this.actions = const [],
   });
 
@@ -18,6 +22,10 @@ class AppScreenShell extends StatelessWidget {
   final String? subtitle;
   final Widget body;
   final VoidCallback? onBack;
+  final VoidCallback? onSearch;
+  final VoidCallback? onSave;
+  final VoidCallback? onNew;
+  final VoidCallback? onRefresh;
   final List<Widget> actions;
 
   @override
@@ -37,16 +45,13 @@ class AppScreenShell extends StatelessWidget {
       ),
     );
 
-    if (onBack == null) return page;
-
-    return Focus(
-      autofocus: true,
-      child: CallbackShortcuts(
-        bindings: {
-          const SingleActivator(LogicalKeyboardKey.escape): onBack!,
-        },
-        child: page,
-      ),
+    return AppShortcutScope(
+      onEscape: onBack,
+      onSearch: onSearch,
+      onSave: onSave,
+      onNew: onNew,
+      onRefresh: onRefresh,
+      child: page,
     );
   }
 }
