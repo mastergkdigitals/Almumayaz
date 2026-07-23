@@ -5,7 +5,7 @@ import 'app_loading_indicator.dart';
 
 enum AppButtonVariant { primary, secondary, danger, ghost }
 
-class AppButton extends StatelessWidget {
+class AppButton extends StatefulWidget {
   const AppButton({
     required this.label,
     required this.onPressed,
@@ -26,9 +26,42 @@ class AppButton extends StatelessWidget {
   final double height;
 
   @override
+  State<AppButton> createState() => _AppButtonState();
+}
+
+class _AppButtonState extends State<AppButton> {
+  static const _hoverScale = 1.03;
+  static const _pressedScale = 0.96;
+  static const _pressDuration = Duration(milliseconds: 70);
+
+  bool _isHovered = false;
+  bool _isPressed = false;
+
+  bool get _isInteractive => !widget.isLoading && widget.onPressed != null;
+
+  void _setHovered(bool value) {
+    if ((!_isInteractive && value) || _isHovered == value) return;
+    setState(() => _isHovered = value);
+  }
+
+  void _setPressed(bool value) {
+    if ((!_isInteractive && value) || _isPressed == value) return;
+    setState(() => _isPressed = value);
+  }
+
+  @override
+  void didUpdateWidget(covariant AppButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_isInteractive) {
+      _isHovered = false;
+      _isPressed = false;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final effectiveOnPressed = isLoading ? null : onPressed;
-    final content = isLoading
+    final effectiveOnPressed = widget.isLoading ? null : widget.onPressed;
+    final content = widget.isLoading
         ? const SizedBox.square(
             dimension: 24,
             child: DecoratedBox(
@@ -46,54 +79,98 @@ class AppButton extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (icon != null) ...[
-                Icon(icon, size: AppIconSizes.md),
+              if (widget.icon != null) ...[
+                Icon(widget.icon, size: AppIconSizes.md),
                 const SizedBox(width: AppSpacing.sm),
               ],
               Text(
-                label,
+                widget.label,
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),
             ],
           );
 
-    final child = switch (variant) {
+    ButtonStyle withoutShadow(ButtonStyle style) {
+      return style.copyWith(
+        elevation: const WidgetStatePropertyAll<double>(0),
+        shadowColor:
+            const WidgetStatePropertyAll<Color>(Colors.transparent),
+        surfaceTintColor:
+            const WidgetStatePropertyAll<Color>(Colors.transparent),
+      );
+    }
+
+    final button = switch (widget.variant) {
       AppButtonVariant.primary => ElevatedButton(
           onPressed: effectiveOnPressed,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
+          style: withoutShadow(
+            ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+            ),
           ),
           child: content,
         ),
       AppButtonVariant.secondary => OutlinedButton(
           onPressed: effectiveOnPressed,
-          style: OutlinedButton.styleFrom(
-            foregroundColor: AppColors.primary,
-            backgroundColor: Colors.white,
-            side: const BorderSide(color: AppColors.primary),
+          style: withoutShadow(
+            OutlinedButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              backgroundColor: Colors.white,
+              side: const BorderSide(color: AppColors.primary),
+            ),
           ),
           child: content,
         ),
       AppButtonVariant.danger => ElevatedButton(
           onPressed: effectiveOnPressed,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.danger,
-            foregroundColor: Colors.white,
+          style: withoutShadow(
+            ElevatedButton.styleFrom(
+              backgroundColor: AppColors.danger,
+              foregroundColor: Colors.white,
+            ),
           ),
           child: content,
         ),
       AppButtonVariant.ghost => TextButton(
           onPressed: effectiveOnPressed,
-          style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+          style: withoutShadow(
+            TextButton.styleFrom(foregroundColor: AppColors.primary),
+          ),
           child: content,
         ),
     };
 
-    return SizedBox(
-      width: width,
-      height: height,
-      child: child,
+    final scale = !_isInteractive
+        ? 1.0
+        : _isPressed
+            ? _pressedScale
+            : _isHovered
+                ? _hoverScale
+                : 1.0;
+
+    return MouseRegion(
+      onEnter: (_) => _setHovered(true),
+      onExit: (_) {
+        _setHovered(false);
+        _setPressed(false);
+      },
+      child: Listener(
+        behavior: HitTestBehavior.translucent,
+        onPointerDown: (_) => _setPressed(true),
+        onPointerUp: (_) => _setPressed(false),
+        onPointerCancel: (_) => _setPressed(false),
+        child: AnimatedScale(
+          scale: scale,
+          duration: _isPressed ? _pressDuration : AppDurations.fast,
+          curve: Curves.easeOutCubic,
+          child: SizedBox(
+            width: widget.width,
+            height: widget.height,
+            child: button,
+          ),
+        ),
+      ),
     );
   }
 }
