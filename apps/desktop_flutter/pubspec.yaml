@@ -1,5 +1,5 @@
 name: erp
-description: "A new Flutter project."
+description: "Almumayaz Arabic business ERP for Windows."
 publish_to: 'none'
 version: 0.1.0+1
 
@@ -17,3 +17,24 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  assets:
+    - assets/png/logo.png
+
+  fonts:
+    - family: Tajawal
+      fonts:
+        - asset: assets/fonts/Tajawal/Tajawal-ExtraLight.ttf
+          weight: 200
+        - asset: assets/fonts/Tajawal/Tajawal-Light.ttf
+          weight: 300
+        - asset: assets/fonts/Tajawal/Tajawal-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Tajawal/Tajawal-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Tajawal/Tajawal-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Tajawal/Tajawal-ExtraBold.ttf
+          weight: 800
+        - asset: assets/fonts/Tajawal/Tajawal-Black.ttf
+          weight: 900
