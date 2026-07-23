@@ -20,6 +20,7 @@ class _DesignSystemGalleryScreenState
 
   String _currency = 'IQD';
   bool _allowNegativeStock = false;
+  bool _isDarkThemePreview = false;
 
   @override
   void dispose() {
@@ -167,16 +168,55 @@ class _DesignSystemGalleryScreenState
             const SizedBox(height: AppSpacing.lg),
             _GallerySection(
               title: 'أزرار رأس التطبيق والتلميحات',
-              child: Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: AppHeaderIconButton(
-                  key: const Key('designHeaderLogoutButton'),
-                  tooltipKey: const Key('designHeaderLogoutTooltip'),
-                  icon: Icons.logout_rounded,
-                  tooltip: 'تسجيل الخروج',
-                  flipIconHorizontally: true,
-                  onPressed: () {},
-                ),
+              child: Wrap(
+                textDirection: TextDirection.rtl,
+                alignment: WrapAlignment.start,
+                spacing: AppSpacing.md,
+                runSpacing: AppSpacing.md,
+                children: [
+                  AppHeaderIconButton(
+                    key: const Key('designHeaderBackButton'),
+                    tooltipKey: const Key('designHeaderBackTooltip'),
+                    icon: Icons.arrow_back_rounded,
+                    tooltip: 'رجوع',
+                    flipIconHorizontally: true,
+                    onPressed: () {},
+                  ),
+                  AppHeaderIconButton(
+                    key: const Key('designHeaderThemeButton'),
+                    tooltipKey: const Key('designHeaderThemeTooltip'),
+                    icon: _isDarkThemePreview
+                        ? Icons.light_mode_rounded
+                        : Icons.dark_mode_rounded,
+                    tooltip: _isDarkThemePreview ? 'فاتح' : 'داكن',
+                    onPressed: () => setState(
+                      () => _isDarkThemePreview = !_isDarkThemePreview,
+                    ),
+                  ),
+                  AppHeaderIconButton(
+                    key: const Key('designHeaderNotificationsButton'),
+                    tooltipKey:
+                        const Key('designHeaderNotificationsTooltip'),
+                    icon: Icons.notifications_rounded,
+                    tooltip: 'الإشعارات',
+                    onPressed: () {},
+                  ),
+                  AppHeaderIconButton(
+                    key: const Key('designHeaderUsersButton'),
+                    tooltipKey: const Key('designHeaderUsersTooltip'),
+                    icon: Icons.group_rounded,
+                    tooltip: 'المستخدمون',
+                    onPressed: () {},
+                  ),
+                  AppHeaderIconButton(
+                    key: const Key('designHeaderLogoutButton'),
+                    tooltipKey: const Key('designHeaderLogoutTooltip'),
+                    icon: Icons.logout_rounded,
+                    tooltip: 'تسجيل الخروج',
+                    flipIconHorizontally: true,
+                    onPressed: () {},
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
