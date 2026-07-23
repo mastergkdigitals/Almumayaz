@@ -20,6 +20,7 @@ class AppTextField extends StatelessWidget {
     this.keyboardType,
     this.inputFormatters,
     this.textDirection,
+    this.textAlign = TextAlign.start,
     this.enabled = true,
     this.autofocus = false,
     this.obscureText = false,
@@ -40,6 +41,7 @@ class AppTextField extends StatelessWidget {
   final TextInputType? keyboardType;
   final List<TextInputFormatter>? inputFormatters;
   final TextDirection? textDirection;
+  final TextAlign textAlign;
   final bool enabled;
   final bool autofocus;
   final bool obscureText;
@@ -57,6 +59,7 @@ class AppTextField extends StatelessWidget {
       maxLines: obscureText ? 1 : maxLines,
       style: AppTypography.fieldText,
       textDirection: textDirection,
+      textAlign: textAlign,
       textInputAction: textInputAction,
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
@@ -103,7 +106,8 @@ class AppIntegerField extends StatelessWidget {
       enabled: enabled,
       validator: validator,
       onSubmitted: onSubmitted,
-      textDirection: TextDirection.ltr,
+      textDirection: TextDirection.rtl,
+      textAlign: TextAlign.right,
       textInputAction: TextInputAction.next,
       keyboardType: TextInputType.number,
       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -141,7 +145,8 @@ class AppMoneyField extends StatelessWidget {
       enabled: enabled,
       validator: validator,
       onSubmitted: onSubmitted,
-      textDirection: TextDirection.ltr,
+      textDirection: TextDirection.rtl,
+      textAlign: TextAlign.right,
       textInputAction: TextInputAction.next,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       inputFormatters: [
@@ -186,7 +191,23 @@ class AppDropdownField<T> extends StatelessWidget {
       key: fieldKey,
       initialValue: value,
       isExpanded: true,
+      alignment: Alignment.center,
+      icon: const Icon(Icons.keyboard_arrow_down_rounded),
+      iconEnabledColor: AppColors.primary,
+      dropdownColor: AppColors.surface,
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      menuMaxHeight: 320,
       style: AppTypography.fieldText,
+      selectedItemBuilder: (context) => options
+          .map(
+            (option) => Center(
+              child: Text(
+                option.label,
+                textAlign: TextAlign.center,
+              ),
+            ),
+          )
+          .toList(growable: false),
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: icon == null ? null : Icon(icon),
@@ -195,7 +216,12 @@ class AppDropdownField<T> extends StatelessWidget {
           .map(
             (option) => DropdownMenuItem<T>(
               value: option.value,
-              child: Text(option.label),
+              child: Center(
+                child: Text(
+                  option.label,
+                  textAlign: TextAlign.center,
+                ),
+              ),
             ),
           )
           .toList(growable: false),
@@ -258,7 +284,36 @@ class AppSwitchField extends StatelessWidget {
               ],
             ),
           ),
-          Switch(value: value, onChanged: onChanged),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            thumbColor: WidgetStateProperty.resolveWith<Color?>((states) {
+              if (states.contains(WidgetState.disabled)) {
+                return AppColors.disabled;
+              }
+              return states.contains(WidgetState.selected)
+                  ? AppColors.success
+                  : AppColors.danger;
+            }),
+            trackColor: WidgetStateProperty.resolveWith<Color?>((states) {
+              if (states.contains(WidgetState.disabled)) {
+                return const Color(0xFFE2E8F0);
+              }
+              return states.contains(WidgetState.selected)
+                  ? const Color(0xFFBFDBFE)
+                  : const Color(0xFFE2E8F0);
+            }),
+            trackOutlineColor:
+                const WidgetStatePropertyAll(Colors.transparent),
+            thumbIcon: WidgetStateProperty.resolveWith<Icon?>((states) {
+              final isSelected = states.contains(WidgetState.selected);
+              return Icon(
+                isSelected ? Icons.check_rounded : Icons.close_rounded,
+                color: Colors.white,
+                size: 14,
+              );
+            }),
+          ),
         ],
       ),
     );
