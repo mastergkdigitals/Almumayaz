@@ -165,7 +165,7 @@ class AppDropdownOption<T> {
   final String label;
 }
 
-class AppDropdownField<T> extends StatelessWidget {
+class AppDropdownField<T> extends StatefulWidget {
   const AppDropdownField({
     required this.label,
     required this.options,
@@ -186,46 +186,251 @@ class AppDropdownField<T> extends StatelessWidget {
   final bool enabled;
 
   @override
+  State<AppDropdownField<T>> createState() => _AppDropdownFieldState<T>();
+}
+
+class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
+  bool _isHovered = false;
+  bool _isOpen = false;
+
+  String get _selectedLabel {
+    for (final option in widget.options) {
+      if (option.value == widget.value) return option.label;
+    }
+    return 'اختر ${widget.label}';
+  }
+
+  void _setHovered(bool value) {
+    if (_isHovered == value) return;
+    setState(() => _isHovered = value);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return DropdownButtonFormField<T>(
-      key: fieldKey,
-      initialValue: value,
-      isExpanded: true,
-      alignment: Alignment.center,
-      icon: const Icon(Icons.keyboard_arrow_down_rounded),
-      iconEnabledColor: AppColors.primary,
-      dropdownColor: AppColors.surface,
-      borderRadius: BorderRadius.circular(AppRadii.md),
-      menuMaxHeight: 320,
-      style: AppTypography.fieldText,
-      selectedItemBuilder: (context) => options
-          .map(
-            (option) => Center(
-              child: Text(
-                option.label,
-                textAlign: TextAlign.center,
+    final borderColor = _isOpen
+        ? AppColors.primary
+        : _isHovered
+            ? const Color(0xFFB8CAE0)
+            : AppColors.border;
+    final backgroundColor = !widget.enabled
+        ? const Color(0xFFF8FAFC)
+        : _isOpen
+            ? const Color(0xFFF1F6FF)
+            : _isHovered
+                ? const Color(0xFFF8FBFF)
+                : AppColors.surface;
+
+    return MenuAnchor(
+      crossAxisUnconstrained: false,
+      animated: true,
+      onOpen: () => setState(() => _isOpen = true),
+      onClose: () => setState(() => _isOpen = false),
+      style: MenuStyle(
+        backgroundColor:
+            const WidgetStatePropertyAll<Color>(AppColors.surface),
+        surfaceTintColor:
+            const WidgetStatePropertyAll<Color>(Colors.transparent),
+        shadowColor:
+            const WidgetStatePropertyAll<Color>(Color(0x24102A56)),
+        elevation: const WidgetStatePropertyAll<double>(4),
+        padding:
+            const WidgetStatePropertyAll<EdgeInsetsGeometry>(
+          EdgeInsets.all(AppSpacing.xs),
+        ),
+        shape: WidgetStatePropertyAll<OutlinedBorder>(
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadii.md),
+            side: const BorderSide(color: AppColors.border),
+          ),
+        ),
+      ),
+      menuChildren: widget.options.map((option) {
+        final isSelected = option.value == widget.value;
+
+        return MenuItemButton(
+          requestFocusOnHover: false,
+          onPressed:
+              widget.enabled ? () => widget.onChanged(option.value) : null,
+          style: ButtonStyle(
+            minimumSize:
+                const WidgetStatePropertyAll<Size>(Size(0, 44)),
+            padding:
+                const WidgetStatePropertyAll<EdgeInsetsGeometry>(
+              EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            ),
+            elevation:
+                const WidgetStatePropertyAll<double>(0),
+            shadowColor:
+                const WidgetStatePropertyAll<Color>(Colors.transparent),
+            overlayColor:
+                const WidgetStatePropertyAll<Color>(Colors.transparent),
+            backgroundColor: WidgetStateProperty.resolveWith<Color?>(
+              (states) {
+                if (isSelected) return const Color(0xFFE8F0FE);
+                if (states.contains(WidgetState.hovered) ||
+                    states.contains(WidgetState.focused)) {
+                  return const Color(0xFFF3F7FC);
+                }
+                return Colors.transparent;
+              },
+            ),
+            foregroundColor: WidgetStatePropertyAll<Color>(
+              isSelected ? AppColors.primary : AppColors.textPrimary,
+            ),
+            shape: WidgetStatePropertyAll<OutlinedBorder>(
+              RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadii.sm),
               ),
             ),
-          )
-          .toList(growable: false),
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: icon == null ? null : Icon(icon),
-      ),
-      items: options
-          .map(
-            (option) => DropdownMenuItem<T>(
-              value: option.value,
-              child: Center(
-                child: Text(
-                  option.label,
-                  textAlign: TextAlign.center,
+            alignment: Alignment.center,
+            animationDuration: AppDurations.fast,
+          ),
+          child: SizedBox(
+            height: 42,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Center(
+                  child: Text(
+                    option.label,
+                    textAlign: TextAlign.center,
+                    style: AppTypography.fieldText.copyWith(
+                      color: isSelected
+                          ? AppColors.primary
+                          : AppColors.textPrimary,
+                      fontWeight:
+                          isSelected ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                  ),
+                ),
+                if (isSelected)
+                  const Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Icon(
+                      Icons.check_rounded,
+                      size: AppIconSizes.sm,
+                      color: AppColors.primary,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      }).toList(growable: false),
+      builder: (context, controller, child) {
+        return Semantics(
+          button: true,
+          enabled: widget.enabled,
+          label: widget.label,
+          value: _selectedLabel,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              key: widget.fieldKey,
+              onTap: widget.enabled
+                  ? () {
+                      if (controller.isOpen) {
+                        controller.close();
+                      } else {
+                        controller.open();
+                      }
+                    }
+                  : null,
+              onHover: widget.enabled ? _setHovered : null,
+              mouseCursor: widget.enabled
+                  ? SystemMouseCursors.click
+                  : SystemMouseCursors.basic,
+              borderRadius: BorderRadius.circular(AppRadii.md),
+              hoverColor: Colors.transparent,
+              focusColor: Colors.transparent,
+              highlightColor: Colors.transparent,
+              splashColor: Colors.transparent,
+              overlayColor:
+                  const WidgetStatePropertyAll<Color>(Colors.transparent),
+              child: AnimatedContainer(
+                duration: AppDurations.fast,
+                curve: Curves.easeOutCubic,
+                height: AppControlHeights.large,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                ),
+                decoration: BoxDecoration(
+                  color: backgroundColor,
+                  borderRadius: BorderRadius.circular(AppRadii.md),
+                  border: Border.all(
+                    color: borderColor,
+                    width: _isOpen ? 1.5 : 1,
+                  ),
+                ),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    if (widget.icon != null)
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: Icon(
+                          widget.icon,
+                          size: AppIconSizes.md,
+                          color: widget.enabled
+                              ? AppColors.primary
+                              : AppColors.disabled,
+                        ),
+                      ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 44),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            widget.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: widget.enabled
+                                  ? AppColors.textSecondary
+                                  : AppColors.disabled,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 1),
+                          Text(
+                            _selectedLabel,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: AppTypography.fieldText.copyWith(
+                              color: widget.enabled
+                                  ? AppColors.textPrimary
+                                  : AppColors.disabled,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Align(
+                      alignment: AlignmentDirectional.centerEnd,
+                      child: AnimatedRotation(
+                        turns: _isOpen ? 0.5 : 0,
+                        duration: AppDurations.fast,
+                        child: Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          size: AppIconSizes.md,
+                          color: widget.enabled
+                              ? AppColors.primary
+                              : AppColors.disabled,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-          )
-          .toList(growable: false),
-      onChanged: enabled ? onChanged : null,
+          ),
+        );
+      },
     );
   }
 }
@@ -287,6 +492,11 @@ class AppSwitchField extends StatelessWidget {
           Switch(
             value: value,
             onChanged: onChanged,
+            overlayColor:
+                const WidgetStatePropertyAll<Color>(Colors.transparent),
+            hoverColor: Colors.transparent,
+            focusColor: Colors.transparent,
+            splashRadius: 0,
             thumbColor: WidgetStateProperty.resolveWith<Color?>((states) {
               if (states.contains(WidgetState.disabled)) {
                 return AppColors.disabled;
