@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../app_tokens.dart';
 import 'app_button.dart';
 
-class AppHeaderIconButton extends StatelessWidget {
-  const AppHeaderIconButton({
+class AppTooltipIconButton extends StatelessWidget {
+  const AppTooltipIconButton({
     required this.icon,
     required this.tooltip,
     required this.onPressed,
@@ -12,11 +12,9 @@ class AppHeaderIconButton extends StatelessWidget {
     this.tooltipKey,
     this.flipIconHorizontally = false,
     this.size = 52,
+    this.iconSize = AppIconSizes.lg,
+    this.variant = AppButtonVariant.navigation,
   });
-
-  static const tooltipBackgroundColor = Color(0xFFFFF4C2);
-  static const tooltipBorderColor = Color(0xFFD8A900);
-  static const tooltipTextColor = Color(0xFF332400);
 
   final IconData icon;
   final String tooltip;
@@ -24,6 +22,8 @@ class AppHeaderIconButton extends StatelessWidget {
   final Key? tooltipKey;
   final bool flipIconHorizontally;
   final double size;
+  final double iconSize;
+  final AppButtonVariant variant;
 
   @override
   Widget build(BuildContext context) {
@@ -39,12 +39,12 @@ class AppHeaderIconButton extends StatelessWidget {
         vertical: AppSpacing.sm,
       ),
       decoration: BoxDecoration(
-        color: tooltipBackgroundColor,
+        color: AppTooltipColors.background,
         borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: tooltipBorderColor),
+        border: Border.all(color: AppTooltipColors.border),
       ),
       textStyle: const TextStyle(
-        color: tooltipTextColor,
+        color: AppTooltipColors.text,
         fontSize: 14,
         fontWeight: FontWeight.w700,
       ),
@@ -57,14 +57,45 @@ class AppHeaderIconButton extends StatelessWidget {
           label: '',
           icon: icon,
           flipIconHorizontally: flipIconHorizontally,
-          variant: AppButtonVariant.navigation,
+          variant: variant,
           width: size,
           height: size,
           padding: EdgeInsets.zero,
-          iconSize: AppIconSizes.lg,
+          iconSize: iconSize,
           onPressed: onPressed,
         ),
       ),
+    );
+  }
+}
+
+class AppHeaderIconButton extends StatelessWidget {
+  const AppHeaderIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+    super.key,
+    this.tooltipKey,
+    this.flipIconHorizontally = false,
+    this.size = 52,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onPressed;
+  final Key? tooltipKey;
+  final bool flipIconHorizontally;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppTooltipIconButton(
+      tooltipKey: tooltipKey,
+      icon: icon,
+      tooltip: tooltip,
+      flipIconHorizontally: flipIconHorizontally,
+      size: size,
+      onPressed: onPressed,
     );
   }
 }
