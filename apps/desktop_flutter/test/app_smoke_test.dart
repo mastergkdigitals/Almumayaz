@@ -30,6 +30,7 @@ void main() {
     expect(find.text('حول'), findsOneWidget);
     expect(find.byKey(const Key('dashboardCard_purchases')), findsOneWidget);
     expect(find.byKey(const Key('dashboardCard_about')), findsOneWidget);
+    expect(find.byKey(const Key('appScreenBackButton')), findsNothing);
   });
 
   testWidgets('keeps full login layout at 1440 width', (tester) async {
@@ -95,12 +96,27 @@ void main() {
     expect(find.text('حول البرنامج'), findsOneWidget);
     expect(find.text('دليل نظام التصميم'), findsOneWidget);
     expect(find.byKey(const Key('designSystemGallery')), findsNothing);
+    expect(find.byKey(const Key('appScreenBackButton')), findsOneWidget);
+    expect(
+      tester.getCenter(find.text('حول البرنامج')).dx,
+      closeTo(720, 0.1),
+    );
 
     await tester.tap(find.byKey(const Key('openDesignSystemGallery')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.byKey(const Key('designSystemGallery')), findsOneWidget);
+    expect(
+      tester.getCenter(find.text('دليل نظام التصميم')).dx,
+      closeTo(720, 0.1),
+    );
+    expect(
+      tester
+          .getCenter(find.text('مرجع موحد لعناصر الواجهة وحالاتها'))
+          .dx,
+      closeTo(720, 0.1),
+    );
   });
 }
 
