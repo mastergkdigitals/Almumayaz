@@ -153,6 +153,9 @@ class _AppButtonState extends State<AppButton> {
                 : 1.0;
 
     return MouseRegion(
+      cursor: _isInteractive
+          ? SystemMouseCursors.click
+          : SystemMouseCursors.basic,
       onEnter: (_) => _setHovered(true),
       onExit: (_) {
         _setHovered(false);
