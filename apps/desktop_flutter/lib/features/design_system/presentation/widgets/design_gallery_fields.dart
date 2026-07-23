@@ -98,6 +98,7 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
               SizedBox(
                 width: 320,
                 child: AppTextField(
+                  fieldKey: const Key('designNameField'),
                   controller: _nameController,
                   label: 'اسم المادة',
                   icon: Icons.inventory_2_rounded,
@@ -116,6 +117,7 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
               SizedBox(
                 width: 320,
                 child: AppIntegerField(
+                  fieldKey: const Key('designQuantityField'),
                   controller: _quantityController,
                   label: 'الكمية',
                   icon: Icons.numbers_rounded,
@@ -124,6 +126,7 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
               SizedBox(
                 width: 320,
                 child: AppMoneyField(
+                  fieldKey: const Key('designMoneyField'),
                   controller: _moneyController,
                   label: 'المبلغ',
                 ),
@@ -145,6 +148,7 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
               SizedBox(
                 width: 320,
                 child: AppSearchableDropdownField<String>(
+                  fieldKey: const Key('designCityField'),
                   controller: _cityController,
                   label: 'المدينة',
                   options: _cityOptions,
@@ -156,6 +160,7 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
               SizedBox(
                 width: 320,
                 child: AppDateField(
+                  fieldKey: const Key('designDateField'),
                   label: 'التاريخ',
                   value: _date,
                   onChanged: (value) => setState(() => _date = value),
@@ -164,6 +169,7 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
               SizedBox(
                 width: 320,
                 child: AppTimeField(
+                  fieldKey: const Key('designTimeField'),
                   label: 'الوقت',
                   value: _time,
                   onChanged: (value) => setState(() => _time = value),
@@ -172,6 +178,7 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
               SizedBox(
                 width: 320,
                 child: AppTextField(
+                  fieldKey: const Key('designReadOnlyField'),
                   controller: _readOnlyController,
                   label: 'رمز للقراءة فقط',
                   helperText: 'قيمة يولدها النظام',
@@ -182,6 +189,7 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
               SizedBox(
                 width: 320,
                 child: AppTextField(
+                  fieldKey: const Key('designDisabledField'),
                   controller: _disabledController,
                   label: 'حقل غير متاح',
                   icon: Icons.block_rounded,
@@ -191,6 +199,7 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
               SizedBox(
                 width: 320,
                 child: AppTextField(
+                  fieldKey: const Key('designErrorField'),
                   controller: _errorController,
                   label: 'حقل مطلوب',
                   icon: Icons.error_outline_rounded,
@@ -200,6 +209,7 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
               SizedBox(
                 width: 660,
                 child: AppTextArea(
+                  fieldKey: const Key('designNotesField'),
                   controller: _notesController,
                   label: 'الملاحظات',
                 ),
