@@ -12,6 +12,7 @@ class AppTextField extends StatelessWidget {
     this.hint,
     this.icon,
     this.suffixIcon,
+    this.accentColor,
     this.focusNode,
     this.validator,
     this.onSubmitted,
@@ -33,6 +34,7 @@ class AppTextField extends StatelessWidget {
   final String? hint;
   final IconData? icon;
   final Widget? suffixIcon;
+  final Color? accentColor;
   final FocusNode? focusNode;
   final String? Function(String?)? validator;
   final ValueChanged<String>? onSubmitted;
@@ -49,6 +51,19 @@ class AppTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themedBorder = accentColor == null
+        ? null
+        : OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadii.md),
+            borderSide: BorderSide(color: accentColor!),
+          );
+    final themedFocusedBorder = accentColor == null
+        ? null
+        : OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadii.md),
+            borderSide: BorderSide(color: accentColor!, width: 1.6),
+          );
+
     return TextFormField(
       key: fieldKey,
       controller: controller,
@@ -69,8 +84,14 @@ class AppTextField extends StatelessWidget {
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
-        prefixIcon: icon == null ? null : Icon(icon),
+        prefixIcon:
+            icon == null ? null : Icon(icon, color: accentColor),
         suffixIcon: suffixIcon,
+        floatingLabelStyle: accentColor == null
+            ? null
+            : AppTypography.fieldText.copyWith(color: accentColor),
+        enabledBorder: themedBorder,
+        focusedBorder: themedFocusedBorder,
       ),
     );
   }
@@ -291,6 +312,7 @@ class AppDropdownField<T> extends StatefulWidget {
     super.key,
     this.fieldKey,
     this.icon,
+    this.accentColor,
     this.enabled = true,
   });
 
@@ -300,6 +322,7 @@ class AppDropdownField<T> extends StatefulWidget {
   final ValueChanged<T?> onChanged;
   final Key? fieldKey;
   final IconData? icon;
+  final Color? accentColor;
   final bool enabled;
 
   @override
@@ -324,17 +347,30 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
 
   @override
   Widget build(BuildContext context) {
+    final accentColor = widget.accentColor ?? AppColors.primary;
+    final openBackgroundColor = Color.alphaBlend(
+      accentColor.withAlpha(14),
+      AppColors.surface,
+    );
+    final hoverBackgroundColor = Color.alphaBlend(
+      accentColor.withAlpha(8),
+      AppColors.surface,
+    );
+    final selectedBackgroundColor = Color.alphaBlend(
+      accentColor.withAlpha(22),
+      AppColors.surface,
+    );
     final borderColor = _isOpen
-        ? AppColors.primary
+        ? accentColor
         : _isHovered
             ? const Color(0xFFB8CAE0)
             : AppColors.border;
     final backgroundColor = !widget.enabled
         ? const Color(0xFFF8FAFC)
         : _isOpen
-            ? const Color(0xFFF1F6FF)
+            ? openBackgroundColor
             : _isHovered
-                ? const Color(0xFFF8FBFF)
+                ? hoverBackgroundColor
                 : AppColors.surface;
 
     return LayoutBuilder(
@@ -391,7 +427,7 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
                     const WidgetStatePropertyAll<Color>(Colors.transparent),
                 backgroundColor: WidgetStateProperty.resolveWith<Color?>(
                   (states) {
-                    if (isSelected) return const Color(0xFFE8F0FE);
+                    if (isSelected) return selectedBackgroundColor;
                     if (states.contains(WidgetState.hovered) ||
                         states.contains(WidgetState.focused)) {
                       return const Color(0xFFF3F7FC);
@@ -400,7 +436,7 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
                   },
                 ),
                 foregroundColor: WidgetStatePropertyAll<Color>(
-                  isSelected ? AppColors.primary : AppColors.textPrimary,
+                  isSelected ? accentColor : AppColors.textPrimary,
                 ),
                 shape: WidgetStatePropertyAll<OutlinedBorder>(
                   RoundedRectangleBorder(
@@ -421,7 +457,7 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
                         textAlign: TextAlign.center,
                         style: AppTypography.fieldText.copyWith(
                           color: isSelected
-                              ? AppColors.primary
+                              ? accentColor
                               : AppColors.textPrimary,
                           fontWeight:
                               isSelected ? FontWeight.w700 : FontWeight.w600,
@@ -434,7 +470,7 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
                         child: Icon(
                           Icons.check_rounded,
                           size: AppIconSizes.sm,
-                          color: AppColors.primary,
+                          color: accentColor,
                         ),
                       ),
                   ],
@@ -497,7 +533,7 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
                               widget.icon,
                               size: AppIconSizes.md,
                               color: widget.enabled
-                                  ? AppColors.primary
+                                  ? accentColor
                                   : AppColors.disabled,
                             ),
                           ),
@@ -544,7 +580,7 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
                               Icons.keyboard_arrow_down_rounded,
                               size: AppIconSizes.md,
                               color: widget.enabled
-                                  ? AppColors.primary
+                                  ? accentColor
                                   : AppColors.disabled,
                             ),
                           ),
