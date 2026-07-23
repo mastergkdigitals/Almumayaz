@@ -99,6 +99,11 @@ class _AppButtonState extends State<AppButton> {
             const WidgetStatePropertyAll<Color>(Colors.transparent),
         overlayColor:
             const WidgetStatePropertyAll<Color>(Colors.transparent),
+        mouseCursor: WidgetStateProperty.resolveWith<MouseCursor?>(
+          (states) => states.contains(WidgetState.disabled)
+              ? SystemMouseCursors.basic
+              : SystemMouseCursors.click,
+        ),
         splashFactory: NoSplash.splashFactory,
       );
     }
