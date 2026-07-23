@@ -44,7 +44,15 @@ void main() {
     await tester.pumpWidget(const AlmumayazApp());
 
     expect(find.text('إدارة أعمالك بثقة، حتى بدون إنترنت'), findsOneWidget);
+    expect(find.text('المميز للمحاسبة'), findsOneWidget);
     expect(find.text('تسجيل الدخول'), findsOneWidget);
+
+    final brandCenter =
+        tester.getCenter(find.byKey(const Key('loginBrandSection')));
+    final formCenter =
+        tester.getCenter(find.byKey(const Key('loginFormSection')));
+
+    expect(formCenter.dx, greaterThan(brandCenter.dx));
   });
 
   testWidgets('keeps full login layout below 1280 width', (tester) async {
