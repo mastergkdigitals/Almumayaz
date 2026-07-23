@@ -35,10 +35,8 @@ void main() {
   });
 
   testWidgets('uses normal desktop layout at 1440 width', (tester) async {
-    tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(1440, 900);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    addTearDown(tester.view.resetPhysicalSize);
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await tester.pumpWidget(const AlmumayazApp());
 
@@ -47,10 +45,8 @@ void main() {
   });
 
   testWidgets('uses compact desktop layout below 1280 width', (tester) async {
-    tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(1000, 720);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    addTearDown(tester.view.resetPhysicalSize);
+    await tester.binding.setSurfaceSize(const Size(1000, 720));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await tester.pumpWidget(const AlmumayazApp());
 
