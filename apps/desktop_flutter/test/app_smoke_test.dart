@@ -119,6 +119,31 @@ void main() {
       SystemMouseCursors.click,
     );
 
+    expect(find.text('الأول'), findsOneWidget);
+    expect(find.text('السابق'), findsOneWidget);
+    expect(find.text('التالي'), findsOneWidget);
+    expect(find.text('الأخير'), findsOneWidget);
+
+    final firstPosition = tester.getCenter(
+      find.byKey(const Key('designNavigationFirst')),
+    );
+    final previousPosition = tester.getCenter(
+      find.byKey(const Key('designNavigationPrevious')),
+    );
+    final nextPosition = tester.getCenter(
+      find.byKey(const Key('designNavigationNext')),
+    );
+    final lastPosition = tester.getCenter(
+      find.byKey(const Key('designNavigationLast')),
+    );
+
+    expect(firstPosition.dx, greaterThan(previousPosition.dx));
+    expect(previousPosition.dx, greaterThan(nextPosition.dx));
+    expect(nextPosition.dx, greaterThan(lastPosition.dx));
+    expect(previousPosition.dy, closeTo(firstPosition.dy, 0.1));
+    expect(nextPosition.dy, closeTo(firstPosition.dy, 0.1));
+    expect(lastPosition.dy, closeTo(firstPosition.dy, 0.1));
+
     final currencyDropdown =
         find.byKey(const Key('designCurrencyDropdown'));
     await tester.ensureVisible(currencyDropdown);
