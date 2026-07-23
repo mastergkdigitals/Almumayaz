@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../app_tokens.dart';
+import 'app_header_button.dart';
 
 class AppScreenShell extends StatelessWidget {
   const AppScreenShell({
@@ -67,21 +68,22 @@ class AppScreenHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 104,
+      height: AppHeaderSizes.screen,
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
       decoration: const BoxDecoration(
-        color: Color(0xFFFAF8F3),
+        color: AppColors.headerBackground,
         border: Border(
-          bottom: BorderSide(color: Color(0xFFE4E0D7)),
+          bottom: BorderSide(color: AppColors.headerBorder),
         ),
       ),
       child: Row(
         children: [
           if (onBack != null) ...[
-            _HeaderIconButton(
+            AppHeaderIconButton(
               icon: Icons.arrow_forward_rounded,
-              semanticLabel: 'رجوع',
-              onPressed: onBack!,
+              tooltip: 'رجوع',
+              size: AppControlHeights.standard,
+              onPressed: onBack,
             ),
             const SizedBox(width: AppSpacing.md),
           ],
@@ -108,41 +110,6 @@ class AppScreenHeader extends StatelessWidget {
               child: action,
             ),
         ],
-      ),
-    );
-  }
-}
-
-class _HeaderIconButton extends StatelessWidget {
-  const _HeaderIconButton({
-    required this.icon,
-    required this.semanticLabel,
-    required this.onPressed,
-  });
-
-  final IconData icon;
-  final String semanticLabel;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: semanticLabel,
-      child: Material(
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadii.md),
-          side: const BorderSide(color: AppColors.border),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onPressed,
-          child: SizedBox.square(
-            dimension: AppControlHeights.standard,
-            child: Icon(icon),
-          ),
-        ),
       ),
     );
   }
