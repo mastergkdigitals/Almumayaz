@@ -34,18 +34,25 @@ void main() {
     expect(find.byKey(const Key('dashboardCard_about')), findsOneWidget);
   });
 
-  testWidgets('switches between normal and compact desktop layouts',
-      (tester) async {
+  testWidgets('uses normal desktop layout at 1440 width', (tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(1440, 900);
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetPhysicalSize);
 
     await tester.pumpWidget(const AlmumayazApp());
-    expect(find.text('إدارة أعمالك بثقة، حتى بدون إنترنت'), findsOneWidget);
 
+    expect(find.text('إدارة أعمالك بثقة، حتى بدون إنترنت'), findsOneWidget);
+    expect(find.text('تسجيل الدخول'), findsOneWidget);
+  });
+
+  testWidgets('uses compact desktop layout below 1280 width', (tester) async {
+    tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(1000, 720);
-    await tester.pump();
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(const AlmumayazApp());
 
     expect(find.text('إدارة أعمالك بثقة، حتى بدون إنترنت'), findsNothing);
     expect(find.text('تسجيل الدخول'), findsOneWidget);
