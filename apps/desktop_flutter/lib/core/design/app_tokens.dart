@@ -16,6 +16,13 @@ abstract final class AppColors {
   static const disabled = Color(0xFF94A3B8);
 }
 
+abstract final class AppModuleColors {
+  static const parties = Color(0xFF1D4ED8);
+  static const purchases = Color(0xFF10B981);
+  static const sales = Color(0xFF7C3AED);
+  static const cashbox = Color(0xFFF97316);
+}
+
 abstract final class AppSpacing {
   static const xs = 4.0;
   static const sm = 8.0;
