@@ -424,7 +424,7 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
                               ? AppColors.primary
                               : AppColors.textPrimary,
                           fontWeight:
-                              isSelected ? FontWeight.w700 : FontWeight.w500,
+                              isSelected ? FontWeight.w700 : FontWeight.w600,
                         ),
                       ),
                     ),
