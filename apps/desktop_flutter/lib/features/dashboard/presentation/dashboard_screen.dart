@@ -185,9 +185,9 @@ class _DashboardHeader extends StatelessWidget {
       height: 112,
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
       decoration: const BoxDecoration(
-        color: Color(0xFFEAF4FF),
+        color: Color(0xFFFAF8F3),
         border: Border(
-          bottom: BorderSide(color: Color(0xFFD1D5DB)),
+          bottom: BorderSide(color: Color(0xFFE4E0D7)),
         ),
       ),
       child: Stack(
@@ -203,34 +203,32 @@ class _DashboardHeader extends StatelessWidget {
             ),
           ),
           Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              'مرحباً، $username',
+              key: const Key('dashboardWelcome'),
+              textDirection: TextDirection.rtl,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Align(
             alignment: Alignment.centerLeft,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              textDirection: TextDirection.ltr,
-              children: [
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.72),
-                    borderRadius: BorderRadius.circular(AppRadii.md),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: IconButton(
-                    tooltip: 'تسجيل الخروج',
-                    onPressed: onLogout,
-                    icon: const Icon(Icons.logout_rounded),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Text(
-                  'مرحباً، $username',
-                  textDirection: TextDirection.rtl,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.82),
+                borderRadius: BorderRadius.circular(AppRadii.md),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: IconButton(
+                key: const Key('dashboardLogout'),
+                tooltip: 'تسجيل الخروج',
+                onPressed: onLogout,
+                icon: const Icon(Icons.logout_rounded),
+              ),
             ),
           ),
         ],
