@@ -166,3 +166,6 @@ class _AppAutocompleteFieldState<T extends Object>
     );
   }
 }
+
+typedef AppSearchableDropdownField<T extends Object> =
+    AppAutocompleteField<T>;
