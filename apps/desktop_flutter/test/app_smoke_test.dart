@@ -137,25 +137,46 @@ void main() {
     expect(find.text('دليل نظام التصميم'), findsOneWidget);
     expect(find.byKey(const Key('designSystemGallery')), findsNothing);
     expect(find.byKey(const Key('appScreenBackButton')), findsOneWidget);
+    final aboutScreen = find.byKey(const Key('aboutScreen'));
+    final aboutHeader = find.descendant(
+      of: aboutScreen,
+      matching: find.byType(AppScreenHeader),
+    );
+    final aboutTitle = find.descendant(
+      of: aboutHeader,
+      matching: find.text('حول البرنامج'),
+    );
     expect(
-      tester.getCenter(find.text('حول البرنامج')).dx,
-      closeTo(tester.getCenter(find.byType(AppScreenHeader)).dx, 0.1),
+      tester.getCenter(aboutTitle).dx,
+      closeTo(tester.getCenter(aboutHeader).dx, 0.1),
     );
 
     await tester.tap(find.byKey(const Key('openDesignSystemGallery')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.byKey(const Key('designSystemGallery')), findsOneWidget);
+    final gallery = find.byKey(const Key('designSystemGallery'));
+    final galleryHeader = find.descendant(
+      of: gallery,
+      matching: find.byType(AppScreenHeader),
+    );
+    final galleryTitle = find.descendant(
+      of: galleryHeader,
+      matching: find.text('دليل نظام التصميم'),
+    );
+    final gallerySubtitle = find.descendant(
+      of: galleryHeader,
+      matching: find.text('مرجع موحد لعناصر الواجهة وحالاتها'),
+    );
+
+    expect(gallery, findsOneWidget);
     expect(
-      tester.getCenter(find.text('دليل نظام التصميم')).dx,
-      closeTo(tester.getCenter(find.byType(AppScreenHeader)).dx, 0.1),
+      tester.getCenter(galleryTitle).dx,
+      closeTo(tester.getCenter(galleryHeader).dx, 0.1),
     );
     expect(
-      tester
-          .getCenter(find.text('مرجع موحد لعناصر الواجهة وحالاتها'))
-          .dx,
-      closeTo(tester.getCenter(find.byType(AppScreenHeader)).dx, 0.1),
+      tester.getCenter(gallerySubtitle).dx,
+      closeTo(tester.getCenter(galleryHeader).dx, 0.1),
     );
   });
 }
