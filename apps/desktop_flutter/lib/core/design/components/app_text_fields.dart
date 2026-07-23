@@ -55,6 +55,8 @@ class AppTextField extends StatelessWidget {
     super.key,
     this.fieldKey,
     this.hint,
+    this.helperText,
+    this.errorText,
     this.icon,
     this.suffixIcon,
     this.accentColor,
@@ -82,6 +84,8 @@ class AppTextField extends StatelessWidget {
   final String label;
   final Key? fieldKey;
   final String? hint;
+  final String? helperText;
+  final String? errorText;
   final IconData? icon;
   final Widget? suffixIcon;
   final Color? accentColor;
@@ -144,6 +148,8 @@ class AppTextField extends StatelessWidget {
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
+        helperText: helperText,
+        errorText: errorText,
         prefixIcon:
             icon == null ? null : Icon(icon, color: accentColor),
         suffixIcon: suffixIcon,
