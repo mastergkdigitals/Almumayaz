@@ -97,6 +97,9 @@ class _AppButtonState extends State<AppButton> {
             const WidgetStatePropertyAll<Color>(Colors.transparent),
         surfaceTintColor:
             const WidgetStatePropertyAll<Color>(Colors.transparent),
+        overlayColor:
+            const WidgetStatePropertyAll<Color>(Colors.transparent),
+        splashFactory: NoSplash.splashFactory,
       );
     }
 
