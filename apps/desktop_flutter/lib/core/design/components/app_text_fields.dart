@@ -3,6 +3,51 @@ import 'package:flutter/services.dart';
 
 import '../app_tokens.dart';
 
+class AppFieldIconButton extends StatelessWidget {
+  const AppFieldIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+    super.key,
+    this.buttonKey,
+    this.color = AppColors.textSecondary,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onPressed;
+  final Key? buttonKey;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      key: buttonKey,
+      tooltip: tooltip,
+      onPressed: onPressed,
+      icon: Icon(icon),
+      style: ButtonStyle(
+        foregroundColor: WidgetStatePropertyAll<Color>(color),
+        elevation: const WidgetStatePropertyAll<double>(0),
+        backgroundColor:
+            const WidgetStatePropertyAll<Color>(Colors.transparent),
+        shadowColor:
+            const WidgetStatePropertyAll<Color>(Colors.transparent),
+        surfaceTintColor:
+            const WidgetStatePropertyAll<Color>(Colors.transparent),
+        overlayColor:
+            const WidgetStatePropertyAll<Color>(Colors.transparent),
+        mouseCursor: WidgetStateProperty.resolveWith<MouseCursor?>(
+          (states) => states.contains(WidgetState.disabled)
+              ? SystemMouseCursors.basic
+              : SystemMouseCursors.click,
+        ),
+        splashFactory: NoSplash.splashFactory,
+      ),
+    );
+  }
+}
+
 class AppTextField extends StatelessWidget {
   const AppTextField({
     required this.controller,
@@ -25,7 +70,12 @@ class AppTextField extends StatelessWidget {
     this.enabled = true,
     this.autofocus = false,
     this.obscureText = false,
+    this.readOnly = false,
+    this.minLines,
     this.maxLines = 1,
+    this.maxLength,
+    this.onTap,
+    this.onEditingComplete,
   });
 
   final TextEditingController controller;
@@ -47,7 +97,12 @@ class AppTextField extends StatelessWidget {
   final bool enabled;
   final bool autofocus;
   final bool obscureText;
+  final bool readOnly;
+  final int? minLines;
   final int maxLines;
+  final int? maxLength;
+  final VoidCallback? onTap;
+  final VoidCallback? onEditingComplete;
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +126,12 @@ class AppTextField extends StatelessWidget {
       enabled: enabled,
       autofocus: autofocus,
       obscureText: obscureText,
+      readOnly: readOnly,
+      minLines: obscureText ? 1 : minLines,
       maxLines: obscureText ? 1 : maxLines,
+      maxLength: maxLength,
+      onTap: onTap,
+      onEditingComplete: onEditingComplete,
       style: AppTypography.fieldText,
       textDirection: textDirection,
       textAlign: textAlign,
@@ -187,27 +247,12 @@ class _AppSearchFieldState extends State<AppSearchField> {
       enabled: widget.enabled,
       autofocus: widget.autofocus,
       suffixIcon: _hasText && widget.enabled
-          ? IconButton(
-              key: widget.clearButtonKey,
+          ? AppFieldIconButton(
+              buttonKey: widget.clearButtonKey,
+              icon: Icons.close_rounded,
+              tooltip: 'مسح البحث',
+              color: AppColors.danger,
               onPressed: _clear,
-              icon: const Icon(Icons.close_rounded),
-              style: ButtonStyle(
-                foregroundColor:
-                    const WidgetStatePropertyAll<Color>(AppColors.danger),
-                elevation: const WidgetStatePropertyAll<double>(0),
-                backgroundColor:
-                    const WidgetStatePropertyAll<Color>(Colors.transparent),
-                shadowColor:
-                    const WidgetStatePropertyAll<Color>(Colors.transparent),
-                surfaceTintColor:
-                    const WidgetStatePropertyAll<Color>(Colors.transparent),
-                overlayColor:
-                    const WidgetStatePropertyAll<Color>(Colors.transparent),
-                mouseCursor: const WidgetStatePropertyAll<MouseCursor>(
-                  SystemMouseCursors.click,
-                ),
-                splashFactory: NoSplash.splashFactory,
-              ),
             )
           : null,
     );
