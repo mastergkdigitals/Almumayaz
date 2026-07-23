@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/design/app_theme.dart';
+import '../../../core/design/app_tokens.dart';
 
 class DashboardCard extends StatefulWidget {
   const DashboardCard({
@@ -49,7 +49,7 @@ class _DashboardCardState extends State<DashboardCard> {
           curve: Curves.easeOutCubic,
           transform: Matrix4.translationValues(0, lift, 0),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(AppRadii.xl),
             gradient: LinearGradient(
               begin: Alignment.topRight,
               end: Alignment.bottomLeft,
