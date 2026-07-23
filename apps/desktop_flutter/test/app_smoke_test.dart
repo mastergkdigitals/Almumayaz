@@ -13,6 +13,45 @@ void main() {
     expect(find.text('إدارة أعمالك بثقة، حتى بدون إنترنت'), findsOneWidget);
   });
 
+  testWidgets('moves to password and toggles rounded visibility icons',
+      (tester) async {
+    await tester.pumpWidget(const AlmumayazApp());
+    await tester.pump();
+
+    final username = find.byKey(const Key('usernameField'));
+    final password = find.byKey(const Key('passwordField'));
+    final visibilityButton =
+        find.byKey(const Key('passwordVisibilityButton'));
+
+    await tester.enterText(username, 'admin');
+    tester.testTextInput.receiveAction(TextInputAction.next);
+    await tester.pump();
+
+    EditableText passwordInput() => tester.widget<EditableText>(
+          find.descendant(
+            of: password,
+            matching: find.byType(EditableText),
+          ),
+        );
+    Icon visibilityIcon() => tester.widget<Icon>(
+          find.descendant(
+            of: visibilityButton,
+            matching: find.byType(Icon),
+          ),
+        );
+
+    expect(passwordInput().focusNode.hasFocus, isTrue);
+    expect(passwordInput().obscureText, isTrue);
+    expect(visibilityIcon().icon, Icons.visibility_off_rounded);
+    expect(tester.widget<IconButton>(visibilityButton).tooltip, isNull);
+
+    await tester.tap(visibilityButton);
+    await tester.pump();
+
+    expect(passwordInput().obscureText, isFalse);
+    expect(visibilityIcon().icon, Icons.visibility_rounded);
+  });
+
   testWidgets('opens dashboard with approved nine cards', (tester) async {
     await tester.pumpWidget(const AlmumayazApp());
     await _login(tester);
