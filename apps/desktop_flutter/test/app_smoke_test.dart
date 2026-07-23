@@ -111,6 +111,8 @@ void main() {
     expect(find.text('الجدول والترقيم'), findsOneWidget);
     expect(AppTypography.fieldText.fontSize, 20);
     expect(AppTypography.fieldText.fontWeight, FontWeight.w600);
+    expect(AppTypography.buttonText.fontSize, 16);
+    expect(AppTypography.buttonText.fontWeight, FontWeight.w700);
 
     final primaryButton = tester.widget<ElevatedButton>(
       find.descendant(
@@ -249,6 +251,24 @@ void main() {
       );
     }
 
+    final navigationLabel = tester.widget<Text>(
+      find.descendant(
+        of: actionBarFirst,
+        matching: find.text('الأول'),
+      ),
+    );
+    final actionLabel = tester.widget<Text>(
+      find.descendant(
+        of: actionBarSave,
+        matching: find.text('حفظ'),
+      ),
+    );
+
+    expect(navigationLabel.style?.fontSize, 16);
+    expect(navigationLabel.style?.fontWeight, FontWeight.w700);
+    expect(actionLabel.style?.fontSize, navigationLabel.style?.fontSize);
+    expect(actionLabel.style?.fontWeight, navigationLabel.style?.fontWeight);
+
     expect(
       tester.getCenter(actionBarFirst).dx,
       greaterThan(tester.getCenter(actionBarSearch).dx),
@@ -358,11 +378,17 @@ void main() {
     await tester.pump();
 
     final textField = tester.widget<TextFormField>(searchField);
+    final editableText = tester.widget<EditableText>(
+      find.descendant(
+        of: searchField,
+        matching: find.byType(EditableText),
+      ),
+    );
     final inputTheme =
         Theme.of(tester.element(searchField)).inputDecorationTheme;
 
-    expect(textField.style?.fontSize, 20);
-    expect(textField.style?.fontWeight, FontWeight.w600);
+    expect(editableText.style.fontSize, 20);
+    expect(editableText.style.fontWeight, FontWeight.w600);
     expect(inputTheme.labelStyle?.fontSize, 20);
     expect(inputTheme.labelStyle?.fontWeight, FontWeight.w600);
     expect(inputTheme.hintStyle?.fontSize, 20);
