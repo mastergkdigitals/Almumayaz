@@ -109,7 +109,7 @@ void main() {
     expect(find.text('شريط الإجراءات'), findsOneWidget);
     expect(find.text('حقول الإدخال'), findsOneWidget);
     expect(find.text('الجدول والترقيم'), findsOneWidget);
-    expect(AppTypography.fieldText.fontSize, 20);
+    expect(AppTypography.fieldText.fontSize, 18);
     expect(AppTypography.fieldText.fontWeight, FontWeight.w600);
     expect(AppTypography.buttonText.fontSize, 14);
     expect(AppTypography.buttonText.fontWeight, FontWeight.w700);
@@ -336,7 +336,7 @@ void main() {
 
     expect(find.text('دولار'), findsOneWidget);
     final dollarOption = tester.widget<Text>(find.text('دولار'));
-    expect(dollarOption.style?.fontSize, 20);
+    expect(dollarOption.style?.fontSize, 18);
     expect(dollarOption.style?.fontWeight, FontWeight.w600);
 
     await tester.tap(find.text('دولار'));
@@ -387,11 +387,11 @@ void main() {
     final inputTheme =
         Theme.of(tester.element(searchField)).inputDecorationTheme;
 
-    expect(editableText.style.fontSize, 20);
+    expect(editableText.style.fontSize, 18);
     expect(editableText.style.fontWeight, FontWeight.w600);
-    expect(inputTheme.labelStyle?.fontSize, 20);
+    expect(inputTheme.labelStyle?.fontSize, 18);
     expect(inputTheme.labelStyle?.fontWeight, FontWeight.w600);
-    expect(inputTheme.hintStyle?.fontSize, 20);
+    expect(inputTheme.hintStyle?.fontSize, 18);
     expect(inputTheme.hintStyle?.fontWeight, FontWeight.w600);
     expect(textField.controller?.text, isEmpty);
     expect(
