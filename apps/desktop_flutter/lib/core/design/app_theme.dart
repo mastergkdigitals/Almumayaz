@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'app_tokens.dart';
 
-
 abstract final class AppTheme {
   static ThemeData light() {
     final scheme = ColorScheme.fromSeed(
@@ -22,7 +21,7 @@ abstract final class AppTheme {
 
     return base.copyWith(
       textSelectionTheme: const TextSelectionThemeData(
-        cursorColor: Colors.black,
+        cursorColor: AppColors.cursor,
       ),
       textTheme: base.textTheme.apply(
         bodyColor: AppColors.textPrimary,
@@ -61,7 +60,7 @@ abstract final class AppTheme {
         style: ElevatedButton.styleFrom(
           minimumSize: const Size(120, AppControlHeights.standard),
           backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
+          foregroundColor: AppColors.onStrong,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadii.md),
           ),
