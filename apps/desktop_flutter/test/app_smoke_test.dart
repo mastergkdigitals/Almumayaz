@@ -99,7 +99,8 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('dashboardCard_settings')));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.byKey(const Key('designSystemGallery')), findsOneWidget);
     expect(find.text('دليل نظام التصميم'), findsOneWidget);
