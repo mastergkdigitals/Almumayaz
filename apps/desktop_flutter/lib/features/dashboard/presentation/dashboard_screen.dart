@@ -53,8 +53,8 @@ class DashboardScreen extends StatelessWidget {
       'warehouses',
       'المخازن',
       Icons.warehouse_rounded,
-      colors: [Color(0xFF5C2E0E), Color(0xFF92400E), Color(0xFFD6A36A)],
-      shadowColor: Color(0xFF92400E),
+      colors: [Color(0xFF5C2E0E), AppModuleColors.warehouses, Color(0xFFD6A36A)],
+      shadowColor: AppModuleColors.warehouses,
     ),
     _ModuleItem(
       'reports',
