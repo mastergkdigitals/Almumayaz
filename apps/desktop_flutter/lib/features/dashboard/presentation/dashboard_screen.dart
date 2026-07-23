@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-
 import '../../../core/design/app_design_system.dart';
 import '../../../core/design/components/app_header_button.dart';
 import '../../auth/presentation/login_screen.dart';
@@ -86,12 +84,8 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.f5): () {
-          AppToast.showInfo(context, 'تم تحديث الشاشة');
-        },
-      },
+    return AppShortcutScope(
+      onRefresh: () => AppToast.showInfo(context, 'تم تحديث الشاشة'),
       child: Scaffold(
         backgroundColor: Colors.white,
         body: Column(
