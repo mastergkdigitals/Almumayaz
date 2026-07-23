@@ -265,35 +265,31 @@ class _DesignSystemGalleryScreenState
                 totalPages: 3,
                 onNextPage: () {},
                 columns: const [
-                  DataColumn(label: Text('رمز المادة')),
-                  DataColumn(label: Text('اسم المادة')),
-                  DataColumn(label: Text('الكمية')),
-                  DataColumn(label: Text('الحالة')),
+                  AppTableColumn(label: 'رمز المادة'),
+                  AppTableColumn(label: 'اسم المادة'),
+                  AppTableColumn(label: 'الكمية', numeric: true),
+                  AppTableColumn(label: 'الحالة'),
                 ],
                 rows: const [
-                  DataRow(
+                  AppTableRow(
                     cells: [
-                      DataCell(Text('P-001')),
-                      DataCell(Text('مادة أولى')),
-                      DataCell(Text('100')),
-                      DataCell(
-                        AppStatusBadge(
-                          label: 'متوفر',
-                          tone: AppStatusTone.success,
-                        ),
+                      Text('P-001'),
+                      Text('مادة أولى'),
+                      Text('100'),
+                      AppStatusBadge(
+                        label: 'متوفر',
+                        tone: AppStatusTone.success,
                       ),
                     ],
                   ),
-                  DataRow(
+                  AppTableRow(
                     cells: [
-                      DataCell(Text('P-002')),
-                      DataCell(Text('مادة ثانية')),
-                      DataCell(Text('0')),
-                      DataCell(
-                        AppStatusBadge(
-                          label: 'نافد',
-                          tone: AppStatusTone.danger,
-                        ),
+                      Text('P-002'),
+                      Text('مادة ثانية'),
+                      Text('0'),
+                      AppStatusBadge(
+                        label: 'نافد',
+                        tone: AppStatusTone.danger,
                       ),
                     ],
                   ),
