@@ -74,11 +74,11 @@ class AppSwitchField extends StatelessWidget {
             }),
             trackColor: WidgetStateProperty.resolveWith<Color?>((states) {
               if (states.contains(WidgetState.disabled)) {
-                return const Color(0xFFE2E8F0);
+                return AppColors.switchTrack;
               }
               return states.contains(WidgetState.selected)
-                  ? const Color(0xFFBFDBFE)
-                  : const Color(0xFFE2E8F0);
+                  ? AppColors.switchTrackSelected
+                  : AppColors.switchTrack;
             }),
             trackOutlineColor:
                 const WidgetStatePropertyAll(Colors.transparent),
@@ -86,7 +86,7 @@ class AppSwitchField extends StatelessWidget {
               final isSelected = states.contains(WidgetState.selected);
               return Icon(
                 isSelected ? Icons.check_rounded : Icons.close_rounded,
-                color: Colors.white,
+                color: AppColors.onStrong,
                 size: 14,
               );
             }),
