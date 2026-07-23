@@ -30,7 +30,7 @@ class AppActionBar extends StatelessWidget {
     this.searchHint,
     this.onSearchChanged,
     this.onSearchSubmitted,
-    this.actionButtonWidth = 104,
+    this.buttonWidth = 108,
   });
 
   final TextEditingController searchController;
@@ -56,7 +56,7 @@ class AppActionBar extends StatelessWidget {
   final String? searchHint;
   final ValueChanged<String>? onSearchChanged;
   final ValueChanged<String>? onSearchSubmitted;
-  final double actionButtonWidth;
+  final double buttonWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -69,6 +69,7 @@ class AppActionBar extends StatelessWidget {
         children: [
           AppRecordNavigation(
             firstButtonKey: firstButtonKey,
+            buttonWidth: buttonWidth,
             previousButtonKey: previousButtonKey,
             nextButtonKey: nextButtonKey,
             lastButtonKey: lastButtonKey,
@@ -99,7 +100,7 @@ class AppActionBar extends StatelessWidget {
                 key: saveButtonKey,
                 label: 'حفظ',
                 icon: Icons.save_rounded,
-                width: actionButtonWidth,
+                width: buttonWidth,
                 padding: actionPadding,
                 iconSize: 18,
                 iconSpacing: AppSpacing.xs,
@@ -110,7 +111,7 @@ class AppActionBar extends StatelessWidget {
                 label: 'تحديث',
                 icon: Icons.update_rounded,
                 variant: AppButtonVariant.success,
-                width: actionButtonWidth,
+                width: buttonWidth,
                 padding: actionPadding,
                 iconSize: 18,
                 iconSpacing: AppSpacing.xs,
@@ -121,7 +122,7 @@ class AppActionBar extends StatelessWidget {
                 label: 'تراجع',
                 icon: Icons.undo_rounded,
                 variant: AppButtonVariant.warning,
-                width: actionButtonWidth,
+                width: buttonWidth,
                 padding: actionPadding,
                 iconSize: 18,
                 iconSpacing: AppSpacing.xs,
@@ -132,7 +133,7 @@ class AppActionBar extends StatelessWidget {
                 label: 'حذف',
                 icon: Icons.delete_rounded,
                 variant: AppButtonVariant.danger,
-                width: actionButtonWidth,
+                width: buttonWidth,
                 padding: actionPadding,
                 iconSize: 18,
                 iconSpacing: AppSpacing.xs,
