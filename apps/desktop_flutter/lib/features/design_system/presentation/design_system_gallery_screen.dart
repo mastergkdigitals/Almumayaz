@@ -21,12 +21,14 @@ class _DesignSystemGalleryScreenState
   final _purchasesNameController = TextEditingController();
   final _salesNameController = TextEditingController();
   final _cashboxNameController = TextEditingController();
+  final _warehousesNameController = TextEditingController();
 
   String _currency = 'IQD';
   String _partiesCurrency = 'IQD';
   String _purchasesCurrency = 'IQD';
   String _salesCurrency = 'IQD';
   String _cashboxCurrency = 'IQD';
+  String _warehousesCurrency = 'IQD';
   bool _allowNegativeStock = false;
   bool _isDarkThemePreview = false;
 
@@ -41,6 +43,7 @@ class _DesignSystemGalleryScreenState
     _purchasesNameController.dispose();
     _salesNameController.dispose();
     _cashboxNameController.dispose();
+    _warehousesNameController.dispose();
     super.dispose();
   }
 
@@ -379,6 +382,17 @@ class _DesignSystemGalleryScreenState
                     onCurrencyChanged: (value) {
                       if (value == null) return;
                       setState(() => _cashboxCurrency = value);
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  _ModuleFieldsPreview(
+                    title: 'المخازن',
+                    accentColor: AppModuleColors.warehouses,
+                    nameController: _warehousesNameController,
+                    currency: _warehousesCurrency,
+                    onCurrencyChanged: (value) {
+                      if (value == null) return;
+                      setState(() => _warehousesCurrency = value);
                     },
                   ),
                 ],
