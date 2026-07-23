@@ -29,6 +29,12 @@ abstract final class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.surface,
+        labelStyle: AppTypography.fieldText.copyWith(
+          color: AppColors.textSecondary,
+        ),
+        hintStyle: AppTypography.fieldText.copyWith(
+          color: AppColors.textSecondary,
+        ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md,
           vertical: 14,
