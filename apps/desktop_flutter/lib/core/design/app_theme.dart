@@ -22,6 +22,9 @@ abstract final class AppTheme {
     );
 
     return base.copyWith(
+      textSelectionTheme: const TextSelectionThemeData(
+        cursorColor: Colors.black,
+      ),
       textTheme: base.textTheme.apply(
         bodyColor: AppColors.textPrimary,
         displayColor: AppColors.textPrimary,
