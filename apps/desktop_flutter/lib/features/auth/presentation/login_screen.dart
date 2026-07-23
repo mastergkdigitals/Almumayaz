@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
-import '../../../core/design/app_logo.dart';
-import '../../../core/design/app_theme.dart';
+import '../../../core/design/app_design_system.dart';
 import '../../dashboard/presentation/dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -16,14 +14,12 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _username = TextEditingController();
   final _password = TextEditingController();
-  final _passwordFocus = FocusNode();
   bool _hidePassword = true;
 
   @override
   void dispose() {
     _username.dispose();
     _password.dispose();
-    _passwordFocus.dispose();
     super.dispose();
   }
 
@@ -38,33 +34,28 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.keyS, control: true): _login,
-      },
-      child: Scaffold(
-        body: Row(
-          textDirection: TextDirection.ltr,
-          children: [
-            const Expanded(flex: 6, child: _BrandPanel()),
-            Expanded(
-              flex: 5,
-              child: ColoredBox(
-                key: const Key('loginFormSection'),
-                color: AppColors.background,
-                child: Center(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(AppSpacing.xl),
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 430),
-                      child: _buildForm(context),
-                    ),
+    return Scaffold(
+      body: Row(
+        textDirection: TextDirection.ltr,
+        children: [
+          const Expanded(flex: 6, child: _BrandPanel()),
+          Expanded(
+            flex: 5,
+            child: ColoredBox(
+              key: const Key('loginFormSection'),
+              color: AppColors.background,
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(AppSpacing.xl),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 430),
+                    child: _buildForm(context),
                   ),
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -91,69 +82,53 @@ class _LoginScreenState extends State<LoginScreen> {
               style: TextStyle(color: AppColors.textSecondary),
             ),
             const SizedBox(height: AppSpacing.xl),
-            TextFormField(
-              key: const Key('usernameField'),
+            AppTextField(
+              fieldKey: const Key('usernameField'),
               controller: _username,
-              style: AppTypography.fieldText,
+              label: 'اسم المستخدم',
+              icon: Icons.person_outline_rounded,
               autofocus: true,
               textInputAction: TextInputAction.next,
-              onFieldSubmitted: (_) => _passwordFocus.requestFocus(),
-              decoration: const InputDecoration(
-                labelText: 'اسم المستخدم',
-                prefixIcon: Icon(Icons.person_outline_rounded),
-              ),
+              onSubmitted: (_) => AppFocusTraversal.next(context),
               validator: (value) => value == null || value.trim().isEmpty
                   ? 'أدخل اسم المستخدم'
                   : null,
             ),
             const SizedBox(height: AppSpacing.md),
-            TextFormField(
-              key: const Key('passwordField'),
+            AppTextField(
+              fieldKey: const Key('passwordField'),
               controller: _password,
-              focusNode: _passwordFocus,
-              style: AppTypography.fieldText,
+              label: 'كلمة المرور',
+              icon: Icons.lock_outline_rounded,
               obscureText: _hidePassword,
               textInputAction: TextInputAction.done,
-              onFieldSubmitted: (_) => _login(),
-              decoration: InputDecoration(
-                labelText: 'كلمة المرور',
-                prefixIcon: const Icon(Icons.lock_outline_rounded),
-                suffixIcon: IconButton(
-                  tooltip:
-                      _hidePassword ? 'إظهار كلمة المرور' : 'إخفاء كلمة المرور',
-                  onPressed: () =>
-                      setState(() => _hidePassword = !_hidePassword),
-                  icon: Icon(
-                    _hidePassword
-                        ? Icons.visibility_rounded
-                        : Icons.visibility_off_rounded,
-                  ),
-                ),
+              onSubmitted: (_) => _login(),
+              suffixIcon: AppFieldIconButton(
+                icon: _hidePassword
+                    ? Icons.visibility_rounded
+                    : Icons.visibility_off_rounded,
+                tooltip: _hidePassword
+                    ? 'إظهار كلمة المرور'
+                    : 'إخفاء كلمة المرور',
+                onPressed: () =>
+                    setState(() => _hidePassword = !_hidePassword),
               ),
               validator: (value) =>
                   value == null || value.isEmpty ? 'أدخل كلمة المرور' : null,
             ),
             const SizedBox(height: AppSpacing.lg),
-            ElevatedButton.icon(
+            AppButton(
               key: const Key('loginButton'),
+              label: 'دخول',
+              icon: Icons.login_rounded,
+              width: double.infinity,
               onPressed: _login,
-              icon: const Icon(Icons.login_rounded),
-              label: const Text('دخول'),
             ),
             const SizedBox(height: AppSpacing.md),
-            const DecoratedBox(
-              decoration: BoxDecoration(
-                color: Color(0xFFE8F1FF),
-                borderRadius: BorderRadius.all(Radius.circular(AppRadii.sm)),
-              ),
-              child: Padding(
-                padding: EdgeInsets.all(AppSpacing.md),
-                child: Text(
-                  'نسخة تصميمية: استخدم أي اسم وكلمة مرور غير فارغين.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.primary),
-                ),
-              ),
+            const AppInfoBanner(
+              message: 'نسخة تصميمية: استخدم أي اسم وكلمة مرور غير فارغين.',
+              icon: null,
+              textAlign: TextAlign.center,
             ),
           ],
         ),
