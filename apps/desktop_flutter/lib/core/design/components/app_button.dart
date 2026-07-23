@@ -198,7 +198,7 @@ class AppRecordNavigation extends StatelessWidget {
     this.nextButtonKey,
     this.lastButtonKey,
     this.variant = AppButtonVariant.secondary,
-    this.buttonWidth = 112,
+    this.buttonWidth = 128,
     this.spacing = AppSpacing.sm,
   });
 
