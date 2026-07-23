@@ -6,6 +6,7 @@ abstract final class AppColors {
   static const accent = Color(0xFFC89B3C);
   static const background = Color(0xFFF5F9FF);
   static const surface = Colors.white;
+  static const onStrong = Colors.white;
   static const border = Color(0xFFD6E3F0);
   static const textPrimary = Color(0xFF142033);
   static const textSecondary = Color(0xFF5F7085);
@@ -26,6 +27,9 @@ abstract final class AppColors {
   static const controlHoverSurface = Color(0xFFF3F7FC);
   static const controlHoverBorder = Color(0xFFB8CAE0);
   static const tableHeaderSurface = Color(0xFFEAF2FF);
+  static const menuShadow = Color(0x24102A56);
+  static const switchTrack = Color(0xFFE2E8F0);
+  static const switchTrackSelected = Color(0xFFBFDBFE);
 }
 
 abstract final class AppModuleColors {
