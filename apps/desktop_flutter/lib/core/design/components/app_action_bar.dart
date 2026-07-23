@@ -33,6 +33,9 @@ class AppActionBar extends StatelessWidget {
     this.buttonWidth = 108,
   });
 
+  static const _compactWidth = 1180.0;
+  static const _actionPadding = EdgeInsets.symmetric(horizontal: AppSpacing.xs);
+
   final TextEditingController searchController;
   final VoidCallback? onFirst;
   final VoidCallback? onPrevious;
@@ -58,90 +61,121 @@ class AppActionBar extends StatelessWidget {
   final ValueChanged<String>? onSearchSubmitted;
   final double buttonWidth;
 
+  Widget _navigation() {
+    return AppRecordNavigation(
+      firstButtonKey: firstButtonKey,
+      previousButtonKey: previousButtonKey,
+      nextButtonKey: nextButtonKey,
+      lastButtonKey: lastButtonKey,
+      buttonWidth: buttonWidth,
+      onFirst: onFirst,
+      onPrevious: onPrevious,
+      onNext: onNext,
+      onLast: onLast,
+    );
+  }
+
+  Widget _search() {
+    return AppSearchField(
+      controller: searchController,
+      fieldKey: searchFieldKey,
+      clearButtonKey: searchClearButtonKey,
+      label: searchLabel,
+      hint: searchHint,
+      onChanged: onSearchChanged,
+      onSubmitted: onSearchSubmitted,
+    );
+  }
+
+  Widget _actions() {
+    return Wrap(
+      textDirection: TextDirection.rtl,
+      spacing: AppSpacing.sm,
+      runSpacing: AppSpacing.sm,
+      children: [
+        AppButton(
+          key: saveButtonKey,
+          label: 'حفظ',
+          icon: Icons.save_rounded,
+          width: buttonWidth,
+          padding: _actionPadding,
+          iconSize: 16,
+          iconSpacing: AppSpacing.xs / 2,
+          onPressed: onSave,
+        ),
+        AppButton(
+          key: updateButtonKey,
+          label: 'تحديث',
+          icon: Icons.update_rounded,
+          variant: AppButtonVariant.success,
+          width: buttonWidth,
+          padding: _actionPadding,
+          iconSize: 16,
+          iconSpacing: AppSpacing.xs / 2,
+          onPressed: onUpdate,
+        ),
+        AppButton(
+          key: undoButtonKey,
+          label: 'تراجع',
+          icon: Icons.undo_rounded,
+          variant: AppButtonVariant.warning,
+          width: buttonWidth,
+          padding: _actionPadding,
+          iconSize: 16,
+          iconSpacing: AppSpacing.xs / 2,
+          onPressed: onUndo,
+        ),
+        AppButton(
+          key: deleteButtonKey,
+          label: 'حذف',
+          icon: Icons.delete_rounded,
+          variant: AppButtonVariant.danger,
+          width: buttonWidth,
+          padding: _actionPadding,
+          iconSize: 16,
+          iconSpacing: AppSpacing.xs / 2,
+          onPressed: onDelete,
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    const actionPadding = EdgeInsets.symmetric(horizontal: AppSpacing.xs);
-
     return Directionality(
       textDirection: TextDirection.rtl,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          AppRecordNavigation(
-            firstButtonKey: firstButtonKey,
-            buttonWidth: buttonWidth,
-            previousButtonKey: previousButtonKey,
-            nextButtonKey: nextButtonKey,
-            lastButtonKey: lastButtonKey,
-            onFirst: onFirst,
-            onPrevious: onPrevious,
-            onNext: onNext,
-            onLast: onLast,
-          ),
-          const SizedBox(width: AppSpacing.lg),
-          Expanded(
-            child: AppSearchField(
-              controller: searchController,
-              fieldKey: searchFieldKey,
-              clearButtonKey: searchClearButtonKey,
-              label: searchLabel,
-              hint: searchHint,
-              onChanged: onSearchChanged,
-              onSubmitted: onSearchSubmitted,
-            ),
-          ),
-          const SizedBox(width: AppSpacing.lg),
-          Wrap(
-            textDirection: TextDirection.rtl,
-            spacing: AppSpacing.sm,
-            runSpacing: AppSpacing.sm,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth < _compactWidth) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: _navigation(),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                _search(),
+                const SizedBox(height: AppSpacing.md),
+                Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: _actions(),
+                ),
+              ],
+            );
+          }
+
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              AppButton(
-                key: saveButtonKey,
-                label: 'حفظ',
-                icon: Icons.save_rounded,
-                width: buttonWidth,
-                padding: actionPadding,
-                iconSize: 16,
-                iconSpacing: AppSpacing.xs / 2,
-                onPressed: onSave,
-              ),
-              AppButton(
-                key: updateButtonKey,
-                label: 'تحديث',
-                icon: Icons.update_rounded,
-                variant: AppButtonVariant.success,
-                width: buttonWidth,
-                padding: actionPadding,
-                iconSize: 16,
-                iconSpacing: AppSpacing.xs / 2,
-                onPressed: onUpdate,
-              ),
-              AppButton(
-                key: undoButtonKey,
-                label: 'تراجع',
-                icon: Icons.undo_rounded,
-                variant: AppButtonVariant.warning,
-                width: buttonWidth,
-                padding: actionPadding,
-                iconSize: 16,
-                iconSpacing: AppSpacing.xs / 2,
-                onPressed: onUndo,
-              ),
-              AppButton(
-                key: deleteButtonKey,
-                label: 'حذف',
-                icon: Icons.delete_rounded,
-                variant: AppButtonVariant.danger,
-                width: buttonWidth,
-                padding: actionPadding,
-                iconSize: 16,
-                iconSpacing: AppSpacing.xs / 2,
-                onPressed: onDelete,
-              ),
+              _navigation(),
+              const SizedBox(width: AppSpacing.lg),
+              Expanded(child: _search()),
+              const SizedBox(width: AppSpacing.lg),
+              _actions(),
             ],
-          ),
-        ],
+          );
+        },
       ),
     );
   }
