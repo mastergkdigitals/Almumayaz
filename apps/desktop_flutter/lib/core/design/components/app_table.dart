@@ -2,6 +2,19 @@ import 'package:flutter/material.dart';
 
 import '../app_tokens.dart';
 
+class AppTableColumn {
+  const AppTableColumn({required this.label, this.numeric = false});
+
+  final String label;
+  final bool numeric;
+}
+
+class AppTableRow {
+  const AppTableRow({required this.cells});
+
+  final List<Widget> cells;
+}
+
 class AppDataTable extends StatelessWidget {
   const AppDataTable({
     required this.columns,
@@ -15,8 +28,8 @@ class AppDataTable extends StatelessWidget {
   });
 
   final String? title;
-  final List<DataColumn> columns;
-  final List<DataRow> rows;
+  final List<AppTableColumn> columns;
+  final List<AppTableRow> rows;
   final int currentPage;
   final int totalPages;
   final VoidCallback? onPreviousPage;
@@ -24,6 +37,11 @@ class AppDataTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    assert(
+      rows.every((row) => row.cells.length == columns.length),
+      'Every table row must contain one cell for each column.',
+    );
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -55,8 +73,34 @@ class AppDataTable extends StatelessWidget {
                       dividerThickness: 0.8,
                     ),
                     child: DataTable(
-                      columns: columns,
-                      rows: rows,
+                      showCheckboxColumn: false,
+                      columns: [
+                        for (final column in columns)
+                          DataColumn(
+                            numeric: column.numeric,
+                            headingRowAlignment: MainAxisAlignment.center,
+                            label: Center(
+                              child: Text(
+                                column.label,
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                      ],
+                      rows: [
+                        for (final row in rows)
+                          DataRow(
+                            cells: [
+                              for (final cell in row.cells)
+                                DataCell(
+                                  Align(
+                                    alignment: Alignment.center,
+                                    child: cell,
+                                  ),
+                                ),
+                            ],
+                          ),
+                      ],
                       columnSpacing: AppSpacing.xl,
                       horizontalMargin: AppSpacing.md,
                     ),
