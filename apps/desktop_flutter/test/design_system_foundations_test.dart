@@ -17,7 +17,10 @@ void main() {
   });
 
   test('uses a black text caret globally', () {
-    expect(AppTheme.light().textSelectionTheme.cursorColor, Colors.black);
+    expect(
+      AppTheme.light().textSelectionTheme.cursorColor,
+      AppColors.cursor,
+    );
   });
 
   testWidgets('handles the global keyboard shortcuts', (tester) async {
