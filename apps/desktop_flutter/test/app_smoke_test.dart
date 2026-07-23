@@ -10,9 +10,10 @@ void main() {
     expect(find.text('اسم المستخدم'), findsOneWidget);
     expect(find.text('كلمة المرور'), findsOneWidget);
     expect(find.text('دخول'), findsOneWidget);
+    expect(find.text('إدارة أعمالك بثقة، حتى بدون إنترنت'), findsOneWidget);
   });
 
-  testWidgets('opens dashboard with non-empty credentials', (tester) async {
+  testWidgets('opens dashboard with approved nine cards', (tester) async {
     await tester.pumpWidget(const AlmumayazApp());
 
     await tester.enterText(find.byKey(const Key('usernameField')), 'admin');
@@ -20,7 +21,8 @@ void main() {
     await tester.tap(find.byKey(const Key('loginButton')));
     await tester.pumpAndSettle();
 
-    expect(find.text('لوحة التحكم'), findsOneWidget);
+    expect(find.text('لوحة التحكم'), findsNothing);
+    expect(find.text('اختر القسم الذي تريد العمل عليه'), findsNothing);
     expect(find.text('المبيعات'), findsOneWidget);
     expect(find.text('المشتريات'), findsOneWidget);
     expect(find.text('الصندوق'), findsOneWidget);
@@ -34,7 +36,7 @@ void main() {
     expect(find.byKey(const Key('dashboardCard_about')), findsOneWidget);
   });
 
-  testWidgets('uses normal desktop layout at 1440 width', (tester) async {
+  testWidgets('keeps full login layout at 1440 width', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -44,13 +46,36 @@ void main() {
     expect(find.text('تسجيل الدخول'), findsOneWidget);
   });
 
-  testWidgets('uses compact desktop layout below 1280 width', (tester) async {
+  testWidgets('keeps full login layout below 1280 width', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1000, 720));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await tester.pumpWidget(const AlmumayazApp());
 
-    expect(find.text('إدارة أعمالك بثقة، حتى بدون إنترنت'), findsNothing);
+    expect(find.text('إدارة أعمالك بثقة، حتى بدون إنترنت'), findsOneWidget);
     expect(find.text('تسجيل الدخول'), findsOneWidget);
+  });
+
+  testWidgets('keeps dashboard first row in three columns when narrow',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1000, 720));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(const AlmumayazApp());
+    await tester.enterText(find.byKey(const Key('usernameField')), 'admin');
+    await tester.enterText(find.byKey(const Key('passwordField')), 'password');
+    await tester.tap(find.byKey(const Key('loginButton')));
+    await tester.pumpAndSettle();
+
+    final purchasesY = tester
+        .getTopLeft(find.byKey(const Key('dashboardCard_purchases')))
+        .dy;
+    final salesY =
+        tester.getTopLeft(find.byKey(const Key('dashboardCard_sales'))).dy;
+    final cashboxY =
+        tester.getTopLeft(find.byKey(const Key('dashboardCard_cashbox'))).dy;
+
+    expect(salesY, closeTo(purchasesY, 0.1));
+    expect(cashboxY, closeTo(purchasesY, 0.1));
   });
 }
