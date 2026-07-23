@@ -42,12 +42,10 @@ class DashboardScreen extends StatelessWidget {
     ),
     _ModuleItem(
       'company',
-      'اسم الشركة',
+      'اسم الشركة + الشعار',
       Icons.apartment_rounded,
       colors: [Color(0xFF6B4F00), Color(0xFFD4A72C), Color(0xFFFFE69A)],
       shadowColor: Color(0xFFB8860B),
-      subtitle: 'يُحدد من الإعدادات',
-      showLogo: true,
       displayOnly: true,
     ),
     _ModuleItem(
@@ -155,7 +153,6 @@ class DashboardScreen extends StatelessWidget {
                           icon: item.icon,
                           colors: item.colors,
                           shadowColor: item.shadowColor,
-                          showLogo: item.showLogo,
                           onTap: item.displayOnly
                               ? null
                               : () => _openModule(context, item),
@@ -196,20 +193,14 @@ class _DashboardHeader extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AppLogo(size: 48, padding: 5),
-              SizedBox(width: AppSpacing.md),
-              Text(
-                'المميز ERP',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 30,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
+          const Text(
+            'المميز للمحاسبة',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 30,
+              fontWeight: FontWeight.w800,
+            ),
           ),
           Align(
             alignment: Alignment.centerLeft,
@@ -256,7 +247,6 @@ class _ModuleItem {
     required this.colors,
     required this.shadowColor,
     this.subtitle,
-    this.showLogo = false,
     this.displayOnly = false,
     this.isAbout = false,
   });
@@ -267,7 +257,6 @@ class _ModuleItem {
   final List<Color> colors;
   final Color shadowColor;
   final String? subtitle;
-  final bool showLogo;
   final bool displayOnly;
   final bool isAbout;
 }
