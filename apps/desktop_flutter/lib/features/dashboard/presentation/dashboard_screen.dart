@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 
 import '../../../core/design/app_logo.dart';
 import '../../../core/design/app_theme.dart';
-import '../../../core/responsive/responsive_shell.dart';
 import '../../auth/presentation/login_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -58,14 +57,18 @@ class DashboardScreen extends StatelessWidget {
             children: [
               AppLogo(size: 38, padding: 4),
               SizedBox(width: AppSpacing.sm),
-              Text('المميز ERP',
-                  style: TextStyle(fontWeight: FontWeight.w700)),
+              Text(
+                'المميز ERP',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
             ],
           ),
           actions: [
             Center(
-              child: Text('مرحباً، $username',
-                  style: const TextStyle(color: AppColors.textSecondary)),
+              child: Text(
+                'مرحباً، $username',
+                style: const TextStyle(color: AppColors.textSecondary),
+              ),
             ),
             const SizedBox(width: AppSpacing.sm),
             IconButton(
@@ -78,44 +81,20 @@ class DashboardScreen extends StatelessWidget {
             const SizedBox(width: AppSpacing.md),
           ],
         ),
-        body: ResponsiveLayout(
-          builder: (context, info) {
-            return SingleChildScrollView(
-              padding: EdgeInsets.all(
-                info.isCompact ? AppSpacing.md : AppSpacing.xl,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'لوحة التحكم',
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  const Text(
-                    'اختر القسم الذي تريد العمل عليه',
-                    style: TextStyle(color: AppColors.textSecondary),
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: modules.length,
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: info.isCompact ? 2 : 3,
-                      mainAxisSpacing: AppSpacing.md,
-                      crossAxisSpacing: AppSpacing.md,
-                      childAspectRatio: info.isCompact ? 1.8 : 2.25,
-                    ),
-                    itemBuilder: (_, index) =>
-                        _DashboardCard(item: modules[index]),
-                  ),
-                ],
-              ),
-            );
-          },
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          child: GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: modules.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              mainAxisSpacing: AppSpacing.md,
+              crossAxisSpacing: AppSpacing.md,
+              childAspectRatio: 2.25,
+            ),
+            itemBuilder: (_, index) => _DashboardCard(item: modules[index]),
+          ),
         ),
       ),
     );
