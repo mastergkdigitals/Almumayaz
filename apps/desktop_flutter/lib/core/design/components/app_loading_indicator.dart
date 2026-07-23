@@ -2,6 +2,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../app_tokens.dart';
+
 class AppLoadingIndicator extends StatefulWidget {
   const AppLoadingIndicator({
     super.key,
@@ -61,13 +63,6 @@ class _MulticolorRingPainter extends CustomPainter {
 
   final double strokeWidth;
 
-  static const _colors = <Color>[
-    Color(0xFF4285F4),
-    Color(0xFFEA4335),
-    Color(0xFFFBBC05),
-    Color(0xFF34A853),
-  ];
-
   @override
   void paint(Canvas canvas, Size size) {
     final inset = strokeWidth / 2;
@@ -86,7 +81,7 @@ class _MulticolorRingPainter extends CustomPainter {
     const gap = math.pi * 0.12;
     var start = -math.pi / 2;
 
-    for (final color in _colors) {
+    for (final color in AppLoadingColors.ring) {
       paint.color = color;
       canvas.drawArc(rect, start, sweep, false, paint);
       start += sweep + gap;
