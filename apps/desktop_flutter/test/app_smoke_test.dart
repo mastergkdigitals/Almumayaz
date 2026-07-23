@@ -145,7 +145,7 @@ void main() {
       Key('designNavigationNext'),
       Key('designNavigationLast'),
     ]) {
-      expect(tester.getSize(find.byKey(key)).width, 116);
+      expect(tester.getSize(find.byKey(key)).width, 108);
     }
 
     expect(firstPosition.dx, greaterThan(previousPosition.dx));
@@ -214,6 +214,12 @@ void main() {
 
     final actionBarFirst =
         find.byKey(const Key('designActionBarFirst'));
+    final actionBarPrevious =
+        find.byKey(const Key('designActionBarPrevious'));
+    final actionBarNext =
+        find.byKey(const Key('designActionBarNext'));
+    final actionBarLast =
+        find.byKey(const Key('designActionBarLast'));
     final actionBarSearch =
         find.byKey(const Key('designActionBarSearch'));
     final actionBarSave =
@@ -226,12 +232,19 @@ void main() {
         find.byKey(const Key('designActionBarDelete'));
 
     for (final button in [
+      actionBarFirst,
+      actionBarPrevious,
+      actionBarNext,
+      actionBarLast,
       actionBarSave,
       actionBarUpdate,
       actionBarUndo,
       actionBarDelete,
     ]) {
-      expect(tester.getSize(button).width, 104);
+      expect(
+        tester.getSize(button),
+        const Size(108, AppControlHeights.standard),
+      );
     }
 
     expect(
