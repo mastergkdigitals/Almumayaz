@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../../core/design/app_logo.dart';
 import '../../../core/design/app_theme.dart';
 import '../../auth/presentation/login_screen.dart';
+import '../../design_system/presentation/design_system_gallery_screen.dart';
 import 'dashboard_card.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -80,6 +81,15 @@ class DashboardScreen extends StatelessWidget {
   ];
 
   void _openModule(BuildContext context, _ModuleItem item) {
+    if (item.id == 'settings') {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => const DesignSystemGalleryScreen(),
+        ),
+      );
+      return;
+    }
+
     if (item.isAbout) {
       showAboutDialog(
         context: context,
