@@ -3,11 +3,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:responsive_framework/responsive_framework.dart';
 
-import '../design/app_theme.dart';
 
 abstract final class ResponsiveDesktopConfig {
   static const double designWidth = 1440;
-  static const double maximumScaledWidth = 1728;
   static const double compactBreakpoint = 1280;
 
   static const String compactDesktop = 'COMPACT_DESKTOP';
@@ -47,14 +45,10 @@ class ResponsiveDesktopShell extends StatelessWidget {
           name: ResponsiveDesktopConfig.desktop,
         ),
       ],
-      child: MaxWidthBox(
-        maxWidth: ResponsiveDesktopConfig.maximumScaledWidth,
-        backgroundColor: AppColors.background,
-        child: ResponsiveScaledBox(
-          width: ResponsiveDesktopConfig.designWidth,
-          autoCalculateMediaQueryData: true,
-          child: child,
-        ),
+      child: ResponsiveScaledBox(
+        width: ResponsiveDesktopConfig.designWidth,
+        autoCalculateMediaQueryData: true,
+        child: child,
       ),
     );
   }
