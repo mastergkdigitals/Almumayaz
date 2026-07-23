@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 
 abstract final class AppColors {
-  static const primary = Color(0xFF174D45);
-  static const primaryDark = Color(0xFF0E332E);
+  static const primary = Color(0xFF1D4ED8);
+  static const primaryDark = Color(0xFF102A56);
   static const accent = Color(0xFFC89B3C);
-  static const background = Color(0xFFF4F7F6);
+  static const background = Color(0xFFF5F9FF);
   static const surface = Colors.white;
-  static const border = Color(0xFFDDE5E2);
-  static const textPrimary = Color(0xFF15211F);
-  static const textSecondary = Color(0xFF60706C);
+  static const border = Color(0xFFD6E3F0);
+  static const textPrimary = Color(0xFF142033);
+  static const textSecondary = Color(0xFF5F7085);
   static const danger = Color(0xFFB42318);
 }
 
