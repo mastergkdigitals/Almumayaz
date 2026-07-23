@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../app_tokens.dart';
@@ -32,6 +34,10 @@ class AppDataTable extends StatefulWidget {
 }
 
 class _AppDataTableState extends State<AppDataTable> {
+  static const _headerHeight = 56.0;
+  static const _rowHeight = 56.0;
+  static const _minimumColumnWidth = 180.0;
+
   final _verticalScrollController = ScrollController();
   final _horizontalScrollController = ScrollController();
 
@@ -61,68 +67,139 @@ class _AppDataTableState extends State<AppDataTable> {
       clipBehavior: Clip.antiAlias,
       child: LayoutBuilder(
         builder: (context, constraints) {
+          final availableWidth = constraints.hasBoundedWidth
+              ? constraints.maxWidth
+              : _minimumColumnWidth * widget.columns.length;
+          final tableWidth = math.max(
+            availableWidth,
+            _minimumColumnWidth * widget.columns.length,
+          );
+
           return SizedBox(
             height: widget.height,
-            child: Scrollbar(
-              controller: _verticalScrollController,
-              thumbVisibility: true,
-              child: SingleChildScrollView(
-                controller: _verticalScrollController,
-                child: SingleChildScrollView(
-                  controller: _horizontalScrollController,
-                  scrollDirection: Axis.horizontal,
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minWidth: constraints.maxWidth,
+            child: SingleChildScrollView(
+              controller: _horizontalScrollController,
+              scrollDirection: Axis.horizontal,
+              child: SizedBox(
+                width: tableWidth,
+                height: widget.height,
+                child: Column(
+                  children: [
+                    _TableHeader(
+                      columns: widget.columns,
+                      height: _headerHeight,
                     ),
-                    child: DataTableTheme(
-                      data: const DataTableThemeData(
-                        headingRowColor:
-                            WidgetStatePropertyAll(Color(0xFFEAF2FF)),
-                        headingTextStyle: AppTypography.tableHeader,
-                        dataTextStyle: AppTypography.tableCell,
-                        dividerThickness: 0.8,
-                      ),
-                      child: DataTable(
-                        showCheckboxColumn: false,
-                        columns: [
-                          for (final column in widget.columns)
-                            DataColumn(
-                              numeric: column.numeric,
-                              headingRowAlignment: MainAxisAlignment.center,
-                              label: Center(
-                                child: Text(
-                                  column.label,
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                            ),
-                        ],
-                        rows: [
-                          for (final row in widget.rows)
-                            DataRow(
-                              cells: [
-                                for (final cell in row.cells)
-                                  DataCell(
-                                    Align(
-                                      alignment: Alignment.center,
-                                      child: cell,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                        ],
-                        columnSpacing: AppSpacing.xl,
-                        horizontalMargin: AppSpacing.md,
+                    Expanded(
+                      child: Scrollbar(
+                        controller: _verticalScrollController,
+                        thumbVisibility: true,
+                        child: SingleChildScrollView(
+                          controller: _verticalScrollController,
+                          child: _TableBody(
+                            rows: widget.rows,
+                            rowHeight: _rowHeight,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ),
           );
         },
       ),
+    );
+  }
+}
+
+class _TableHeader extends StatelessWidget {
+  const _TableHeader({required this.columns, required this.height});
+
+  final List<AppTableColumn> columns;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: height,
+      decoration: const BoxDecoration(
+        color: Color(0xFFEAF2FF),
+        border: Border(
+          bottom: BorderSide(color: AppColors.border, width: 0.8),
+        ),
+      ),
+      child: Table(
+        textDirection: TextDirection.rtl,
+        defaultColumnWidth: const FlexColumnWidth(),
+        children: [
+          TableRow(
+            children: [
+              for (final column in columns)
+                SizedBox(
+                  height: height,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                    ),
+                    child: Center(
+                      child: Text(
+                        column.label,
+                        textAlign: TextAlign.center,
+                        style: AppTypography.tableHeader,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TableBody extends StatelessWidget {
+  const _TableBody({required this.rows, required this.rowHeight});
+
+  final List<AppTableRow> rows;
+  final double rowHeight;
+
+  @override
+  Widget build(BuildContext context) {
+    return Table(
+      textDirection: TextDirection.rtl,
+      defaultColumnWidth: const FlexColumnWidth(),
+      defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+      border: const TableBorder(
+        horizontalInside: BorderSide(
+          color: AppColors.border,
+          width: 0.8,
+        ),
+      ),
+      children: [
+        for (final row in rows)
+          TableRow(
+            children: [
+              for (final cell in row.cells)
+                SizedBox(
+                  height: rowHeight,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                    ),
+                    child: Center(
+                      child: DefaultTextStyle(
+                        textAlign: TextAlign.center,
+                        style: AppTypography.tableCell,
+                        child: cell,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+      ],
     );
   }
 }
