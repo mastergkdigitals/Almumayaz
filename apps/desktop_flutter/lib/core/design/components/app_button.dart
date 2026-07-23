@@ -192,9 +192,9 @@ class _AppButtonState extends State<AppButton> {
           onPressed: effectiveOnPressed,
           style: withoutShadow(
             OutlinedButton.styleFrom(
-              foregroundColor: Colors.black,
+              foregroundColor: AppColors.navigation,
               backgroundColor: AppColors.surface,
-              side: const BorderSide(color: Colors.black),
+              side: const BorderSide(color: AppColors.navigation),
             ),
           ),
           child: content,
