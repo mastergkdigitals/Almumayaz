@@ -136,6 +136,14 @@ abstract final class AppToast {
     _show(context, message, AppColors.info, Icons.info_rounded);
   }
 
+  static void showWarning(BuildContext context, String message) {
+    _show(context, message, AppColors.warning, Icons.warning_rounded);
+  }
+
+  static void showDanger(BuildContext context, String message) {
+    _show(context, message, AppColors.danger, Icons.delete_rounded);
+  }
+
   static void showError(BuildContext context, String message) {
     _show(context, message, AppColors.danger, Icons.error_rounded);
   }
