@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../core/design/app_logo.dart';
 import '../../../core/design/app_theme.dart';
 import '../../auth/presentation/login_screen.dart';
 import '../../design_system/presentation/design_system_gallery_screen.dart';
@@ -81,24 +80,11 @@ class DashboardScreen extends StatelessWidget {
   ];
 
   void _openModule(BuildContext context, _ModuleItem item) {
-    if (item.id == 'settings') {
+    if (item.isAbout) {
       Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => const DesignSystemGalleryScreen(),
         ),
-      );
-      return;
-    }
-
-    if (item.isAbout) {
-      showAboutDialog(
-        context: context,
-        applicationName: 'المميز ERP',
-        applicationVersion: '0.1.0',
-        applicationIcon: const AppLogo(size: 56),
-        children: const [
-          Text('نظام إدارة أعمال عربي يعمل على Windows.'),
-        ],
       );
       return;
     }
