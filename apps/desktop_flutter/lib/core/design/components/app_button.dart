@@ -181,9 +181,9 @@ class _AppButtonState extends State<AppButton> {
           onPressed: effectiveOnPressed,
           style: withoutShadow(
             OutlinedButton.styleFrom(
-              foregroundColor: AppColors.primary,
+              foregroundColor: AppColors.navigation,
               backgroundColor: AppColors.surface,
-              side: const BorderSide(color: AppColors.primary),
+              side: const BorderSide(color: AppColors.navigation),
             ),
           ),
           child: content,
@@ -212,7 +212,7 @@ class _AppButtonState extends State<AppButton> {
       AppButtonVariant.ghost => TextButton(
           onPressed: effectiveOnPressed,
           style: withoutShadow(
-            TextButton.styleFrom(foregroundColor: AppColors.primary),
+            TextButton.styleFrom(foregroundColor: AppColors.navigation),
           ),
           child: content,
         ),
