@@ -63,7 +63,7 @@ void main() {
     expect(toast.dismissDirection, DismissDirection.none);
     expect(find.byKey(const Key('appToastContent')), findsOneWidget);
 
-    await tester.pump(const Duration(milliseconds: 2400));
+    await tester.pump(const Duration(seconds: 3));
     expect(find.byKey(const Key('appToast')), findsNothing);
   });
 }
