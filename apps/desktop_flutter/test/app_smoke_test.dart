@@ -108,6 +108,17 @@ void main() {
     expect(find.text('حقول الإدخال'), findsOneWidget);
     expect(find.text('الجدول والترقيم'), findsOneWidget);
 
+    final primaryButton = tester.widget<ElevatedButton>(
+      find.descendant(
+        of: find.byKey(const Key('designPrimaryButton')),
+        matching: find.byType(ElevatedButton),
+      ),
+    );
+    expect(
+      primaryButton.style?.mouseCursor?.resolve(<WidgetState>{}),
+      SystemMouseCursors.click,
+    );
+
     final currencyDropdown =
         find.byKey(const Key('designCurrencyDropdown'));
     await tester.ensureVisible(currencyDropdown);
