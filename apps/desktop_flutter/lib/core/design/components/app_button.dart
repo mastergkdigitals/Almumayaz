@@ -28,13 +28,6 @@ class AppButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final effectiveOnPressed = isLoading ? null : onPressed;
-    final foregroundColor = switch (variant) {
-      AppButtonVariant.primary => Colors.white,
-      AppButtonVariant.secondary => AppColors.primary,
-      AppButtonVariant.danger => Colors.white,
-      AppButtonVariant.ghost => AppColors.primary,
-    };
-
     final content = isLoading
         ? const SizedBox.square(
             dimension: 24,
