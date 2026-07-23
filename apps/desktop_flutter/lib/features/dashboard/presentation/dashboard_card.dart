@@ -73,6 +73,12 @@ class _DashboardCardState extends State<DashboardCard> {
             color: Colors.transparent,
             child: InkWell(
               onTap: widget.onTap,
+              overlayColor:
+                  const WidgetStatePropertyAll<Color>(Colors.transparent),
+              splashFactory: NoSplash.splashFactory,
+              hoverColor: Colors.transparent,
+              highlightColor: Colors.transparent,
+              splashColor: Colors.transparent,
               onHover: interactive
                   ? (value) => setState(() => _hovered = value)
                   : null,
