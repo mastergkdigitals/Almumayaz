@@ -118,7 +118,10 @@ void main() {
     final cancel = find.byKey(const Key('appDialogCancelButton'));
     final confirm = find.byKey(const Key('appDialogConfirmButton'));
     expect(tester.widget<Dialog>(dialog).backgroundColor, AppColors.surface);
-    expect(tester.getCenter(cancel).dx, greaterThan(tester.getCenter(confirm).dx));
+    expect(
+      tester.getCenter(confirm).dx,
+      greaterThan(tester.getCenter(cancel).dx),
+    );
 
     final confirmButton = tester.widget<ElevatedButton>(
       find.descendant(of: confirm, matching: find.byType(ElevatedButton)),
