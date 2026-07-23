@@ -37,6 +37,7 @@ class _DesignSystemGalleryScreenState
       title: 'تأكيد العملية',
       message: 'هذا مثال لشكل نافذة التأكيد الموحدة.',
       confirmLabel: 'موافق',
+      isDanger: true,
     );
 
     if (!mounted || !confirmed) return;
@@ -335,12 +336,9 @@ class _DesignSystemGalleryScreenState
             ),
             const SizedBox(height: AppSpacing.lg),
             _GallerySection(
-              title: 'الجدول والترقيم',
+              title: 'الجدول',
               child: AppDataTable(
-                title: 'مواد تجريبية',
-                currentPage: 1,
-                totalPages: 3,
-                onNextPage: () {},
+                key: const Key('designMaterialsTable'),
                 columns: const [
                   AppTableColumn(label: 'رمز المادة'),
                   AppTableColumn(label: 'اسم المادة'),
@@ -351,7 +349,7 @@ class _DesignSystemGalleryScreenState
                   AppTableRow(
                     cells: [
                       Text('P-001'),
-                      Text('مادة أولى'),
+                      Text('دفتر ملاحظات'),
                       Text('100'),
                       AppStatusBadge(
                         label: 'متوفر',
@@ -362,11 +360,121 @@ class _DesignSystemGalleryScreenState
                   AppTableRow(
                     cells: [
                       Text('P-002'),
-                      Text('مادة ثانية'),
+                      Text('قلم'),
                       Text('0'),
                       AppStatusBadge(
                         label: 'نافد',
                         tone: AppStatusTone.danger,
+                      ),
+                    ],
+                  ),
+                  AppTableRow(
+                    cells: [
+                      Text('P-003'),
+                      Text('طابعة'),
+                      Text('25'),
+                      AppStatusBadge(
+                        label: 'متوفر',
+                        tone: AppStatusTone.success,
+                      ),
+                    ],
+                  ),
+                  AppTableRow(
+                    cells: [
+                      Text('P-004'),
+                      Text('شاشة'),
+                      Text('12'),
+                      AppStatusBadge(
+                        label: 'متوفر',
+                        tone: AppStatusTone.success,
+                      ),
+                    ],
+                  ),
+                  AppTableRow(
+                    cells: [
+                      Text('P-005'),
+                      Text('لوحة مفاتيح'),
+                      Text('8'),
+                      AppStatusBadge(
+                        label: 'مخزون منخفض',
+                        tone: AppStatusTone.warning,
+                      ),
+                    ],
+                  ),
+                  AppTableRow(
+                    cells: [
+                      Text('P-006'),
+                      Text('فأرة'),
+                      Text('50'),
+                      AppStatusBadge(
+                        label: 'متوفر',
+                        tone: AppStatusTone.success,
+                      ),
+                    ],
+                  ),
+                  AppTableRow(
+                    cells: [
+                      Text('P-007'),
+                      Text('حبر طابعة'),
+                      Text('0'),
+                      AppStatusBadge(
+                        label: 'نافد',
+                        tone: AppStatusTone.danger,
+                      ),
+                    ],
+                  ),
+                  AppTableRow(
+                    cells: [
+                      Text('P-008'),
+                      Text('قرص تخزين'),
+                      Text('18'),
+                      AppStatusBadge(
+                        label: 'متوفر',
+                        tone: AppStatusTone.success,
+                      ),
+                    ],
+                  ),
+                  AppTableRow(
+                    cells: [
+                      Text('P-009'),
+                      Text('ذاكرة'),
+                      Text('7'),
+                      AppStatusBadge(
+                        label: 'مخزون منخفض',
+                        tone: AppStatusTone.warning,
+                      ),
+                    ],
+                  ),
+                  AppTableRow(
+                    cells: [
+                      Text('P-010'),
+                      Text('ماسح ضوئي'),
+                      Text('4'),
+                      AppStatusBadge(
+                        label: 'متوفر',
+                        tone: AppStatusTone.success,
+                      ),
+                    ],
+                  ),
+                  AppTableRow(
+                    cells: [
+                      Text('P-011'),
+                      Text('راوتر'),
+                      Text('0'),
+                      AppStatusBadge(
+                        label: 'نافد',
+                        tone: AppStatusTone.danger,
+                      ),
+                    ],
+                  ),
+                  AppTableRow(
+                    cells: [
+                      Text('P-012'),
+                      Text('كابل شبكة'),
+                      Text('120'),
+                      AppStatusBadge(
+                        label: 'متوفر',
+                        tone: AppStatusTone.success,
                       ),
                     ],
                   ),
