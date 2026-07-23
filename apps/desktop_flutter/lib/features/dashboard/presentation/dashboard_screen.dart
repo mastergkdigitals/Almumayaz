@@ -109,7 +109,7 @@ class DashboardScreen extends StatelessWidget {
         },
       },
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: Colors.white,
         body: Column(
           children: [
             _DashboardHeader(
@@ -217,17 +217,31 @@ class _DashboardHeader extends StatelessWidget {
           ),
           Align(
             alignment: Alignment.centerLeft,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.82),
-                borderRadius: BorderRadius.circular(AppRadii.md),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: IconButton(
-                key: const Key('dashboardLogout'),
-                tooltip: 'تسجيل الخروج',
-                onPressed: onLogout,
-                icon: const Icon(Icons.logout_rounded),
+            child: Semantics(
+              button: true,
+              label: 'تسجيل الخروج',
+              child: Material(
+                color: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  side: const BorderSide(color: Color(0xFFD1D5DB)),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  key: const Key('dashboardLogout'),
+                  onTap: onLogout,
+                  hoverColor: Colors.transparent,
+                  highlightColor: Colors.transparent,
+                  splashColor: Colors.transparent,
+                  child: const SizedBox.square(
+                    dimension: 52,
+                    child: Icon(
+                      Icons.logout_rounded,
+                      size: 24,
+                      color: Color(0xFF111827),
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
