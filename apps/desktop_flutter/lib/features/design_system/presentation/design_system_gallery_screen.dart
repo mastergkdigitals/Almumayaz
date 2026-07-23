@@ -359,6 +359,7 @@ class _DesignSystemGalleryScreenState
                   AppTableColumn(label: 'اسم المادة'),
                   AppTableColumn(label: 'الكمية', numeric: true),
                   AppTableColumn(label: 'الحالة'),
+                  AppTableColumn(label: 'الإجراء'),
                 ],
                 rows: const [
                   AppTableRow(
@@ -370,6 +371,7 @@ class _DesignSystemGalleryScreenState
                         label: 'متوفر',
                         tone: AppStatusTone.success,
                       ),
+                      _StatementActionButton(),
                     ],
                   ),
                   AppTableRow(
@@ -381,6 +383,7 @@ class _DesignSystemGalleryScreenState
                         label: 'نافد',
                         tone: AppStatusTone.danger,
                       ),
+                      _StatementActionButton(),
                     ],
                   ),
                   AppTableRow(
@@ -392,6 +395,7 @@ class _DesignSystemGalleryScreenState
                         label: 'متوفر',
                         tone: AppStatusTone.success,
                       ),
+                      _StatementActionButton(),
                     ],
                   ),
                   AppTableRow(
@@ -403,6 +407,7 @@ class _DesignSystemGalleryScreenState
                         label: 'متوفر',
                         tone: AppStatusTone.success,
                       ),
+                      _StatementActionButton(),
                     ],
                   ),
                   AppTableRow(
@@ -414,6 +419,7 @@ class _DesignSystemGalleryScreenState
                         label: 'مخزون منخفض',
                         tone: AppStatusTone.warning,
                       ),
+                      _StatementActionButton(),
                     ],
                   ),
                   AppTableRow(
@@ -425,6 +431,7 @@ class _DesignSystemGalleryScreenState
                         label: 'متوفر',
                         tone: AppStatusTone.success,
                       ),
+                      _StatementActionButton(),
                     ],
                   ),
                   AppTableRow(
@@ -436,6 +443,7 @@ class _DesignSystemGalleryScreenState
                         label: 'نافد',
                         tone: AppStatusTone.danger,
                       ),
+                      _StatementActionButton(),
                     ],
                   ),
                   AppTableRow(
@@ -447,6 +455,7 @@ class _DesignSystemGalleryScreenState
                         label: 'متوفر',
                         tone: AppStatusTone.success,
                       ),
+                      _StatementActionButton(),
                     ],
                   ),
                   AppTableRow(
@@ -458,6 +467,7 @@ class _DesignSystemGalleryScreenState
                         label: 'مخزون منخفض',
                         tone: AppStatusTone.warning,
                       ),
+                      _StatementActionButton(),
                     ],
                   ),
                   AppTableRow(
@@ -469,6 +479,7 @@ class _DesignSystemGalleryScreenState
                         label: 'متوفر',
                         tone: AppStatusTone.success,
                       ),
+                      _StatementActionButton(),
                     ],
                   ),
                   AppTableRow(
@@ -480,6 +491,7 @@ class _DesignSystemGalleryScreenState
                         label: 'نافد',
                         tone: AppStatusTone.danger,
                       ),
+                      _StatementActionButton(),
                     ],
                   ),
                   AppTableRow(
@@ -491,6 +503,7 @@ class _DesignSystemGalleryScreenState
                         label: 'متوفر',
                         tone: AppStatusTone.success,
                       ),
+                      _StatementActionButton(),
                     ],
                   ),
                 ],
@@ -500,6 +513,22 @@ class _DesignSystemGalleryScreenState
           ],
         ),
       ),
+    );
+  }
+}
+
+class _StatementActionButton extends StatelessWidget {
+  const _StatementActionButton();
+
+  static void _handlePressed() {}
+
+  @override
+  Widget build(BuildContext context) {
+    return AppHeaderIconButton(
+      icon: Icons.receipt_long_rounded,
+      tooltip: 'كشف',
+      size: AppControlHeights.compact,
+      onPressed: _handlePressed,
     );
   }
 }
