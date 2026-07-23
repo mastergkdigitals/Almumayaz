@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../app_tokens.dart';
 import 'app_loading_indicator.dart';
 
-enum AppButtonVariant { primary, secondary, danger, ghost }
+enum AppButtonVariant { primary, success, warning, secondary, danger, ghost }
 
 enum AppButtonIconPosition { beforeLabel, afterLabel }
 
@@ -133,6 +133,26 @@ class _AppButtonState extends State<AppButton> {
           style: withoutShadow(
             ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+            ),
+          ),
+          child: content,
+        ),
+      AppButtonVariant.success => ElevatedButton(
+          onPressed: effectiveOnPressed,
+          style: withoutShadow(
+            ElevatedButton.styleFrom(
+              backgroundColor: AppColors.success,
+              foregroundColor: Colors.white,
+            ),
+          ),
+          child: content,
+        ),
+      AppButtonVariant.warning => ElevatedButton(
+          onPressed: effectiveOnPressed,
+          style: withoutShadow(
+            ElevatedButton.styleFrom(
+              backgroundColor: AppColors.warning,
               foregroundColor: Colors.white,
             ),
           ),
