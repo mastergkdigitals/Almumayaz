@@ -75,6 +75,26 @@ void main() {
     );
   });
 
+  testWidgets('matches the shared screen back button to its reference',
+      (tester) async {
+    await pumpDesignSystemGallery(tester);
+
+    final screenBack = find.byKey(const Key('appScreenBackButton'));
+    final referenceBack = find.byKey(const Key('designHeaderBackButton'));
+    await reveal(tester, referenceBack);
+
+    final screenIcon = tester.widget<Icon>(
+      find.descendant(of: screenBack, matching: find.byType(Icon)),
+    );
+    final referenceIcon = tester.widget<Icon>(
+      find.descendant(of: referenceBack, matching: find.byType(Icon)),
+    );
+
+    expect(screenIcon.icon, Icons.arrow_back_rounded);
+    expect(referenceIcon.icon, screenIcon.icon);
+    expect(tester.getSize(screenBack), tester.getSize(referenceBack));
+  });
+
   testWidgets('uses consistent action bar colors and danger dialog',
       (tester) async {
     await pumpDesignSystemGallery(tester);
