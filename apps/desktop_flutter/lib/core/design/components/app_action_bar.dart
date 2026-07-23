@@ -30,7 +30,7 @@ class AppActionBar extends StatelessWidget {
     this.searchHint,
     this.onSearchChanged,
     this.onSearchSubmitted,
-    this.actionButtonWidth = 96,
+    this.actionButtonWidth = 104,
   });
 
   final TextEditingController searchController;
