@@ -82,12 +82,12 @@ class _AppDateFieldState extends State<AppDateField> {
       accentColor: widget.accentColor,
       enabled: widget.enabled,
       readOnly: true,
-      onTap: _pickDate,
+      onTap: () => _pickDate(),
       suffixIcon: AppFieldIconButton(
         icon: Icons.edit_calendar_rounded,
         tooltip: 'اختيار التاريخ',
         color: widget.accentColor ?? AppColors.primary,
-        onPressed: widget.enabled ? _pickDate : null,
+        onPressed: widget.enabled ? () => _pickDate() : null,
       ),
     );
   }
@@ -163,12 +163,12 @@ class _AppTimeFieldState extends State<AppTimeField> {
       accentColor: widget.accentColor,
       enabled: widget.enabled,
       readOnly: true,
-      onTap: _pickTime,
+      onTap: () => _pickTime(),
       suffixIcon: AppFieldIconButton(
         icon: Icons.access_time_filled_rounded,
         tooltip: 'اختيار الوقت',
         color: widget.accentColor ?? AppColors.primary,
-        onPressed: widget.enabled ? _pickTime : null,
+        onPressed: widget.enabled ? () => _pickTime() : null,
       ),
     );
   }
