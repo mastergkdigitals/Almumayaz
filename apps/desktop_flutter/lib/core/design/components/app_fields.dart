@@ -223,7 +223,9 @@ class AppSwitchField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      minHeight: AppControlHeights.large,
+      constraints: const BoxConstraints(
+        minHeight: AppControlHeights.large,
+      ),
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
         vertical: AppSpacing.sm,
