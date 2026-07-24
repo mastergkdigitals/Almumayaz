@@ -12,14 +12,18 @@ void main() {
     await reveal(tester, table);
 
     expect(find.text('مواد تجريبية'), findsNothing);
-    expect(find.text('رمز المادة'), findsOneWidget);
+    final materialCodeHeader = find.descendant(
+      of: table,
+      matching: find.text('رمز المادة'),
+    );
+    expect(materialCodeHeader, findsOneWidget);
     expect(
       find.descendant(of: table, matching: find.text('P-001')),
       findsOneWidget,
     );
     expect(find.byTooltip('كشف'), findsWidgets);
 
-    final headerY = tester.getTopLeft(find.text('رمز المادة')).dy;
+    final headerY = tester.getTopLeft(materialCodeHeader).dy;
     final rows = find.descendant(of: table, matching: find.byType(ListView));
     expect(rows, findsOneWidget);
 
@@ -27,7 +31,10 @@ void main() {
     await tester.pump();
 
     expect(find.text('P-012'), findsOneWidget);
-    expect(tester.getTopLeft(find.text('رمز المادة')).dy, closeTo(headerY, 0.1));
+    expect(
+      tester.getTopLeft(materialCodeHeader).dy,
+      closeTo(headerY, 0.1),
+    );
   });
 
   testWidgets('blocks interaction while the loading overlay is visible',
