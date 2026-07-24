@@ -239,6 +239,11 @@ class _QuickCreateDialogState extends State<_QuickCreateDialog> {
             key: Key(_spec.keyName + 'Prompt'),
             message: _spec.prompt,
             icon: Icons.help_outline_rounded,
+            foregroundColor: _spec.accentColor,
+            backgroundColor: Color.alphaBlend(
+              _spec.accentColor.withAlpha(16),
+              AppColors.surface,
+            ),
           ),
           const SizedBox(height: AppSpacing.lg),
           _buildFields(),
