@@ -36,8 +36,16 @@ void main() {
 
     expect(readOnly.readOnly, isTrue);
     expect(disabled.enabled, isFalse);
-    expect(find.text('هذا الحقل مطلوب'), findsOneWidget);
-    expect(notes.maxLines, 5);
+    final errorText = find.text('هذا الحقل مطلوب');
+    expect(errorText, findsOneWidget);
+    expect(
+      Theme.of(tester.element(errorText))
+          .inputDecorationTheme
+          .errorStyle
+          ?.fontWeight,
+      FontWeight.w600,
+    );
+    expect(notes.maxLines, 1);
   });
 
   testWidgets('clears search text without leaving the field', (tester) async {
