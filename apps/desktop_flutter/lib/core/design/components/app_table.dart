@@ -43,6 +43,7 @@ class AppDataTable extends StatefulWidget {
     this.minimumColumnWidth = 180,
     this.isLoading = false,
     this.emptyState,
+    this.verticalScrollController,
   });
 
   final List<AppTableColumn> columns;
@@ -53,18 +54,22 @@ class AppDataTable extends StatefulWidget {
   final double minimumColumnWidth;
   final bool isLoading;
   final Widget? emptyState;
+  final ScrollController? verticalScrollController;
 
   @override
   State<AppDataTable> createState() => _AppDataTableState();
 }
 
 class _AppDataTableState extends State<AppDataTable> {
-  final _verticalScrollController = ScrollController();
+  final _internalVerticalScrollController = ScrollController();
   final _horizontalScrollController = ScrollController();
+
+  ScrollController get _verticalScrollController =>
+      widget.verticalScrollController ?? _internalVerticalScrollController;
 
   @override
   void dispose() {
-    _verticalScrollController.dispose();
+    _internalVerticalScrollController.dispose();
     _horizontalScrollController.dispose();
     super.dispose();
   }
