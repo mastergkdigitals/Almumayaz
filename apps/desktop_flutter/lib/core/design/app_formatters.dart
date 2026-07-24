@@ -34,6 +34,14 @@ abstract final class AppFormatters {
     return '$sign$whole.${parts.last}';
   }
 
+  static int? parseInteger(String value) {
+    return int.tryParse(value.replaceAll(',', '').trim());
+  }
+
+  static num? parseNumber(String value) {
+    return num.tryParse(value.replaceAll(',', '').trim());
+  }
+
   static String currency(String code) => switch (code.toUpperCase()) {
         'IQD' => 'دينار',
         'USD' => 'دولار',
