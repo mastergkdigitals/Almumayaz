@@ -214,7 +214,7 @@ void main() {
       (tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        theme: AppTheme.light,
+        theme: AppTheme.light(),
         home: Scaffold(
           body: Center(
             child: AppButton(
