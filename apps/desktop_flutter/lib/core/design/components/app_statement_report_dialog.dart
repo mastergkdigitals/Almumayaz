@@ -84,8 +84,8 @@ class _StatementReportBody extends StatelessWidget {
           width: 144,
           onPressed: () => Navigator.of(context).pop(),
         ),
-        const AppButton(
-          key: Key('appStatementPdf'),
+        AppButton(
+          key: const Key('appStatementPdf'),
           label: 'PDF',
           icon: Icons.picture_as_pdf_rounded,
           variant: AppButtonVariant.danger,
@@ -100,8 +100,8 @@ class _StatementReportBody extends StatelessWidget {
           backgroundColor: accentColor,
           onPressed: _noop,
         ),
-        const AppButton(
-          key: Key('appStatementExcel'),
+        AppButton(
+          key: const Key('appStatementExcel'),
           label: 'إكسل',
           icon: Icons.table_chart_rounded,
           variant: AppButtonVariant.success,
