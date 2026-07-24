@@ -64,9 +64,12 @@ void main() {
 
     expect(_editableText(tester, username).focusNode.hasFocus, isTrue);
 
-    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyRepeatEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyRepeatEvent(LogicalKeyboardKey.tab);
     await tester.pump();
     expect(_editableText(tester, password).focusNode.hasFocus, isTrue);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.tab);
 
     await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
     await tester.sendKeyEvent(LogicalKeyboardKey.tab);
