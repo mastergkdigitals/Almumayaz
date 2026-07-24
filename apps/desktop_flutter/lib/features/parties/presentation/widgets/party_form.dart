@@ -120,7 +120,7 @@ class PartyForm extends StatefulWidget {
 }
 
 class _PartyFormState extends State<PartyForm> {
-  static const _enterKeys = {
+  static final _enterKeys = {
     LogicalKeyboardKey.enter,
     LogicalKeyboardKey.numpadEnter,
   };
@@ -183,7 +183,7 @@ class _PartyFormState extends State<PartyForm> {
 
   void _moveWithTab({required bool backwards}) {
     _keyHoldGuard.runOnce(
-      keys: const {LogicalKeyboardKey.tab},
+      keys: {LogicalKeyboardKey.tab},
       action: () {
         final nodes = _orderedFocusNodes;
         final currentIndex =
