@@ -5,6 +5,7 @@ import 'widgets/design_gallery_actions.dart';
 import 'widgets/design_gallery_colors.dart';
 import 'widgets/design_gallery_feedback.dart';
 import 'widgets/design_gallery_fields.dart';
+import 'widgets/design_gallery_keyboard.dart';
 
 class DesignSystemGalleryScreen extends StatelessWidget {
   const DesignSystemGalleryScreen({super.key});
@@ -26,6 +27,8 @@ class DesignSystemGalleryScreen extends StatelessWidget {
             DesignGalleryActionsGroup(),
             SizedBox(height: AppSpacing.lg),
             DesignGalleryFieldsGroup(),
+            SizedBox(height: AppSpacing.lg),
+            DesignGalleryKeyboardSection(),
             SizedBox(height: AppSpacing.lg),
             DesignGalleryFeedbackGroup(),
             SizedBox(height: AppSpacing.xl),
