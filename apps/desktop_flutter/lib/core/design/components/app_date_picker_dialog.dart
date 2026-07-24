@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../app_tokens.dart';
 import 'app_button.dart';
+import 'app_header_button.dart';
 import 'app_shortcuts.dart';
 
 abstract final class AppDatePickerDialog {
@@ -12,38 +13,134 @@ abstract final class AppDatePickerDialog {
     DateTime? firstDate,
     DateTime? lastDate,
     Color accentColor = AppColors.primary,
-  }) {
+  }) async {
     final minimum = _dateOnly(firstDate ?? DateTime(2000));
     final maximum = _dateOnly(lastDate ?? DateTime(2100));
-    var initial = _dateOnly(selectedDate ?? initialDate);
-    if (initial.isBefore(minimum)) initial = minimum;
-    if (initial.isAfter(maximum)) initial = maximum;
-
-    return showDialog<DateTime>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: _AppDatePickerBody(
-          initialDate: initial,
-          firstDate: minimum,
-          lastDate: maximum,
-          accentColor: accentColor,
-        ),
-      ),
+    final initial = _clampDate(
+      _dateOnly(selectedDate ?? initialDate),
+      minimum,
+      maximum,
     );
+
+    final result = await _showPicker(
+      context,
+      mode: _CalendarSelectionMode.single,
+      initialDate: initial,
+      selectionStart: initial,
+      firstDate: minimum,
+      lastDate: maximum,
+      accentColor: accentColor,
+    );
+    return result?.start;
   }
+}
+
+abstract final class AppDateRangePickerDialog {
+  static Future<DateTimeRange?> show(
+    BuildContext context, {
+    required DateTime initialDate,
+    DateTimeRange? selectedRange,
+    DateTime? firstDate,
+    DateTime? lastDate,
+    Color accentColor = AppColors.primary,
+  }) async {
+    final minimum = _dateOnly(firstDate ?? DateTime(2000));
+    final maximum = _dateOnly(lastDate ?? DateTime(2100));
+    final initial = _clampDate(
+      _dateOnly(selectedRange?.start ?? initialDate),
+      minimum,
+      maximum,
+    );
+
+    DateTime? rangeStart;
+    DateTime? rangeEnd;
+    if (selectedRange != null) {
+      rangeStart = _clampDate(
+        _dateOnly(selectedRange.start),
+        minimum,
+        maximum,
+      );
+      rangeEnd = _clampDate(
+        _dateOnly(selectedRange.end),
+        minimum,
+        maximum,
+      );
+      if (rangeEnd.isBefore(rangeStart)) {
+        final oldStart = rangeStart;
+        rangeStart = rangeEnd;
+        rangeEnd = oldStart;
+      }
+    }
+
+    final result = await _showPicker(
+      context,
+      mode: _CalendarSelectionMode.range,
+      initialDate: initial,
+      selectionStart: rangeStart,
+      selectionEnd: rangeEnd,
+      firstDate: minimum,
+      lastDate: maximum,
+      accentColor: accentColor,
+    );
+    if (result?.end == null) return null;
+
+    return DateTimeRange(start: result!.start, end: result.end!);
+  }
+}
+
+Future<_AppDateSelection?> _showPicker(
+  BuildContext context, {
+  required _CalendarSelectionMode mode,
+  required DateTime initialDate,
+  required DateTime firstDate,
+  required DateTime lastDate,
+  required Color accentColor,
+  DateTime? selectionStart,
+  DateTime? selectionEnd,
+}) {
+  return showDialog<_AppDateSelection>(
+    context: context,
+    barrierDismissible: false,
+    builder: (dialogContext) => Directionality(
+      textDirection: TextDirection.rtl,
+      child: _AppDatePickerBody(
+        mode: mode,
+        initialDate: initialDate,
+        selectionStart: selectionStart,
+        selectionEnd: selectionEnd,
+        firstDate: firstDate,
+        lastDate: lastDate,
+        accentColor: accentColor,
+      ),
+    ),
+  );
+}
+
+enum _CalendarSelectionMode { single, range }
+
+@immutable
+class _AppDateSelection {
+  const _AppDateSelection({required this.start, this.end});
+
+  final DateTime start;
+  final DateTime? end;
 }
 
 class _AppDatePickerBody extends StatefulWidget {
   const _AppDatePickerBody({
+    required this.mode,
     required this.initialDate,
+    required this.selectionStart,
+    required this.selectionEnd,
     required this.firstDate,
     required this.lastDate,
     required this.accentColor,
   });
 
+  final _CalendarSelectionMode mode;
   final DateTime initialDate;
+  final DateTime? selectionStart;
+  final DateTime? selectionEnd;
   final DateTime firstDate;
   final DateTime lastDate;
   final Color accentColor;
@@ -79,13 +176,23 @@ class _AppDatePickerBodyState extends State<_AppDatePickerBody> {
   ];
 
   late DateTime _visibleMonth;
-  late DateTime _selectedDate;
+  DateTime? _selectionStart;
+  DateTime? _selectionEnd;
+
+  bool get _isRange => widget.mode == _CalendarSelectionMode.range;
+
+  bool get _canConfirm =>
+      _selectionStart != null && (!_isRange || _selectionEnd != null);
 
   @override
   void initState() {
     super.initState();
-    _selectedDate = widget.initialDate;
-    _visibleMonth = DateTime(_selectedDate.year, _selectedDate.month);
+    _selectionStart = widget.selectionStart;
+    _selectionEnd = widget.selectionEnd;
+    _visibleMonth = DateTime(
+      widget.initialDate.year,
+      widget.initialDate.month,
+    );
   }
 
   bool get _canGoPrevious {
@@ -108,6 +215,39 @@ class _AppDatePickerBodyState extends State<_AppDatePickerBody> {
     });
   }
 
+  void _selectDate(DateTime date) {
+    setState(() {
+      if (!_isRange) {
+        _selectionStart = date;
+        _selectionEnd = null;
+        return;
+      }
+
+      if (_selectionStart == null || _selectionEnd != null) {
+        _selectionStart = date;
+        _selectionEnd = null;
+        return;
+      }
+
+      if (date.isBefore(_selectionStart!)) {
+        _selectionEnd = _selectionStart;
+        _selectionStart = date;
+      } else {
+        _selectionEnd = date;
+      }
+    });
+  }
+
+  void _confirm() {
+    if (!_canConfirm) return;
+    Navigator.of(context).pop(
+      _AppDateSelection(
+        start: _selectionStart!,
+        end: _selectionEnd,
+      ),
+    );
+  }
+
   bool _isEnabled(DateTime date) {
     return !date.isBefore(widget.firstDate) && !date.isAfter(widget.lastDate);
   }
@@ -117,7 +257,9 @@ class _AppDatePickerBodyState extends State<_AppDatePickerBody> {
     return AppShortcutScope(
       onEscape: () => Navigator.of(context).pop(),
       child: Dialog(
-        key: const Key('appDatePickerDialog'),
+        key: Key(
+          _isRange ? 'appDateRangePickerDialog' : 'appDatePickerDialog',
+        ),
         backgroundColor: Colors.transparent,
         insetPadding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.xl,
@@ -138,11 +280,22 @@ class _AppDatePickerBodyState extends State<_AppDatePickerBody> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text(
-                    'اختر التاريخ',
+                  Text(
+                    _isRange ? 'اختر نطاق التاريخ' : 'اختر التاريخ',
                     textAlign: TextAlign.center,
                     style: AppTypography.screenTitle,
                   ),
+                  if (_isRange) ...[
+                    const SizedBox(height: AppSpacing.xs),
+                    const Text(
+                      'اختر تاريخ البداية ثم تاريخ النهاية',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: AppSpacing.lg),
                   _MonthHeader(
                     title:
@@ -158,15 +311,16 @@ class _AppDatePickerBodyState extends State<_AppDatePickerBody> {
                   const SizedBox(height: AppSpacing.sm),
                   _CalendarGrid(
                     visibleMonth: _visibleMonth,
-                    selectedDate: _selectedDate,
+                    selectionStart: _selectionStart,
+                    selectionEnd: _selectionEnd,
                     accentColor: widget.accentColor,
                     isEnabled: _isEnabled,
-                    onSelected: (date) =>
-                        setState(() => _selectedDate = date),
+                    onSelected: _selectDate,
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
+                    key: const Key('appDatePickerActions'),
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       AppButton(
                         key: const Key('appDatePickerCancel'),
@@ -181,8 +335,7 @@ class _AppDatePickerBodyState extends State<_AppDatePickerBody> {
                         label: 'موافق',
                         icon: Icons.check_rounded,
                         width: 144,
-                        onPressed: () =>
-                            Navigator.of(context).pop(_selectedDate),
+                        onPressed: _canConfirm ? _confirm : null,
                       ),
                     ],
                   ),
@@ -211,13 +364,12 @@ class _MonthHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        AppButton(
-          label: '',
+        AppTooltipIconButton(
+          tooltipKey: const Key('appDatePickerPreviousTooltip'),
+          tooltip: 'السابق',
           icon: Icons.chevron_left_rounded,
-          width: AppControlHeights.compact,
-          height: AppControlHeights.compact,
-          padding: EdgeInsets.zero,
-          variant: AppButtonVariant.navigation,
+          size: AppControlHeights.compact,
+          iconSize: AppIconSizes.md,
           onPressed: onPrevious,
         ),
         Expanded(
@@ -229,13 +381,12 @@ class _MonthHeader extends StatelessWidget {
             ),
           ),
         ),
-        AppButton(
-          label: '',
+        AppTooltipIconButton(
+          tooltipKey: const Key('appDatePickerNextTooltip'),
+          tooltip: 'التالي',
           icon: Icons.chevron_right_rounded,
-          width: AppControlHeights.compact,
-          height: AppControlHeights.compact,
-          padding: EdgeInsets.zero,
-          variant: AppButtonVariant.navigation,
+          size: AppControlHeights.compact,
+          iconSize: AppIconSizes.md,
           onPressed: onNext,
         ),
       ],
@@ -271,14 +422,16 @@ class _WeekdayHeader extends StatelessWidget {
 class _CalendarGrid extends StatelessWidget {
   const _CalendarGrid({
     required this.visibleMonth,
-    required this.selectedDate,
+    required this.selectionStart,
+    required this.selectionEnd,
     required this.accentColor,
     required this.isEnabled,
     required this.onSelected,
   });
 
   final DateTime visibleMonth;
-  final DateTime selectedDate;
+  final DateTime? selectionStart;
+  final DateTime? selectionEnd;
   final Color accentColor;
   final bool Function(DateTime) isEnabled;
   final ValueChanged<DateTime> onSelected;
@@ -315,7 +468,16 @@ class _CalendarGrid extends StatelessWidget {
                           : _DayButton(
                               date: date,
                               selected:
-                                  DateUtils.isSameDay(date, selectedDate),
+                                  DateUtils.isSameDay(date, selectionStart) ||
+                                      DateUtils.isSameDay(
+                                        date,
+                                        selectionEnd,
+                                      ),
+                              inRange: _isInRange(
+                                date,
+                                selectionStart,
+                                selectionEnd,
+                              ),
                               today:
                                   DateUtils.isSameDay(date, DateTime.now()),
                               enabled: isEnabled(date),
@@ -330,12 +492,22 @@ class _CalendarGrid extends StatelessWidget {
       ],
     );
   }
+
+  static bool _isInRange(
+    DateTime date,
+    DateTime? start,
+    DateTime? end,
+  ) {
+    if (start == null || end == null) return false;
+    return date.isAfter(start) && date.isBefore(end);
+  }
 }
 
 class _DayButton extends StatelessWidget {
   const _DayButton({
     required this.date,
     required this.selected,
+    required this.inRange,
     required this.today,
     required this.enabled,
     required this.accentColor,
@@ -344,6 +516,7 @@ class _DayButton extends StatelessWidget {
 
   final DateTime date;
   final bool selected;
+  final bool inRange;
   final bool today;
   final bool enabled;
   final Color accentColor;
@@ -351,7 +524,14 @@ class _DayButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final background = selected ? accentColor : Colors.transparent;
+    final background = selected
+        ? accentColor
+        : inRange
+            ? Color.alphaBlend(
+                accentColor.withAlpha(30),
+                AppColors.surface,
+              )
+            : Colors.transparent;
     final foreground = !enabled
         ? AppColors.disabled
         : selected
@@ -405,4 +585,14 @@ class _DayButton extends StatelessWidget {
 
 DateTime _dateOnly(DateTime value) {
   return DateTime(value.year, value.month, value.day);
+}
+
+DateTime _clampDate(
+  DateTime value,
+  DateTime minimum,
+  DateTime maximum,
+) {
+  if (value.isBefore(minimum)) return minimum;
+  if (value.isAfter(maximum)) return maximum;
+  return value;
 }
