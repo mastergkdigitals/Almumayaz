@@ -95,7 +95,7 @@ void main() {
     expect(tester.getSize(screenBack), tester.getSize(referenceBack));
   });
 
-  testWidgets('uses consistent action bar colors and danger dialog',
+  testWidgets('uses real action states and consistent colors',
       (tester) async {
     await pumpDesignSystemGallery(tester);
 
@@ -118,6 +118,27 @@ void main() {
         const Size(108, AppControlHeights.standard),
       );
     }
+
+    AppButton appButton(String key) =>
+        tester.widget<AppButton>(find.byKey(Key(key)));
+
+    expect(appButton('designActionBarSave').onPressed, isNotNull);
+    expect(appButton('designActionBarUpdate').onPressed, isNull);
+    expect(appButton('designActionBarUndo').onPressed, isNull);
+    expect(appButton('designActionBarDelete').onPressed, isNull);
+
+    final stateDropdown =
+        find.byKey(const Key('designActionBarStateDropdown'));
+    await tester.tap(stateDropdown);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.tap(find.text('محفوظ مع تعديلات'));
+    await tester.pump();
+
+    expect(appButton('designActionBarSave').onPressed, isNull);
+    expect(appButton('designActionBarUpdate').onPressed, isNotNull);
+    expect(appButton('designActionBarUndo').onPressed, isNotNull);
+    expect(appButton('designActionBarDelete').onPressed, isNotNull);
 
     final updateButton = tester.widget<ElevatedButton>(
       find.descendant(
@@ -162,6 +183,25 @@ void main() {
     );
 
     await tester.tap(cancel);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+  });
+
+  testWidgets('documents the unsaved changes confirmation',
+      (tester) async {
+    await pumpDesignSystemGallery(tester);
+
+    final button = find.byKey(const Key('designUnsavedDialogButton'));
+    await reveal(tester, button);
+    await tester.tap(button);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('تغييرات غير محفوظة'), findsWidgets);
+    expect(find.text('تجاهل'), findsOneWidget);
+    expect(find.text('البقاء'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('appDialogCancelButton')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
   });
