@@ -40,7 +40,14 @@ void main() {
     expect(find.byKey(const Key('appDatePickerDialog')), findsOneWidget);
     expect(find.text('اختر التاريخ'), findsOneWidget);
     expect(find.text('كانون الأول 2026'), findsOneWidget);
-    expect(find.byKey(const Key('appDatePickerConfirm')), findsOneWidget);
+    final cancelButton = tester.widget<AppButton>(
+      find.byKey(const Key('appDatePickerCancel')),
+    );
+    final confirmButton = tester.widget<AppButton>(
+      find.byKey(const Key('appDatePickerConfirm')),
+    );
+    expect(cancelButton.width, 144);
+    expect(confirmButton.width, 144);
 
     await tester.tap(find.byKey(const Key('appDatePickerCancel')));
     await tester.pump();
