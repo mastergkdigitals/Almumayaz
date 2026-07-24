@@ -93,6 +93,48 @@ void main() {
 
     expect(secondFocus.hasFocus, isTrue);
   });
+
+  testWidgets('does not use arrow keys to move between app controls',
+      (tester) async {
+    final firstFocus = FocusNode();
+    final secondFocus = FocusNode();
+    addTearDown(firstFocus.dispose);
+    addTearDown(secondFocus.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AppKeyboardScope(
+          child: Scaffold(
+            body: Row(
+              children: [
+                TextButton(
+                  focusNode: firstFocus,
+                  onPressed: () {},
+                  child: const Text('الأول'),
+                ),
+                TextButton(
+                  focusNode: secondFocus,
+                  onPressed: () {},
+                  child: const Text('الثاني'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    firstFocus.requestFocus();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+
+    expect(firstFocus.hasFocus, isTrue);
+    expect(secondFocus.hasFocus, isFalse);
+  });
 }
 
 Future<void> _sendControlShortcut(
