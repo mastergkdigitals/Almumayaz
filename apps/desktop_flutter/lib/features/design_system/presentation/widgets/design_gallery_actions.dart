@@ -3,6 +3,34 @@ import 'package:flutter/material.dart';
 import '../../../../core/design/app_design_system.dart';
 import 'design_gallery_section.dart';
 
+enum _ActionBarPreviewState {
+  newRecord,
+  newDirty,
+  savedRecord,
+  savedDirty,
+}
+
+extension on _ActionBarPreviewState {
+  String get label => switch (this) {
+        _ActionBarPreviewState.newRecord => 'نموذج جديد',
+        _ActionBarPreviewState.newDirty => 'جديد مع بيانات',
+        _ActionBarPreviewState.savedRecord => 'سجل محفوظ',
+        _ActionBarPreviewState.savedDirty => 'محفوظ مع تعديلات',
+      };
+
+  bool get isSaved => switch (this) {
+        _ActionBarPreviewState.savedRecord ||
+        _ActionBarPreviewState.savedDirty => true,
+        _ => false,
+      };
+
+  bool get isDirty => switch (this) {
+        _ActionBarPreviewState.newDirty ||
+        _ActionBarPreviewState.savedDirty => true,
+        _ => false,
+      };
+}
+
 class DesignGalleryActionsGroup extends StatefulWidget {
   const DesignGalleryActionsGroup({super.key});
 
@@ -15,6 +43,8 @@ class _DesignGalleryActionsGroupState
     extends State<DesignGalleryActionsGroup> {
   final _searchController = TextEditingController();
   bool _isDarkThemePreview = false;
+  _ActionBarPreviewState _actionBarState =
+      _ActionBarPreviewState.newRecord;
 
   @override
   void dispose() {
@@ -22,12 +52,12 @@ class _DesignGalleryActionsGroupState
     super.dispose();
   }
 
-  Future<void> _showConfirmation() async {
+  Future<void> _showDeleteConfirmation() async {
     final confirmed = await AppDialogs.confirm(
       context: context,
-      title: 'تأكيد العملية',
-      message: 'هذا مثال لشكل نافذة التأكيد الموحدة.',
-      confirmLabel: 'موافق',
+      title: 'تأكيد الحذف',
+      message: 'هل تريد حذف السجل المحدد؟',
+      confirmLabel: 'حذف',
       isDanger: true,
     );
 
@@ -35,8 +65,25 @@ class _DesignGalleryActionsGroupState
     AppToast.showDanger(context, 'تم الحذف بنجاح');
   }
 
+  Future<void> _showUnsavedChangesConfirmation() async {
+    await AppDialogs.confirm(
+      context: context,
+      title: 'تغييرات غير محفوظة',
+      message: 'لديك بيانات أو تعديلات غير محفوظة. هل تريد تجاهلها؟',
+      confirmLabel: 'تجاهل',
+      cancelLabel: 'البقاء',
+      isDanger: true,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final canSave = !_actionBarState.isSaved;
+    final canUpdate =
+        _actionBarState.isSaved && _actionBarState.isDirty;
+    final canUndo = _actionBarState.isDirty;
+    final canDelete = _actionBarState.isSaved;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -127,29 +174,92 @@ class _DesignGalleryActionsGroupState
         const SizedBox(height: AppSpacing.lg),
         DesignGallerySection(
           title: 'شريط الإجراءات',
-          child: AppActionBar(
-            key: const Key('designActionBar'),
-            searchController: _searchController,
-            searchFieldKey: const Key('designActionBarSearch'),
-            searchClearButtonKey: const Key('designActionBarSearchClear'),
-            firstButtonKey: const Key('designActionBarFirst'),
-            previousButtonKey: const Key('designActionBarPrevious'),
-            nextButtonKey: const Key('designActionBarNext'),
-            lastButtonKey: const Key('designActionBarLast'),
-            saveButtonKey: const Key('designActionBarSave'),
-            updateButtonKey: const Key('designActionBarUpdate'),
-            undoButtonKey: const Key('designActionBarUndo'),
-            deleteButtonKey: const Key('designActionBarDelete'),
-            searchHint: 'ابحث في السجلات',
-            onFirst: () {},
-            onPrevious: () {},
-            onNext: () {},
-            onLast: () {},
-            onSave: () => AppToast.showInfo(context, 'تم الحفظ بنجاح'),
-            onUpdate: () => AppToast.showSuccess(context, 'تم تحديث السجل'),
-            onUndo: () =>
-                AppToast.showWarning(context, 'تم التراجع عن التغييرات'),
-            onDelete: _showConfirmation,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: SizedBox(
+                  width: 320,
+                  child: AppDropdownField<_ActionBarPreviewState>(
+                    fieldKey: const Key('designActionBarStateDropdown'),
+                    label: 'حالة النموذج',
+                    icon: Icons.fact_check_rounded,
+                    value: _actionBarState,
+                    options: [
+                      for (final state in _ActionBarPreviewState.values)
+                        AppDropdownOption(
+                          value: state,
+                          label: state.label,
+                        ),
+                    ],
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() => _actionBarState = value);
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              AppActionBar(
+                key: const Key('designActionBar'),
+                searchController: _searchController,
+                searchFieldKey: const Key('designActionBarSearch'),
+                searchClearButtonKey:
+                    const Key('designActionBarSearchClear'),
+                firstButtonKey: const Key('designActionBarFirst'),
+                previousButtonKey: const Key('designActionBarPrevious'),
+                nextButtonKey: const Key('designActionBarNext'),
+                lastButtonKey: const Key('designActionBarLast'),
+                saveButtonKey: const Key('designActionBarSave'),
+                updateButtonKey: const Key('designActionBarUpdate'),
+                undoButtonKey: const Key('designActionBarUndo'),
+                deleteButtonKey: const Key('designActionBarDelete'),
+                searchHint: 'ابحث في السجلات',
+                onFirst: () {},
+                onPrevious: () {},
+                onNext: () {},
+                onLast: () {},
+                onSave: canSave
+                    ? () => AppToast.showInfo(context, 'تم الحفظ بنجاح')
+                    : null,
+                onUpdate: canUpdate
+                    ? () => AppToast.showSuccess(context, 'تم تحديث السجل')
+                    : null,
+                onUndo: canUndo
+                    ? () => AppToast.showWarning(
+                          context,
+                          'تم التراجع عن التغييرات',
+                        )
+                    : null,
+                onDelete:
+                    canDelete ? _showDeleteConfirmation : null,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        DesignGallerySection(
+          title: 'نوافذ التأكيد',
+          child: Wrap(
+            spacing: AppSpacing.md,
+            runSpacing: AppSpacing.md,
+            children: [
+              AppButton(
+                key: const Key('designDeleteDialogButton'),
+                label: 'تأكيد الحذف',
+                icon: Icons.delete_rounded,
+                variant: AppButtonVariant.danger,
+                onPressed: _showDeleteConfirmation,
+              ),
+              AppButton(
+                key: const Key('designUnsavedDialogButton'),
+                label: 'تغييرات غير محفوظة',
+                icon: Icons.warning_amber_rounded,
+                variant: AppButtonVariant.warning,
+                onPressed: _showUnsavedChangesConfirmation,
+              ),
+            ],
           ),
         ),
       ],
