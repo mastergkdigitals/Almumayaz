@@ -3,6 +3,47 @@ import 'package:flutter/material.dart';
 import '../app_tokens.dart';
 import 'app_button.dart';
 
+class AppTooltip extends StatelessWidget {
+  const AppTooltip({
+    required this.message,
+    required this.child,
+    super.key,
+    this.verticalOffset = AppSpacing.xl,
+  });
+
+  final String message;
+  final Widget child;
+  final double verticalOffset;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      key: key,
+      message: message,
+      preferBelow: true,
+      verticalOffset: verticalOffset,
+      waitDuration: AppDurations.normal,
+      showDuration: const Duration(seconds: 2),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: AppTooltipColors.background,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(color: AppTooltipColors.border),
+      ),
+      textStyle: const TextStyle(
+        color: AppTooltipColors.text,
+        fontSize: 14,
+        fontWeight: FontWeight.w700,
+      ),
+      textAlign: TextAlign.center,
+      child: child,
+    );
+  }
+}
+
 class AppTooltipIconButton extends StatelessWidget {
   const AppTooltipIconButton({
     required this.icon,
@@ -27,28 +68,10 @@ class AppTooltipIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
+    return AppTooltip(
       key: tooltipKey,
       message: tooltip,
-      preferBelow: true,
       verticalOffset: size / 2 + AppSpacing.sm,
-      waitDuration: AppDurations.normal,
-      showDuration: const Duration(seconds: 2),
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.sm,
-      ),
-      decoration: BoxDecoration(
-        color: AppTooltipColors.background,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: AppTooltipColors.border),
-      ),
-      textStyle: const TextStyle(
-        color: AppTooltipColors.text,
-        fontSize: 14,
-        fontWeight: FontWeight.w700,
-      ),
-      textAlign: TextAlign.center,
       child: Semantics(
         button: true,
         enabled: onPressed != null,
