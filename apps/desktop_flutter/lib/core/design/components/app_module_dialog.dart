@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app_tokens.dart';
+import 'app_header_button.dart';
 import 'app_shortcuts.dart';
 
 class AppModuleDialog extends StatelessWidget {
@@ -12,6 +13,9 @@ class AppModuleDialog extends StatelessWidget {
     required this.child,
     super.key,
     this.subtitle,
+    this.subtitleStyle,
+    this.centerHeader = false,
+    this.showHeaderCloseButton = false,
     this.actions = const [],
     this.actionsKey,
     this.width = AppDialogSizes.large,
@@ -19,10 +23,13 @@ class AppModuleDialog extends StatelessWidget {
 
   final String title;
   final String? subtitle;
+  final TextStyle? subtitleStyle;
   final IconData icon;
   final Color accentColor;
   final VoidCallback onClose;
   final Widget child;
+  final bool centerHeader;
+  final bool showHeaderCloseButton;
   final List<Widget> actions;
   final Key? actionsKey;
   final double width;
@@ -64,50 +71,9 @@ class AppModuleDialog extends StatelessWidget {
                   Container(
                     color: tintedSurface,
                     padding: const EdgeInsets.all(AppSpacing.lg),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: Color.alphaBlend(
-                              accentColor.withAlpha(24),
-                              AppColors.surface,
-                            ),
-                            borderRadius:
-                                BorderRadius.circular(AppRadii.md),
-                            border: Border.all(
-                              color: accentColor.withAlpha(110),
-                            ),
-                          ),
-                          child: Icon(icon, color: accentColor),
-                        ),
-                        const SizedBox(width: AppSpacing.md),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                title,
-                                style: AppTypography.screenTitle.copyWith(
-                                  fontSize: 24,
-                                ),
-                              ),
-                              if (subtitle != null) ...[
-                                const SizedBox(height: AppSpacing.xs),
-                                Text(
-                                  subtitle!,
-                                  style: const TextStyle(
-                                    color: AppColors.textSecondary,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+                    child: centerHeader
+                        ? _buildCenteredHeader()
+                        : _buildStandardHeader(),
                   ),
                   const Divider(height: 1, color: AppColors.border),
                   Flexible(
@@ -141,6 +107,123 @@ class AppModuleDialog extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildStandardHeader() {
+    return Row(
+      children: [
+        _HeaderIcon(icon: icon, accentColor: accentColor),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: _HeaderText(
+            title: title,
+            subtitle: subtitle,
+            subtitleStyle: subtitleStyle,
+            centered: false,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCenteredHeader() {
+    return Row(
+      children: [
+        SizedBox(
+          width: 48,
+          height: 48,
+          child: showHeaderCloseButton
+              ? AppTooltipIconButton(
+                  key: const Key('appModuleDialogClose'),
+                  tooltipKey: const Key('appModuleDialogCloseTooltip'),
+                  icon: Icons.close_rounded,
+                  tooltip: 'إغلاق',
+                  size: 48,
+                  onPressed: onClose,
+                )
+              : null,
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: _HeaderText(
+            title: title,
+            subtitle: subtitle,
+            subtitleStyle: subtitleStyle,
+            centered: true,
+          ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        _HeaderIcon(icon: icon, accentColor: accentColor),
+      ],
+    );
+  }
+}
+
+class _HeaderText extends StatelessWidget {
+  const _HeaderText({
+    required this.title,
+    required this.subtitle,
+    required this.subtitleStyle,
+    required this.centered,
+  });
+
+  final String title;
+  final String? subtitle;
+  final TextStyle? subtitleStyle;
+  final bool centered;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment:
+          centered ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          textAlign: centered ? TextAlign.center : TextAlign.start,
+          style: AppTypography.screenTitle.copyWith(fontSize: 24),
+        ),
+        if (subtitle != null) ...[
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            subtitle!,
+            textAlign: centered ? TextAlign.center : TextAlign.start,
+            style: subtitleStyle ??
+                const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _HeaderIcon extends StatelessWidget {
+  const _HeaderIcon({
+    required this.icon,
+    required this.accentColor,
+  });
+
+  final IconData icon;
+  final Color accentColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        color: Color.alphaBlend(
+          accentColor.withAlpha(24),
+          AppColors.surface,
+        ),
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(color: accentColor.withAlpha(110)),
+      ),
+      child: Icon(icon, color: accentColor),
     );
   }
 }
