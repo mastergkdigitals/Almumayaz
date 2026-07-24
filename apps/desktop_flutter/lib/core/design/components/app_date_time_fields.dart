@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../app_formatters.dart';
 import '../app_tokens.dart';
+import 'app_date_picker_dialog.dart';
 import 'app_text_fields.dart';
 
 class AppDateField extends StatefulWidget {
@@ -62,11 +63,13 @@ class _AppDateFieldState extends State<AppDateField> {
     if (initialDate.isBefore(firstDate)) initialDate = firstDate;
     if (initialDate.isAfter(lastDate)) initialDate = lastDate;
 
-    final selected = await showDatePicker(
-      context: context,
+    final selected = await AppDatePickerDialog.show(
+      context,
       initialDate: initialDate,
+      selectedDate: widget.value,
       firstDate: firstDate,
       lastDate: lastDate,
+      accentColor: widget.accentColor ?? AppColors.primary,
     );
     if (!mounted || selected == null) return;
     widget.onChanged(selected);
@@ -82,12 +85,14 @@ class _AppDateFieldState extends State<AppDateField> {
       accentColor: widget.accentColor,
       enabled: widget.enabled,
       readOnly: true,
-      onTap: () => _pickDate(),
+      textDirection: TextDirection.ltr,
+      textAlign: TextAlign.right,
+      onTap: _pickDate,
       suffixIcon: AppFieldIconButton(
         icon: Icons.edit_calendar_rounded,
         tooltip: 'اختيار التاريخ',
         color: widget.accentColor ?? AppColors.primary,
-        onPressed: widget.enabled ? () => _pickDate() : null,
+        onPressed: widget.enabled ? _pickDate : null,
       ),
     );
   }
@@ -101,17 +106,21 @@ class AppTimeField extends StatefulWidget {
   const AppTimeField({
     required this.label,
     required this.value,
-    required this.onChanged,
     super.key,
     this.fieldKey,
-    this.enabled = true,
+    this.onChanged,
+    this.enabled = false,
     this.accentColor,
   });
 
   final String label;
   final TimeOfDay? value;
-  final ValueChanged<TimeOfDay> onChanged;
+
+  /// Kept for source compatibility. Time fields are always system-generated.
+  final ValueChanged<TimeOfDay>? onChanged;
   final Key? fieldKey;
+
+  /// Kept for source compatibility. Time fields are always disabled.
   final bool enabled;
   final Color? accentColor;
 
@@ -142,34 +151,16 @@ class _AppTimeFieldState extends State<AppTimeField> {
     super.dispose();
   }
 
-  Future<void> _pickTime() async {
-    if (!widget.enabled) return;
-
-    final selected = await showTimePicker(
-      context: context,
-      initialTime: widget.value ?? TimeOfDay.now(),
-    );
-    if (!mounted || selected == null) return;
-    widget.onChanged(selected);
-  }
-
   @override
   Widget build(BuildContext context) {
-    return AppTextField(
+    return AppReadOnlyField(
       fieldKey: widget.fieldKey,
       controller: _controller,
       label: widget.label,
       icon: Icons.schedule_rounded,
       accentColor: widget.accentColor,
-      enabled: widget.enabled,
-      readOnly: true,
-      onTap: () => _pickTime(),
-      suffixIcon: AppFieldIconButton(
-        icon: Icons.access_time_filled_rounded,
-        tooltip: 'اختيار الوقت',
-        color: widget.accentColor ?? AppColors.primary,
-        onPressed: widget.enabled ? () => _pickTime() : null,
-      ),
+      textDirection: TextDirection.rtl,
+      textAlign: TextAlign.right,
     );
   }
 
