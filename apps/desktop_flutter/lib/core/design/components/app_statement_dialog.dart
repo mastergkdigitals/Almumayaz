@@ -106,6 +106,7 @@ class _StatementDialogBodyState extends State<_StatementDialogBody> {
       accentColor: widget.accentColor,
       width: AppDialogSizes.medium,
       onClose: () => Navigator.of(context).pop(),
+      actionsKey: const Key('appStatementActions'),
       actions: [
         AppButton(
           key: const Key('appStatementCancel'),
@@ -119,6 +120,7 @@ class _StatementDialogBodyState extends State<_StatementDialogBody> {
           label: 'عرض الكشف',
           icon: Icons.visibility_rounded,
           width: 176,
+          backgroundColor: widget.accentColor,
           onPressed: _submit,
         ),
       ],
