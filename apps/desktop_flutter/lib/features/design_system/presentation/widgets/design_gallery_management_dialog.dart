@@ -135,7 +135,7 @@ class _ManagementDialogState extends State<_ManagementDialog> {
           id: 'secondary-' + index.toString(),
           name: _spec.secondaryValues[index],
           parentId: _primaryEntries[
-                  index.clamp(0, _primaryEntries.length - 1)]
+                  index.clamp(0, _primaryEntries.length - 1).toInt()]
               .id,
         ),
     ];
