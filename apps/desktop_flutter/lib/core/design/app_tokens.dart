@@ -184,6 +184,7 @@ abstract final class AppDialogSizes {
   static const small = 480.0;
   static const medium = 680.0;
   static const large = 920.0;
+  static const extraLarge = 1180.0;
   static const maxHeightFactor = 0.88;
 }
 
