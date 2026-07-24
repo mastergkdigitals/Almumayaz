@@ -173,7 +173,9 @@ void main() {
     await tester.enterText(name, 'طرف لوحة المفاتيح');
     await _sendControlShortcut(tester, LogicalKeyboardKey.keyS);
     await tester.pump();
-    await tester.pump(AppDurations.normal);
+
+    await tester.enterText(search, 'طرف لوحة المفاتيح');
+    await tester.pump();
 
     final table = find.byKey(const Key('partiesTable'));
     expect(
