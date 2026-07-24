@@ -98,7 +98,7 @@ class _AppButtonState extends State<AppButton> {
             (widget.width == null
                 ? null
                 : EdgeInsets.symmetric(
-                    horizontal: hasLabel ? AppSpacing.sm : 0,
+                    horizontal: hasLabel ? AppSpacing.xs : 0,
                   ));
 
     final content = widget.isLoading
