@@ -115,12 +115,12 @@ void main() {
 
     await tester.sendKeyDownEvent(LogicalKeyboardKey.enter);
     guard.runOnce(
-      keys: const {LogicalKeyboardKey.enter},
+      keys: {LogicalKeyboardKey.enter},
       action: () => enterActions++,
     );
     await tester.sendKeyRepeatEvent(LogicalKeyboardKey.enter);
     guard.runOnce(
-      keys: const {LogicalKeyboardKey.enter},
+      keys: {LogicalKeyboardKey.enter},
       action: () => enterActions++,
     );
     await tester.sendKeyUpEvent(LogicalKeyboardKey.enter);
@@ -128,12 +128,12 @@ void main() {
 
     await tester.sendKeyDownEvent(LogicalKeyboardKey.tab);
     guard.runOnce(
-      keys: const {LogicalKeyboardKey.tab},
+      keys: {LogicalKeyboardKey.tab},
       action: () => tabActions++,
     );
     await tester.sendKeyRepeatEvent(LogicalKeyboardKey.tab);
     guard.runOnce(
-      keys: const {LogicalKeyboardKey.tab},
+      keys: {LogicalKeyboardKey.tab},
       action: () => tabActions++,
     );
     await tester.sendKeyUpEvent(LogicalKeyboardKey.tab);
