@@ -13,6 +13,13 @@ void main() {
 
     expect(find.text('2026/12/31'), findsWidgets);
     expect(find.text('01:01 ص'), findsOneWidget);
+    final timeDirection = tester.widget<Directionality>(
+      find.descendant(
+        of: find.byKey(const Key('designTimeFormat')),
+        matching: find.byType(Directionality),
+      ),
+    );
+    expect(timeDirection.textDirection, TextDirection.rtl);
     expect(find.text('1,000,000'), findsNWidgets(2));
     expect(find.text('100,000.00'), findsOneWidget);
 
