@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../app_tokens.dart';
 import 'app_table.dart';
@@ -73,6 +74,67 @@ class AppInvoiceItemsTable extends StatelessWidget {
       accentColor: isPurchase
           ? AppModuleColors.purchases
           : AppModuleColors.sales,
+    );
+  }
+}
+
+class AppInvoiceCellField extends StatelessWidget {
+  const AppInvoiceCellField({
+    required this.controller,
+    super.key,
+    this.fieldKey,
+    this.numeric = false,
+    this.inputFormatters,
+    this.onChanged,
+  });
+
+  final TextEditingController controller;
+  final Key? fieldKey;
+  final bool numeric;
+  final List<TextInputFormatter>? inputFormatters;
+  final ValueChanged<String>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 38,
+      child: TextField(
+        key: fieldKey,
+        controller: controller,
+        cursorColor: Colors.black,
+        textAlign: TextAlign.center,
+        textDirection:
+            numeric ? TextDirection.ltr : TextDirection.rtl,
+        keyboardType: numeric
+            ? const TextInputType.numberWithOptions(decimal: true)
+            : TextInputType.text,
+        inputFormatters: inputFormatters,
+        onChanged: onChanged,
+        style: AppTypography.tableCell.copyWith(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+        decoration: InputDecoration(
+          isDense: true,
+          filled: true,
+          fillColor: AppColors.surface,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm,
+            vertical: AppSpacing.xs,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadii.sm),
+            borderSide: const BorderSide(color: AppColors.border),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadii.sm),
+            borderSide: const BorderSide(
+              color: Colors.black,
+              width: 1.4,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
