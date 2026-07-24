@@ -124,7 +124,7 @@ class _ManagementDialogState extends State<_ManagementDialog> {
     _primaryEntries = [
       for (var index = 0; index < _spec.primaryValues.length; index++)
         _ManagementEntry(
-          id: 'primary-' + index.toString(),
+          id: 'primary-$index',
           name: _spec.primaryValues[index],
         ),
     ];
@@ -132,7 +132,7 @@ class _ManagementDialogState extends State<_ManagementDialog> {
     _secondaryEntries = [
       for (var index = 0; index < _spec.secondaryValues.length; index++)
         _ManagementEntry(
-          id: 'secondary-' + index.toString(),
+          id: 'secondary-$index',
           name: _spec.secondaryValues[index],
           parentId: _primaryEntries[
                   index.clamp(0, _primaryEntries.length - 1).toInt()]
@@ -156,7 +156,7 @@ class _ManagementDialogState extends State<_ManagementDialog> {
       if (_editingPrimaryId == null) {
         _primaryEntries.add(
           _ManagementEntry(
-            id: 'primary-' + (_seed++).toString(),
+            id: 'primary-${_seed++}',
             name: value,
           ),
         );
@@ -210,7 +210,7 @@ class _ManagementDialogState extends State<_ManagementDialog> {
       if (_editingSecondaryId == null) {
         _secondaryEntries.add(
           _ManagementEntry(
-            id: 'secondary-' + (_seed++).toString(),
+            id: 'secondary-${_seed++}',
             name: value,
             parentId: _selectedParentId,
           ),
@@ -261,17 +261,17 @@ class _ManagementDialogState extends State<_ManagementDialog> {
       accentColor: _spec.accentColor,
       width: AppDialogSizes.extraLarge,
       onClose: () => Navigator.of(context).pop(),
-      actionsKey: Key(_spec.keyName + 'Actions'),
+      actionsKey: Key('${_spec.keyName}Actions'),
       actions: [
         AppButton(
-          key: Key(_spec.keyName + 'Cancel'),
+          key: Key('${_spec.keyName}Cancel'),
           label: 'إغلاق',
           variant: AppButtonVariant.secondary,
           width: 144,
           onPressed: () => Navigator.of(context).pop(),
         ),
         AppButton(
-          key: Key(_spec.keyName + 'Confirm'),
+          key: Key('${_spec.keyName}Confirm'),
           label: 'حفظ',
           icon: Icons.save_rounded,
           width: 144,
@@ -298,8 +298,8 @@ class _ManagementDialogState extends State<_ManagementDialog> {
       child: Column(
         children: [
           _ManagementEditor(
-            fieldKey: Key(_spec.keyName + 'PrimaryField'),
-            buttonKey: Key(_spec.keyName + 'PrimaryCommit'),
+            fieldKey: Key('${_spec.keyName}PrimaryField'),
+            buttonKey: Key('${_spec.keyName}PrimaryCommit'),
             controller: _primaryController,
             label: _spec.primaryFieldLabel,
             accentColor: _spec.accentColor,
@@ -309,7 +309,7 @@ class _ManagementDialogState extends State<_ManagementDialog> {
           const SizedBox(height: AppSpacing.md),
           _ManagementEntries(
             entries: _primaryEntries,
-            keyPrefix: _spec.keyName + 'Primary',
+            keyPrefix: '${_spec.keyName}Primary',
             accentColor: _spec.accentColor,
             selectedId: _selectedParentId,
             onSelected: (entry) {
@@ -336,7 +336,7 @@ class _ManagementDialogState extends State<_ManagementDialog> {
       child: Column(
         children: [
           AppDropdownField<String>(
-            fieldKey: Key(_spec.keyName + 'ParentDropdown'),
+            fieldKey: Key('${_spec.keyName}ParentDropdown'),
             label: _spec.primaryTitle,
             icon: Icons.link_rounded,
             accentColor: _spec.accentColor,
@@ -356,8 +356,8 @@ class _ManagementDialogState extends State<_ManagementDialog> {
           ),
           const SizedBox(height: AppSpacing.md),
           _ManagementEditor(
-            fieldKey: Key(_spec.keyName + 'SecondaryField'),
-            buttonKey: Key(_spec.keyName + 'SecondaryCommit'),
+            fieldKey: Key('${_spec.keyName}SecondaryField'),
+            buttonKey: Key('${_spec.keyName}SecondaryCommit'),
             controller: _secondaryController,
             label: _spec.secondaryFieldLabel,
             accentColor: _spec.accentColor,
@@ -367,7 +367,7 @@ class _ManagementDialogState extends State<_ManagementDialog> {
           const SizedBox(height: AppSpacing.md),
           _ManagementEntries(
             entries: _visibleSecondaryEntries,
-            keyPrefix: _spec.keyName + 'Secondary',
+            keyPrefix: '${_spec.keyName}Secondary',
             accentColor: _spec.accentColor,
             onEdit: _editSecondary,
             onDelete: _deleteSecondary,
@@ -461,15 +461,15 @@ class _ManagementEntries extends StatelessWidget {
         for (var index = 0; index < entries.length; index++) ...[
           if (index > 0) const SizedBox(height: AppSpacing.sm),
           _ManagementEntryTile(
-            key: Key(keyPrefix + 'Row-' + entries[index].id),
+            key: Key('${keyPrefix}Row-${entries[index].id}'),
             entry: entries[index],
             accentColor: accentColor,
             selected: entries[index].id == selectedId,
             onSelected: onSelected == null
                 ? null
                 : () => onSelected!(entries[index]),
-            editKey: Key(keyPrefix + 'Edit-' + entries[index].id),
-            deleteKey: Key(keyPrefix + 'Delete-' + entries[index].id),
+            editKey: Key('${keyPrefix}Edit-${entries[index].id}'),
+            deleteKey: Key('${keyPrefix}Delete-${entries[index].id}'),
             onEdit: () => onEdit(entries[index]),
             onDelete:
                 canDelete ? () => onDelete(entries[index]) : null,
