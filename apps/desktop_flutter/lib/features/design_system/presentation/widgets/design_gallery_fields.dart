@@ -21,8 +21,12 @@ class DesignGalleryFieldsGroup extends StatefulWidget {
 class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
   final _nameController = TextEditingController();
   final _searchController = TextEditingController();
-  final _quantityController = TextEditingController(text: '100');
-  final _moneyController = TextEditingController(text: '25000');
+  final _quantityController = TextEditingController(
+    text: AppFormatters.quantity(1000000),
+  );
+  final _moneyController = TextEditingController(
+    text: AppFormatters.iqd(1000000),
+  );
   final _phoneController = TextEditingController(text: '07701234567');
   final _notesController = TextEditingController();
   final _cityController = TextEditingController();
