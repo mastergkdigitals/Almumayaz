@@ -185,6 +185,22 @@ class _QuickCreateDialogState extends State<_QuickCreateDialog> {
 
   _QuickCreateSpec get _spec => widget.spec;
 
+  String get _requiredFieldName => switch (_spec.kind) {
+        _QuickCreateKind.party => 'partyName',
+        _QuickCreateKind.item => 'itemName',
+        _QuickCreateKind.workplace => 'workplaceName',
+        _QuickCreateKind.workplaceBranch => 'workplaceBranchName',
+        _QuickCreateKind.itemGroup => 'groupName',
+        _QuickCreateKind.itemType => 'itemTypeName',
+        _QuickCreateKind.cashboxMain => 'cashboxMainName',
+        _QuickCreateKind.cashboxSub => 'cashboxSubName',
+      };
+
+  bool get _canConfirm {
+    return _controllers[_requiredFieldName]?.text.trim().isNotEmpty ??
+        false;
+  }
+
   TextEditingController _controller(String name) {
     return _controllers.putIfAbsent(
       name,
@@ -229,7 +245,7 @@ class _QuickCreateDialogState extends State<_QuickCreateDialog> {
           icon: Icons.add_rounded,
           width: 144,
           backgroundColor: _spec.accentColor,
-          onPressed: _confirm,
+          onPressed: _canConfirm ? _confirm : null,
         ),
       ],
       child: Column(
@@ -535,6 +551,7 @@ class _QuickCreateDialogState extends State<_QuickCreateDialog> {
       label: label,
       icon: icon,
       accentColor: _spec.accentColor,
+      onChanged: (_) => setState(() {}),
     );
   }
 }
