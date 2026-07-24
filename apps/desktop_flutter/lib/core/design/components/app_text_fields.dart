@@ -21,28 +21,30 @@ class AppFieldIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IconButton(
-      key: buttonKey,
-      tooltip: tooltip,
-      onPressed: onPressed,
-      icon: Icon(icon),
-      style: ButtonStyle(
-        foregroundColor: WidgetStatePropertyAll<Color>(color),
-        elevation: const WidgetStatePropertyAll<double>(0),
-        backgroundColor:
-            const WidgetStatePropertyAll<Color>(Colors.transparent),
-        shadowColor:
-            const WidgetStatePropertyAll<Color>(Colors.transparent),
-        surfaceTintColor:
-            const WidgetStatePropertyAll<Color>(Colors.transparent),
-        overlayColor:
-            const WidgetStatePropertyAll<Color>(Colors.transparent),
-        mouseCursor: WidgetStateProperty.resolveWith<MouseCursor?>(
-          (states) => states.contains(WidgetState.disabled)
-              ? SystemMouseCursors.basic
-              : SystemMouseCursors.click,
+    return ExcludeFocus(
+      child: IconButton(
+        key: buttonKey,
+        tooltip: tooltip,
+        onPressed: onPressed,
+        icon: Icon(icon),
+        style: ButtonStyle(
+          foregroundColor: WidgetStatePropertyAll<Color>(color),
+          elevation: const WidgetStatePropertyAll<double>(0),
+          backgroundColor:
+              const WidgetStatePropertyAll<Color>(Colors.transparent),
+          shadowColor:
+              const WidgetStatePropertyAll<Color>(Colors.transparent),
+          surfaceTintColor:
+              const WidgetStatePropertyAll<Color>(Colors.transparent),
+          overlayColor:
+              const WidgetStatePropertyAll<Color>(Colors.transparent),
+          mouseCursor: WidgetStateProperty.resolveWith<MouseCursor?>(
+            (states) => states.contains(WidgetState.disabled)
+                ? SystemMouseCursors.basic
+                : SystemMouseCursors.click,
+          ),
+          splashFactory: NoSplash.splashFactory,
         ),
-        splashFactory: NoSplash.splashFactory,
       ),
     );
   }
@@ -135,7 +137,8 @@ class AppTextField extends StatelessWidget {
       maxLines: obscureText ? 1 : maxLines,
       maxLength: maxLength,
       onTap: onTap,
-      onEditingComplete: onEditingComplete,
+      onEditingComplete:
+          onEditingComplete ?? (onSubmitted == null ? null : () {}),
       style: AppTypography.fieldText,
       textDirection: textDirection,
       textAlign: textAlign,
@@ -249,6 +252,7 @@ class _AppSearchFieldState extends State<AppSearchField> {
       focusNode: _effectiveFocusNode,
       onChanged: widget.onChanged,
       onSubmitted: widget.onSubmitted,
+      onEditingComplete: () {},
       textInputAction: TextInputAction.search,
       enabled: widget.enabled,
       autofocus: widget.autofocus,
