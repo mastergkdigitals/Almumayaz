@@ -1,9 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../../core/design/app_design_system.dart';
 import '../../domain/party.dart';
 
-class PartiesTable extends StatelessWidget {
+class PartiesTable extends StatefulWidget {
   const PartiesTable({
     required this.parties,
     required this.selectedPartyId,
@@ -20,10 +22,77 @@ class PartiesTable extends StatelessWidget {
   final double height;
 
   @override
+  State<PartiesTable> createState() => _PartiesTableState();
+}
+
+class _PartiesTableState extends State<PartiesTable> {
+  static const _rowHeight = 56.0;
+
+  final _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _revealSelectedParty();
+  }
+
+  @override
+  void didUpdateWidget(covariant PartiesTable oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedPartyId != widget.selectedPartyId ||
+        oldWidget.parties != widget.parties) {
+      _revealSelectedParty();
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _revealSelectedParty() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients) return;
+      final selectedIndex = widget.parties.indexWhere(
+        (party) => party.id == widget.selectedPartyId,
+      );
+      if (selectedIndex < 0) return;
+
+      final position = _scrollController.position;
+      final rowTop = selectedIndex * _rowHeight;
+      final rowBottom = rowTop + _rowHeight;
+      final viewportTop = position.pixels;
+      final viewportBottom = viewportTop + position.viewportDimension;
+
+      double? targetOffset;
+      if (rowTop < viewportTop) {
+        targetOffset = rowTop;
+      } else if (rowBottom > viewportBottom) {
+        targetOffset = rowBottom - position.viewportDimension;
+      }
+      if (targetOffset == null) return;
+
+      unawaited(
+        _scrollController.animateTo(
+          targetOffset.clamp(
+            position.minScrollExtent,
+            position.maxScrollExtent,
+          ).toDouble(),
+          duration: AppDurations.normal,
+          curve: Curves.easeOutCubic,
+        ),
+      );
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return AppDataTable(
       key: const Key('partiesTable'),
-      height: height,
+      height: widget.height,
+      rowHeight: _rowHeight,
+      verticalScrollController: _scrollController,
       minimumColumnWidth: 145,
       columns: const [
         AppTableColumn(label: 'اسم الطرف', flex: 1.5),
@@ -35,11 +104,11 @@ class PartiesTable extends StatelessWidget {
         AppTableColumn(label: 'الإجراء', flex: 0.65),
       ],
       rows: [
-        for (final party in parties)
+        for (final party in widget.parties)
           AppTableRow(
             rowKey: Key('partyRow_${party.id}'),
-            selected: party.id == selectedPartyId,
-            onTap: () => onSelected(party),
+            selected: party.id == widget.selectedPartyId,
+            onTap: () => widget.onSelected(party),
             cells: [
               Text(party.name),
               Text(party.type.label),
@@ -51,7 +120,7 @@ class PartiesTable extends StatelessWidget {
                 key: Key('partyStatement_${party.id}'),
                 icon: Icons.receipt_long_rounded,
                 tooltip: 'كشف الحساب',
-                onPressed: () => onStatement(party),
+                onPressed: () => widget.onStatement(party),
               ),
             ],
           ),
