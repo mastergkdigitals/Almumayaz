@@ -45,6 +45,7 @@ class _DesignGalleryFormatsSectionState
                   const TimeOfDay(hour: 1, minute: 1),
                 ),
                 icon: Icons.schedule_rounded,
+                textDirection: TextDirection.rtl,
               ),
               _FormatCard(
                 key: const Key('designQuantityFormat'),
@@ -107,11 +108,13 @@ class _FormatCard extends StatelessWidget {
     required this.value,
     required this.icon,
     super.key,
+    this.textDirection = TextDirection.ltr,
   });
 
   final String title;
   final String value;
   final IconData icon;
+  final TextDirection textDirection;
 
   @override
   Widget build(BuildContext context) {
@@ -140,7 +143,7 @@ class _FormatCard extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 Directionality(
-                  textDirection: TextDirection.ltr,
+                  textDirection: textDirection,
                   child: Text(
                     value,
                     textAlign: TextAlign.right,
