@@ -127,12 +127,10 @@ void main() {
     expect(appButton('designActionBarUndo').onPressed, isNull);
     expect(appButton('designActionBarDelete').onPressed, isNull);
 
-    final stateDropdown =
-        find.byKey(const Key('designActionBarStateDropdown'));
-    await tester.tap(stateDropdown);
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 250));
-    await tester.tap(find.text('محفوظ مع تعديلات'));
+    final dynamic stateControl = tester.widget(
+      find.byKey(const Key('designActionBarStateControl')),
+    );
+    stateControl.onChanged(stateControl.options.last.value);
     await tester.pump();
 
     expect(appButton('designActionBarSave').onPressed, isNull);
