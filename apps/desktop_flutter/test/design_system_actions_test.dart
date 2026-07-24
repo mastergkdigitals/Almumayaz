@@ -209,4 +209,31 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
   });
+
+  testWidgets('keeps fixed-width icon buttons free of overflow',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: Center(
+            child: AppButton(
+              label: 'إضافة',
+              icon: Icons.add_rounded,
+              width: 112,
+              onPressed: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(
+      tester.getSize(find.byType(AppButton)),
+      const Size(112, AppControlHeights.standard),
+    );
+  });
+
 }
