@@ -67,23 +67,27 @@ class _StatementReportBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final period =
+        'من ${AppFormatters.date(options.fromDate)} '
+        'إلى ${AppFormatters.date(options.toDate)}';
+
     return AppModuleDialog(
       key: const Key('appStatementReportDialog'),
       title: 'كشف حساب',
       subtitle: partyName,
+      subtitleStyle: const TextStyle(
+        color: Color(0xFF4B5563),
+        fontSize: 22,
+        fontWeight: FontWeight.w800,
+      ),
+      centerHeader: true,
+      showHeaderCloseButton: true,
       icon: Icons.receipt_long_rounded,
       accentColor: accentColor,
       width: AppDialogSizes.extraLarge,
       onClose: () => Navigator.of(context).pop(),
       actionsKey: const Key('appStatementReportActions'),
       actions: [
-        AppButton(
-          key: const Key('appStatementReportClose'),
-          label: 'إغلاق',
-          variant: AppButtonVariant.secondary,
-          width: 144,
-          onPressed: () => Navigator.of(context).pop(),
-        ),
         AppButton(
           key: const Key('appStatementPdf'),
           label: 'PDF',
@@ -112,30 +116,34 @@ class _StatementReportBody extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: _StatementMetaCard(
-                  label: 'الفترة',
-                  value:
-                      'من ${AppFormatters.date(options.fromDate)} '
-                      'إلى ${AppFormatters.date(options.toDate)}',
-                  icon: Icons.date_range_rounded,
-                  accentColor: accentColor,
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.sm,
+              vertical: AppSpacing.xs,
+            ),
+            child: Row(
+              children: [
+                Text(
+                  period,
+                  key: const Key('appStatementPeriodText'),
+                  style: AppTypography.fieldText.copyWith(
+                    color: Colors.black,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: _StatementMetaCard(
-                  label: 'العملة',
-                  value: AppFormatters.currency(options.currencyCode),
-                  icon: Icons.currency_exchange_rounded,
-                  accentColor: accentColor,
+                const Spacer(),
+                Text(
+                  AppFormatters.currency(options.currencyCode),
+                  key: const Key('appStatementCurrencyText'),
+                  style: AppTypography.fieldText.copyWith(
+                    color: Colors.black,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: AppSpacing.md),
           AppDataTable(
             key: const Key('appStatementReportTable'),
             height: 340,
@@ -189,67 +197,6 @@ class _StatementReportBody extends StatelessWidget {
     return currencyCode.toUpperCase() == 'USD'
         ? AppFormatters.usd(value)
         : AppFormatters.iqd(value);
-  }
-}
-
-class _StatementMetaCard extends StatelessWidget {
-  const _StatementMetaCard({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.accentColor,
-  });
-
-  final String label;
-  final String value;
-  final IconData icon;
-  final Color accentColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 66),
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.sm,
-      ),
-      decoration: BoxDecoration(
-        color: Color.alphaBlend(
-          accentColor.withAlpha(12),
-          AppColors.surface,
-        ),
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(
-          color: Color.alphaBlend(
-            accentColor.withAlpha(80),
-            AppColors.border,
-          ),
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: accentColor),
-          const SizedBox(width: AppSpacing.sm),
-          Text(
-            '$label:',
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Text(
-              value,
-              textAlign: TextAlign.center,
-              style: AppTypography.fieldText.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 
