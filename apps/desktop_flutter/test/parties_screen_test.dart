@@ -10,7 +10,7 @@ void main() {
 
     expect(controller.state.parties, hasLength(10));
 
-    controller.search('مجهز');
+    controller.search('مجهز ال');
     expect(controller.visibleParties, hasLength(2));
 
     controller.first();
