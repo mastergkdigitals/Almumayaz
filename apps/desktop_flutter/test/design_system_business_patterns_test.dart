@@ -20,7 +20,20 @@ void main() {
       ),
     );
     expect(timeDirection.textDirection, TextDirection.rtl);
-    expect(find.text('1,000,000'), findsNWidgets(2));
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('designQuantityFormat')),
+        matching: find.text('1,000,000'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('designIqdFormat')),
+        matching: find.text('1,000,000'),
+      ),
+      findsOneWidget,
+    );
     expect(find.text('100,000.00'), findsOneWidget);
 
     final timeField = tester.widget<TextFormField>(
