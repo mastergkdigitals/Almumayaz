@@ -71,7 +71,7 @@ class PartyFormControllers {
   }
 }
 
-class PartyForm extends StatelessWidget {
+class PartyForm extends StatefulWidget {
   const PartyForm({
     required this.controllers,
     required this.partyType,
@@ -115,8 +115,90 @@ class PartyForm extends StatelessWidget {
   final PartyType partyType;
   final ValueChanged<PartyType?> onPartyTypeChanged;
 
-  void _next(BuildContext context) {
-    AppFocusTraversal.next(context);
+  @override
+  State<PartyForm> createState() => _PartyFormState();
+}
+
+class _PartyFormState extends State<PartyForm> {
+  static const _enterKeys = {
+    LogicalKeyboardKey.enter,
+    LogicalKeyboardKey.numpadEnter,
+  };
+
+  final _keyHoldGuard = AppKeyHoldGuard();
+  final _nameFocusNode = FocusNode(debugLabel: 'partyName');
+  final _typeFocusNode = FocusNode(debugLabel: 'partyType');
+  final _workplaceFocusNode = FocusNode(debugLabel: 'partyWorkplace');
+  final _branchFocusNode = FocusNode(debugLabel: 'partyBranch');
+  final _phoneFocusNode = FocusNode(debugLabel: 'partyPhone');
+  final _alternatePhoneFocusNode =
+      FocusNode(debugLabel: 'partyAlternatePhone');
+  final _cityFocusNode = FocusNode(debugLabel: 'partyCity');
+  final _addressFocusNode = FocusNode(debugLabel: 'partyAddress');
+  final _notesFocusNode = FocusNode(debugLabel: 'partyNotes');
+
+  PartyFormControllers get controllers => widget.controllers;
+  PartyType get partyType => widget.partyType;
+  ValueChanged<PartyType?> get onPartyTypeChanged =>
+      widget.onPartyTypeChanged;
+  List<String> get _workplaces => PartyForm._workplaces;
+  List<String> get _branches => PartyForm._branches;
+  List<String> get _cities => PartyForm._cities;
+
+  List<FocusNode> get _orderedFocusNodes => [
+        _nameFocusNode,
+        _typeFocusNode,
+        _workplaceFocusNode,
+        _branchFocusNode,
+        _phoneFocusNode,
+        _alternatePhoneFocusNode,
+        _cityFocusNode,
+        _addressFocusNode,
+        _notesFocusNode,
+      ];
+
+  @override
+  void dispose() {
+    _keyHoldGuard.dispose();
+    for (final focusNode in _orderedFocusNodes) {
+      focusNode.dispose();
+    }
+    super.dispose();
+  }
+
+  void _moveFrom(FocusNode current, {bool guardKeyHold = true}) {
+    void move() {
+      final index = _orderedFocusNodes.indexOf(current);
+      if (index < 0 || index >= _orderedFocusNodes.length - 1) return;
+      _orderedFocusNodes[index + 1].requestFocus();
+    }
+
+    if (!guardKeyHold) {
+      move();
+      return;
+    }
+
+    _keyHoldGuard.runOnce(keys: _enterKeys, action: move);
+  }
+
+  void _moveWithTab({required bool backwards}) {
+    _keyHoldGuard.runOnce(
+      keys: const {LogicalKeyboardKey.tab},
+      action: () {
+        final nodes = _orderedFocusNodes;
+        final currentIndex =
+            nodes.indexWhere((focusNode) => focusNode.hasFocus);
+        if (currentIndex < 0) {
+          (backwards ? nodes.last : nodes.first).requestFocus();
+          return;
+        }
+
+        final targetIndex = backwards
+            ? (currentIndex - 1).clamp(0, nodes.length - 1)
+            : (currentIndex + 1).clamp(0, nodes.length - 1);
+        nodes[targetIndex.toInt()].requestFocus();
+      },
+    );
   }
 
   @override
@@ -132,9 +214,16 @@ class PartyForm extends StatelessWidget {
         border: Border.all(color: AppColors.border),
         boxShadow: AppShadows.soft,
       ),
-      child: FocusTraversalGroup(
-        policy: OrderedTraversalPolicy(),
-        child: Column(
+      child: CallbackShortcuts(
+        bindings: {
+          const SingleActivator(LogicalKeyboardKey.tab):
+              () => _moveWithTab(backwards: false),
+          const SingleActivator(LogicalKeyboardKey.tab, shift: true):
+              () => _moveWithTab(backwards: true),
+        },
+        child: FocusTraversalGroup(
+          policy: OrderedTraversalPolicy(),
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             LayoutBuilder(
@@ -208,8 +297,9 @@ class PartyForm extends StatelessWidget {
                             label: 'الاسم',
                             icon: Icons.person_rounded,
                             accentColor: accentColor,
+                            focusNode: _nameFocusNode,
                             textInputAction: TextInputAction.next,
-                            onSubmitted: (_) => _next(context),
+                            onSubmitted: (_) => _moveFrom(_nameFocusNode),
                           ),
                         ),
                         _TraversalField(
@@ -219,6 +309,8 @@ class PartyForm extends StatelessWidget {
                             label: 'نوع الطرف',
                             icon: Icons.category_rounded,
                             accentColor: accentColor,
+                            focusNode: _typeFocusNode,
+                            keyHoldGuard: _keyHoldGuard,
                             value: partyType,
                             options: [
                               for (final type in PartyType.values)
@@ -228,7 +320,10 @@ class PartyForm extends StatelessWidget {
                                 ),
                             ],
                             onChanged: onPartyTypeChanged,
-                            onSubmitted: (_) => _next(context),
+                            onSubmitted: (_) => _moveFrom(
+                              _typeFocusNode,
+                              guardKeyHold: false,
+                            ),
                           ),
                         ),
                         _TraversalField(
@@ -239,10 +334,12 @@ class PartyForm extends StatelessWidget {
                             label: 'جهة العمل',
                             icon: Icons.business_rounded,
                             accentColor: accentColor,
+                            focusNode: _workplaceFocusNode,
                             options: _workplaces,
                             displayStringForOption: (value) => value,
                             onSelected: (_) {},
-                            onSubmitted: (_) => _next(context),
+                            onSubmitted: (_) =>
+                                _moveFrom(_workplaceFocusNode),
                           ),
                         ),
                         _TraversalField(
@@ -253,10 +350,11 @@ class PartyForm extends StatelessWidget {
                             label: 'الفرع',
                             icon: Icons.account_tree_rounded,
                             accentColor: accentColor,
+                            focusNode: _branchFocusNode,
                             options: _branches,
                             displayStringForOption: (value) => value,
                             onSelected: (_) {},
-                            onSubmitted: (_) => _next(context),
+                            onSubmitted: (_) => _moveFrom(_branchFocusNode),
                           ),
                         ),
                       ],
@@ -273,6 +371,7 @@ class PartyForm extends StatelessWidget {
                             label: 'رقم الهاتف',
                             icon: Icons.phone_rounded,
                             accentColor: accentColor,
+                            focusNode: _phoneFocusNode,
                             textDirection: TextDirection.rtl,
                             textAlign: TextAlign.right,
                             keyboardType: TextInputType.phone,
@@ -281,7 +380,7 @@ class PartyForm extends StatelessWidget {
                               FilteringTextInputFormatter.digitsOnly,
                               LengthLimitingTextInputFormatter(11),
                             ],
-                            onSubmitted: (_) => _next(context),
+                            onSubmitted: (_) => _moveFrom(_phoneFocusNode),
                           ),
                         ),
                         _TraversalField(
@@ -293,6 +392,7 @@ class PartyForm extends StatelessWidget {
                             label: 'هاتف إضافي',
                             icon: Icons.phone_in_talk_rounded,
                             accentColor: accentColor,
+                            focusNode: _alternatePhoneFocusNode,
                             textDirection: TextDirection.rtl,
                             textAlign: TextAlign.right,
                             keyboardType: TextInputType.phone,
@@ -301,7 +401,8 @@ class PartyForm extends StatelessWidget {
                               FilteringTextInputFormatter.digitsOnly,
                               LengthLimitingTextInputFormatter(11),
                             ],
-                            onSubmitted: (_) => _next(context),
+                            onSubmitted: (_) =>
+                                _moveFrom(_alternatePhoneFocusNode),
                           ),
                         ),
                         _TraversalField(
@@ -312,10 +413,11 @@ class PartyForm extends StatelessWidget {
                             label: 'المدينة',
                             icon: Icons.location_city_rounded,
                             accentColor: accentColor,
+                            focusNode: _cityFocusNode,
                             options: _cities,
                             displayStringForOption: (value) => value,
                             onSelected: (_) {},
-                            onSubmitted: (_) => _next(context),
+                            onSubmitted: (_) => _moveFrom(_cityFocusNode),
                           ),
                         ),
                         _TraversalField(
@@ -326,8 +428,9 @@ class PartyForm extends StatelessWidget {
                             label: 'العنوان',
                             icon: Icons.location_on_rounded,
                             accentColor: accentColor,
+                            focusNode: _addressFocusNode,
                             textInputAction: TextInputAction.next,
-                            onSubmitted: (_) => _next(context),
+                            onSubmitted: (_) => _moveFrom(_addressFocusNode),
                           ),
                         ),
                       ],
@@ -340,6 +443,7 @@ class PartyForm extends StatelessWidget {
                         controller: controllers.notes,
                         label: 'الملاحظات',
                         icon: Icons.notes_rounded,
+                        focusNode: _notesFocusNode,
                         textInputAction: TextInputAction.done,
                         onEditingComplete: () {},
                         onSubmitted: (_) {},
@@ -350,6 +454,7 @@ class PartyForm extends StatelessWidget {
               },
             ),
           ],
+          ),
         ),
       ),
     );
