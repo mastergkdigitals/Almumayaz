@@ -12,11 +12,17 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  static const _enterKeys = {
+    LogicalKeyboardKey.enter,
+    LogicalKeyboardKey.numpadEnter,
+  };
+
   final _formKey = GlobalKey<FormState>();
   final _username = TextEditingController();
   final _password = TextEditingController();
   final _usernameFocusNode = FocusNode();
   final _passwordFocusNode = FocusNode();
+  final _keyHoldGuard = AppKeyHoldGuard();
   bool _hidePassword = true;
 
   @override
@@ -25,6 +31,7 @@ class _LoginScreenState extends State<LoginScreen> {
     _password.dispose();
     _usernameFocusNode.dispose();
     _passwordFocusNode.dispose();
+    _keyHoldGuard.dispose();
     super.dispose();
   }
 
@@ -38,19 +45,43 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _focusNextField() {
-    if (_usernameFocusNode.hasFocus) {
-      _passwordFocusNode.requestFocus();
-    } else {
-      _usernameFocusNode.requestFocus();
-    }
+    _keyHoldGuard.runOnce(
+      keys: const {LogicalKeyboardKey.tab},
+      action: () {
+        if (_usernameFocusNode.hasFocus) {
+          _passwordFocusNode.requestFocus();
+        } else {
+          _usernameFocusNode.requestFocus();
+        }
+      },
+    );
   }
 
   void _focusPreviousField() {
-    if (_passwordFocusNode.hasFocus) {
-      _usernameFocusNode.requestFocus();
-    } else {
-      _passwordFocusNode.requestFocus();
-    }
+    _keyHoldGuard.runOnce(
+      keys: const {LogicalKeyboardKey.tab},
+      action: () {
+        if (_passwordFocusNode.hasFocus) {
+          _usernameFocusNode.requestFocus();
+        } else {
+          _passwordFocusNode.requestFocus();
+        }
+      },
+    );
+  }
+
+  void _submitUsername() {
+    _keyHoldGuard.runOnce(
+      keys: _enterKeys,
+      action: () => _passwordFocusNode.requestFocus(),
+    );
+  }
+
+  void _submitPassword() {
+    _keyHoldGuard.runOnce(
+      keys: _enterKeys,
+      action: _login,
+    );
   }
 
   @override
@@ -120,7 +151,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   focusNode: _usernameFocusNode,
                   autofocus: true,
                   textInputAction: TextInputAction.next,
-                  onSubmitted: (_) => _passwordFocusNode.requestFocus(),
+                  onSubmitted: (_) => _submitUsername(),
                   validator: (value) =>
                       value == null || value.trim().isEmpty
                           ? 'أدخل اسم المستخدم'
@@ -138,7 +169,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   focusNode: _passwordFocusNode,
                   obscureText: _hidePassword,
                   textInputAction: TextInputAction.done,
-                  onSubmitted: (_) => _login(),
+                  onSubmitted: (_) => _submitPassword(),
                   suffixIcon: AppFieldIconButton(
                     buttonKey: const Key('passwordVisibilityButton'),
                     icon: _hidePassword
