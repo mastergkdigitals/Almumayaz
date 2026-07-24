@@ -36,6 +36,11 @@ abstract final class AppTheme {
         hintStyle: AppTypography.fieldText.copyWith(
           color: AppColors.textSecondary,
         ),
+        errorStyle: const TextStyle(
+          color: AppColors.danger,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md,
           vertical: 14,
