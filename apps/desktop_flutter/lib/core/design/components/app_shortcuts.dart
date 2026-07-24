@@ -1,6 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+class AppKeyboardScope extends StatelessWidget {
+  const AppKeyboardScope({
+    required this.child,
+    super.key,
+  });
+
+  final Widget child;
+
+  void _ignoreDirectionalNavigation() {}
+
+  @override
+  Widget build(BuildContext context) {
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.arrowUp):
+            _ignoreDirectionalNavigation,
+        const SingleActivator(LogicalKeyboardKey.arrowDown):
+            _ignoreDirectionalNavigation,
+        const SingleActivator(LogicalKeyboardKey.arrowLeft):
+            _ignoreDirectionalNavigation,
+        const SingleActivator(LogicalKeyboardKey.arrowRight):
+            _ignoreDirectionalNavigation,
+      },
+      child: child,
+    );
+  }
+}
+
 class AppShortcutScope extends StatelessWidget {
   const AppShortcutScope({
     required this.child,
