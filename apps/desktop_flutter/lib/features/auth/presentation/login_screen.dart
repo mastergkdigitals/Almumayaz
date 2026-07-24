@@ -12,7 +12,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  static const _enterKeys = {
+  static final _enterKeys = {
     LogicalKeyboardKey.enter,
     LogicalKeyboardKey.numpadEnter,
   };
@@ -46,7 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _focusNextField() {
     _keyHoldGuard.runOnce(
-      keys: const {LogicalKeyboardKey.tab},
+      keys: {LogicalKeyboardKey.tab},
       action: () {
         if (_usernameFocusNode.hasFocus) {
           _passwordFocusNode.requestFocus();
@@ -59,7 +59,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _focusPreviousField() {
     _keyHoldGuard.runOnce(
-      keys: const {LogicalKeyboardKey.tab},
+      keys: {LogicalKeyboardKey.tab},
       action: () {
         if (_passwordFocusNode.hasFocus) {
           _usernameFocusNode.requestFocus();
