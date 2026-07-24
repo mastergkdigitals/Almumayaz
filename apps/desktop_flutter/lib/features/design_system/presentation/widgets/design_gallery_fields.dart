@@ -23,6 +23,7 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
   final _searchController = TextEditingController();
   final _quantityController = TextEditingController(text: '100');
   final _moneyController = TextEditingController(text: '25000');
+  final _phoneController = TextEditingController(text: '07701234567');
   final _notesController = TextEditingController();
   final _cityController = TextEditingController();
   final _readOnlyController = TextEditingController(text: 'P-001');
@@ -73,6 +74,7 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
     _searchController.dispose();
     _quantityController.dispose();
     _moneyController.dispose();
+    _phoneController.dispose();
     _notesController.dispose();
     _cityController.dispose();
     _readOnlyController.dispose();
@@ -133,6 +135,14 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
               ),
               SizedBox(
                 width: 320,
+                child: AppPhoneField(
+                  fieldKey: const Key('designPhoneField'),
+                  controller: _phoneController,
+                  label: 'رقم الهاتف',
+                ),
+              ),
+              SizedBox(
+                width: 320,
                 child: AppDropdownField<String>(
                   fieldKey: const Key('designCurrencyDropdown'),
                   label: 'العملة',
@@ -177,13 +187,12 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
               ),
               SizedBox(
                 width: 320,
-                child: AppTextField(
+                child: AppReadOnlyField(
                   fieldKey: const Key('designReadOnlyField'),
                   controller: _readOnlyController,
-                  label: 'رمز للقراءة فقط',
-                  helperText: 'قيمة يولدها النظام',
+                  label: 'رمز يولده النظام',
+                  helperText: 'للقراءة فقط وغير قابل للنقر',
                   icon: Icons.lock_outline_rounded,
-                  readOnly: true,
                 ),
               ),
               SizedBox(
