@@ -481,7 +481,6 @@ class AppMoneyField extends StatelessWidget {
       textInputAction: TextInputAction.next,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       inputFormatters: const [AppMoneyInputFormatter()],
-
     );
   }
 }
