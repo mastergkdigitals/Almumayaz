@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../app_tokens.dart';
 
@@ -19,6 +20,8 @@ class AppDropdownField<T> extends StatefulWidget {
     this.fieldKey,
     this.icon,
     this.accentColor,
+    this.focusNode,
+    this.onSubmitted,
     this.enabled = true,
   });
 
@@ -29,6 +32,8 @@ class AppDropdownField<T> extends StatefulWidget {
   final Key? fieldKey;
   final IconData? icon;
   final Color? accentColor;
+  final FocusNode? focusNode;
+  final ValueChanged<T?>? onSubmitted;
   final bool enabled;
 
   @override
@@ -36,8 +41,13 @@ class AppDropdownField<T> extends StatefulWidget {
 }
 
 class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
+  final _menuController = MenuController();
+  final _internalFocusNode = FocusNode();
+  late List<FocusNode> _itemFocusNodes;
   bool _isHovered = false;
   bool _isOpen = false;
+
+  FocusNode get _focusNode => widget.focusNode ?? _internalFocusNode;
 
   String get _selectedLabel {
     for (final option in widget.options) {
@@ -49,6 +59,73 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
   void _setHovered(bool value) {
     if (_isHovered == value) return;
     setState(() => _isHovered = value);
+  }
+
+  void _ignoreHorizontalNavigation() {}
+
+  void _replaceItemFocusNodes() {
+    for (final focusNode in _itemFocusNodes) {
+      focusNode.dispose();
+    }
+    _itemFocusNodes = List.generate(
+      widget.options.length,
+      (_) => FocusNode(),
+    );
+  }
+
+  void _openMenu(MenuController controller) {
+    controller.open();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !controller.isOpen || _itemFocusNodes.isEmpty) return;
+
+      final selectedIndex = widget.options.indexWhere(
+        (option) => option.value == widget.value,
+      );
+      _itemFocusNodes[selectedIndex < 0 ? 0 : selectedIndex].requestFocus();
+    });
+  }
+
+  void _selectOption(AppDropdownOption<T> option) {
+    final submittedWithEnter = HardwareKeyboard.instance.logicalKeysPressed
+            .contains(LogicalKeyboardKey.enter) ||
+        HardwareKeyboard.instance.logicalKeysPressed
+            .contains(LogicalKeyboardKey.numpadEnter);
+
+    widget.onChanged(option.value);
+    _menuController.close();
+
+    if (!submittedWithEnter) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        widget.onSubmitted?.call(option.value);
+      }
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _itemFocusNodes = List.generate(
+      widget.options.length,
+      (_) => FocusNode(),
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant AppDropdownField<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.options.length != widget.options.length) {
+      _replaceItemFocusNodes();
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final focusNode in _itemFocusNodes) {
+      focusNode.dispose();
+    }
+    _internalFocusNode.dispose();
+    super.dispose();
   }
 
   @override
@@ -85,6 +162,8 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
             constraints.hasBoundedWidth ? constraints.maxWidth : 320.0;
 
         return MenuAnchor(
+          controller: _menuController,
+          childFocusNode: _focusNode,
           crossAxisUnconstrained: false,
           animated: false,
           onOpen: () => setState(() => _isOpen = true),
@@ -111,75 +190,88 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
               ),
             ),
           ),
-          menuChildren: widget.options.map((option) {
+          menuChildren: widget.options.asMap().entries.map((entry) {
+            final index = entry.key;
+            final option = entry.value;
             final isSelected = option.value == widget.value;
 
-            return MenuItemButton(
-              requestFocusOnHover: false,
-              onPressed:
-                  widget.enabled ? () => widget.onChanged(option.value) : null,
-              style: ButtonStyle(
-                minimumSize:
-                    const WidgetStatePropertyAll<Size>(Size(0, 44)),
-                padding:
-                    const WidgetStatePropertyAll<EdgeInsetsGeometry>(
-                  EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                ),
-                elevation:
-                    const WidgetStatePropertyAll<double>(0),
-                shadowColor:
-                    const WidgetStatePropertyAll<Color>(Colors.transparent),
-                overlayColor:
-                    const WidgetStatePropertyAll<Color>(Colors.transparent),
-                backgroundColor: WidgetStateProperty.resolveWith<Color?>(
-                  (states) {
-                    if (isSelected) return selectedBackgroundColor;
-                    if (states.contains(WidgetState.hovered) ||
-                        states.contains(WidgetState.focused)) {
-                      return AppColors.controlHoverSurface;
-                    }
-                    return Colors.transparent;
-                  },
-                ),
-                foregroundColor: WidgetStatePropertyAll<Color>(
-                  isSelected ? accentColor : AppColors.textPrimary,
-                ),
-                shape: WidgetStatePropertyAll<OutlinedBorder>(
-                  RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadii.sm),
+            return CallbackShortcuts(
+              bindings: {
+                const SingleActivator(LogicalKeyboardKey.arrowLeft):
+                    _ignoreHorizontalNavigation,
+                const SingleActivator(LogicalKeyboardKey.arrowRight):
+                    _ignoreHorizontalNavigation,
+              },
+              child: MenuItemButton(
+                focusNode: _itemFocusNodes[index],
+                requestFocusOnHover: false,
+                onPressed: widget.enabled
+                    ? () => _selectOption(option)
+                    : null,
+                style: ButtonStyle(
+                  minimumSize:
+                      const WidgetStatePropertyAll<Size>(Size(0, 44)),
+                  padding:
+                      const WidgetStatePropertyAll<EdgeInsetsGeometry>(
+                    EdgeInsets.symmetric(horizontal: AppSpacing.md),
                   ),
-                ),
-                alignment: Alignment.center,
-                animationDuration: AppDurations.fast,
-              ),
-              child: SizedBox(
-                height: 42,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Center(
-                      child: Text(
-                        option.label,
-                        textAlign: TextAlign.center,
-                        style: AppTypography.fieldText.copyWith(
-                          color: isSelected
-                              ? accentColor
-                              : AppColors.textPrimary,
-                          fontWeight:
-                              isSelected ? FontWeight.w700 : FontWeight.w600,
-                        ),
-                      ),
+                  elevation:
+                      const WidgetStatePropertyAll<double>(0),
+                  shadowColor:
+                      const WidgetStatePropertyAll<Color>(Colors.transparent),
+                  overlayColor:
+                      const WidgetStatePropertyAll<Color>(Colors.transparent),
+                  backgroundColor: WidgetStateProperty.resolveWith<Color?>(
+                    (states) {
+                      if (isSelected) return selectedBackgroundColor;
+                      if (states.contains(WidgetState.hovered) ||
+                          states.contains(WidgetState.focused)) {
+                        return AppColors.controlHoverSurface;
+                      }
+                      return Colors.transparent;
+                    },
+                  ),
+                  foregroundColor: WidgetStatePropertyAll<Color>(
+                    isSelected ? accentColor : AppColors.textPrimary,
+                  ),
+                  shape: WidgetStatePropertyAll<OutlinedBorder>(
+                    RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadii.sm),
                     ),
-                    if (isSelected)
-                      Align(
-                        alignment: AlignmentDirectional.centerStart,
-                        child: Icon(
-                          Icons.check_rounded,
-                          size: AppIconSizes.sm,
-                          color: accentColor,
+                  ),
+                  alignment: Alignment.center,
+                  animationDuration: AppDurations.fast,
+                ),
+                child: SizedBox(
+                  height: 42,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Center(
+                        child: Text(
+                          option.label,
+                          textAlign: TextAlign.center,
+                          style: AppTypography.fieldText.copyWith(
+                            color: isSelected
+                                ? accentColor
+                                : AppColors.textPrimary,
+                            fontWeight: isSelected
+                                ? FontWeight.w700
+                                : FontWeight.w600,
+                          ),
                         ),
                       ),
-                  ],
+                      if (isSelected)
+                        Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Icon(
+                            Icons.check_rounded,
+                            size: AppIconSizes.sm,
+                            color: accentColor,
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             );
@@ -194,12 +286,13 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
                 color: Colors.transparent,
                 child: InkWell(
                   key: widget.fieldKey,
+                  focusNode: _focusNode,
                   onTap: widget.enabled
                       ? () {
                           if (controller.isOpen) {
                             controller.close();
                           } else {
-                            controller.open();
+                            _openMenu(controller);
                           }
                         }
                       : null,
