@@ -13,6 +13,7 @@ class AppModuleDialog extends StatelessWidget {
     super.key,
     this.subtitle,
     this.actions = const [],
+    this.actionsKey,
     this.width = AppDialogSizes.large,
   });
 
@@ -23,6 +24,7 @@ class AppModuleDialog extends StatelessWidget {
   final VoidCallback onClose;
   final Widget child;
   final List<Widget> actions;
+  final Key? actionsKey;
   final double width;
 
   @override
@@ -119,7 +121,8 @@ class AppModuleDialog extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.all(AppSpacing.lg),
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
+                        key: actionsKey,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           for (var index = 0;
                               index < actions.length;
