@@ -40,8 +40,32 @@ void main() {
     expect(find.byKey(const Key('partiesActionBar')), findsOneWidget);
     expect(find.byKey(const Key('partiesTable')), findsOneWidget);
     expect(find.byKey(const Key('appScreenBackButton')), findsOneWidget);
-    expect(find.text('نوع الطرف مخصص للتقارير فقط'), findsOneWidget);
+    expect(find.text('بيانات الطرف'), findsNothing);
+    expect(find.text('نوع الطرف مخصص للتقارير فقط'), findsNothing);
+    expect(find.text('نوع الطرف (للتقارير)'), findsNothing);
+    expect(find.text('نوع الطرف'), findsOneWidget);
     expect(find.text('شركة النخيل للتجارة'), findsOneWidget);
+
+    final headerSubtitle = tester.widget<Text>(
+      find.text('إدارة بيانات الزبائن والمجهزين والموظفين'),
+    );
+    expect(headerSubtitle.style?.fontWeight, FontWeight.w500);
+
+    for (final fieldKey in [
+      'partyPhoneField',
+      'partyAlternatePhoneField',
+      'partyBalanceIqdField',
+      'partyBalanceUsdField',
+    ]) {
+      final input = tester.widget<EditableText>(
+        find.descendant(
+          of: find.byKey(Key(fieldKey)),
+          matching: find.byType(EditableText),
+        ),
+      );
+      expect(input.textDirection, TextDirection.rtl);
+      expect(input.textAlign, TextAlign.right);
+    }
 
     await tester.tap(find.byKey(const Key('partyRow_party-003')));
     await tester.pump();
