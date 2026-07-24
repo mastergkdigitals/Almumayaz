@@ -1,6 +1,45 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+class AppKeyHoldGuard {
+  AppKeyHoldGuard() {
+    HardwareKeyboard.instance.addHandler(_handleKeyEvent);
+  }
+
+  final Set<LogicalKeyboardKey> _consumedKeys = {};
+
+  bool runOnce({
+    required Iterable<LogicalKeyboardKey> keys,
+    required VoidCallback action,
+  }) {
+    final pressedKeys = HardwareKeyboard.instance.logicalKeysPressed;
+    final activeKeys = keys.where(pressedKeys.contains).toSet();
+
+    if (activeKeys.isEmpty) {
+      action();
+      return true;
+    }
+
+    if (activeKeys.any(_consumedKeys.contains)) return false;
+
+    _consumedKeys.addAll(activeKeys);
+    action();
+    return true;
+  }
+
+  bool _handleKeyEvent(KeyEvent event) {
+    if (event is KeyUpEvent) {
+      _consumedKeys.remove(event.logicalKey);
+    }
+    return false;
+  }
+
+  void dispose() {
+    HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
+    _consumedKeys.clear();
+  }
+}
+
 class AppKeyboardScope extends StatelessWidget {
   const AppKeyboardScope({
     required this.child,
