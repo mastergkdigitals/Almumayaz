@@ -18,6 +18,14 @@ namespace {
 
 constexpr const wchar_t kWindowClassName[] = L"FLUTTER_RUNNER_WIN32_WINDOW";
 
+constexpr int kMinimumWindowWidth = 1280;
+constexpr int kMinimumWindowHeight = 720;
+constexpr int kWindowAspectWidth = 16;
+constexpr int kWindowAspectHeight = 9;
+
+static_assert(kMinimumWindowWidth * kWindowAspectHeight ==
+              kMinimumWindowHeight * kWindowAspectWidth);
+
 /// Registry key for app theme preference.
 ///
 /// A value of 0 indicates apps should use dark mode. A non-zero or missing
@@ -35,6 +43,124 @@ using EnableNonClientDpiScaling = BOOL __stdcall(HWND hwnd);
 // scale factor
 int Scale(int source, double scale_factor) {
   return static_cast<int>(source * scale_factor);
+}
+
+SIZE GetMinimumTrackingSize() {
+  // This is the complete native window size, including its title bar and
+  // borders. Keep it in physical pixels so the restored window can still fit
+  // on a display whose total resolution is 1280x720.
+  return {kMinimumWindowWidth, kMinimumWindowHeight};
+}
+
+SIZE SizeFromWidth(LONG proposed_width, const SIZE& minimum_size) {
+  LONG width =
+      proposed_width < minimum_size.cx ? minimum_size.cx : proposed_width;
+  LONG height = MulDiv(width, kWindowAspectHeight, kWindowAspectWidth);
+
+  if (height < minimum_size.cy) {
+    height = minimum_size.cy;
+    width = MulDiv(height, kWindowAspectWidth, kWindowAspectHeight);
+  }
+
+  return {width, height};
+}
+
+SIZE SizeFromHeight(LONG proposed_height, const SIZE& minimum_size) {
+  LONG height =
+      proposed_height < minimum_size.cy ? minimum_size.cy : proposed_height;
+  LONG width = MulDiv(height, kWindowAspectWidth, kWindowAspectHeight);
+
+  if (width < minimum_size.cx) {
+    width = minimum_size.cx;
+    height = MulDiv(width, kWindowAspectHeight, kWindowAspectWidth);
+  }
+
+  return {width, height};
+}
+
+bool LockSizingRectToAspectRatio(WPARAM sizing_edge, RECT* rect) {
+  if (rect == nullptr) {
+    return false;
+  }
+
+  const LONG proposed_width = rect->right - rect->left;
+  const LONG proposed_height = rect->bottom - rect->top;
+  const SIZE minimum_size = GetMinimumTrackingSize();
+
+  bool width_drives;
+  switch (sizing_edge) {
+    case WMSZ_LEFT:
+    case WMSZ_RIGHT:
+      width_drives = true;
+      break;
+    case WMSZ_TOP:
+    case WMSZ_BOTTOM:
+      width_drives = false;
+      break;
+    case WMSZ_TOPLEFT:
+    case WMSZ_TOPRIGHT:
+    case WMSZ_BOTTOMLEFT:
+    case WMSZ_BOTTOMRIGHT:
+      width_drives =
+          static_cast<LONGLONG>(proposed_width) * kWindowAspectHeight >=
+          static_cast<LONGLONG>(proposed_height) * kWindowAspectWidth;
+      break;
+    default:
+      return false;
+  }
+
+  const SIZE target_size =
+      width_drives ? SizeFromWidth(proposed_width, minimum_size)
+                   : SizeFromHeight(proposed_height, minimum_size);
+
+  switch (sizing_edge) {
+    case WMSZ_LEFT: {
+      const LONG center_y = rect->top + proposed_height / 2;
+      rect->left = rect->right - target_size.cx;
+      rect->top = center_y - target_size.cy / 2;
+      rect->bottom = rect->top + target_size.cy;
+      break;
+    }
+    case WMSZ_RIGHT: {
+      const LONG center_y = rect->top + proposed_height / 2;
+      rect->right = rect->left + target_size.cx;
+      rect->top = center_y - target_size.cy / 2;
+      rect->bottom = rect->top + target_size.cy;
+      break;
+    }
+    case WMSZ_TOP: {
+      const LONG center_x = rect->left + proposed_width / 2;
+      rect->top = rect->bottom - target_size.cy;
+      rect->left = center_x - target_size.cx / 2;
+      rect->right = rect->left + target_size.cx;
+      break;
+    }
+    case WMSZ_BOTTOM: {
+      const LONG center_x = rect->left + proposed_width / 2;
+      rect->bottom = rect->top + target_size.cy;
+      rect->left = center_x - target_size.cx / 2;
+      rect->right = rect->left + target_size.cx;
+      break;
+    }
+    case WMSZ_TOPLEFT:
+      rect->left = rect->right - target_size.cx;
+      rect->top = rect->bottom - target_size.cy;
+      break;
+    case WMSZ_TOPRIGHT:
+      rect->right = rect->left + target_size.cx;
+      rect->top = rect->bottom - target_size.cy;
+      break;
+    case WMSZ_BOTTOMLEFT:
+      rect->left = rect->right - target_size.cx;
+      rect->bottom = rect->top + target_size.cy;
+      break;
+    case WMSZ_BOTTOMRIGHT:
+      rect->right = rect->left + target_size.cx;
+      rect->bottom = rect->top + target_size.cy;
+      break;
+  }
+
+  return true;
 }
 
 // Dynamically loads the |EnableNonClientDpiScaling| from the User32 module.
@@ -186,6 +312,23 @@ Win32Window::MessageHandler(HWND hwnd,
         PostQuitMessage(0);
       }
       return 0;
+
+    case WM_GETMINMAXINFO: {
+      auto min_max_info = reinterpret_cast<MINMAXINFO*>(lparam);
+      const SIZE minimum_size = GetMinimumTrackingSize();
+      min_max_info->ptMinTrackSize.x = minimum_size.cx;
+      min_max_info->ptMinTrackSize.y = minimum_size.cy;
+      return 0;
+    }
+
+    case WM_SIZING: {
+      if (!IsZoomed(hwnd) &&
+          LockSizingRectToAspectRatio(wparam,
+                                      reinterpret_cast<RECT*>(lparam))) {
+        return TRUE;
+      }
+      break;
+    }
 
     case WM_DPICHANGED: {
       auto newRectSize = reinterpret_cast<RECT*>(lparam);
