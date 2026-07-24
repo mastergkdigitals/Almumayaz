@@ -2,15 +2,61 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/design/app_design_system.dart';
 import 'design_gallery_section.dart';
+import 'design_gallery_transfer_dialog.dart';
 
 class DesignGalleryBusinessDialogsSection extends StatelessWidget {
   const DesignGalleryBusinessDialogsSection({super.key});
 
+  static final _statementEntries = [
+    AppStatementReportEntry(
+      date: DateTime(2026, 1, 1),
+      balance: 250000,
+      credit: 250000,
+      debit: 0,
+      type: 'رصيد افتتاحي',
+      details: 'الرصيد الافتتاحي للطرف',
+    ),
+    AppStatementReportEntry(
+      date: DateTime(2026, 1, 8),
+      balance: 325000,
+      credit: 75000,
+      debit: 0,
+      type: 'فاتورة بيع',
+      quantity: 25,
+      details: 'دفاتر وأقلام مكتبية',
+    ),
+    AppStatementReportEntry(
+      date: DateTime(2026, 1, 12),
+      balance: 225000,
+      credit: 0,
+      debit: 100000,
+      type: 'قبض',
+      details: 'سند قبض رقم 15',
+    ),
+    AppStatementReportEntry(
+      date: DateTime(2026, 1, 20),
+      balance: 265000,
+      credit: 40000,
+      debit: 0,
+      type: 'فاتورة بيع',
+      quantity: 2,
+      details: 'طابعتان مكتبيتان',
+    ),
+  ];
+
   Future<void> _showStatement(BuildContext context) async {
-    await AppStatementOptionsDialog.show(
+    final options = await AppStatementOptionsDialog.show(
       context,
       partyName: 'أسواق دجلة',
       firstTransactionDate: DateTime(2026, 1, 1),
+    );
+    if (!context.mounted || options == null) return;
+
+    await AppStatementReportDialog.show(
+      context,
+      partyName: 'أسواق دجلة',
+      options: options,
+      entries: _statementEntries,
     );
   }
 
@@ -49,6 +95,7 @@ class DesignGalleryBusinessDialogsSection extends StatelessWidget {
                 key: const Key('designStatementDialogButton'),
                 label: 'كشف الحساب',
                 icon: Icons.receipt_long_rounded,
+                backgroundColor: AppModuleColors.parties,
                 onPressed: () => _showStatement(context),
               ),
               AppButton(
@@ -56,10 +103,7 @@ class DesignGalleryBusinessDialogsSection extends StatelessWidget {
                 label: 'النقل المخزني',
                 icon: Icons.compare_arrows_rounded,
                 variant: AppButtonVariant.secondary,
-                onPressed: () => _showManagement(
-                  context,
-                  _ManagementDialogSpec.transfer,
-                ),
+                onPressed: () => DesignGalleryTransferDialog.show(context),
               ),
               AppButton(
                 key: const Key('designGroupsTypesDialogButton'),
@@ -99,8 +143,6 @@ class DesignGalleryBusinessDialogsSection extends StatelessWidget {
   }
 }
 
-enum _ManagementDialogKind { transfer, dual }
-
 @immutable
 class _ManagementDialogSpec {
   const _ManagementDialogSpec({
@@ -109,23 +151,13 @@ class _ManagementDialogSpec {
     required this.subtitle,
     required this.icon,
     required this.accentColor,
-    required this.kind,
-    this.primaryTitle = '',
-    this.secondaryTitle = '',
-    this.primaryFieldLabel = '',
-    this.secondaryFieldLabel = '',
-    this.primaryValues = const [],
-    this.secondaryValues = const [],
+    required this.primaryTitle,
+    required this.secondaryTitle,
+    required this.primaryFieldLabel,
+    required this.secondaryFieldLabel,
+    required this.primaryValues,
+    required this.secondaryValues,
   });
-
-  static const transfer = _ManagementDialogSpec(
-    keyName: 'designTransferDialog',
-    title: 'النقل المخزني',
-    subtitle: 'نقل المواد بين المخازن مع التحقق من الرصيد',
-    icon: Icons.compare_arrows_rounded,
-    accentColor: AppModuleColors.warehouses,
-    kind: _ManagementDialogKind.transfer,
-  );
 
   static const groupsAndTypes = _ManagementDialogSpec(
     keyName: 'designGroupsTypesDialog',
@@ -133,7 +165,6 @@ class _ManagementDialogSpec {
     subtitle: 'تنظيم دليل المواد',
     icon: Icons.category_rounded,
     accentColor: AppModuleColors.warehouses,
-    kind: _ManagementDialogKind.dual,
     primaryTitle: 'المجموعات',
     secondaryTitle: 'الأنواع',
     primaryFieldLabel: 'اسم المجموعة',
@@ -148,7 +179,6 @@ class _ManagementDialogSpec {
     subtitle: 'إدارة جهات العمل والفروع المرتبطة بها',
     icon: Icons.business_center_rounded,
     accentColor: AppModuleColors.parties,
-    kind: _ManagementDialogKind.dual,
     primaryTitle: 'جهات العمل',
     secondaryTitle: 'الفروع',
     primaryFieldLabel: 'اسم جهة العمل',
@@ -163,7 +193,6 @@ class _ManagementDialogSpec {
     subtitle: 'إدارة الحسابات الرئيسية والفرعية',
     icon: Icons.account_balance_wallet_rounded,
     accentColor: AppModuleColors.cashbox,
-    kind: _ManagementDialogKind.dual,
     primaryTitle: 'الحسابات الرئيسية',
     secondaryTitle: 'الحسابات الفرعية',
     primaryFieldLabel: 'اسم الحساب الرئيسي',
@@ -177,7 +206,6 @@ class _ManagementDialogSpec {
   final String subtitle;
   final IconData icon;
   final Color accentColor;
-  final _ManagementDialogKind kind;
   final String primaryTitle;
   final String secondaryTitle;
   final String primaryFieldLabel;
@@ -200,17 +228,12 @@ class _ManagementPreviewDialogState
     extends State<_ManagementPreviewDialog> {
   final _primaryController = TextEditingController();
   final _secondaryController = TextEditingController();
-  final _notesController = TextEditingController();
-  String _fromWarehouse = 'main';
-  String _toWarehouse = 'secondary';
   String _parentValue = 'first';
-  DateTime _transferDate = DateTime(2026, 12, 31);
 
   @override
   void dispose() {
     _primaryController.dispose();
     _secondaryController.dispose();
-    _notesController.dispose();
     super.dispose();
   }
 
@@ -226,6 +249,7 @@ class _ManagementPreviewDialogState
       icon: spec.icon,
       accentColor: spec.accentColor,
       onClose: _close,
+      actionsKey: Key('${spec.keyName}Actions'),
       actions: [
         AppButton(
           key: Key('${spec.keyName}Cancel'),
@@ -236,122 +260,14 @@ class _ManagementPreviewDialogState
         ),
         AppButton(
           key: Key('${spec.keyName}Confirm'),
-          label: spec.kind == _ManagementDialogKind.transfer
-              ? 'تنفيذ النقل'
-              : 'حفظ',
-          icon: spec.kind == _ManagementDialogKind.transfer
-              ? Icons.swap_horiz_rounded
-              : Icons.save_rounded,
+          label: 'حفظ',
+          icon: Icons.save_rounded,
           width: 176,
+          backgroundColor: spec.accentColor,
           onPressed: _close,
         ),
       ],
-      child: spec.kind == _ManagementDialogKind.transfer
-          ? _buildTransfer(spec)
-          : _buildDualManagement(spec),
-    );
-  }
-
-  Widget _buildTransfer(_ManagementDialogSpec spec) {
-    const warehouseOptions = [
-      AppDropdownOption(value: 'main', label: 'المخزن الرئيسي'),
-      AppDropdownOption(value: 'secondary', label: 'المخزن الفرعي'),
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        AppDialogSection(
-          title: 'بيانات النقل',
-          icon: Icons.local_shipping_rounded,
-          accentColor: spec.accentColor,
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: AppDropdownField<String>(
-                      label: 'من مخزن',
-                      icon: Icons.warehouse_rounded,
-                      accentColor: spec.accentColor,
-                      value: _fromWarehouse,
-                      options: warehouseOptions,
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() => _fromWarehouse = value);
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: AppDropdownField<String>(
-                      label: 'إلى مخزن',
-                      icon: Icons.warehouse_rounded,
-                      accentColor: spec.accentColor,
-                      value: _toWarehouse,
-                      options: warehouseOptions,
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() => _toWarehouse = value);
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: AppDateField(
-                      label: 'تاريخ النقل',
-                      value: _transferDate,
-                      accentColor: spec.accentColor,
-                      onChanged: (value) =>
-                          setState(() => _transferDate = value),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.md),
-              AppTextField(
-                controller: _notesController,
-                label: 'الملاحظات',
-                icon: Icons.notes_rounded,
-                accentColor: spec.accentColor,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        AppDialogSection(
-          title: 'مواد النقل',
-          icon: Icons.inventory_2_rounded,
-          accentColor: spec.accentColor,
-          child: AppDataTable(
-            height: 180,
-            minimumColumnWidth: 130,
-            accentColor: spec.accentColor,
-            columns: const [
-              AppTableColumn(label: 'رمز المادة'),
-              AppTableColumn(label: 'اسم المادة'),
-              AppTableColumn(label: 'الرصيد المتوفر', numeric: true),
-              AppTableColumn(label: 'الكمية', numeric: true),
-              AppTableColumn(label: 'الإجراء'),
-            ],
-            rows: const [
-              AppTableRow(
-                cells: [
-                  Text('P-001'),
-                  Text('دفتر ملاحظات'),
-                  Text('1,000'),
-                  Text('100'),
-                  AppTableActionButton(
-                    icon: Icons.delete_rounded,
-                    tooltip: 'حذف السطر',
-                    onPressed: _noop,
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ],
+      child: _buildDualManagement(spec),
     );
   }
 
@@ -405,8 +321,9 @@ class _ManagementPreviewDialogState
                     ),
                   ],
                   onChanged: (value) {
-                    if (value == null) return;
-                    setState(() => _parentValue = value);
+                    if (value != null) {
+                      setState(() => _parentValue = value);
+                    }
                   },
                 ),
                 const SizedBox(height: AppSpacing.md),
