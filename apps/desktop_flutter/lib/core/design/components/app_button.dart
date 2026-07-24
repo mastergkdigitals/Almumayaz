@@ -27,6 +27,8 @@ class AppButton extends StatefulWidget {
     this.iconSpacing = AppSpacing.sm,
     this.padding,
     this.variant = AppButtonVariant.primary,
+    this.backgroundColor,
+    this.foregroundColor,
     this.isLoading = false,
     this.width,
     this.height = AppControlHeights.standard,
@@ -41,6 +43,8 @@ class AppButton extends StatefulWidget {
   final double iconSpacing;
   final EdgeInsetsGeometry? padding;
   final AppButtonVariant variant;
+  final Color? backgroundColor;
+  final Color? foregroundColor;
   final bool isLoading;
   final double? width;
   final double height;
@@ -151,8 +155,10 @@ class _AppButtonState extends State<AppButton> {
           onPressed: effectiveOnPressed,
           style: withoutShadow(
             ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: AppColors.onStrong,
+              backgroundColor:
+                  widget.backgroundColor ?? AppColors.primary,
+              foregroundColor:
+                  widget.foregroundColor ?? AppColors.onStrong,
             ),
           ),
           child: content,
@@ -161,8 +167,10 @@ class _AppButtonState extends State<AppButton> {
           onPressed: effectiveOnPressed,
           style: withoutShadow(
             ElevatedButton.styleFrom(
-              backgroundColor: AppColors.success,
-              foregroundColor: AppColors.onStrong,
+              backgroundColor:
+                  widget.backgroundColor ?? AppColors.success,
+              foregroundColor:
+                  widget.foregroundColor ?? AppColors.onStrong,
             ),
           ),
           child: content,
@@ -171,8 +179,10 @@ class _AppButtonState extends State<AppButton> {
           onPressed: effectiveOnPressed,
           style: withoutShadow(
             ElevatedButton.styleFrom(
-              backgroundColor: AppColors.warning,
-              foregroundColor: AppColors.onStrong,
+              backgroundColor:
+                  widget.backgroundColor ?? AppColors.warning,
+              foregroundColor:
+                  widget.foregroundColor ?? AppColors.onStrong,
             ),
           ),
           child: content,
@@ -181,9 +191,13 @@ class _AppButtonState extends State<AppButton> {
           onPressed: effectiveOnPressed,
           style: withoutShadow(
             OutlinedButton.styleFrom(
-              foregroundColor: AppColors.navigation,
-              backgroundColor: AppColors.surface,
-              side: const BorderSide(color: AppColors.navigation),
+              foregroundColor:
+                  widget.foregroundColor ?? AppColors.navigation,
+              backgroundColor:
+                  widget.backgroundColor ?? AppColors.surface,
+              side: BorderSide(
+                color: widget.foregroundColor ?? AppColors.navigation,
+              ),
             ),
           ),
           child: content,
@@ -192,9 +206,13 @@ class _AppButtonState extends State<AppButton> {
           onPressed: effectiveOnPressed,
           style: withoutShadow(
             OutlinedButton.styleFrom(
-              foregroundColor: AppColors.navigation,
-              backgroundColor: AppColors.surface,
-              side: const BorderSide(color: AppColors.navigation),
+              foregroundColor:
+                  widget.foregroundColor ?? AppColors.navigation,
+              backgroundColor:
+                  widget.backgroundColor ?? AppColors.surface,
+              side: BorderSide(
+                color: widget.foregroundColor ?? AppColors.navigation,
+              ),
             ),
           ),
           child: content,
@@ -203,8 +221,10 @@ class _AppButtonState extends State<AppButton> {
           onPressed: effectiveOnPressed,
           style: withoutShadow(
             ElevatedButton.styleFrom(
-              backgroundColor: AppColors.danger,
-              foregroundColor: AppColors.onStrong,
+              backgroundColor:
+                  widget.backgroundColor ?? AppColors.danger,
+              foregroundColor:
+                  widget.foregroundColor ?? AppColors.onStrong,
             ),
           ),
           child: content,
@@ -212,7 +232,11 @@ class _AppButtonState extends State<AppButton> {
       AppButtonVariant.ghost => TextButton(
           onPressed: effectiveOnPressed,
           style: withoutShadow(
-            TextButton.styleFrom(foregroundColor: AppColors.navigation),
+            TextButton.styleFrom(
+              foregroundColor:
+                  widget.foregroundColor ?? AppColors.navigation,
+              backgroundColor: widget.backgroundColor,
+            ),
           ),
           child: content,
         ),
