@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../core/design/app_design_system.dart';
 import '../../dashboard/presentation/dashboard_screen.dart';
@@ -36,6 +37,22 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  void _focusNextField() {
+    if (_usernameFocusNode.hasFocus) {
+      _passwordFocusNode.requestFocus();
+    } else {
+      _usernameFocusNode.requestFocus();
+    }
+  }
+
+  void _focusPreviousField() {
+    if (_passwordFocusNode.hasFocus) {
+      _usernameFocusNode.requestFocus();
+    } else {
+      _passwordFocusNode.requestFocus();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -67,74 +84,92 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildForm(BuildContext context) {
     return Form(
       key: _formKey,
-      child: FocusTraversalGroup(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'تسجيل الدخول',
-              textAlign: TextAlign.center,
-              style: Theme.of(context)
-                  .textTheme
-                  .headlineMedium
-                  ?.copyWith(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            const Text(
-              'أدخل بيانات المستخدم للوصول إلى النظام',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            AppTextField(
-              fieldKey: const Key('usernameField'),
-              controller: _username,
-              label: 'اسم المستخدم',
-              icon: Icons.person_outline_rounded,
-              focusNode: _usernameFocusNode,
-              autofocus: true,
-              textInputAction: TextInputAction.next,
-              onSubmitted: (_) => _passwordFocusNode.requestFocus(),
-              validator: (value) => value == null || value.trim().isEmpty
-                  ? 'أدخل اسم المستخدم'
-                  : null,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            AppTextField(
-              fieldKey: const Key('passwordField'),
-              controller: _password,
-              label: 'كلمة المرور',
-              icon: Icons.lock_outline_rounded,
-              focusNode: _passwordFocusNode,
-              obscureText: _hidePassword,
-              textInputAction: TextInputAction.done,
-              onSubmitted: (_) => _login(),
-              suffixIcon: AppFieldIconButton(
-                buttonKey: const Key('passwordVisibilityButton'),
-                icon: _hidePassword
-                    ? Icons.visibility_off_rounded
-                    : Icons.visibility_rounded,
-                onPressed: () =>
-                    setState(() => _hidePassword = !_hidePassword),
+      child: CallbackShortcuts(
+        bindings: {
+          const SingleActivator(LogicalKeyboardKey.tab): _focusNextField,
+          const SingleActivator(LogicalKeyboardKey.tab, shift: true):
+              _focusPreviousField,
+        },
+        child: FocusTraversalGroup(
+          policy: OrderedTraversalPolicy(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'تسجيل الدخول',
+                textAlign: TextAlign.center,
+                style: Theme.of(context)
+                    .textTheme
+                    .headlineMedium
+                    ?.copyWith(fontWeight: FontWeight.w700),
               ),
-              validator: (value) =>
-                  value == null || value.isEmpty ? 'أدخل كلمة المرور' : null,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            AppButton(
-              key: const Key('loginButton'),
-              label: 'دخول',
-              icon: Icons.login_rounded,
-              width: double.infinity,
-              onPressed: _login,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            const AppInfoBanner(
-              message: 'نسخة تصميمية: استخدم أي اسم وكلمة مرور غير فارغين.',
-              icon: null,
-              textAlign: TextAlign.center,
-            ),
-          ],
+              const SizedBox(height: AppSpacing.sm),
+              const Text(
+                'أدخل بيانات المستخدم للوصول إلى النظام',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              FocusTraversalOrder(
+                order: const NumericFocusOrder(1),
+                child: AppTextField(
+                  fieldKey: const Key('usernameField'),
+                  controller: _username,
+                  label: 'اسم المستخدم',
+                  icon: Icons.person_outline_rounded,
+                  focusNode: _usernameFocusNode,
+                  autofocus: true,
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (_) => _passwordFocusNode.requestFocus(),
+                  validator: (value) =>
+                      value == null || value.trim().isEmpty
+                          ? 'أدخل اسم المستخدم'
+                          : null,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              FocusTraversalOrder(
+                order: const NumericFocusOrder(2),
+                child: AppTextField(
+                  fieldKey: const Key('passwordField'),
+                  controller: _password,
+                  label: 'كلمة المرور',
+                  icon: Icons.lock_outline_rounded,
+                  focusNode: _passwordFocusNode,
+                  obscureText: _hidePassword,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => _login(),
+                  suffixIcon: AppFieldIconButton(
+                    buttonKey: const Key('passwordVisibilityButton'),
+                    icon: _hidePassword
+                        ? Icons.visibility_off_rounded
+                        : Icons.visibility_rounded,
+                    onPressed: () =>
+                        setState(() => _hidePassword = !_hidePassword),
+                  ),
+                  validator: (value) => value == null || value.isEmpty
+                      ? 'أدخل كلمة المرور'
+                      : null,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              ExcludeFocus(
+                child: AppButton(
+                  key: const Key('loginButton'),
+                  label: 'دخول',
+                  icon: Icons.login_rounded,
+                  width: double.infinity,
+                  onPressed: _login,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              const AppInfoBanner(
+                message: 'نسخة تصميمية: استخدم أي اسم وكلمة مرور غير فارغين.',
+                icon: null,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
     );
