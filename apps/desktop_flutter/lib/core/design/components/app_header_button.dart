@@ -57,6 +57,8 @@ class AppTooltipIconButton extends StatelessWidget {
     this.size = 52,
     this.iconSize = AppIconSizes.lg,
     this.variant = AppButtonVariant.navigation,
+    this.backgroundColor,
+    this.foregroundColor,
   });
 
   final IconData icon;
@@ -67,6 +69,8 @@ class AppTooltipIconButton extends StatelessWidget {
   final double size;
   final double iconSize;
   final AppButtonVariant variant;
+  final Color? backgroundColor;
+  final Color? foregroundColor;
 
   @override
   Widget build(BuildContext context) {
@@ -83,6 +87,8 @@ class AppTooltipIconButton extends StatelessWidget {
           icon: icon,
           flipIconHorizontally: flipIconHorizontally,
           variant: variant,
+          backgroundColor: backgroundColor,
+          foregroundColor: foregroundColor,
           width: size,
           height: size,
           padding: EdgeInsets.zero,
