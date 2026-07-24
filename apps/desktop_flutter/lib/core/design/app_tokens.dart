@@ -18,7 +18,7 @@ abstract final class AppColors {
   static const info = Color(0xFF1D4ED8);
   static const disabled = Color(0xFF94A3B8);
 
-  static const headerBackground = Color(0xFFFAF8F3);
+  static const headerBackground = Colors.white;
   static const headerBorder = Color(0xFFE4E0D7);
   static const infoSurface = Color(0xFFE8F1FF);
   static const successSurface = Color(0xFFE8F7EF);
