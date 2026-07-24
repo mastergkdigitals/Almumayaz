@@ -235,7 +235,24 @@ void main() {
       MainAxisAlignment.center,
     );
 
-    await tester.tap(find.byKey(const Key('appStatementReportClose')));
+    expect(find.byKey(const Key('appStatementReportClose')), findsNothing);
+    expect(find.byKey(const Key('appStatementPeriodText')), findsOneWidget);
+    expect(find.byKey(const Key('appStatementCurrencyText')), findsOneWidget);
+
+    final partyName = tester.widget<Text>(
+      find.descendant(of: report, matching: find.text('أسواق دجلة')),
+    );
+    expect(partyName.style?.fontSize, 22);
+    expect(partyName.style?.fontWeight, FontWeight.w800);
+
+    final close = find.byKey(const Key('appModuleDialogClose'));
+    expect(close, findsOneWidget);
+    expect(
+      tester.getCenter(find.byIcon(Icons.receipt_long_rounded)).dx,
+      lessThan(tester.getCenter(close).dx),
+    );
+
+    await tester.tap(close);
     await tester.pump();
   });
 
@@ -264,6 +281,18 @@ void main() {
     );
     expect(find.byKey(const Key('designTransferProduct')), findsOneWidget);
     expect(find.byKey(const Key('designTransferQuantity')), findsOneWidget);
+    expect(
+      tester
+          .getTopLeft(find.byKey(const Key('designTransferProduct')))
+          .dy,
+      lessThan(
+        tester
+            .getTopLeft(
+              find.byKey(const Key('designTransferSourceStock')),
+            )
+            .dy,
+      ),
+    );
     expect(
       tester
           .widget<Row>(
@@ -384,7 +413,7 @@ void main() {
     await tester.pump();
   });
 
-  testWidgets('adds and deletes rows in purchase and sales tables',
+  testWidgets('edits invoice cells and uses last-row actions',
       (tester) async {
     await pumpDesignSystemGallery(tester);
 
@@ -402,18 +431,40 @@ void main() {
       findsOneWidget,
     );
     expect(tester.widget<AppInvoiceItemsTable>(purchase).rows, hasLength(2));
+    expect(find.byKey(const Key('designPurchaseAddRow')), findsNothing);
+    expect(find.byKey(const Key('designPurchaseAdd-p2')), findsOneWidget);
+    expect(find.byKey(const Key('designPurchaseDelete-p1')), findsOneWidget);
+    expect(find.byKey(const Key('designPurchaseDelete-p2')), findsNothing);
+    expect(
+      find.byKey(const Key('designPurchaseQuantity-p1')),
+      findsOneWidget,
+    );
 
-    final addPurchase = find.byKey(const Key('designPurchaseAddRow'));
-    await reveal(tester, addPurchase);
-    await tester.tap(addPurchase);
+    await tester.enterText(
+      find.byKey(const Key('designPurchaseQuantity-p1')),
+      '10',
+    );
     await tester.pump();
-
-    expect(tester.widget<AppInvoiceItemsTable>(purchase).rows, hasLength(3));
-    expect(find.text('ورق A4 تجريبي'), findsOneWidget);
+    expect(
+      find.descendant(of: purchase, matching: find.text('25,000')),
+      findsOneWidget,
+    );
 
     tester
         .widget<AppTableActionButton>(
-          find.byKey(const Key('designPurchaseDelete-p3')),
+          find.byKey(const Key('designPurchaseAdd-p2')),
+        )
+        .onPressed
+        ?.call();
+    await tester.pump();
+
+    expect(tester.widget<AppInvoiceItemsTable>(purchase).rows, hasLength(3));
+    expect(find.byKey(const Key('designPurchaseDelete-p2')), findsOneWidget);
+    expect(find.byKey(const Key('designPurchaseAdd-p3')), findsOneWidget);
+
+    tester
+        .widget<AppTableActionButton>(
+          find.byKey(const Key('designPurchaseDelete-p2')),
         )
         .onPressed
         ?.call();
@@ -437,18 +488,26 @@ void main() {
       findsOneWidget,
     );
     expect(tester.widget<AppInvoiceItemsTable>(sales).rows, hasLength(2));
-
-    final addSale = find.byKey(const Key('designSaleAddRow'));
-    await reveal(tester, addSale);
-    await tester.tap(addSale);
-    await tester.pump();
-
-    expect(tester.widget<AppInvoiceItemsTable>(sales).rows, hasLength(3));
-    expect(find.text('حبر طابعة تجريبي'), findsOneWidget);
+    expect(find.byKey(const Key('designSaleAddRow')), findsNothing);
+    expect(find.byKey(const Key('designSaleAdd-s2')), findsOneWidget);
+    expect(find.byKey(const Key('designSaleDelete-s1')), findsOneWidget);
+    expect(find.byKey(const Key('designSalePrice-s1')), findsOneWidget);
 
     tester
         .widget<AppTableActionButton>(
-          find.byKey(const Key('designSaleDelete-s3')),
+          find.byKey(const Key('designSaleAdd-s2')),
+        )
+        .onPressed
+        ?.call();
+    await tester.pump();
+
+    expect(tester.widget<AppInvoiceItemsTable>(sales).rows, hasLength(3));
+    expect(find.byKey(const Key('designSaleDelete-s2')), findsOneWidget);
+    expect(find.byKey(const Key('designSaleAdd-s3')), findsOneWidget);
+
+    tester
+        .widget<AppTableActionButton>(
+          find.byKey(const Key('designSaleDelete-s2')),
         )
         .onPressed
         ?.call();
