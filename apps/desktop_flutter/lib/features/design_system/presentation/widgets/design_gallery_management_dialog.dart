@@ -449,10 +449,10 @@ class _ManagementEntries extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (entries.isEmpty) {
-      return const AppEmptyState(
+      return const AppStatePanel(
+        type: AppStateType.empty,
         title: 'لا توجد بيانات',
         message: 'اكتب الاسم ثم اضغط إضافة.',
-        icon: Icons.inbox_rounded,
       );
     }
 
