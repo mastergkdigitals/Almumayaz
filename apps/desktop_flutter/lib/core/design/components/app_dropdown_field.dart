@@ -44,7 +44,7 @@ class AppDropdownField<T> extends StatefulWidget {
 }
 
 class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
-  static const _enterKeys = {
+  static final _enterKeys = {
     LogicalKeyboardKey.enter,
     LogicalKeyboardKey.numpadEnter,
   };
