@@ -26,8 +26,8 @@ class PartyFormControllers {
     number.text = numberValue.toString();
     date.text = AppFormatters.date(createdAt);
     time.text = AppFormatters.time(TimeOfDay.fromDateTime(createdAt));
-    balanceIqd.text = '0';
-    balanceUsd.text = '0';
+    balanceIqd.text = AppFormatters.iqd(0);
+    balanceUsd.text = AppFormatters.usd(0);
     name.clear();
     workplace.clear();
     branch.clear();
@@ -42,8 +42,8 @@ class PartyFormControllers {
     number.text = party.number.toString();
     date.text = AppFormatters.date(party.createdAt);
     time.text = AppFormatters.time(TimeOfDay.fromDateTime(party.createdAt));
-    balanceIqd.text = AppFormatters.money(party.balanceIqd);
-    balanceUsd.text = AppFormatters.money(party.balanceUsd);
+    balanceIqd.text = AppFormatters.iqd(party.balanceIqd);
+    balanceUsd.text = AppFormatters.usd(party.balanceUsd);
     name.text = party.name;
     workplace.text = party.workplace;
     branch.text = party.branch;
