@@ -234,52 +234,42 @@ class _PartyFormState extends State<PartyForm> {
                     _FieldsWrap(
                       columns: compact ? 3 : 5,
                       children: [
-                        AppTextField(
+                        AppReadOnlyField(
                           fieldKey: const Key('partyNumberField'),
                           controller: controllers.number,
                           label: 'رقم الطرف',
                           icon: Icons.tag_rounded,
                           accentColor: accentColor,
-                          readOnly: true,
-                          enabled: false,
                         ),
-                        AppTextField(
+                        AppReadOnlyField(
                           fieldKey: const Key('partyDateField'),
                           controller: controllers.date,
                           label: 'التاريخ',
                           icon: Icons.calendar_month_rounded,
                           accentColor: accentColor,
-                          readOnly: true,
-                          enabled: false,
                         ),
-                        AppTextField(
+                        AppReadOnlyField(
                           fieldKey: const Key('partyTimeField'),
                           controller: controllers.time,
                           label: 'الوقت',
                           icon: Icons.schedule_rounded,
                           accentColor: accentColor,
-                          readOnly: true,
-                          enabled: false,
                         ),
-                        AppTextField(
+                        AppReadOnlyField(
                           fieldKey: const Key('partyBalanceIqdField'),
                           controller: controllers.balanceIqd,
                           label: 'الرصيد دينار',
                           icon: Icons.payments_rounded,
                           accentColor: accentColor,
-                          readOnly: true,
-                          enabled: false,
                           textDirection: TextDirection.rtl,
                           textAlign: TextAlign.right,
                         ),
-                        AppTextField(
+                        AppReadOnlyField(
                           fieldKey: const Key('partyBalanceUsdField'),
                           controller: controllers.balanceUsd,
                           label: 'الرصيد دولار',
                           icon: Icons.attach_money_rounded,
                           accentColor: accentColor,
-                          readOnly: true,
-                          enabled: false,
                           textDirection: TextDirection.rtl,
                           textAlign: TextAlign.right,
                         ),
@@ -365,27 +355,19 @@ class _PartyFormState extends State<PartyForm> {
                       children: [
                         _TraversalField(
                           order: 5,
-                          child: AppTextField(
+                          child: AppPhoneField(
                             fieldKey: const Key('partyPhoneField'),
                             controller: controllers.phone,
                             label: 'رقم الهاتف',
                             icon: Icons.phone_rounded,
                             accentColor: accentColor,
                             focusNode: _phoneFocusNode,
-                            textDirection: TextDirection.rtl,
-                            textAlign: TextAlign.right,
-                            keyboardType: TextInputType.phone,
-                            textInputAction: TextInputAction.next,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly,
-                              LengthLimitingTextInputFormatter(11),
-                            ],
                             onSubmitted: (_) => _moveFrom(_phoneFocusNode),
                           ),
                         ),
                         _TraversalField(
                           order: 6,
-                          child: AppTextField(
+                          child: AppPhoneField(
                             fieldKey:
                                 const Key('partyAlternatePhoneField'),
                             controller: controllers.alternatePhone,
@@ -393,14 +375,6 @@ class _PartyFormState extends State<PartyForm> {
                             icon: Icons.phone_in_talk_rounded,
                             accentColor: accentColor,
                             focusNode: _alternatePhoneFocusNode,
-                            textDirection: TextDirection.rtl,
-                            textAlign: TextAlign.right,
-                            keyboardType: TextInputType.phone,
-                            textInputAction: TextInputAction.next,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly,
-                              LengthLimitingTextInputFormatter(11),
-                            ],
                             onSubmitted: (_) =>
                                 _moveFrom(_alternatePhoneFocusNode),
                           ),
