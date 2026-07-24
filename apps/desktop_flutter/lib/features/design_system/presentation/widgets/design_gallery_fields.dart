@@ -208,10 +208,11 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
               ),
               SizedBox(
                 width: 660,
-                child: AppTextArea(
+                child: AppTextField(
                   fieldKey: const Key('designNotesField'),
                   controller: _notesController,
                   label: 'الملاحظات',
+                  icon: Icons.notes_rounded,
                 ),
               ),
               SizedBox(
