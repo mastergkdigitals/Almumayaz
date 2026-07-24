@@ -5,12 +5,18 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('formats business values consistently', () {
-    expect(AppFormatters.date(DateTime(2026, 7, 4)), '2026-07-04');
+    expect(AppFormatters.date(DateTime(2026, 12, 31)), '2026/12/31');
     expect(
-      AppFormatters.time(const TimeOfDay(hour: 9, minute: 5)),
-      '09:05',
+      AppFormatters.time(const TimeOfDay(hour: 1, minute: 1)),
+      '01:01 ص',
     );
-    expect(AppFormatters.quantity(1000), '1,000');
+    expect(
+      AppFormatters.time(const TimeOfDay(hour: 13, minute: 1)),
+      '01:01 م',
+    );
+    expect(AppFormatters.quantity(1000000), '1,000,000');
+    expect(AppFormatters.iqd(1000000), '1,000,000');
+    expect(AppFormatters.usd(100000), '100,000.00');
     expect(AppFormatters.money(12345.5, decimalPlaces: 2), '12,345.50');
     expect(AppFormatters.currency('IQD'), 'دينار');
     expect(AppFormatters.currency('USD'), 'دولار');
