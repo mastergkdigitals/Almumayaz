@@ -14,6 +14,10 @@ class DesignGalleryFormatsSection extends StatefulWidget {
 class _DesignGalleryFormatsSectionState
     extends State<DesignGalleryFormatsSection> {
   DateTime _date = DateTime(2026, 12, 31);
+  DateTimeRange _dateRange = DateTimeRange(
+    start: DateTime(2025, 12, 31),
+    end: DateTime(2026, 12, 31),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -87,6 +91,13 @@ class _DesignGalleryFormatsSectionState
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          AppDateRangeField(
+            fieldKey: const Key('designGlobalDateRange'),
+            label: 'نطاق التاريخ',
+            value: _dateRange,
+            onChanged: (value) => setState(() => _dateRange = value),
           ),
           const SizedBox(height: AppSpacing.sm),
           const Text(
