@@ -62,6 +62,29 @@ void main() {
     expect(notes.maxLines, 1);
   });
 
+  testWidgets('groups quantity and money while typing', (tester) async {
+    await pumpDesignSystemGallery(tester);
+
+    final quantity = find.byKey(const Key('designQuantityField'));
+    await reveal(tester, quantity);
+    await tester.enterText(quantity, '1000000');
+    await tester.pump();
+
+    expect(
+      tester.widget<TextFormField>(quantity).controller?.text,
+      '1,000,000',
+    );
+
+    final money = find.byKey(const Key('designMoneyField'));
+    await tester.enterText(money, '1000000.25');
+    await tester.pump();
+
+    expect(
+      tester.widget<TextFormField>(money).controller?.text,
+      '1,000,000.25',
+    );
+  });
+
   testWidgets('clears search text without leaving the field', (tester) async {
     await pumpDesignSystemGallery(tester);
 
