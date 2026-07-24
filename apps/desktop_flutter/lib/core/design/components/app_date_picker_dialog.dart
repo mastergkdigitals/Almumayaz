@@ -172,7 +172,7 @@ class _AppDatePickerBodyState extends State<_AppDatePickerBody> {
                         key: const Key('appDatePickerCancel'),
                         label: 'إلغاء',
                         variant: AppButtonVariant.secondary,
-                        width: 108,
+                        width: 144,
                         onPressed: () => Navigator.of(context).pop(),
                       ),
                       const SizedBox(width: AppSpacing.sm),
@@ -180,7 +180,7 @@ class _AppDatePickerBodyState extends State<_AppDatePickerBody> {
                         key: const Key('appDatePickerConfirm'),
                         label: 'موافق',
                         icon: Icons.check_rounded,
-                        width: 108,
+                        width: 144,
                         onPressed: () =>
                             Navigator.of(context).pop(_selectedDate),
                       ),
