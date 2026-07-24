@@ -322,6 +322,9 @@ class AppTableActionButton extends StatelessWidget {
     super.key,
     this.tooltipKey,
     this.size = AppControlHeights.compact,
+    this.variant = AppButtonVariant.navigation,
+    this.backgroundColor,
+    this.foregroundColor,
   });
 
   final IconData icon;
@@ -329,6 +332,9 @@ class AppTableActionButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final Key? tooltipKey;
   final double size;
+  final AppButtonVariant variant;
+  final Color? backgroundColor;
+  final Color? foregroundColor;
 
   @override
   Widget build(BuildContext context) {
@@ -338,6 +344,9 @@ class AppTableActionButton extends StatelessWidget {
       tooltip: tooltip,
       size: size,
       iconSize: AppIconSizes.md,
+      variant: variant,
+      backgroundColor: backgroundColor,
+      foregroundColor: foregroundColor,
       onPressed: onPressed,
     );
   }
