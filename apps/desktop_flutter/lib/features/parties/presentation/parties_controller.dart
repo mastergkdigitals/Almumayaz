@@ -78,29 +78,52 @@ class PartiesController extends ChangeNotifier {
     notifyListeners();
   }
 
+  int get selectedVisibleIndex => _selectedVisibleIndex(visibleParties);
+
   void first() => _selectAt(0);
 
   void previous() {
     final parties = visibleParties;
     if (parties.isEmpty) return;
     final index = _selectedVisibleIndex(parties);
+    if (index < 0) {
+      _selectAt(parties.length - 1);
+      return;
+    }
     _selectAt(index <= 0 ? 0 : index - 1);
   }
 
   void next() {
     final parties = visibleParties;
-    if (parties.isEmpty) return;
+    if (parties.isEmpty) {
+      select(null);
+      return;
+    }
     final index = _selectedVisibleIndex(parties);
-    _selectAt(
-      index < 0
-          ? 0
-          : index >= parties.length - 1
-              ? parties.length - 1
-              : index + 1,
-    );
+    if (index < 0) {
+      _selectAt(0);
+      return;
+    }
+    if (index >= parties.length - 1) {
+      select(null);
+      return;
+    }
+    _selectAt(index + 1);
   }
 
-  void last() => _selectAt(visibleParties.length - 1);
+  void last() {
+    final parties = visibleParties;
+    if (parties.isEmpty) {
+      select(null);
+      return;
+    }
+    final index = _selectedVisibleIndex(parties);
+    if (index == parties.length - 1) {
+      select(null);
+      return;
+    }
+    _selectAt(parties.length - 1);
+  }
 
   void add(Party party) {
     _state = _state.copyWith(
