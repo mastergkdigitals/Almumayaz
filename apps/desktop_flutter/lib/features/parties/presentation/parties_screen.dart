@@ -185,13 +185,15 @@ class _PartiesScreenState extends State<PartiesScreen> {
     return AnimatedBuilder(
       animation: _partiesController,
       builder: (context, _) {
+        final hasSelectedParty = _partiesController.selectedParty != null;
+
         return AppScreenShell(
           key: const Key('partiesScreen'),
           title: 'الأطراف',
           subtitle: 'إدارة بيانات الزبائن والمجهزين والموظفين',
           onBack: () => Navigator.of(context).pop(),
           onSearch: _searchFocusNode.requestFocus,
-          onSave: _save,
+          onSave: hasSelectedParty ? null : _save,
           onNew: _newParty,
           onRefresh: _refresh,
           body: Padding(
@@ -228,8 +230,8 @@ class _PartiesScreenState extends State<PartiesScreen> {
                   onPrevious: () => _navigate(_partiesController.previous),
                   onNext: () => _navigate(_partiesController.next),
                   onLast: () => _navigate(_partiesController.last),
-                  onSave: _save,
-                  onUpdate: _update,
+                  onSave: hasSelectedParty ? null : _save,
+                  onUpdate: hasSelectedParty ? _update : null,
                   onUndo: _undo,
                   onDelete: _delete,
                 ),
