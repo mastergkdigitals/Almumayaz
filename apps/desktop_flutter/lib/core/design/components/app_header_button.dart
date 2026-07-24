@@ -8,17 +8,19 @@ class AppTooltip extends StatelessWidget {
     required this.message,
     required this.child,
     super.key,
+    this.tooltipKey,
     this.verticalOffset = AppSpacing.xl,
   });
 
   final String message;
   final Widget child;
+  final Key? tooltipKey;
   final double verticalOffset;
 
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      key: key,
+      key: tooltipKey,
       message: message,
       preferBelow: true,
       verticalOffset: verticalOffset,
@@ -69,7 +71,7 @@ class AppTooltipIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppTooltip(
-      key: tooltipKey,
+      tooltipKey: tooltipKey,
       message: tooltip,
       verticalOffset: size / 2 + AppSpacing.sm,
       child: Semantics(
