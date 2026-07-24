@@ -68,7 +68,7 @@ abstract final class AppDialogs {
                           onPressed: () =>
                               Navigator.of(dialogContext).pop(false),
                           variant: AppButtonVariant.secondary,
-                          width: 120,
+                          width: 144,
                         ),
                         const SizedBox(width: AppSpacing.md),
                         AppButton(
@@ -79,7 +79,7 @@ abstract final class AppDialogs {
                           variant: isDanger
                               ? AppButtonVariant.danger
                               : AppButtonVariant.primary,
-                          width: 120,
+                          width: 144,
                         ),
                       ],
                     ),
