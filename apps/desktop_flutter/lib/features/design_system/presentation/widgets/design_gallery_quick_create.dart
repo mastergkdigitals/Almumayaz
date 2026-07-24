@@ -84,8 +84,8 @@ class DesignGalleryQuickCreateSection extends StatelessWidget {
   Future<void> _open(
     BuildContext context,
     _QuickCreateSpec spec,
-  ) {
-    return showDialog<void>(
+  ) async {
+    final added = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => Directionality(
@@ -93,6 +93,13 @@ class DesignGalleryQuickCreateSection extends StatelessWidget {
         child: _QuickCreateDialog(spec: spec),
       ),
     );
+
+    if (added == true && context.mounted) {
+      AppToast.showSuccess(
+        context,
+        'تمت إضافة ' + spec.buttonLabel + ' بنجاح',
+      );
+    }
   }
 
   @override
@@ -193,7 +200,9 @@ class _QuickCreateDialogState extends State<_QuickCreateDialog> {
     super.dispose();
   }
 
-  void _close() => Navigator.of(context).pop();
+  void _cancel() => Navigator.of(context).pop(false);
+
+  void _confirm() => Navigator.of(context).pop(true);
 
   @override
   Widget build(BuildContext context) {
@@ -204,7 +213,7 @@ class _QuickCreateDialogState extends State<_QuickCreateDialog> {
       icon: _spec.icon,
       accentColor: _spec.accentColor,
       width: AppDialogSizes.large,
-      onClose: _close,
+      onClose: _cancel,
       actionsKey: Key(_spec.keyName + 'Actions'),
       actions: [
         AppButton(
@@ -212,7 +221,7 @@ class _QuickCreateDialogState extends State<_QuickCreateDialog> {
           label: 'إلغاء',
           variant: AppButtonVariant.secondary,
           width: 144,
-          onPressed: _close,
+          onPressed: _cancel,
         ),
         AppButton(
           key: Key(_spec.keyName + 'Confirm'),
@@ -220,7 +229,7 @@ class _QuickCreateDialogState extends State<_QuickCreateDialog> {
           icon: Icons.add_rounded,
           width: 144,
           backgroundColor: _spec.accentColor,
-          onPressed: _close,
+          onPressed: _confirm,
         ),
       ],
       child: Column(
