@@ -187,6 +187,7 @@ void main() {
     );
 
     await tester.enterText(name, 'طرف لوحة المفاتيح المحدّث');
+    await tester.pump();
     await _sendControlShortcut(tester, LogicalKeyboardKey.keyS);
     await tester.pump();
 
