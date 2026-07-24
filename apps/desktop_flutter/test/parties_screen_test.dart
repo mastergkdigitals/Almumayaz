@@ -1,5 +1,6 @@
 import 'package:erp/app/app.dart';
 import 'package:erp/core/design/app_design_system.dart';
+import 'package:erp/features/parties/domain/party.dart';
 import 'package:erp/features/parties/presentation/parties_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -26,6 +27,15 @@ void main() {
 
     controller.last();
     expect(controller.selectedParty?.name, 'نور فاضل');
+
+    controller.next();
+    expect(controller.selectedParty, isNull);
+
+    controller.previous();
+    expect(controller.selectedParty?.name, 'نور فاضل');
+
+    controller.last();
+    expect(controller.selectedParty, isNull);
   });
 
   testWidgets('opens the parties screen with the approved shared controls',
@@ -61,6 +71,42 @@ void main() {
     expect(
       tester.widget<AppButton>(
         find.byKey(const Key('partiesUpdateButton')),
+      ).onPressed,
+      isNull,
+    );
+    expect(
+      tester.widget<AppButton>(
+        find.byKey(const Key('partiesUndoButton')),
+      ).onPressed,
+      isNull,
+    );
+    expect(
+      tester.widget<AppButton>(
+        find.byKey(const Key('partiesDeleteButton')),
+      ).onPressed,
+      isNull,
+    );
+    expect(
+      tester.widget<AppButton>(
+        find.byKey(const Key('partiesFirstButton')),
+      ).onPressed,
+      isNotNull,
+    );
+    expect(
+      tester.widget<AppButton>(
+        find.byKey(const Key('partiesPreviousButton')),
+      ).onPressed,
+      isNotNull,
+    );
+    expect(
+      tester.widget<AppButton>(
+        find.byKey(const Key('partiesNextButton')),
+      ).onPressed,
+      isNull,
+    );
+    expect(
+      tester.widget<AppButton>(
+        find.byKey(const Key('partiesLastButton')),
       ).onPressed,
       isNull,
     );
@@ -129,6 +175,99 @@ void main() {
       tester.widget<AppButton>(
         find.byKey(const Key('partiesUpdateButton')),
       ).onPressed,
+      isNull,
+    );
+    expect(
+      tester.widget<AppButton>(
+        find.byKey(const Key('partiesUndoButton')),
+      ).onPressed,
+      isNull,
+    );
+    expect(
+      tester.widget<AppButton>(
+        find.byKey(const Key('partiesDeleteButton')),
+      ).onPressed,
+      isNotNull,
+    );
+    expect(
+      tester.widget<AppScreenShell>(
+        find.byKey(const Key('partiesScreen')),
+      ).onSave,
+      isNull,
+    );
+    for (final key in [
+      'partiesFirstButton',
+      'partiesPreviousButton',
+      'partiesNextButton',
+      'partiesLastButton',
+    ]) {
+      expect(
+        tester.widget<AppButton>(find.byKey(Key(key))).onPressed,
+        isNotNull,
+      );
+    }
+
+    await tester.enterText(
+      find.byKey(const Key('partyNameField')),
+      'مجهز الرافدين المعدل',
+    );
+    await tester.pump();
+    expect(
+      tester.widget<AppButton>(
+        find.byKey(const Key('partiesUpdateButton')),
+      ).onPressed,
+      isNotNull,
+    );
+    expect(
+      tester.widget<AppButton>(
+        find.byKey(const Key('partiesUndoButton')),
+      ).onPressed,
+      isNotNull,
+    );
+    expect(
+      tester.widget<AppScreenShell>(
+        find.byKey(const Key('partiesScreen')),
+      ).onSave,
+      isNotNull,
+    );
+
+    await tester.enterText(
+      find.byKey(const Key('partyNameField')),
+      'مجهز الرافدين',
+    );
+    await tester.pump();
+    expect(
+      tester.widget<AppButton>(
+        find.byKey(const Key('partiesUpdateButton')),
+      ).onPressed,
+      isNull,
+    );
+    expect(
+      tester.widget<AppScreenShell>(
+        find.byKey(const Key('partiesScreen')),
+      ).onSave,
+      isNull,
+    );
+
+    tester
+        .widget<AppDropdownField<PartyType>>(
+          find.ancestor(
+            of: find.byKey(const Key('partyTypeField')),
+            matching: find.byType(AppDropdownField<PartyType>),
+          ),
+        )
+        .onChanged(PartyType.customer);
+    await tester.pump();
+    expect(
+      tester.widget<AppButton>(
+        find.byKey(const Key('partiesUpdateButton')),
+      ).onPressed,
+      isNotNull,
+    );
+    expect(
+      tester.widget<AppButton>(
+        find.byKey(const Key('partiesUndoButton')),
+      ).onPressed,
       isNotNull,
     );
 
@@ -148,6 +287,82 @@ void main() {
       findsNothing,
     );
   });
+
+  testWidgets('guards unsaved party data before leaving or changing records',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(const AlmumayazApp());
+    await _login(tester);
+    await tester.tap(find.byKey(const Key('dashboardCard_parties')));
+    await tester.pumpAndSettle();
+
+    final name = find.byKey(const Key('partyNameField'));
+    await tester.enterText(name, 'طرف غير محفوظ');
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('appScreenBackButton')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('appConfirmDialog')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('appDialogCancelButton')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('partiesScreen')), findsOneWidget);
+    expect(_fieldText(tester, name), 'طرف غير محفوظ');
+
+    await tester.tap(find.byKey(const Key('partiesFirstButton')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('appConfirmDialog')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('appDialogConfirmButton')));
+    await tester.pumpAndSettle();
+    expect(_fieldText(tester, name), 'شركة النخيل للتجارة');
+
+    await tester.enterText(name, 'شركة معدلة');
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('partyRow_party-002')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('appConfirmDialog')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('appDialogConfirmButton')));
+    await tester.pumpAndSettle();
+    expect(_fieldText(tester, name), 'أحمد كريم');
+  });
+
+  testWidgets('matches the old action-bar navigation boundaries',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(const AlmumayazApp());
+    await _login(tester);
+    await tester.tap(find.byKey(const Key('dashboardCard_parties')));
+    await tester.pumpAndSettle();
+
+    final name = find.byKey(const Key('partyNameField'));
+    await tester.tap(find.byKey(const Key('partiesFirstButton')));
+    await tester.pumpAndSettle();
+    expect(_fieldText(tester, name), 'شركة النخيل للتجارة');
+
+    await tester.tap(find.byKey(const Key('partiesLastButton')));
+    await tester.pumpAndSettle();
+    expect(_fieldText(tester, name), 'نور فاضل');
+
+    await tester.tap(find.byKey(const Key('partiesNextButton')));
+    await tester.pumpAndSettle();
+    expect(_fieldText(tester, name), isEmpty);
+    expect(
+      tester.widget<AppButton>(
+        find.byKey(const Key('partiesNextButton')),
+      ).onPressed,
+      isNull,
+    );
+
+    await tester.tap(find.byKey(const Key('partiesPreviousButton')));
+    await tester.pumpAndSettle();
+    expect(_fieldText(tester, name), 'نور فاضل');
+  });
 }
 
 Future<void> _login(WidgetTester tester) async {
@@ -155,4 +370,13 @@ Future<void> _login(WidgetTester tester) async {
   await tester.enterText(find.byKey(const Key('passwordField')), 'password');
   await tester.tap(find.byKey(const Key('loginButton')));
   await tester.pumpAndSettle();
+}
+
+String _fieldText(WidgetTester tester, Finder field) {
+  return tester
+      .widget<EditableText>(
+        find.descendant(of: field, matching: find.byType(EditableText)),
+      )
+      .controller
+      .text;
 }
