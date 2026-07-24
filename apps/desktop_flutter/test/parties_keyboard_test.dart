@@ -71,6 +71,75 @@ void main() {
     expect(_hasTextFocus(tester, notes), isTrue);
   });
 
+  testWidgets('keeps Tab inside the party form and stops at notes',
+      (tester) async {
+    await _openParties(tester);
+
+    final name = find.byKey(const Key('partyNameField'));
+    final type = find.byKey(const Key('partyTypeField'));
+    final workplace = find.byKey(const Key('partyWorkplaceField'));
+    final notes = find.byKey(const Key('partyNotesField'));
+
+    await tester.tap(name);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyRepeatEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyRepeatEvent(LogicalKeyboardKey.tab);
+    await tester.pump();
+
+    expect(tester.widget<InkWell>(type).focusNode?.hasFocus, isTrue);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.tab);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pump();
+    expect(_hasTextFocus(tester, workplace), isTrue);
+
+    for (var index = 0; index < 6; index++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    }
+    await tester.pump();
+    expect(_hasTextFocus(tester, notes), isTrue);
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyRepeatEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.tab);
+    await tester.pump();
+    expect(_hasTextFocus(tester, notes), isTrue);
+  });
+
+  testWidgets('runs guarded Enter and Tab actions once per physical press',
+      (tester) async {
+    final guard = AppKeyHoldGuard();
+    addTearDown(guard.dispose);
+    var enterActions = 0;
+    var tabActions = 0;
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.enter);
+    guard.runOnce(
+      keys: const {LogicalKeyboardKey.enter},
+      action: () => enterActions++,
+    );
+    await tester.sendKeyRepeatEvent(LogicalKeyboardKey.enter);
+    guard.runOnce(
+      keys: const {LogicalKeyboardKey.enter},
+      action: () => enterActions++,
+    );
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.enter);
+    expect(enterActions, 1);
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.tab);
+    guard.runOnce(
+      keys: const {LogicalKeyboardKey.tab},
+      action: () => tabActions++,
+    );
+    await tester.sendKeyRepeatEvent(LogicalKeyboardKey.tab);
+    guard.runOnce(
+      keys: const {LogicalKeyboardKey.tab},
+      action: () => tabActions++,
+    );
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.tab);
+    expect(tabActions, 1);
+  });
+
   testWidgets('keeps search Enter idle and binds Ctrl+S to save or update',
       (tester) async {
     await _openParties(tester);
