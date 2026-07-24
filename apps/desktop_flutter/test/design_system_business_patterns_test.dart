@@ -447,7 +447,7 @@ void main() {
     final quantityField = tester.widget<TextField>(
       find.byKey(const Key('designPurchaseQuantity-p1')),
     );
-    quantityField.controller.text = '10';
+    quantityField.controller!.text = '10';
     quantityField.onChanged?.call('10');
     await tester.pump();
     expect(
