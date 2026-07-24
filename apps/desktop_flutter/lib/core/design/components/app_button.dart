@@ -93,6 +93,14 @@ class _AppButtonState extends State<AppButton> {
         ? rawIcon
         : Transform.flip(flipX: true, child: rawIcon);
 
+    final EdgeInsetsGeometry? effectivePadding =
+        widget.padding ??
+            (widget.width == null
+                ? null
+                : EdgeInsets.symmetric(
+                    horizontal: hasLabel ? AppSpacing.sm : 0,
+                  ));
+
     final content = widget.isLoading
         ? const SizedBox.square(
             dimension: 24,
@@ -138,9 +146,11 @@ class _AppButtonState extends State<AppButton> {
             const WidgetStatePropertyAll<Color>(Colors.transparent),
         overlayColor:
             const WidgetStatePropertyAll<Color>(Colors.transparent),
-        padding: widget.padding == null
+        padding: effectivePadding == null
             ? null
-            : WidgetStatePropertyAll<EdgeInsetsGeometry>(widget.padding!),
+            : WidgetStatePropertyAll<EdgeInsetsGeometry>(
+                effectivePadding,
+              ),
         mouseCursor: WidgetStateProperty.resolveWith<MouseCursor?>(
           (states) => states.contains(WidgetState.disabled)
               ? SystemMouseCursors.basic
