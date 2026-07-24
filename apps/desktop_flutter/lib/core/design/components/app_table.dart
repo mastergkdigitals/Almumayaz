@@ -19,9 +19,17 @@ class AppTableColumn {
 }
 
 class AppTableRow {
-  const AppTableRow({required this.cells});
+  const AppTableRow({
+    required this.cells,
+    this.onTap,
+    this.selected = false,
+    this.rowKey,
+  });
 
   final List<Widget> cells;
+  final VoidCallback? onTap;
+  final bool selected;
+  final Key? rowKey;
 }
 
 class AppDataTable extends StatefulWidget {
@@ -235,45 +243,58 @@ class _TableBodyRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        border: showBottomBorder
-            ? const Border(
-                bottom: BorderSide(color: AppColors.border, width: 0.8),
-              )
-            : null,
-      ),
-      child: Table(
-        textDirection: TextDirection.rtl,
-        columnWidths: columnWidths,
-        defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-        children: [
-          TableRow(
+    return Material(
+      key: row.rowKey,
+      color: row.selected ? AppColors.infoSurface : AppColors.surface,
+      child: InkWell(
+        onTap: row.onTap,
+        mouseCursor: row.onTap == null
+            ? SystemMouseCursors.basic
+            : SystemMouseCursors.click,
+        splashFactory: NoSplash.splashFactory,
+        overlayColor:
+            const WidgetStatePropertyAll<Color>(Colors.transparent),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            border: showBottomBorder
+                ? const Border(
+                    bottom: BorderSide(color: AppColors.border, width: 0.8),
+                  )
+                : null,
+          ),
+          child: Table(
+            textDirection: TextDirection.rtl,
+            columnWidths: columnWidths,
+            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
             children: [
-              for (var index = 0; index < row.cells.length; index++)
-                SizedBox(
-                  height: height,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md,
-                    ),
-                    child: Center(
-                      child: Directionality(
-                        textDirection: columns[index].numeric
-                            ? TextDirection.ltr
-                            : TextDirection.rtl,
-                        child: DefaultTextStyle(
-                          textAlign: TextAlign.center,
-                          style: AppTypography.tableCell,
-                          child: row.cells[index],
+              TableRow(
+                children: [
+                  for (var index = 0; index < row.cells.length; index++)
+                    SizedBox(
+                      height: height,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.md,
+                        ),
+                        child: Center(
+                          child: Directionality(
+                            textDirection: columns[index].numeric
+                                ? TextDirection.ltr
+                                : TextDirection.rtl,
+                            child: DefaultTextStyle(
+                              textAlign: TextAlign.center,
+                              style: AppTypography.tableCell,
+                              child: row.cells[index],
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ),
+                ],
+              ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
