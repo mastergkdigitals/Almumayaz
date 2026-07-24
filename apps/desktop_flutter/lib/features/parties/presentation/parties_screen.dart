@@ -175,11 +175,6 @@ class _PartiesScreenState extends State<PartiesScreen> {
     );
   }
 
-  void _refresh() {
-    setState(() {});
-    AppToast.showInfo(context, 'تم تحديث الشاشة');
-  }
-
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -193,9 +188,7 @@ class _PartiesScreenState extends State<PartiesScreen> {
           subtitle: 'إدارة بيانات الزبائن والمجهزين والموظفين',
           onBack: () => Navigator.of(context).pop(),
           onSearch: _searchFocusNode.requestFocus,
-          onSave: hasSelectedParty ? null : _save,
-          onNew: _newParty,
-          onRefresh: _refresh,
+          onSave: hasSelectedParty ? _update : _save,
           body: Padding(
             padding: const EdgeInsets.all(AppSpacing.lg),
             child: Column(
