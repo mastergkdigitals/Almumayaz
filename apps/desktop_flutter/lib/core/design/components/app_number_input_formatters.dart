@@ -97,7 +97,7 @@ String _groupDigits(String digits) {
 
 int _ungroupedOffset(String text, int offset) {
   if (offset < 0) return 0;
-  final safeOffset = offset.clamp(0, text.length);
+  final safeOffset = offset > text.length ? text.length : offset;
   return text.substring(0, safeOffset).replaceAll(',', '').length;
 }
 
