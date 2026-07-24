@@ -112,9 +112,7 @@ class _DesignGalleryTransferDialogState
   }
 
   void _handleQuantityChanged() {
-    if (mounted) {
-      setState(() {});
-    }
+    if (mounted) setState(() {});
   }
 
   void _changeSource(String value) {
@@ -198,41 +196,92 @@ class _DesignGalleryTransferDialogState
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           AppDialogSection(
-            title: 'اختيار المخازن',
+            key: const Key('designTransferControls'),
+            title: 'تفاصيل النقل',
             icon: Icons.warehouse_rounded,
             accentColor: AppModuleColors.warehouses,
-            child: Row(
+            child: Column(
               children: [
-                Expanded(
-                  child: AppDropdownField<String>(
-                    fieldKey: const Key('designTransferFromWarehouse'),
-                    label: 'من مخزن',
-                    icon: Icons.warehouse_rounded,
-                    accentColor: AppModuleColors.warehouses,
-                    value: _fromWarehouse,
-                    options: _warehouseOptions,
-                    onChanged: (value) {
-                      if (value != null) {
-                        _changeSource(value);
-                      }
-                    },
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: AppDropdownField<String>(
+                        fieldKey:
+                            const Key('designTransferFromWarehouse'),
+                        label: 'من مخزن',
+                        icon: Icons.warehouse_rounded,
+                        accentColor: AppModuleColors.warehouses,
+                        value: _fromWarehouse,
+                        options: _warehouseOptions,
+                        onChanged: (value) {
+                          if (value != null) _changeSource(value);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.lg),
+                    Expanded(
+                      child: AppDropdownField<String>(
+                        fieldKey: const Key('designTransferToWarehouse'),
+                        label: 'إلى مخزن',
+                        icon: Icons.warehouse_rounded,
+                        accentColor: AppModuleColors.warehouses,
+                        value: _toWarehouse,
+                        options: _warehouseOptions,
+                        onChanged: (value) {
+                          if (value != null) _changeDestination(value);
+                        },
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: AppSpacing.lg),
-                Expanded(
-                  child: AppDropdownField<String>(
-                    fieldKey: const Key('designTransferToWarehouse'),
-                    label: 'إلى مخزن',
-                    icon: Icons.warehouse_rounded,
-                    accentColor: AppModuleColors.warehouses,
-                    value: _toWarehouse,
-                    options: _warehouseOptions,
-                    onChanged: (value) {
-                      if (value != null) {
-                        _changeDestination(value);
-                      }
-                    },
-                  ),
+                const SizedBox(height: AppSpacing.md),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: AppDropdownField<String>(
+                        fieldKey: const Key('designTransferProduct'),
+                        label: 'المادة',
+                        icon: Icons.inventory_2_rounded,
+                        accentColor: AppModuleColors.warehouses,
+                        value: _selectedProduct,
+                        options: [
+                          for (final item in _sourceItems)
+                            AppDropdownOption(
+                              value: item.id,
+                              label: item.name +
+                                  ' — ' +
+                                  AppFormatters.quantity(item.quantity),
+                            ),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() => _selectedProduct = value);
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: AppTextField(
+                        fieldKey: const Key('designTransferQuantity'),
+                        controller: _quantityController,
+                        label: 'كمية النقل',
+                        icon: Icons.numbers_rounded,
+                        accentColor: AppModuleColors.warehouses,
+                        textDirection: TextDirection.rtl,
+                        textAlign: TextAlign.right,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: const [AppIntegerInputFormatter()],
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: _AvailableQuantity(
+                        quantity: _selectedSourceItem.quantity,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -254,7 +303,7 @@ class _DesignGalleryTransferDialogState
               const Padding(
                 padding: EdgeInsets.symmetric(
                   horizontal: AppSpacing.md,
-                  vertical: 112,
+                  vertical: 88,
                 ),
                 child: Icon(
                   Icons.arrow_back_rounded,
@@ -270,59 +319,6 @@ class _DesignGalleryTransferDialogState
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          AppDialogSection(
-            title: 'المادة والكمية المراد نقلها',
-            icon: Icons.inventory_2_rounded,
-            accentColor: AppModuleColors.warehouses,
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 2,
-                  child: AppDropdownField<String>(
-                    fieldKey: const Key('designTransferProduct'),
-                    label: 'المادة',
-                    icon: Icons.inventory_2_rounded,
-                    accentColor: AppModuleColors.warehouses,
-                    value: _selectedProduct,
-                    options: [
-                      for (final item in _sourceItems)
-                        AppDropdownOption(
-                          value: item.id,
-                          label:
-                              '${item.name} — ${AppFormatters.quantity(item.quantity)}',
-                        ),
-                    ],
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => _selectedProduct = value);
-                      }
-                    },
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: AppTextField(
-                    fieldKey: const Key('designTransferQuantity'),
-                    controller: _quantityController,
-                    label: 'كمية النقل',
-                    icon: Icons.numbers_rounded,
-                    accentColor: AppModuleColors.warehouses,
-                    textDirection: TextDirection.rtl,
-                    textAlign: TextAlign.right,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: const [AppIntegerInputFormatter()],
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: _AvailableQuantity(
-                    quantity: _selectedSourceItem.quantity,
-                  ),
-                ),
-              ],
-            ),
           ),
         ],
       ),
@@ -351,14 +347,14 @@ class _WarehouseStockPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppDialogSection(
-      title: 'مواد $title',
+      title: 'مواد ' + title,
       icon: Icons.inventory_rounded,
       accentColor: AppModuleColors.warehouses,
       child: AppDataTable(
-        height: 230,
-        headerHeight: 48,
-        rowHeight: 50,
-        minimumColumnWidth: 120,
+        height: 180,
+        headerHeight: 44,
+        rowHeight: 44,
+        minimumColumnWidth: 112,
         accentColor: AppModuleColors.warehouses,
         columns: const [
           AppTableColumn(label: 'رمز المادة'),
@@ -368,7 +364,9 @@ class _WarehouseStockPanel extends StatelessWidget {
         rows: [
           for (final item in items)
             AppTableRow(
-              rowKey: Key('transferStock-${title}-${item.id}'),
+              rowKey: Key(
+                'transferStock-' + title + '-' + item.id,
+              ),
               selected: item.id == selectedProduct,
               onTap: onSelected == null
                   ? null
