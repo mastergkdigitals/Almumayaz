@@ -168,10 +168,12 @@ void main() {
     );
 
     await tester.enterText(search, '');
+    await tester.pump();
     final name = find.byKey(const Key('partyNameField'));
     await tester.enterText(name, 'طرف لوحة المفاتيح');
     await _sendControlShortcut(tester, LogicalKeyboardKey.keyS);
     await tester.pump();
+    await tester.pump(AppDurations.normal);
 
     final table = find.byKey(const Key('partiesTable'));
     expect(
