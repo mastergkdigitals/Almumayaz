@@ -97,7 +97,7 @@ class DesignGalleryQuickCreateSection extends StatelessWidget {
     if (added == true && context.mounted) {
       AppToast.showSuccess(
         context,
-        'تمت إضافة ' + spec.buttonLabel + ' بنجاح',
+        'تمت إضافة ${spec.buttonLabel} بنجاح',
       );
     }
   }
@@ -121,7 +121,7 @@ class DesignGalleryQuickCreateSection extends StatelessWidget {
             children: [
               for (final spec in _specs)
                 AppButton(
-                  key: Key(spec.keyName + 'Button'),
+                  key: Key('${spec.keyName}Button'),
                   label: spec.buttonLabel,
                   icon: spec.icon,
                   backgroundColor: spec.accentColor,
@@ -223,24 +223,24 @@ class _QuickCreateDialogState extends State<_QuickCreateDialog> {
   @override
   Widget build(BuildContext context) {
     return AppModuleDialog(
-      key: Key(_spec.keyName + 'Dialog'),
+      key: Key('${_spec.keyName}Dialog'),
       title: _spec.title,
       subtitle: 'أدخل البيانات الأساسية للمتابعة دون مغادرة الشاشة',
       icon: _spec.icon,
       accentColor: _spec.accentColor,
       width: AppDialogSizes.large,
       onClose: _cancel,
-      actionsKey: Key(_spec.keyName + 'Actions'),
+      actionsKey: Key('${_spec.keyName}Actions'),
       actions: [
         AppButton(
-          key: Key(_spec.keyName + 'Cancel'),
+          key: Key('${_spec.keyName}Cancel'),
           label: 'إلغاء',
           variant: AppButtonVariant.secondary,
           width: 144,
           onPressed: _cancel,
         ),
         AppButton(
-          key: Key(_spec.keyName + 'Confirm'),
+          key: Key('${_spec.keyName}Confirm'),
           label: 'إضافة',
           icon: Icons.add_rounded,
           width: 144,
@@ -252,7 +252,7 @@ class _QuickCreateDialogState extends State<_QuickCreateDialog> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           AppInfoBanner(
-            key: Key(_spec.keyName + 'Prompt'),
+            key: Key('${_spec.keyName}Prompt'),
             message: _spec.prompt,
             icon: Icons.help_outline_rounded,
             foregroundColor: _spec.accentColor,
@@ -304,7 +304,7 @@ class _QuickCreateDialogState extends State<_QuickCreateDialog> {
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: AppDropdownField<String>(
-                fieldKey: Key(_spec.keyName + 'Type'),
+                fieldKey: Key('${_spec.keyName}Type'),
                 label: 'نوع الطرف',
                 icon: Icons.groups_rounded,
                 accentColor: _spec.accentColor,
@@ -360,7 +360,7 @@ class _QuickCreateDialogState extends State<_QuickCreateDialog> {
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: AppPhoneField(
-                fieldKey: Key(_spec.keyName + 'Phone'),
+                fieldKey: Key('${_spec.keyName}Phone'),
                 controller: _controller('partyPhone'),
                 label: 'رقم الهاتف',
                 accentColor: _spec.accentColor,
@@ -423,7 +423,7 @@ class _QuickCreateDialogState extends State<_QuickCreateDialog> {
     return Column(
       children: [
         AppDropdownField<String>(
-          fieldKey: Key(_spec.keyName + 'Workplace'),
+          fieldKey: Key('${_spec.keyName}Workplace'),
           label: 'جهة العمل',
           icon: Icons.business_center_rounded,
           accentColor: _spec.accentColor,
@@ -450,7 +450,7 @@ class _QuickCreateDialogState extends State<_QuickCreateDialog> {
     return Column(
       children: [
         AppDropdownField<String>(
-          fieldKey: Key(_spec.keyName + 'Group'),
+          fieldKey: Key('${_spec.keyName}Group'),
           label: 'المجموعة',
           icon: Icons.category_rounded,
           accentColor: _spec.accentColor,
@@ -499,7 +499,7 @@ class _QuickCreateDialogState extends State<_QuickCreateDialog> {
     return Column(
       children: [
         AppDropdownField<String>(
-          fieldKey: Key(_spec.keyName + 'MainAccount'),
+          fieldKey: Key('${_spec.keyName}MainAccount'),
           label: 'الحساب الرئيسي',
           icon: Icons.account_balance_wallet_rounded,
           accentColor: _spec.accentColor,
@@ -546,7 +546,7 @@ class _QuickCreateDialogState extends State<_QuickCreateDialog> {
 
   Widget _field(String name, String label, IconData icon) {
     return AppTextField(
-      fieldKey: Key(_spec.keyName + name),
+      fieldKey: Key('${_spec.keyName}$name'),
       controller: _controller(name),
       label: label,
       icon: icon,
