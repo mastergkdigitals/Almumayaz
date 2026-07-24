@@ -2,17 +2,23 @@ import 'package:flutter/material.dart';
 
 abstract final class AppFormatters {
   static String date(DateTime value) {
-    return '${value.year.toString().padLeft(4, '0')}-'
-        '${value.month.toString().padLeft(2, '0')}-'
+    return '${value.year.toString().padLeft(4, '0')}/'
+        '${value.month.toString().padLeft(2, '0')}/'
         '${value.day.toString().padLeft(2, '0')}';
   }
 
   static String time(TimeOfDay value) {
-    return '${value.hour.toString().padLeft(2, '0')}:'
-        '${value.minute.toString().padLeft(2, '0')}';
+    final hour = value.hourOfPeriod == 0 ? 12 : value.hourOfPeriod;
+    final period = value.period == DayPeriod.am ? 'ص' : 'م';
+    return '${hour.toString().padLeft(2, '0')}:'
+        '${value.minute.toString().padLeft(2, '0')} $period';
   }
 
   static String quantity(int value) => _groupInteger(value);
+
+  static String iqd(num value) => money(value);
+
+  static String usd(num value) => money(value, decimalPlaces: 2);
 
   static String money(
     num value, {
