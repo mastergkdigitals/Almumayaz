@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../app_formatters.dart';
 import '../app_tokens.dart';
 import 'app_date_picker_dialog.dart';
+import 'app_header_button.dart';
 import 'app_text_fields.dart';
 
 class AppDateField extends StatefulWidget {
@@ -88,17 +89,126 @@ class _AppDateFieldState extends State<AppDateField> {
       textDirection: TextDirection.ltr,
       textAlign: TextAlign.right,
       onTap: _pickDate,
-      suffixIcon: AppFieldIconButton(
-        icon: Icons.edit_calendar_rounded,
-        tooltip: 'اختيار التاريخ',
-        color: widget.accentColor ?? AppColors.primary,
-        onPressed: widget.enabled ? _pickDate : null,
+      suffixIcon: AppTooltip(
+        message: 'اختيار التاريخ',
+        verticalOffset: AppControlHeights.large / 2 + AppSpacing.sm,
+        child: AppFieldIconButton(
+          icon: Icons.edit_calendar_rounded,
+          color: widget.accentColor ?? AppColors.primary,
+          onPressed: widget.enabled ? _pickDate : null,
+        ),
       ),
     );
   }
 
   static String _textFor(DateTime? value) {
     return value == null ? '' : AppFormatters.date(value);
+  }
+}
+
+class AppDateRangeField extends StatefulWidget {
+  const AppDateRangeField({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+    super.key,
+    this.fieldKey,
+    this.firstDate,
+    this.lastDate,
+    this.enabled = true,
+    this.accentColor,
+  });
+
+  final String label;
+  final DateTimeRange? value;
+  final ValueChanged<DateTimeRange> onChanged;
+  final Key? fieldKey;
+  final DateTime? firstDate;
+  final DateTime? lastDate;
+  final bool enabled;
+  final Color? accentColor;
+
+  @override
+  State<AppDateRangeField> createState() => _AppDateRangeFieldState();
+}
+
+class _AppDateRangeFieldState extends State<AppDateRangeField> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: _textFor(widget.value));
+  }
+
+  @override
+  void didUpdateWidget(covariant AppDateRangeField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_sameRange(oldWidget.value, widget.value)) {
+      _controller.text = _textFor(widget.value);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickRange() async {
+    if (!widget.enabled) return;
+
+    final firstDate = widget.firstDate ?? DateTime(2000);
+    final lastDate = widget.lastDate ?? DateTime(2100);
+    var initialDate = widget.value?.start ?? DateTime.now();
+    if (initialDate.isBefore(firstDate)) initialDate = firstDate;
+    if (initialDate.isAfter(lastDate)) initialDate = lastDate;
+
+    final selected = await AppDateRangePickerDialog.show(
+      context,
+      initialDate: initialDate,
+      selectedRange: widget.value,
+      firstDate: firstDate,
+      lastDate: lastDate,
+      accentColor: widget.accentColor ?? AppColors.primary,
+    );
+    if (!mounted || selected == null) return;
+    widget.onChanged(selected);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AppTextField(
+      fieldKey: widget.fieldKey,
+      controller: _controller,
+      label: widget.label,
+      icon: Icons.date_range_rounded,
+      accentColor: widget.accentColor,
+      enabled: widget.enabled,
+      readOnly: true,
+      textDirection: TextDirection.rtl,
+      textAlign: TextAlign.right,
+      onTap: _pickRange,
+      suffixIcon: AppTooltip(
+        message: 'اختيار نطاق التاريخ',
+        verticalOffset: AppControlHeights.large / 2 + AppSpacing.sm,
+        child: AppFieldIconButton(
+          icon: Icons.calendar_view_week_rounded,
+          color: widget.accentColor ?? AppColors.primary,
+          onPressed: widget.enabled ? _pickRange : null,
+        ),
+      ),
+    );
+  }
+
+  static String _textFor(DateTimeRange? value) {
+    if (value == null) return '';
+    return 'من ${AppFormatters.date(value.start)} '
+        'إلى ${AppFormatters.date(value.end)}';
+  }
+
+  static bool _sameRange(DateTimeRange? first, DateTimeRange? second) {
+    return first?.start == second?.start && first?.end == second?.end;
   }
 }
 
