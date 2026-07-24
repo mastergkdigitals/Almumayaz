@@ -156,13 +156,23 @@ void main() {
       find.byKey(const Key('designQuickPartyPhone')),
       findsOneWidget,
     );
+    final partyConfirm = find.byKey(
+      const Key('designQuickPartyConfirm'),
+    );
     expect(
-      tester
-          .widget<AppButton>(
-            find.byKey(const Key('designQuickPartyConfirm')),
-          )
-          .backgroundColor,
+      tester.widget<AppButton>(partyConfirm).backgroundColor,
       AppModuleColors.parties,
+    );
+    expect(tester.widget<AppButton>(partyConfirm).onPressed, isNull);
+
+    await tester.enterText(
+      find.byKey(const Key('designQuickPartypartyName')),
+      'طرف تجريبي',
+    );
+    await tester.pump();
+    expect(
+      tester.widget<AppButton>(partyConfirm).onPressed,
+      isNotNull,
     );
     expect(
       tester
