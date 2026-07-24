@@ -228,19 +228,21 @@ class _ManagementPreviewDialogState
       onClose: _close,
       actions: [
         AppButton(
+          key: Key('${spec.keyName}Cancel'),
           label: 'إغلاق',
           variant: AppButtonVariant.secondary,
-          width: 108,
+          width: 144,
           onPressed: _close,
         ),
         AppButton(
+          key: Key('${spec.keyName}Confirm'),
           label: spec.kind == _ManagementDialogKind.transfer
               ? 'تنفيذ النقل'
               : 'حفظ',
           icon: spec.kind == _ManagementDialogKind.transfer
               ? Icons.swap_horiz_rounded
               : Icons.save_rounded,
-          width: 132,
+          width: 176,
           onPressed: _close,
         ),
       ],
