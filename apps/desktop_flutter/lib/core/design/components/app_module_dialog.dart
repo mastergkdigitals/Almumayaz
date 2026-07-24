@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../app_tokens.dart';
-import 'app_header_button.dart';
 import 'app_shortcuts.dart';
 
 class AppModuleDialog extends StatelessWidget {
@@ -104,13 +103,6 @@ class AppModuleDialog extends StatelessWidget {
                               ],
                             ],
                           ),
-                        ),
-                        AppTooltipIconButton(
-                          icon: Icons.close_rounded,
-                          tooltip: 'إغلاق',
-                          size: AppControlHeights.compact,
-                          iconSize: AppIconSizes.md,
-                          onPressed: onClose,
                         ),
                       ],
                     ),
