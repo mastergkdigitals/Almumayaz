@@ -1,6 +1,7 @@
 import 'package:erp/app/app.dart';
 import 'package:erp/core/design/components/app_screen_shell.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -51,6 +52,43 @@ void main() {
 
     expect(passwordInput().obscureText, isFalse);
     expect(visibilityIcon().icon, Icons.visibility_rounded);
+  });
+
+  testWidgets('keeps login keyboard focus on fields and submits password',
+      (tester) async {
+    await tester.pumpWidget(const AlmumayazApp());
+    await tester.pump();
+
+    final username = find.byKey(const Key('usernameField'));
+    final password = find.byKey(const Key('passwordField'));
+
+    expect(_editableText(tester, username).focusNode.hasFocus, isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pump();
+    expect(_editableText(tester, password).focusNode.hasFocus, isTrue);
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.pump();
+    expect(_editableText(tester, username).focusNode.hasFocus, isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pump();
+    expect(_editableText(tester, username).focusNode.hasFocus, isTrue);
+
+    await tester.enterText(username, 'admin');
+    await tester.testTextInput.receiveAction(TextInputAction.next);
+    await tester.pump();
+    expect(_editableText(tester, password).focusNode.hasFocus, isTrue);
+
+    await tester.enterText(password, 'password');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('dashboardCard_parties')), findsOneWidget);
   });
 
   testWidgets('opens dashboard with approved nine cards', (tester) async {
@@ -200,4 +238,10 @@ Future<void> _login(WidgetTester tester) async {
   await tester.enterText(find.byKey(const Key('passwordField')), 'password');
   await tester.tap(find.byKey(const Key('loginButton')));
   await tester.pumpAndSettle();
+}
+
+EditableText _editableText(WidgetTester tester, Finder field) {
+  return tester.widget<EditableText>(
+    find.descendant(of: field, matching: find.byType(EditableText)),
+  );
 }
