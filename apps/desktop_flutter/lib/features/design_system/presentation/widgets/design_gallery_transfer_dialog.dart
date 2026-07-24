@@ -112,7 +112,9 @@ class _DesignGalleryTransferDialogState
   }
 
   void _handleQuantityChanged() {
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _changeSource(String value) {
@@ -210,7 +212,9 @@ class _DesignGalleryTransferDialogState
                     value: _fromWarehouse,
                     options: _warehouseOptions,
                     onChanged: (value) {
-                      if (value != null) _changeSource(value);
+                      if (value != null) {
+                        _changeSource(value);
+                      }
                     },
                   ),
                 ),
@@ -224,7 +228,9 @@ class _DesignGalleryTransferDialogState
                     value: _toWarehouse,
                     options: _warehouseOptions,
                     onChanged: (value) {
-                      if (value != null) _changeDestination(value);
+                      if (value != null) {
+                        _changeDestination(value);
+                      }
                     },
                   ),
                 ),
