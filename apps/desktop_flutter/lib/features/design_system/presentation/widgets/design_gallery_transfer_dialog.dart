@@ -30,7 +30,7 @@ class _DesignGalleryTransferDialogState
 
   final _quantityController = TextEditingController(text: '10');
   final Map<String, List<_WarehouseItem>> _stock = {
-    'main': const [
+    'main': [
       _WarehouseItem(
         id: 'p001',
         code: 'P-001',
@@ -50,7 +50,7 @@ class _DesignGalleryTransferDialogState
         quantity: 12,
       ),
     ],
-    'secondary': const [
+    'secondary': [
       _WarehouseItem(
         id: 'p001',
         code: 'P-001',
