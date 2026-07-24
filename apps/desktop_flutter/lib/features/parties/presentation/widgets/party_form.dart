@@ -115,7 +115,7 @@ class PartyForm extends StatelessWidget {
   final PartyType partyType;
   final ValueChanged<PartyType?> onPartyTypeChanged;
 
-  void _next(BuildContext context, String _) {
+  void _next(BuildContext context) {
     AppFocusTraversal.next(context);
   }
 
@@ -200,51 +200,64 @@ class PartyForm extends StatelessWidget {
                     _FieldsWrap(
                       columns: compact ? 2 : 4,
                       children: [
-                        AppTextField(
-                          fieldKey: const Key('partyNameField'),
-                          controller: controllers.name,
-                          label: 'الاسم',
-                          icon: Icons.person_rounded,
-                          accentColor: accentColor,
-                          textInputAction: TextInputAction.next,
-                          onSubmitted: (value) => _next(context, value),
+                        _TraversalField(
+                          order: 1,
+                          child: AppTextField(
+                            fieldKey: const Key('partyNameField'),
+                            controller: controllers.name,
+                            label: 'الاسم',
+                            icon: Icons.person_rounded,
+                            accentColor: accentColor,
+                            textInputAction: TextInputAction.next,
+                            onSubmitted: (_) => _next(context),
+                          ),
                         ),
-                        AppDropdownField<PartyType>(
-                          key: const Key('partyTypeField'),
-                          label: 'نوع الطرف',
-                          icon: Icons.category_rounded,
-                          accentColor: accentColor,
-                          value: partyType,
-                          options: [
-                            for (final type in PartyType.values)
-                              AppDropdownOption(
-                                value: type,
-                                label: type.label,
-                              ),
-                          ],
-                          onChanged: onPartyTypeChanged,
+                        _TraversalField(
+                          order: 2,
+                          child: AppDropdownField<PartyType>(
+                            fieldKey: const Key('partyTypeField'),
+                            label: 'نوع الطرف',
+                            icon: Icons.category_rounded,
+                            accentColor: accentColor,
+                            value: partyType,
+                            options: [
+                              for (final type in PartyType.values)
+                                AppDropdownOption(
+                                  value: type,
+                                  label: type.label,
+                                ),
+                            ],
+                            onChanged: onPartyTypeChanged,
+                            onSubmitted: (_) => _next(context),
+                          ),
                         ),
-                        AppSearchableDropdownField<String>(
-                          fieldKey: const Key('partyWorkplaceField'),
-                          controller: controllers.workplace,
-                          label: 'جهة العمل',
-                          icon: Icons.business_rounded,
-                          accentColor: accentColor,
-                          options: _workplaces,
-                          displayStringForOption: (value) => value,
-                          onSelected: (_) {},
-                          onSubmitted: (value) => _next(context, value),
+                        _TraversalField(
+                          order: 3,
+                          child: AppSearchableDropdownField<String>(
+                            fieldKey: const Key('partyWorkplaceField'),
+                            controller: controllers.workplace,
+                            label: 'جهة العمل',
+                            icon: Icons.business_rounded,
+                            accentColor: accentColor,
+                            options: _workplaces,
+                            displayStringForOption: (value) => value,
+                            onSelected: (_) {},
+                            onSubmitted: (_) => _next(context),
+                          ),
                         ),
-                        AppSearchableDropdownField<String>(
-                          fieldKey: const Key('partyBranchField'),
-                          controller: controllers.branch,
-                          label: 'الفرع',
-                          icon: Icons.account_tree_rounded,
-                          accentColor: accentColor,
-                          options: _branches,
-                          displayStringForOption: (value) => value,
-                          onSelected: (_) {},
-                          onSubmitted: (value) => _next(context, value),
+                        _TraversalField(
+                          order: 4,
+                          child: AppSearchableDropdownField<String>(
+                            fieldKey: const Key('partyBranchField'),
+                            controller: controllers.branch,
+                            label: 'الفرع',
+                            icon: Icons.account_tree_rounded,
+                            accentColor: accentColor,
+                            options: _branches,
+                            displayStringForOption: (value) => value,
+                            onSelected: (_) {},
+                            onSubmitted: (_) => _next(context),
+                          ),
                         ),
                       ],
                     ),
@@ -252,66 +265,85 @@ class PartyForm extends StatelessWidget {
                     _FieldsWrap(
                       columns: compact ? 2 : 4,
                       children: [
-                        AppTextField(
-                          fieldKey: const Key('partyPhoneField'),
-                          controller: controllers.phone,
-                          label: 'رقم الهاتف',
-                          icon: Icons.phone_rounded,
-                          accentColor: accentColor,
-                          textDirection: TextDirection.rtl,
-                          textAlign: TextAlign.right,
-                          keyboardType: TextInputType.phone,
-                          textInputAction: TextInputAction.next,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                            LengthLimitingTextInputFormatter(11),
-                          ],
-                          onSubmitted: (value) => _next(context, value),
+                        _TraversalField(
+                          order: 5,
+                          child: AppTextField(
+                            fieldKey: const Key('partyPhoneField'),
+                            controller: controllers.phone,
+                            label: 'رقم الهاتف',
+                            icon: Icons.phone_rounded,
+                            accentColor: accentColor,
+                            textDirection: TextDirection.rtl,
+                            textAlign: TextAlign.right,
+                            keyboardType: TextInputType.phone,
+                            textInputAction: TextInputAction.next,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                              LengthLimitingTextInputFormatter(11),
+                            ],
+                            onSubmitted: (_) => _next(context),
+                          ),
                         ),
-                        AppTextField(
-                          fieldKey: const Key('partyAlternatePhoneField'),
-                          controller: controllers.alternatePhone,
-                          label: 'هاتف إضافي',
-                          icon: Icons.phone_in_talk_rounded,
-                          accentColor: accentColor,
-                          textDirection: TextDirection.rtl,
-                          textAlign: TextAlign.right,
-                          keyboardType: TextInputType.phone,
-                          textInputAction: TextInputAction.next,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                            LengthLimitingTextInputFormatter(11),
-                          ],
-                          onSubmitted: (value) => _next(context, value),
+                        _TraversalField(
+                          order: 6,
+                          child: AppTextField(
+                            fieldKey:
+                                const Key('partyAlternatePhoneField'),
+                            controller: controllers.alternatePhone,
+                            label: 'هاتف إضافي',
+                            icon: Icons.phone_in_talk_rounded,
+                            accentColor: accentColor,
+                            textDirection: TextDirection.rtl,
+                            textAlign: TextAlign.right,
+                            keyboardType: TextInputType.phone,
+                            textInputAction: TextInputAction.next,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                              LengthLimitingTextInputFormatter(11),
+                            ],
+                            onSubmitted: (_) => _next(context),
+                          ),
                         ),
-                        AppSearchableDropdownField<String>(
-                          fieldKey: const Key('partyCityField'),
-                          controller: controllers.city,
-                          label: 'المدينة',
-                          icon: Icons.location_city_rounded,
-                          accentColor: accentColor,
-                          options: _cities,
-                          displayStringForOption: (value) => value,
-                          onSelected: (_) {},
-                          onSubmitted: (value) => _next(context, value),
+                        _TraversalField(
+                          order: 7,
+                          child: AppSearchableDropdownField<String>(
+                            fieldKey: const Key('partyCityField'),
+                            controller: controllers.city,
+                            label: 'المدينة',
+                            icon: Icons.location_city_rounded,
+                            accentColor: accentColor,
+                            options: _cities,
+                            displayStringForOption: (value) => value,
+                            onSelected: (_) {},
+                            onSubmitted: (_) => _next(context),
+                          ),
                         ),
-                        AppTextField(
-                          fieldKey: const Key('partyAddressField'),
-                          controller: controllers.address,
-                          label: 'العنوان',
-                          icon: Icons.location_on_rounded,
-                          accentColor: accentColor,
-                          textInputAction: TextInputAction.next,
-                          onSubmitted: (value) => _next(context, value),
+                        _TraversalField(
+                          order: 8,
+                          child: AppTextField(
+                            fieldKey: const Key('partyAddressField'),
+                            controller: controllers.address,
+                            label: 'العنوان',
+                            icon: Icons.location_on_rounded,
+                            accentColor: accentColor,
+                            textInputAction: TextInputAction.next,
+                            onSubmitted: (_) => _next(context),
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: AppSpacing.md),
-                    AppTextField(
-                      fieldKey: const Key('partyNotesField'),
-                      controller: controllers.notes,
-                      label: 'الملاحظات',
-                      icon: Icons.notes_rounded,
+                    _TraversalField(
+                      order: 9,
+                      child: AppTextField(
+                        fieldKey: const Key('partyNotesField'),
+                        controller: controllers.notes,
+                        label: 'الملاحظات',
+                        icon: Icons.notes_rounded,
+                        textInputAction: TextInputAction.done,
+                        onEditingComplete: () {},
+                        onSubmitted: (_) {},
+                      ),
                     ),
                   ],
                 );
@@ -320,6 +352,24 @@ class PartyForm extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _TraversalField extends StatelessWidget {
+  const _TraversalField({
+    required this.order,
+    required this.child,
+  });
+
+  final double order;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return FocusTraversalOrder(
+      order: NumericFocusOrder(order),
+      child: child,
     );
   }
 }
