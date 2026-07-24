@@ -13,163 +13,280 @@ class DesignGalleryInvoiceTablesSection extends StatefulWidget {
 
 class _DesignGalleryInvoiceTablesSectionState
     extends State<DesignGalleryInvoiceTablesSection> {
+  late final List<_PurchaseDemoRow> _purchaseItems;
+  late final List<_SaleDemoRow> _saleItems;
   var _purchaseSeed = 3;
   var _saleSeed = 3;
 
-  final List<_DemoInvoiceRow> _purchaseItems = [
-    _DemoInvoiceRow(
-      id: 'p1',
-      values: [
-        'P-001',
-        'دفتر ملاحظات',
-        'الرئيسي',
-        AppFormatters.quantity(100),
-        AppFormatters.quantity(1),
-        AppFormatters.iqd(2500),
-        AppFormatters.iqd(0),
-        AppFormatters.iqd(2500),
-        AppFormatters.iqd(250000),
-        AppFormatters.iqd(150),
-        AppFormatters.iqd(265000),
-        AppFormatters.iqd(3000),
-      ],
-    ),
-    _DemoInvoiceRow(
-      id: 'p2',
-      values: [
-        'P-002',
-        'قلم أزرق',
-        'الفرعي',
-        AppFormatters.quantity(1000),
-        AppFormatters.quantity(10),
-        AppFormatters.usd(1.25),
-        AppFormatters.usd(0),
-        AppFormatters.usd(1.25),
-        AppFormatters.usd(1250),
-        AppFormatters.usd(0.05),
-        AppFormatters.usd(1300),
-        AppFormatters.usd(1.75),
-      ],
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _purchaseItems = [
+      _PurchaseDemoRow(
+        id: 'p1',
+        code: 'P-001',
+        name: 'دفتر ملاحظات',
+        warehouse: 'الرئيسي',
+        quantity: '100',
+        container: '1',
+        purchasePrice: '2,500',
+        discount: '0',
+        cost: '150',
+        salePrice: '3,000',
+      ),
+      _PurchaseDemoRow(
+        id: 'p2',
+        code: 'P-002',
+        name: 'قلم أزرق',
+        warehouse: 'الفرعي',
+        quantity: '1,000',
+        container: '10',
+        purchasePrice: '1.25',
+        discount: '0',
+        cost: '0.05',
+        salePrice: '1.75',
+        isUsd: true,
+      ),
+    ];
+    _saleItems = [
+      _SaleDemoRow(
+        id: 's1',
+        code: 'P-001',
+        name: 'دفتر ملاحظات',
+        warehouse: 'الرئيسي',
+        quantity: '5',
+        salePrice: '3,000',
+        discount: '0',
+      ),
+      _SaleDemoRow(
+        id: 's2',
+        code: 'P-003',
+        name: 'طابعة مكتبية',
+        warehouse: 'الرئيسي',
+        quantity: '1',
+        salePrice: '175.00',
+        discount: '5.00',
+        isUsd: true,
+      ),
+    ];
+  }
 
-  final List<_DemoInvoiceRow> _saleItems = [
-    _DemoInvoiceRow(
-      id: 's1',
-      values: [
-        'P-001',
-        'دفتر ملاحظات',
-        'الرئيسي',
-        AppFormatters.quantity(5),
-        AppFormatters.iqd(3000),
-        AppFormatters.iqd(0),
-        AppFormatters.iqd(3000),
-        AppFormatters.iqd(15000),
-      ],
-    ),
-    _DemoInvoiceRow(
-      id: 's2',
-      values: [
-        'P-003',
-        'طابعة مكتبية',
-        'الرئيسي',
-        AppFormatters.quantity(1),
-        AppFormatters.usd(175),
-        AppFormatters.usd(5),
-        AppFormatters.usd(170),
-        AppFormatters.usd(170),
-      ],
-    ),
-  ];
+  @override
+  void dispose() {
+    for (final row in _purchaseItems) {
+      row.dispose();
+    }
+    for (final row in _saleItems) {
+      row.dispose();
+    }
+    super.dispose();
+  }
 
   void _addPurchaseItem() {
-    final seed = _purchaseSeed++;
     setState(() {
       _purchaseItems.add(
-        _DemoInvoiceRow(
-          id: 'p$seed',
-          values: [
-            'P-${100 + seed}',
-            'ورق A4 تجريبي',
-            'الرئيسي',
-            AppFormatters.quantity(20),
-            AppFormatters.quantity(1),
-            AppFormatters.iqd(6000),
-            AppFormatters.iqd(500),
-            AppFormatters.iqd(5500),
-            AppFormatters.iqd(110000),
-            AppFormatters.iqd(100),
-            AppFormatters.iqd(112000),
-            AppFormatters.iqd(7500),
-          ],
+        _PurchaseDemoRow(
+          id: 'p' + (_purchaseSeed++).toString(),
+          code: '',
+          name: '',
+          warehouse: 'الرئيسي',
+          quantity: '1',
+          container: '1',
+          purchasePrice: '0',
+          discount: '0',
+          cost: '0',
+          salePrice: '0',
         ),
       );
     });
   }
 
+  void _deletePurchaseItem(int index) {
+    final removed = _purchaseItems[index];
+    setState(() => _purchaseItems.removeAt(index));
+    WidgetsBinding.instance.addPostFrameCallback((_) => removed.dispose());
+  }
+
   void _addSaleItem() {
-    final seed = _saleSeed++;
     setState(() {
       _saleItems.add(
-        _DemoInvoiceRow(
-          id: 's$seed',
-          values: [
-            'P-${200 + seed}',
-            'حبر طابعة تجريبي',
-            'الفرعي',
-            AppFormatters.quantity(2),
-            AppFormatters.iqd(18000),
-            AppFormatters.iqd(1000),
-            AppFormatters.iqd(17000),
-            AppFormatters.iqd(34000),
-          ],
+        _SaleDemoRow(
+          id: 's' + (_saleSeed++).toString(),
+          code: '',
+          name: '',
+          warehouse: 'الرئيسي',
+          quantity: '1',
+          salePrice: '0',
+          discount: '0',
         ),
       );
     });
+  }
+
+  void _deleteSaleItem(int index) {
+    final removed = _saleItems[index];
+    setState(() => _saleItems.removeAt(index));
+    WidgetsBinding.instance.addPostFrameCallback((_) => removed.dispose());
   }
 
   List<AppTableRow> _purchaseRows() {
     return [
       for (var index = 0; index < _purchaseItems.length; index++)
-        AppTableRow(
-          rowKey: Key('designPurchaseRow-${_purchaseItems[index].id}'),
-          cells: [
-            Text('${index + 1}'),
-            for (final value in _purchaseItems[index].values) Text(value),
-            AppTableActionButton(
-              key: Key(
-                'designPurchaseDelete-${_purchaseItems[index].id}',
-              ),
-              icon: Icons.delete_rounded,
-              tooltip: 'حذف السطر',
-              onPressed: () {
-                setState(() => _purchaseItems.removeAt(index));
-              },
-            ),
-          ],
-        ),
+        _purchaseTableRow(index),
     ];
+  }
+
+  AppTableRow _purchaseTableRow(int index) {
+    final row = _purchaseItems[index];
+    final isLast = index == _purchaseItems.length - 1;
+
+    return AppTableRow(
+      rowKey: Key('designPurchaseRow-' + row.id),
+      cells: [
+        Text((index + 1).toString()),
+        AppInvoiceCellField(
+          fieldKey: Key('designPurchaseCode-' + row.id),
+          controller: row.code,
+        ),
+        AppInvoiceCellField(
+          fieldKey: Key('designPurchaseName-' + row.id),
+          controller: row.name,
+        ),
+        AppInvoiceCellField(
+          fieldKey: Key('designPurchaseWarehouse-' + row.id),
+          controller: row.warehouse,
+        ),
+        AppInvoiceCellField(
+          fieldKey: Key('designPurchaseQuantity-' + row.id),
+          controller: row.quantity,
+          numeric: true,
+          inputFormatters: const [AppIntegerInputFormatter()],
+          onChanged: (_) => setState(() {}),
+        ),
+        AppInvoiceCellField(
+          fieldKey: Key('designPurchaseContainer-' + row.id),
+          controller: row.container,
+          numeric: true,
+          inputFormatters: const [AppIntegerInputFormatter()],
+        ),
+        AppInvoiceCellField(
+          fieldKey: Key('designPurchasePrice-' + row.id),
+          controller: row.purchasePrice,
+          numeric: true,
+          inputFormatters: const [AppMoneyInputFormatter()],
+          onChanged: (_) => setState(() {}),
+        ),
+        AppInvoiceCellField(
+          fieldKey: Key('designPurchaseDiscount-' + row.id),
+          controller: row.discount,
+          numeric: true,
+          inputFormatters: const [AppMoneyInputFormatter()],
+          onChanged: (_) => setState(() {}),
+        ),
+        Text(row.formatMoney(row.afterDiscount)),
+        Text(row.formatMoney(row.total)),
+        AppInvoiceCellField(
+          fieldKey: Key('designPurchaseCost-' + row.id),
+          controller: row.cost,
+          numeric: true,
+          inputFormatters: const [AppMoneyInputFormatter()],
+          onChanged: (_) => setState(() {}),
+        ),
+        Text(row.formatMoney(row.totalCost)),
+        AppInvoiceCellField(
+          fieldKey: Key('designPurchaseSalePrice-' + row.id),
+          controller: row.salePrice,
+          numeric: true,
+          inputFormatters: const [AppMoneyInputFormatter()],
+        ),
+        AppTableActionButton(
+          key: Key(
+            isLast
+                ? 'designPurchaseAdd-' + row.id
+                : 'designPurchaseDelete-' + row.id,
+          ),
+          icon: isLast ? Icons.add_rounded : Icons.delete_rounded,
+          tooltip: isLast ? 'إضافة سطر' : 'حذف السطر',
+          variant: isLast
+              ? AppButtonVariant.primary
+              : AppButtonVariant.danger,
+          backgroundColor:
+              isLast ? AppModuleColors.purchases : null,
+          foregroundColor: isLast ? Colors.white : null,
+          onPressed:
+              isLast ? _addPurchaseItem : () => _deletePurchaseItem(index),
+        ),
+      ],
+    );
   }
 
   List<AppTableRow> _saleRows() {
     return [
       for (var index = 0; index < _saleItems.length; index++)
-        AppTableRow(
-          rowKey: Key('designSaleRow-${_saleItems[index].id}'),
-          cells: [
-            Text('${index + 1}'),
-            for (final value in _saleItems[index].values) Text(value),
-            AppTableActionButton(
-              key: Key('designSaleDelete-${_saleItems[index].id}'),
-              icon: Icons.delete_rounded,
-              tooltip: 'حذف السطر',
-              onPressed: () {
-                setState(() => _saleItems.removeAt(index));
-              },
-            ),
-          ],
-        ),
+        _saleTableRow(index),
     ];
+  }
+
+  AppTableRow _saleTableRow(int index) {
+    final row = _saleItems[index];
+    final isLast = index == _saleItems.length - 1;
+
+    return AppTableRow(
+      rowKey: Key('designSaleRow-' + row.id),
+      cells: [
+        Text((index + 1).toString()),
+        AppInvoiceCellField(
+          fieldKey: Key('designSaleCode-' + row.id),
+          controller: row.code,
+        ),
+        AppInvoiceCellField(
+          fieldKey: Key('designSaleName-' + row.id),
+          controller: row.name,
+        ),
+        AppInvoiceCellField(
+          fieldKey: Key('designSaleWarehouse-' + row.id),
+          controller: row.warehouse,
+        ),
+        AppInvoiceCellField(
+          fieldKey: Key('designSaleQuantity-' + row.id),
+          controller: row.quantity,
+          numeric: true,
+          inputFormatters: const [AppIntegerInputFormatter()],
+          onChanged: (_) => setState(() {}),
+        ),
+        AppInvoiceCellField(
+          fieldKey: Key('designSalePrice-' + row.id),
+          controller: row.salePrice,
+          numeric: true,
+          inputFormatters: const [AppMoneyInputFormatter()],
+          onChanged: (_) => setState(() {}),
+        ),
+        AppInvoiceCellField(
+          fieldKey: Key('designSaleDiscount-' + row.id),
+          controller: row.discount,
+          numeric: true,
+          inputFormatters: const [AppMoneyInputFormatter()],
+          onChanged: (_) => setState(() {}),
+        ),
+        Text(row.formatMoney(row.afterDiscount)),
+        Text(row.formatMoney(row.total)),
+        AppTableActionButton(
+          key: Key(
+            isLast
+                ? 'designSaleAdd-' + row.id
+                : 'designSaleDelete-' + row.id,
+          ),
+          icon: isLast ? Icons.add_rounded : Icons.delete_rounded,
+          tooltip: isLast ? 'إضافة سطر' : 'حذف السطر',
+          variant: isLast
+              ? AppButtonVariant.primary
+              : AppButtonVariant.danger,
+          backgroundColor: isLast ? AppModuleColors.sales : null,
+          foregroundColor: isLast ? Colors.white : null,
+          onPressed: isLast ? _addSaleItem : () => _deleteSaleItem(index),
+        ),
+      ],
+    );
   }
 
   @override
@@ -181,16 +298,14 @@ class _DesignGalleryInvoiceTablesSectionState
         children: [
           const AppInfoBanner(
             message:
-                'الجداول متطابقة في الأساس، وتختلف في لون القسم والأعمدة الخاصة بكل مستند. أضف واحذف صفوفاً لتجربة السلوك.',
+                'الصف الأخير يحمل زر الإضافة، والصفوف السابقة تحمل زر الحذف. جميع حقول الإدخال قابلة للتجربة والحسابات تتحدث مباشرة.',
             icon: Icons.table_chart_rounded,
           ),
           const SizedBox(height: AppSpacing.lg),
-          _TableTitle(
+          const _TableTitle(
             label: 'جدول مواد المشتريات',
             color: AppModuleColors.purchases,
             icon: Icons.shopping_cart_checkout_rounded,
-            buttonKey: const Key('designPurchaseAddRow'),
-            onAdd: _addPurchaseItem,
           ),
           const SizedBox(height: AppSpacing.sm),
           AppInvoiceItemsTable.purchase(
@@ -199,12 +314,10 @@ class _DesignGalleryInvoiceTablesSectionState
             rows: _purchaseRows(),
           ),
           const SizedBox(height: AppSpacing.lg),
-          _TableTitle(
+          const _TableTitle(
             label: 'جدول مواد المبيعات',
             color: AppModuleColors.sales,
             icon: Icons.point_of_sale_rounded,
-            buttonKey: const Key('designSaleAddRow'),
-            onAdd: _addSaleItem,
           ),
           const SizedBox(height: AppSpacing.sm),
           AppInvoiceItemsTable.sale(
@@ -223,15 +336,11 @@ class _TableTitle extends StatelessWidget {
     required this.label,
     required this.color,
     required this.icon,
-    required this.buttonKey,
-    required this.onAdd,
   });
 
   final String label;
   final Color color;
   final IconData icon;
-  final Key buttonKey;
-  final VoidCallback onAdd;
 
   @override
   Widget build(BuildContext context) {
@@ -248,29 +357,124 @@ class _TableTitle extends StatelessWidget {
         const SizedBox(width: AppSpacing.sm),
         Icon(icon, color: color),
         const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: Text(label, style: AppTypography.sectionTitle),
-        ),
-        AppButton(
-          key: buttonKey,
-          label: 'إضافة سطر',
-          icon: Icons.add_rounded,
-          width: 144,
-          backgroundColor: color,
-          onPressed: onAdd,
-        ),
+        Text(label, style: AppTypography.sectionTitle),
       ],
     );
   }
 }
 
-@immutable
-class _DemoInvoiceRow {
-  const _DemoInvoiceRow({
+class _PurchaseDemoRow {
+  _PurchaseDemoRow({
     required this.id,
-    required this.values,
-  });
+    required String code,
+    required String name,
+    required String warehouse,
+    required String quantity,
+    required String container,
+    required String purchasePrice,
+    required String discount,
+    required String cost,
+    required String salePrice,
+    this.isUsd = false,
+  })  : code = TextEditingController(text: code),
+        name = TextEditingController(text: name),
+        warehouse = TextEditingController(text: warehouse),
+        quantity = TextEditingController(text: quantity),
+        container = TextEditingController(text: container),
+        purchasePrice = TextEditingController(text: purchasePrice),
+        discount = TextEditingController(text: discount),
+        cost = TextEditingController(text: cost),
+        salePrice = TextEditingController(text: salePrice);
 
   final String id;
-  final List<String> values;
+  final bool isUsd;
+  final TextEditingController code;
+  final TextEditingController name;
+  final TextEditingController warehouse;
+  final TextEditingController quantity;
+  final TextEditingController container;
+  final TextEditingController purchasePrice;
+  final TextEditingController discount;
+  final TextEditingController cost;
+  final TextEditingController salePrice;
+
+  num get _quantity => AppFormatters.parseNumber(quantity.text) ?? 0;
+  num get _price => AppFormatters.parseNumber(purchasePrice.text) ?? 0;
+  num get _discount => AppFormatters.parseNumber(discount.text) ?? 0;
+  num get _cost => AppFormatters.parseNumber(cost.text) ?? 0;
+
+  num get afterDiscount {
+    final result = _price - _discount;
+    return result < 0 ? 0 : result;
+  }
+
+  num get total => afterDiscount * _quantity;
+  num get totalCost => total + _cost;
+
+  String formatMoney(num value) {
+    return isUsd ? AppFormatters.usd(value) : AppFormatters.iqd(value);
+  }
+
+  void dispose() {
+    code.dispose();
+    name.dispose();
+    warehouse.dispose();
+    quantity.dispose();
+    container.dispose();
+    purchasePrice.dispose();
+    discount.dispose();
+    cost.dispose();
+    salePrice.dispose();
+  }
+}
+
+class _SaleDemoRow {
+  _SaleDemoRow({
+    required this.id,
+    required String code,
+    required String name,
+    required String warehouse,
+    required String quantity,
+    required String salePrice,
+    required String discount,
+    this.isUsd = false,
+  })  : code = TextEditingController(text: code),
+        name = TextEditingController(text: name),
+        warehouse = TextEditingController(text: warehouse),
+        quantity = TextEditingController(text: quantity),
+        salePrice = TextEditingController(text: salePrice),
+        discount = TextEditingController(text: discount);
+
+  final String id;
+  final bool isUsd;
+  final TextEditingController code;
+  final TextEditingController name;
+  final TextEditingController warehouse;
+  final TextEditingController quantity;
+  final TextEditingController salePrice;
+  final TextEditingController discount;
+
+  num get _quantity => AppFormatters.parseNumber(quantity.text) ?? 0;
+  num get _price => AppFormatters.parseNumber(salePrice.text) ?? 0;
+  num get _discount => AppFormatters.parseNumber(discount.text) ?? 0;
+
+  num get afterDiscount {
+    final result = _price - _discount;
+    return result < 0 ? 0 : result;
+  }
+
+  num get total => afterDiscount * _quantity;
+
+  String formatMoney(num value) {
+    return isUsd ? AppFormatters.usd(value) : AppFormatters.iqd(value);
+  }
+
+  void dispose() {
+    code.dispose();
+    name.dispose();
+    warehouse.dispose();
+    quantity.dispose();
+    salePrice.dispose();
+    discount.dispose();
+  }
 }
