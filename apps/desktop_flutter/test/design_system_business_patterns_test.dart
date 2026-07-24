@@ -158,7 +158,7 @@ void main() {
     );
   });
 
-  testWidgets('opens statement options with the shared business controls',
+  testWidgets('opens options then the shared statement report',
       (tester) async {
     await pumpDesignSystemGallery(tester);
 
@@ -167,34 +167,80 @@ void main() {
     await tester.tap(button);
     await tester.pump();
 
-    final statementDialog =
+    final optionsDialog =
         find.byKey(const Key('appStatementOptionsDialog'));
-    expect(statementDialog, findsOneWidget);
+    expect(optionsDialog, findsOneWidget);
     expect(find.byKey(const Key('appStatementParty')), findsOneWidget);
     expect(find.byKey(const Key('appStatementFromDate')), findsOneWidget);
     expect(find.byKey(const Key('appStatementToDate')), findsOneWidget);
     expect(find.byKey(const Key('appStatementCurrency')), findsOneWidget);
     expect(
       find.descendant(
-        of: statementDialog,
+        of: optionsDialog,
         matching: find.byIcon(Icons.close_rounded),
       ),
       findsNothing,
     );
     expect(
       tester
+          .widget<Row>(find.byKey(const Key('appStatementActions')))
+          .mainAxisAlignment,
+      MainAxisAlignment.center,
+    );
+    expect(
+      tester
           .widget<AppButton>(
             find.byKey(const Key('appStatementConfirm')),
           )
-          .width,
-      176,
+          .backgroundColor,
+      AppModuleColors.parties,
     );
 
-    await tester.tap(find.byKey(const Key('appStatementCancel')));
+    await tester.tap(find.byKey(const Key('appStatementConfirm')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+
+    final report = find.byKey(const Key('appStatementReportDialog'));
+    expect(report, findsOneWidget);
+    expect(
+      find.descendant(of: report, matching: find.text('أسواق دجلة')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: report, matching: find.text('دائن (له)')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: report, matching: find.text('مدين (عليه)')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: report, matching: find.text('PDF')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: report, matching: find.text('طباعة')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: report, matching: find.text('إكسل')),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<Row>(
+            find.byKey(const Key('appStatementReportActions')),
+          )
+          .mainAxisAlignment,
+      MainAxisAlignment.center,
+    );
+
+    await tester.tap(find.byKey(const Key('appStatementReportClose')));
     await tester.pump();
   });
 
-  testWidgets('uses one themed shell for management dialogs', (tester) async {
+  testWidgets('uses themed centered management and transfer dialogs',
+      (tester) async {
     await pumpDesignSystemGallery(tester);
 
     final transferButton =
@@ -207,28 +253,97 @@ void main() {
     expect(transferDialog, findsOneWidget);
     expect(find.text('من مخزن'), findsOneWidget);
     expect(find.text('إلى مخزن'), findsOneWidget);
-    expect(find.text('مواد النقل'), findsOneWidget);
-
-    final transferShell = tester.widget<AppModuleDialog>(transferDialog);
-    expect(transferShell.accentColor, AppModuleColors.warehouses);
+    expect(find.text('تاريخ النقل'), findsNothing);
     expect(
-      find.descendant(
-        of: transferDialog,
-        matching: find.byIcon(Icons.close_rounded),
-      ),
-      findsNothing,
+      find.byKey(const Key('designTransferSourceStock')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('designTransferDestinationStock')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('designTransferProduct')), findsOneWidget);
+    expect(find.byKey(const Key('designTransferQuantity')), findsOneWidget);
+    expect(
+      tester
+          .widget<Row>(
+            find.byKey(const Key('designTransferDialogActions')),
+          )
+          .mainAxisAlignment,
+      MainAxisAlignment.center,
     );
     expect(
       tester
           .widget<AppButton>(
             find.byKey(const Key('designTransferDialogConfirm')),
           )
-          .width,
-      176,
+          .backgroundColor,
+      AppModuleColors.warehouses,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('designTransferSourceStock')),
+        matching: find.text('1,200'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('designTransferDestinationStock')),
+        matching: find.text('80'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(const Key('designTransferDialogConfirm')),
+    );
+    await tester.pump();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('designTransferSourceStock')),
+        matching: find.text('1,190'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('designTransferDestinationStock')),
+        matching: find.text('90'),
+      ),
+      findsOneWidget,
     );
 
     await tester.tap(
       find.byKey(const Key('designTransferDialogCancel')),
+    );
+    await tester.pump();
+
+    final groupsButton =
+        find.byKey(const Key('designGroupsTypesDialogButton'));
+    await reveal(tester, groupsButton);
+    await tester.tap(groupsButton);
+    await tester.pump();
+
+    expect(
+      tester
+          .widget<AppButton>(
+            find.byKey(const Key('designGroupsTypesDialogConfirm')),
+          )
+          .backgroundColor,
+      AppModuleColors.warehouses,
+    );
+    expect(
+      tester
+          .widget<Row>(
+            find.byKey(const Key('designGroupsTypesDialogActions')),
+          )
+          .mainAxisAlignment,
+      MainAxisAlignment.center,
+    );
+    await tester.tap(
+      find.byKey(const Key('designGroupsTypesDialogCancel')),
     );
     await tester.pump();
 
@@ -247,11 +362,20 @@ void main() {
     expect(find.text('الحسابات الرئيسية'), findsWidgets);
     expect(find.text('الحسابات الفرعية'), findsOneWidget);
     expect(
-      find.descendant(
-        of: cashboxDialog,
-        matching: find.byIcon(Icons.close_rounded),
-      ),
-      findsNothing,
+      tester
+          .widget<AppButton>(
+            find.byKey(const Key('designCashboxTabsDialogConfirm')),
+          )
+          .backgroundColor,
+      AppModuleColors.cashbox,
+    );
+    expect(
+      tester
+          .widget<Row>(
+            find.byKey(const Key('designCashboxTabsDialogActions')),
+          )
+          .mainAxisAlignment,
+      MainAxisAlignment.center,
     );
 
     await tester.tap(
@@ -260,7 +384,7 @@ void main() {
     await tester.pump();
   });
 
-  testWidgets('documents the shared purchase and sales item tables',
+  testWidgets('adds and deletes rows in purchase and sales tables',
       (tester) async {
     await pumpDesignSystemGallery(tester);
 
@@ -277,10 +401,24 @@ void main() {
       find.descendant(of: purchase, matching: find.text('الحاوية')),
       findsOneWidget,
     );
-    expect(
-      find.descendant(of: purchase, matching: find.text('إجمالي الكلفة')),
-      findsOneWidget,
-    );
+    expect(tester.widget<AppInvoiceItemsTable>(purchase).rows, hasLength(2));
+
+    final addPurchase = find.byKey(const Key('designPurchaseAddRow'));
+    await reveal(tester, addPurchase);
+    await tester.tap(addPurchase);
+    await tester.pump();
+
+    expect(tester.widget<AppInvoiceItemsTable>(purchase).rows, hasLength(3));
+    expect(find.text('ورق A4 تجريبي'), findsOneWidget);
+
+    tester
+        .widget<AppTableActionButton>(
+          find.byKey(const Key('designPurchaseDelete-p3')),
+        )
+        .onPressed
+        ?.call();
+    await tester.pump();
+    expect(tester.widget<AppInvoiceItemsTable>(purchase).rows, hasLength(2));
 
     final sales = find.byKey(const Key('designSalesItemsTable'));
     await reveal(tester, sales);
@@ -298,5 +436,23 @@ void main() {
       find.descendant(of: sales, matching: find.text('سعر البيع')),
       findsOneWidget,
     );
+    expect(tester.widget<AppInvoiceItemsTable>(sales).rows, hasLength(2));
+
+    final addSale = find.byKey(const Key('designSaleAddRow'));
+    await reveal(tester, addSale);
+    await tester.tap(addSale);
+    await tester.pump();
+
+    expect(tester.widget<AppInvoiceItemsTable>(sales).rows, hasLength(3));
+    expect(find.text('حبر طابعة تجريبي'), findsOneWidget);
+
+    tester
+        .widget<AppTableActionButton>(
+          find.byKey(const Key('designSaleDelete-s3')),
+        )
+        .onPressed
+        ?.call();
+    await tester.pump();
+    expect(tester.widget<AppInvoiceItemsTable>(sales).rows, hasLength(2));
   });
 }
