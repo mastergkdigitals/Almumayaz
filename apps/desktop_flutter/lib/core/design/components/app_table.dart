@@ -44,6 +44,7 @@ class AppDataTable extends StatefulWidget {
     this.isLoading = false,
     this.emptyState,
     this.verticalScrollController,
+    this.accentColor,
   });
 
   final List<AppTableColumn> columns;
@@ -55,6 +56,7 @@ class AppDataTable extends StatefulWidget {
   final bool isLoading;
   final Widget? emptyState;
   final ScrollController? verticalScrollController;
+  final Color? accentColor;
 
   @override
   State<AppDataTable> createState() => _AppDataTableState();
@@ -127,6 +129,7 @@ class _AppDataTableState extends State<AppDataTable> {
                         columns: widget.columns,
                         columnWidths: columnWidths,
                         height: widget.headerHeight,
+                        accentColor: widget.accentColor,
                       ),
                       Expanded(
                         child: _buildBody(columnWidths),
@@ -185,19 +188,25 @@ class _TableHeader extends StatelessWidget {
     required this.columns,
     required this.columnWidths,
     required this.height,
+    required this.accentColor,
   });
 
   final List<AppTableColumn> columns;
   final Map<int, TableColumnWidth> columnWidths;
   final double height;
+  final Color? accentColor;
 
   @override
   Widget build(BuildContext context) {
+    final headerColor = accentColor == null
+        ? AppColors.tableHeaderSurface
+        : Color.alphaBlend(accentColor!.withAlpha(18), AppColors.surface);
+
     return Container(
       height: height,
-      decoration: const BoxDecoration(
-        color: AppColors.tableHeaderSurface,
-        border: Border(
+      decoration: BoxDecoration(
+        color: headerColor,
+        border: const Border(
           bottom: BorderSide(color: AppColors.border, width: 0.8),
         ),
       ),
