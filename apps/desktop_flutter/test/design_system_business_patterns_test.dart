@@ -40,6 +40,19 @@ void main() {
       find.byKey(const Key('designGlobalReadOnlyTime')),
     );
     expect(timeField.enabled, isFalse);
+
+    final rangeField = find.byKey(const Key('designGlobalDateRange'));
+    await reveal(tester, rangeField);
+    final rangeText = tester.widget<EditableText>(
+      find.descendant(
+        of: rangeField,
+        matching: find.byType(EditableText),
+      ),
+    );
+    expect(
+      rangeText.controller.text,
+      'من 2025/12/31 إلى 2026/12/31',
+    );
   });
 
   testWidgets('opens the shared Arabic date picker', (tester) async {
@@ -47,12 +60,28 @@ void main() {
 
     final dateField = find.byKey(const Key('designGlobalDatePicker'));
     await reveal(tester, dateField);
+    expect(
+      find.descendant(
+        of: dateField,
+        matching: find.byTooltip('اختيار التاريخ'),
+      ),
+      findsOneWidget,
+    );
+
     await tester.tap(dateField);
     await tester.pump();
 
     expect(find.byKey(const Key('appDatePickerDialog')), findsOneWidget);
     expect(find.text('اختر التاريخ'), findsOneWidget);
     expect(find.text('كانون الأول 2026'), findsOneWidget);
+    expect(find.byTooltip('السابق'), findsOneWidget);
+    expect(find.byTooltip('التالي'), findsOneWidget);
+
+    final actions = tester.widget<Row>(
+      find.byKey(const Key('appDatePickerActions')),
+    );
+    expect(actions.mainAxisAlignment, MainAxisAlignment.center);
+
     final cancelButton = tester.widget<AppButton>(
       find.byKey(const Key('appDatePickerCancel')),
     );
@@ -66,6 +95,69 @@ void main() {
     await tester.pump();
   });
 
+  testWidgets('selects a range with the shared Arabic date picker',
+      (tester) async {
+    await pumpDesignSystemGallery(tester);
+
+    final rangeField = find.byKey(const Key('designGlobalDateRange'));
+    await reveal(tester, rangeField);
+    expect(
+      find.descendant(
+        of: rangeField,
+        matching: find.byTooltip('اختيار نطاق التاريخ'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(rangeField);
+    await tester.pump();
+
+    final dialog = find.byKey(const Key('appDateRangePickerDialog'));
+    expect(dialog, findsOneWidget);
+    expect(find.text('اختر نطاق التاريخ'), findsOneWidget);
+    expect(find.text('كانون الأول 2025'), findsOneWidget);
+
+    await tester.tap(
+      find.descendant(of: dialog, matching: find.text('3')),
+    );
+    await tester.pump();
+    expect(
+      tester
+          .widget<AppButton>(
+            find.byKey(const Key('appDatePickerConfirm')),
+          )
+          .onPressed,
+      isNull,
+    );
+
+    await tester.tap(
+      find.descendant(of: dialog, matching: find.text('7')),
+    );
+    await tester.pump();
+    expect(
+      tester
+          .widget<AppButton>(
+            find.byKey(const Key('appDatePickerConfirm')),
+          )
+          .onPressed,
+      isNotNull,
+    );
+
+    await tester.tap(find.byKey(const Key('appDatePickerConfirm')));
+    await tester.pump();
+
+    final selectedRange = tester.widget<EditableText>(
+      find.descendant(
+        of: rangeField,
+        matching: find.byType(EditableText),
+      ),
+    );
+    expect(
+      selectedRange.controller.text,
+      'من 2025/12/03 إلى 2025/12/07',
+    );
+  });
+
   testWidgets('opens statement options with the shared business controls',
       (tester) async {
     await pumpDesignSystemGallery(tester);
@@ -75,16 +167,30 @@ void main() {
     await tester.tap(button);
     await tester.pump();
 
-    expect(
-      find.byKey(const Key('appStatementOptionsDialog')),
-      findsOneWidget,
-    );
+    final statementDialog =
+        find.byKey(const Key('appStatementOptionsDialog'));
+    expect(statementDialog, findsOneWidget);
     expect(find.byKey(const Key('appStatementParty')), findsOneWidget);
     expect(find.byKey(const Key('appStatementFromDate')), findsOneWidget);
     expect(find.byKey(const Key('appStatementToDate')), findsOneWidget);
     expect(find.byKey(const Key('appStatementCurrency')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: statementDialog,
+        matching: find.byIcon(Icons.close_rounded),
+      ),
+      findsNothing,
+    );
+    expect(
+      tester
+          .widget<AppButton>(
+            find.byKey(const Key('appStatementConfirm')),
+          )
+          .width,
+      176,
+    );
 
-    await tester.tap(find.byKey(const Key('appStatementConfirm')));
+    await tester.tap(find.byKey(const Key('appStatementCancel')));
     await tester.pump();
   });
 
@@ -105,12 +211,25 @@ void main() {
 
     final transferShell = tester.widget<AppModuleDialog>(transferDialog);
     expect(transferShell.accentColor, AppModuleColors.warehouses);
-
-    final close = find.descendant(
-      of: transferDialog,
-      matching: find.byTooltip('إغلاق'),
+    expect(
+      find.descendant(
+        of: transferDialog,
+        matching: find.byIcon(Icons.close_rounded),
+      ),
+      findsNothing,
     );
-    await tester.tap(close);
+    expect(
+      tester
+          .widget<AppButton>(
+            find.byKey(const Key('designTransferDialogConfirm')),
+          )
+          .width,
+      176,
+    );
+
+    await tester.tap(
+      find.byKey(const Key('designTransferDialogCancel')),
+    );
     await tester.pump();
 
     final cashboxButton =
@@ -127,6 +246,18 @@ void main() {
     );
     expect(find.text('الحسابات الرئيسية'), findsWidgets);
     expect(find.text('الحسابات الفرعية'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: cashboxDialog,
+        matching: find.byIcon(Icons.close_rounded),
+      ),
+      findsNothing,
+    );
+
+    await tester.tap(
+      find.byKey(const Key('designCashboxTabsDialogCancel')),
+    );
+    await tester.pump();
   });
 
   testWidgets('documents the shared purchase and sales item tables',
