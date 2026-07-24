@@ -247,8 +247,12 @@ void main() {
 
     final close = find.byKey(const Key('appModuleDialogClose'));
     expect(close, findsOneWidget);
+    final reportIcon = find.descendant(
+      of: report,
+      matching: find.byIcon(Icons.receipt_long_rounded),
+    );
     expect(
-      tester.getCenter(find.byIcon(Icons.receipt_long_rounded)).dx,
+      tester.getCenter(reportIcon).dx,
       lessThan(tester.getCenter(close).dx),
     );
 
