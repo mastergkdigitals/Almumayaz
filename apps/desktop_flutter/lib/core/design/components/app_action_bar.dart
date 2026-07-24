@@ -18,6 +18,7 @@ class AppActionBar extends StatelessWidget {
     super.key,
     this.searchFieldKey,
     this.searchClearButtonKey,
+    this.searchFocusNode,
     this.firstButtonKey,
     this.previousButtonKey,
     this.nextButtonKey,
@@ -47,6 +48,7 @@ class AppActionBar extends StatelessWidget {
   final VoidCallback? onDelete;
   final Key? searchFieldKey;
   final Key? searchClearButtonKey;
+  final FocusNode? searchFocusNode;
   final Key? firstButtonKey;
   final Key? previousButtonKey;
   final Key? nextButtonKey;
@@ -80,6 +82,7 @@ class AppActionBar extends StatelessWidget {
       controller: searchController,
       fieldKey: searchFieldKey,
       clearButtonKey: searchClearButtonKey,
+      focusNode: searchFocusNode,
       label: searchLabel,
       hint: searchHint,
       onChanged: onSearchChanged,
