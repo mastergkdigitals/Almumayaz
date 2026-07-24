@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../app_tokens.dart';
+import 'app_shortcuts.dart';
 
 class AppDropdownOption<T> {
   const AppDropdownOption({required this.value, required this.label});
@@ -22,6 +23,7 @@ class AppDropdownField<T> extends StatefulWidget {
     this.accentColor,
     this.focusNode,
     this.onSubmitted,
+    this.keyHoldGuard,
     this.enabled = true,
   });
 
@@ -34,6 +36,7 @@ class AppDropdownField<T> extends StatefulWidget {
   final Color? accentColor;
   final FocusNode? focusNode;
   final ValueChanged<T?>? onSubmitted;
+  final AppKeyHoldGuard? keyHoldGuard;
   final bool enabled;
 
   @override
@@ -41,13 +44,22 @@ class AppDropdownField<T> extends StatefulWidget {
 }
 
 class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
+  static const _enterKeys = {
+    LogicalKeyboardKey.enter,
+    LogicalKeyboardKey.numpadEnter,
+  };
+
   final _menuController = MenuController();
   final _internalFocusNode = FocusNode();
+  AppKeyHoldGuard? _internalKeyHoldGuard;
   late List<FocusNode> _itemFocusNodes;
   bool _isHovered = false;
   bool _isOpen = false;
 
   FocusNode get _focusNode => widget.focusNode ?? _internalFocusNode;
+  AppKeyHoldGuard get _keyHoldGuard =>
+      widget.keyHoldGuard ??
+      (_internalKeyHoldGuard ??= AppKeyHoldGuard());
 
   String get _selectedLabel {
     for (final option in widget.options) {
@@ -83,6 +95,30 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
       );
       _itemFocusNodes[selectedIndex < 0 ? 0 : selectedIndex].requestFocus();
     });
+  }
+
+  void _toggleMenu(MenuController controller) {
+    if (controller.isOpen) {
+      controller.close();
+    } else {
+      _openMenu(controller);
+    }
+  }
+
+  void _toggleMenuOnce(MenuController controller) {
+    if (!widget.enabled) return;
+    _keyHoldGuard.runOnce(
+      keys: _enterKeys,
+      action: () => _toggleMenu(controller),
+    );
+  }
+
+  void _selectOptionOnce(AppDropdownOption<T> option) {
+    if (!widget.enabled) return;
+    _keyHoldGuard.runOnce(
+      keys: _enterKeys,
+      action: () => _selectOption(option),
+    );
   }
 
   void _selectOption(AppDropdownOption<T> option) {
@@ -124,6 +160,7 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
     for (final focusNode in _itemFocusNodes) {
       focusNode.dispose();
     }
+    _internalKeyHoldGuard?.dispose();
     _internalFocusNode.dispose();
     super.dispose();
   }
@@ -197,6 +234,10 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
 
             return CallbackShortcuts(
               bindings: {
+                const SingleActivator(LogicalKeyboardKey.enter):
+                    () => _selectOptionOnce(option),
+                const SingleActivator(LogicalKeyboardKey.numpadEnter):
+                    () => _selectOptionOnce(option),
                 const SingleActivator(LogicalKeyboardKey.arrowLeft):
                     _ignoreHorizontalNavigation,
                 const SingleActivator(LogicalKeyboardKey.arrowRight):
@@ -277,114 +318,116 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
             );
           }).toList(growable: false),
           builder: (context, controller, child) {
-            return Semantics(
-              button: true,
-              enabled: widget.enabled,
-              label: widget.label,
-              value: _selectedLabel,
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  key: widget.fieldKey,
-                  focusNode: _focusNode,
-                  onTap: widget.enabled
-                      ? () {
-                          if (controller.isOpen) {
-                            controller.close();
-                          } else {
-                            _openMenu(controller);
-                          }
-                        }
-                      : null,
-                  onHover: widget.enabled ? _setHovered : null,
-                  mouseCursor: widget.enabled
-                      ? SystemMouseCursors.click
-                      : SystemMouseCursors.basic,
-                  borderRadius: BorderRadius.circular(AppRadii.md),
-                  hoverColor: Colors.transparent,
-                  focusColor: Colors.transparent,
-                  highlightColor: Colors.transparent,
-                  splashColor: Colors.transparent,
-                  overlayColor:
-                      const WidgetStatePropertyAll<Color>(Colors.transparent),
-                  child: AnimatedContainer(
-                    duration: AppDurations.fast,
-                    curve: Curves.easeOutCubic,
-                    height: AppControlHeights.large,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md,
-                    ),
-                    decoration: BoxDecoration(
-                      color: backgroundColor,
-                      borderRadius: BorderRadius.circular(AppRadii.md),
-                      border: Border.all(
-                        color: borderColor,
-                        width: _isOpen ? 1.5 : 1,
+            return CallbackShortcuts(
+              bindings: {
+                const SingleActivator(LogicalKeyboardKey.enter):
+                    () => _toggleMenuOnce(controller),
+                const SingleActivator(LogicalKeyboardKey.numpadEnter):
+                    () => _toggleMenuOnce(controller),
+              },
+              child: Semantics(
+                button: true,
+                enabled: widget.enabled,
+                label: widget.label,
+                value: _selectedLabel,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    key: widget.fieldKey,
+                    focusNode: _focusNode,
+                    onTap: widget.enabled
+                        ? () => _toggleMenu(controller)
+                        : null,
+                    onHover: widget.enabled ? _setHovered : null,
+                    mouseCursor: widget.enabled
+                        ? SystemMouseCursors.click
+                        : SystemMouseCursors.basic,
+                    borderRadius: BorderRadius.circular(AppRadii.md),
+                    hoverColor: Colors.transparent,
+                    focusColor: Colors.transparent,
+                    highlightColor: Colors.transparent,
+                    splashColor: Colors.transparent,
+                    overlayColor:
+                        const WidgetStatePropertyAll<Color>(Colors.transparent),
+                    child: AnimatedContainer(
+                      duration: AppDurations.fast,
+                      curve: Curves.easeOutCubic,
+                      height: AppControlHeights.large,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
                       ),
-                    ),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        if (widget.icon != null)
+                      decoration: BoxDecoration(
+                        color: backgroundColor,
+                        borderRadius: BorderRadius.circular(AppRadii.md),
+                        border: Border.all(
+                          color: borderColor,
+                          width: _isOpen ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          if (widget.icon != null)
+                            Align(
+                              alignment: AlignmentDirectional.centerStart,
+                              child: Icon(
+                                widget.icon,
+                                size: AppIconSizes.md,
+                                color: widget.enabled
+                                    ? accentColor
+                                    : AppColors.disabled,
+                              ),
+                            ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 44),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  widget.label,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: widget.enabled
+                                        ? AppColors.textSecondary
+                                        : AppColors.disabled,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 1),
+                                Text(
+                                  _selectedLabel,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
+                                  style: AppTypography.fieldText.copyWith(
+                                    color: widget.enabled
+                                        ? AppColors.textPrimary
+                                        : AppColors.disabled,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                           Align(
-                            alignment: AlignmentDirectional.centerStart,
-                            child: Icon(
-                              widget.icon,
-                              size: AppIconSizes.md,
-                              color: widget.enabled
-                                  ? accentColor
-                                  : AppColors.disabled,
+                            alignment: AlignmentDirectional.centerEnd,
+                            child: AnimatedRotation(
+                              turns: _isOpen ? 0.5 : 0,
+                              duration: AppDurations.fast,
+                              child: Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                size: AppIconSizes.md,
+                                color: widget.enabled
+                                    ? accentColor
+                                    : AppColors.disabled,
+                              ),
                             ),
                           ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 44),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                widget.label,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: widget.enabled
-                                      ? AppColors.textSecondary
-                                      : AppColors.disabled,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const SizedBox(height: 1),
-                              Text(
-                                _selectedLabel,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.center,
-                                style: AppTypography.fieldText.copyWith(
-                                  color: widget.enabled
-                                      ? AppColors.textPrimary
-                                      : AppColors.disabled,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Align(
-                          alignment: AlignmentDirectional.centerEnd,
-                          child: AnimatedRotation(
-                            turns: _isOpen ? 0.5 : 0,
-                            duration: AppDurations.fast,
-                            child: Icon(
-                              Icons.keyboard_arrow_down_rounded,
-                              size: AppIconSizes.md,
-                              color: widget.enabled
-                                  ? accentColor
-                                  : AppColors.disabled,
-                            ),
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
