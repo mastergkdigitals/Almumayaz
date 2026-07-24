@@ -86,7 +86,7 @@ class _DesignGalleryInvoiceTablesSectionState
     setState(() {
       _purchaseItems.add(
         _PurchaseDemoRow(
-          id: 'p' + (_purchaseSeed++).toString(),
+          id: 'p${_purchaseSeed++}',
           code: '',
           name: '',
           warehouse: 'الرئيسي',
@@ -111,7 +111,7 @@ class _DesignGalleryInvoiceTablesSectionState
     setState(() {
       _saleItems.add(
         _SaleDemoRow(
-          id: 's' + (_saleSeed++).toString(),
+          id: 's${_saleSeed++}',
           code: '',
           name: '',
           warehouse: 'الرئيسي',
@@ -141,43 +141,43 @@ class _DesignGalleryInvoiceTablesSectionState
     final isLast = index == _purchaseItems.length - 1;
 
     return AppTableRow(
-      rowKey: Key('designPurchaseRow-' + row.id),
+      rowKey: Key('designPurchaseRow-${row.id}'),
       cells: [
         Text((index + 1).toString()),
         AppInvoiceCellField(
-          fieldKey: Key('designPurchaseCode-' + row.id),
+          fieldKey: Key('designPurchaseCode-${row.id}'),
           controller: row.code,
         ),
         AppInvoiceCellField(
-          fieldKey: Key('designPurchaseName-' + row.id),
+          fieldKey: Key('designPurchaseName-${row.id}'),
           controller: row.name,
         ),
         AppInvoiceCellField(
-          fieldKey: Key('designPurchaseWarehouse-' + row.id),
+          fieldKey: Key('designPurchaseWarehouse-${row.id}'),
           controller: row.warehouse,
         ),
         AppInvoiceCellField(
-          fieldKey: Key('designPurchaseQuantity-' + row.id),
+          fieldKey: Key('designPurchaseQuantity-${row.id}'),
           controller: row.quantity,
           numeric: true,
           inputFormatters: const [AppIntegerInputFormatter()],
           onChanged: (_) => setState(() {}),
         ),
         AppInvoiceCellField(
-          fieldKey: Key('designPurchaseContainer-' + row.id),
+          fieldKey: Key('designPurchaseContainer-${row.id}'),
           controller: row.container,
           numeric: true,
           inputFormatters: const [AppIntegerInputFormatter()],
         ),
         AppInvoiceCellField(
-          fieldKey: Key('designPurchasePrice-' + row.id),
+          fieldKey: Key('designPurchasePrice-${row.id}'),
           controller: row.purchasePrice,
           numeric: true,
           inputFormatters: const [AppMoneyInputFormatter()],
           onChanged: (_) => setState(() {}),
         ),
         AppInvoiceCellField(
-          fieldKey: Key('designPurchaseDiscount-' + row.id),
+          fieldKey: Key('designPurchaseDiscount-${row.id}'),
           controller: row.discount,
           numeric: true,
           inputFormatters: const [AppMoneyInputFormatter()],
@@ -186,7 +186,7 @@ class _DesignGalleryInvoiceTablesSectionState
         Text(row.formatMoney(row.afterDiscount)),
         Text(row.formatMoney(row.total)),
         AppInvoiceCellField(
-          fieldKey: Key('designPurchaseCost-' + row.id),
+          fieldKey: Key('designPurchaseCost-${row.id}'),
           controller: row.cost,
           numeric: true,
           inputFormatters: const [AppMoneyInputFormatter()],
@@ -194,7 +194,7 @@ class _DesignGalleryInvoiceTablesSectionState
         ),
         Text(row.formatMoney(row.totalCost)),
         AppInvoiceCellField(
-          fieldKey: Key('designPurchaseSalePrice-' + row.id),
+          fieldKey: Key('designPurchaseSalePrice-${row.id}'),
           controller: row.salePrice,
           numeric: true,
           inputFormatters: const [AppMoneyInputFormatter()],
@@ -202,8 +202,8 @@ class _DesignGalleryInvoiceTablesSectionState
         AppTableActionButton(
           key: Key(
             isLast
-                ? 'designPurchaseAdd-' + row.id
-                : 'designPurchaseDelete-' + row.id,
+                ? 'designPurchaseAdd-${row.id}'
+                : 'designPurchaseDelete-${row.id}',
           ),
           icon: isLast ? Icons.add_rounded : Icons.delete_rounded,
           tooltip: isLast ? 'إضافة سطر' : 'حذف السطر',
@@ -232,37 +232,37 @@ class _DesignGalleryInvoiceTablesSectionState
     final isLast = index == _saleItems.length - 1;
 
     return AppTableRow(
-      rowKey: Key('designSaleRow-' + row.id),
+      rowKey: Key('designSaleRow-${row.id}'),
       cells: [
         Text((index + 1).toString()),
         AppInvoiceCellField(
-          fieldKey: Key('designSaleCode-' + row.id),
+          fieldKey: Key('designSaleCode-${row.id}'),
           controller: row.code,
         ),
         AppInvoiceCellField(
-          fieldKey: Key('designSaleName-' + row.id),
+          fieldKey: Key('designSaleName-${row.id}'),
           controller: row.name,
         ),
         AppInvoiceCellField(
-          fieldKey: Key('designSaleWarehouse-' + row.id),
+          fieldKey: Key('designSaleWarehouse-${row.id}'),
           controller: row.warehouse,
         ),
         AppInvoiceCellField(
-          fieldKey: Key('designSaleQuantity-' + row.id),
+          fieldKey: Key('designSaleQuantity-${row.id}'),
           controller: row.quantity,
           numeric: true,
           inputFormatters: const [AppIntegerInputFormatter()],
           onChanged: (_) => setState(() {}),
         ),
         AppInvoiceCellField(
-          fieldKey: Key('designSalePrice-' + row.id),
+          fieldKey: Key('designSalePrice-${row.id}'),
           controller: row.salePrice,
           numeric: true,
           inputFormatters: const [AppMoneyInputFormatter()],
           onChanged: (_) => setState(() {}),
         ),
         AppInvoiceCellField(
-          fieldKey: Key('designSaleDiscount-' + row.id),
+          fieldKey: Key('designSaleDiscount-${row.id}'),
           controller: row.discount,
           numeric: true,
           inputFormatters: const [AppMoneyInputFormatter()],
@@ -273,8 +273,8 @@ class _DesignGalleryInvoiceTablesSectionState
         AppTableActionButton(
           key: Key(
             isLast
-                ? 'designSaleAdd-' + row.id
-                : 'designSaleDelete-' + row.id,
+                ? 'designSaleAdd-${row.id}'
+                : 'designSaleDelete-${row.id}',
           ),
           icon: isLast ? Icons.add_rounded : Icons.delete_rounded,
           tooltip: isLast ? 'إضافة سطر' : 'حذف السطر',
