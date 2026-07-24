@@ -17,6 +17,7 @@ void main() {
     expect(find.byKey(const Key('designDateField')), findsOneWidget);
     expect(find.byKey(const Key('designTimeField')), findsOneWidget);
     expect(find.byKey(const Key('designNotesField')), findsOneWidget);
+    expect(find.byKey(const Key('designPhoneField')), findsOneWidget);
 
     final readOnly = tester.widget<EditableText>(
       find.descendant(
@@ -24,8 +25,17 @@ void main() {
         matching: find.byType(EditableText),
       ),
     );
+    final readOnlyField = tester.widget<TextFormField>(
+      find.byKey(const Key('designReadOnlyField')),
+    );
     final disabled = tester.widget<TextFormField>(
       find.byKey(const Key('designDisabledField')),
+    );
+    final phone = tester.widget<EditableText>(
+      find.descendant(
+        of: find.byKey(const Key('designPhoneField')),
+        matching: find.byType(EditableText),
+      ),
     );
     final notes = tester.widget<EditableText>(
       find.descendant(
@@ -35,7 +45,11 @@ void main() {
     );
 
     expect(readOnly.readOnly, isTrue);
+    expect(readOnlyField.enabled, isFalse);
     expect(disabled.enabled, isFalse);
+    expect(phone.textDirection, TextDirection.rtl);
+    expect(phone.textAlign, TextAlign.right);
+    expect(phone.keyboardType, TextInputType.phone);
     final errorText = find.text('هذا الحقل مطلوب');
     expect(errorText, findsOneWidget);
     expect(
