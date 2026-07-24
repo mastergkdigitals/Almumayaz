@@ -101,6 +101,7 @@ class AppScreenHeader extends StatelessWidget {
                     style: const TextStyle(
                       color: AppColors.textSecondary,
                       fontSize: 14,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
               ],
