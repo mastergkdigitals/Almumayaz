@@ -152,6 +152,7 @@ class PartyForm extends StatelessWidget {
                           icon: Icons.tag_rounded,
                           accentColor: accentColor,
                           readOnly: true,
+                          enabled: false,
                         ),
                         AppTextField(
                           fieldKey: const Key('partyDateField'),
@@ -160,6 +161,7 @@ class PartyForm extends StatelessWidget {
                           icon: Icons.calendar_month_rounded,
                           accentColor: accentColor,
                           readOnly: true,
+                          enabled: false,
                         ),
                         AppTextField(
                           fieldKey: const Key('partyTimeField'),
@@ -168,6 +170,7 @@ class PartyForm extends StatelessWidget {
                           icon: Icons.schedule_rounded,
                           accentColor: accentColor,
                           readOnly: true,
+                          enabled: false,
                         ),
                         AppTextField(
                           fieldKey: const Key('partyBalanceIqdField'),
@@ -176,6 +179,7 @@ class PartyForm extends StatelessWidget {
                           icon: Icons.payments_rounded,
                           accentColor: accentColor,
                           readOnly: true,
+                          enabled: false,
                           textDirection: TextDirection.rtl,
                           textAlign: TextAlign.right,
                         ),
@@ -186,6 +190,7 @@ class PartyForm extends StatelessWidget {
                           icon: Icons.attach_money_rounded,
                           accentColor: accentColor,
                           readOnly: true,
+                          enabled: false,
                           textDirection: TextDirection.rtl,
                           textAlign: TextAlign.right,
                         ),
@@ -302,12 +307,11 @@ class PartyForm extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: AppSpacing.md),
-                    AppTextArea(
+                    AppTextField(
                       fieldKey: const Key('partyNotesField'),
                       controller: controllers.notes,
                       label: 'الملاحظات',
-                      minLines: 1,
-                      maxLines: 2,
+                      icon: Icons.notes_rounded,
                     ),
                   ],
                 );
