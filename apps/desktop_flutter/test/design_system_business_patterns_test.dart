@@ -444,10 +444,11 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.enterText(
+    final quantityField = tester.widget<AppInvoiceCellField>(
       find.byKey(const Key('designPurchaseQuantity-p1')),
-      '10',
     );
+    quantityField.controller.text = '10';
+    quantityField.onChanged?.call('10');
     await tester.pump();
     expect(
       find.descendant(of: purchase, matching: find.text('25,000')),
