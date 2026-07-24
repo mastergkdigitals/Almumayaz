@@ -444,7 +444,7 @@ void main() {
       findsOneWidget,
     );
 
-    final quantityField = tester.widget<AppInvoiceCellField>(
+    final quantityField = tester.widget<TextField>(
       find.byKey(const Key('designPurchaseQuantity-p1')),
     );
     quantityField.controller.text = '10';
