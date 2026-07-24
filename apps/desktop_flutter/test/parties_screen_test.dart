@@ -10,17 +10,21 @@ void main() {
 
     expect(controller.state.parties, hasLength(10));
 
-    controller.search('مجهز ال');
-    expect(controller.visibleParties, hasLength(2));
+    controller.search('الرافدين');
+    expect(controller.visibleParties, hasLength(1));
 
     controller.first();
     expect(controller.selectedParty?.name, 'مجهز الرافدين');
 
+    controller.search('');
+    controller.first();
+    expect(controller.selectedParty?.name, 'شركة النخيل للتجارة');
+
     controller.next();
-    expect(controller.selectedParty?.name, 'مجهز الفرات');
+    expect(controller.selectedParty?.name, 'أحمد كريم');
 
     controller.last();
-    expect(controller.selectedParty?.name, 'مجهز الفرات');
+    expect(controller.selectedParty?.name, 'نور فاضل');
   });
 
   testWidgets('opens the parties screen with the approved shared controls',
@@ -84,8 +88,15 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('أسواق دجلة'), findsOneWidget);
-    expect(find.text('أحمد كريم'), findsNothing);
+    final table = find.byKey(const Key('partiesTable'));
+    expect(
+      find.descendant(of: table, matching: find.text('أسواق دجلة')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: table, matching: find.text('أحمد كريم')),
+      findsNothing,
+    );
   });
 }
 
