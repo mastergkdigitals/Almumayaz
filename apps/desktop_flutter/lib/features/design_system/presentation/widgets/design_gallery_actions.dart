@@ -182,6 +182,7 @@ class _DesignGalleryActionsGroupState
                 child: SizedBox(
                   width: 320,
                   child: AppDropdownField<_ActionBarPreviewState>(
+                    key: const Key('designActionBarStateControl'),
                     fieldKey: const Key('designActionBarStateDropdown'),
                     label: 'حالة النموذج',
                     icon: Icons.fact_check_rounded,
