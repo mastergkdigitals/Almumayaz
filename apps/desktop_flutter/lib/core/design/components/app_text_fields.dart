@@ -270,6 +270,100 @@ class _AppSearchFieldState extends State<AppSearchField> {
 }
 
 
+class AppReadOnlyField extends StatelessWidget {
+  const AppReadOnlyField({
+    required this.controller,
+    required this.label,
+    super.key,
+    this.fieldKey,
+    this.helperText,
+    this.icon,
+    this.accentColor,
+    this.textDirection,
+    this.textAlign = TextAlign.start,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final Key? fieldKey;
+  final String? helperText;
+  final IconData? icon;
+  final Color? accentColor;
+  final TextDirection? textDirection;
+  final TextAlign textAlign;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppTextField(
+      fieldKey: fieldKey,
+      controller: controller,
+      label: label,
+      helperText: helperText,
+      icon: icon,
+      accentColor: accentColor,
+      textDirection: textDirection,
+      textAlign: textAlign,
+      readOnly: true,
+      enabled: false,
+    );
+  }
+}
+
+class AppPhoneField extends StatelessWidget {
+  const AppPhoneField({
+    required this.controller,
+    required this.label,
+    super.key,
+    this.fieldKey,
+    this.icon = Icons.phone_rounded,
+    this.accentColor,
+    this.focusNode,
+    this.validator,
+    this.onSubmitted,
+    this.onChanged,
+    this.textInputAction = TextInputAction.next,
+    this.enabled = true,
+    this.maxDigits = 11,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final Key? fieldKey;
+  final IconData icon;
+  final Color? accentColor;
+  final FocusNode? focusNode;
+  final String? Function(String?)? validator;
+  final ValueChanged<String>? onSubmitted;
+  final ValueChanged<String>? onChanged;
+  final TextInputAction textInputAction;
+  final bool enabled;
+  final int maxDigits;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppTextField(
+      fieldKey: fieldKey,
+      controller: controller,
+      label: label,
+      icon: icon,
+      accentColor: accentColor,
+      focusNode: focusNode,
+      validator: validator,
+      onSubmitted: onSubmitted,
+      onChanged: onChanged,
+      textDirection: TextDirection.rtl,
+      textAlign: TextAlign.right,
+      textInputAction: textInputAction,
+      keyboardType: TextInputType.phone,
+      inputFormatters: [
+        FilteringTextInputFormatter.digitsOnly,
+        LengthLimitingTextInputFormatter(maxDigits),
+      ],
+      enabled: enabled,
+    );
+  }
+}
+
 class AppTextArea extends StatelessWidget {
   const AppTextArea({
     required this.controller,
