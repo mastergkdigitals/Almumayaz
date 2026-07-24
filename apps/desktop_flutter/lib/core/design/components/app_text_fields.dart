@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../app_tokens.dart';
+import 'app_number_input_formatters.dart';
 
 class AppFieldIconButton extends StatelessWidget {
   const AppFieldIconButton({
@@ -440,7 +441,7 @@ class AppIntegerField extends StatelessWidget {
       textAlign: TextAlign.right,
       textInputAction: TextInputAction.next,
       keyboardType: TextInputType.number,
-      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      inputFormatters: const [AppIntegerInputFormatter()],
     );
   }
 }
@@ -479,11 +480,8 @@ class AppMoneyField extends StatelessWidget {
       textAlign: TextAlign.right,
       textInputAction: TextInputAction.next,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: [
-        FilteringTextInputFormatter.allow(
-          RegExp(r'^\d*(?:\.\d{0,4})?$'),
-        ),
-      ],
+      inputFormatters: const [AppMoneyInputFormatter()],
+
     );
   }
 }
