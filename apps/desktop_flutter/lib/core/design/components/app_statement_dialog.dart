@@ -108,16 +108,17 @@ class _StatementDialogBodyState extends State<_StatementDialogBody> {
       onClose: () => Navigator.of(context).pop(),
       actions: [
         AppButton(
+          key: const Key('appStatementCancel'),
           label: 'إلغاء',
           variant: AppButtonVariant.secondary,
-          width: 108,
+          width: 144,
           onPressed: () => Navigator.of(context).pop(),
         ),
         AppButton(
           key: const Key('appStatementConfirm'),
           label: 'عرض الكشف',
           icon: Icons.visibility_rounded,
-          width: 132,
+          width: 176,
           onPressed: _submit,
         ),
       ],
