@@ -249,9 +249,8 @@ class _DesignGalleryTransferDialogState
                           for (final item in _sourceItems)
                             AppDropdownOption(
                               value: item.id,
-                              label: item.name +
-                                  ' — ' +
-                                  AppFormatters.quantity(item.quantity),
+                              label:
+                                  '${item.name} — ${AppFormatters.quantity(item.quantity)}',
                             ),
                         ],
                         onChanged: (value) {
@@ -347,7 +346,7 @@ class _WarehouseStockPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppDialogSection(
-      title: 'مواد ' + title,
+      title: 'مواد $title',
       icon: Icons.inventory_rounded,
       accentColor: AppModuleColors.warehouses,
       child: AppDataTable(
@@ -365,7 +364,7 @@ class _WarehouseStockPanel extends StatelessWidget {
           for (final item in items)
             AppTableRow(
               rowKey: Key(
-                'transferStock-' + title + '-' + item.id,
+                'transferStock-$title-${item.id}',
               ),
               selected: item.id == selectedProduct,
               onTap: onSelected == null
