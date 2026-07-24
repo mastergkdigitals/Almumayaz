@@ -137,27 +137,6 @@ class PartyForm extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Row(
-              children: [
-                Icon(
-                  Icons.groups_rounded,
-                  color: accentColor,
-                  size: AppIconSizes.lg,
-                ),
-                SizedBox(width: AppSpacing.sm),
-                Text('بيانات الطرف', style: AppTypography.sectionTitle),
-                Spacer(),
-                Text(
-                  'نوع الطرف مخصص للتقارير فقط',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.md),
             LayoutBuilder(
               builder: (context, constraints) {
                 final compact = constraints.maxWidth < 1100;
@@ -197,7 +176,8 @@ class PartyForm extends StatelessWidget {
                           icon: Icons.payments_rounded,
                           accentColor: accentColor,
                           readOnly: true,
-                          textAlign: TextAlign.center,
+                          textDirection: TextDirection.rtl,
+                          textAlign: TextAlign.right,
                         ),
                         AppTextField(
                           fieldKey: const Key('partyBalanceUsdField'),
@@ -206,7 +186,8 @@ class PartyForm extends StatelessWidget {
                           icon: Icons.attach_money_rounded,
                           accentColor: accentColor,
                           readOnly: true,
-                          textAlign: TextAlign.center,
+                          textDirection: TextDirection.rtl,
+                          textAlign: TextAlign.right,
                         ),
                       ],
                     ),
@@ -225,7 +206,7 @@ class PartyForm extends StatelessWidget {
                         ),
                         AppDropdownField<PartyType>(
                           key: const Key('partyTypeField'),
-                          label: 'نوع الطرف (للتقارير)',
+                          label: 'نوع الطرف',
                           icon: Icons.category_rounded,
                           accentColor: accentColor,
                           value: partyType,
@@ -272,8 +253,8 @@ class PartyForm extends StatelessWidget {
                           label: 'رقم الهاتف',
                           icon: Icons.phone_rounded,
                           accentColor: accentColor,
-                          textDirection: TextDirection.ltr,
-                          textAlign: TextAlign.center,
+                          textDirection: TextDirection.rtl,
+                          textAlign: TextAlign.right,
                           keyboardType: TextInputType.phone,
                           textInputAction: TextInputAction.next,
                           inputFormatters: [
@@ -288,8 +269,8 @@ class PartyForm extends StatelessWidget {
                           label: 'هاتف إضافي',
                           icon: Icons.phone_in_talk_rounded,
                           accentColor: accentColor,
-                          textDirection: TextDirection.ltr,
-                          textAlign: TextAlign.center,
+                          textDirection: TextDirection.rtl,
+                          textAlign: TextAlign.right,
                           keyboardType: TextInputType.phone,
                           textInputAction: TextInputAction.next,
                           inputFormatters: [
