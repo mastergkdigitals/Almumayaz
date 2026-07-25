@@ -476,6 +476,8 @@ void main() {
 
     expect(codeField.textAlign, TextAlign.right);
     expect(codeField.textDirection, TextDirection.rtl);
+    expect(codeField.decoration?.border, InputBorder.none);
+    expect(codeField.decoration?.focusedBorder, InputBorder.none);
     expect(nameField.textAlign, TextAlign.right);
     expect(nameField.textDirection, TextDirection.rtl);
     expect(quantityField.textAlign, TextAlign.center);
@@ -486,6 +488,26 @@ void main() {
     );
     expect(priceField.textAlign, TextAlign.center);
     expect(priceField.textDirection, TextDirection.ltr);
+
+    final indexCellHeight = tester
+        .getSize(find.byKey(const Key('designPurchaseIndexCell-p1')))
+        .height;
+    expect(indexCellHeight, 44);
+    for (final keyName in const [
+      'Code',
+      'Name',
+      'Quantity',
+      'Price',
+    ]) {
+      expect(
+        tester
+            .getSize(
+              find.byKey(Key('designPurchase${keyName}Cell-p1')),
+            )
+            .height,
+        indexCellHeight,
+      );
+    }
 
     final addButton = tester.widget<AppTableActionButton>(
       find.byKey(const Key('designPurchaseAdd-p2')),
@@ -567,11 +589,24 @@ void main() {
     await tester.pump();
     expect(tester.widget<TextField>(nextCode).focusNode!.hasFocus, isTrue);
 
-    final focusedBorder =
-        tester.widget<TextField>(price).decoration!.focusedBorder;
-    expect(focusedBorder, isA<OutlineInputBorder>());
     expect(
-      (focusedBorder! as OutlineInputBorder).borderSide.color,
+      tester.widget<TextField>(nextCode).decoration!.focusedBorder,
+      InputBorder.none,
+    );
+    final focusedCellDecoration = tester
+        .widget<DecoratedBox>(
+          find
+              .descendant(
+                of: find.byKey(
+                  const Key('designPurchaseCodeCell-p2'),
+                ),
+                matching: find.byType(DecoratedBox),
+              )
+              .first,
+        )
+        .decoration as BoxDecoration;
+    expect(
+      (focusedCellDecoration.border! as Border).top.color,
       AppModuleColors.purchases,
     );
   });

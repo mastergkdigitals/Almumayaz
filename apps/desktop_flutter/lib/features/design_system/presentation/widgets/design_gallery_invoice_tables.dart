@@ -407,10 +407,12 @@ class _PurchaseTableRowState extends State<_PurchaseTableRow> {
         child: Row(
           children: [
             _PurchaseIndexCell(
+              cellKey: Key('designPurchaseIndexCell-${row.id}'),
               value: '${widget.index + 1}',
               width: widget.widths.index,
             ),
             _PurchaseInputCell(
+              cellKey: Key('designPurchaseCodeCell-${row.id}'),
               fieldKey: Key('designPurchaseCode-${row.id}'),
               controller: row.code,
               focusNode: row.codeFocusNode,
@@ -418,6 +420,7 @@ class _PurchaseTableRowState extends State<_PurchaseTableRow> {
               width: widget.widths.code,
             ),
             _PurchaseInputCell(
+              cellKey: Key('designPurchaseNameCell-${row.id}'),
               fieldKey: Key('designPurchaseName-${row.id}'),
               controller: row.name,
               focusNode: row.nameFocusNode,
@@ -425,6 +428,7 @@ class _PurchaseTableRowState extends State<_PurchaseTableRow> {
               width: widget.widths.name,
             ),
             _PurchaseInputCell(
+              cellKey: Key('designPurchaseQuantityCell-${row.id}'),
               fieldKey: Key('designPurchaseQuantity-${row.id}'),
               controller: row.quantity,
               focusNode: row.quantityFocusNode,
@@ -434,6 +438,7 @@ class _PurchaseTableRowState extends State<_PurchaseTableRow> {
               wholeNumber: true,
             ),
             _PurchaseInputCell(
+              cellKey: Key('designPurchasePriceCell-${row.id}'),
               fieldKey: Key('designPurchasePrice-${row.id}'),
               controller: row.price,
               focusNode: row.priceFocusNode,
@@ -479,10 +484,12 @@ class _PurchaseTableRowState extends State<_PurchaseTableRow> {
 
 class _PurchaseIndexCell extends StatelessWidget {
   const _PurchaseIndexCell({
+    required this.cellKey,
     required this.value,
     required this.width,
   });
 
+  final Key cellKey;
   final String value;
   final double width;
 
@@ -492,22 +499,16 @@ class _PurchaseIndexCell extends StatelessWidget {
       width: width,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 9),
-        child: SizedBox(
-          height: _purchaseTableCellHeight,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: AppColors.neutralSurface,
-              borderRadius: BorderRadius.circular(AppRadii.sm),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Center(
-              child: Text(
-                value,
-                textDirection: TextDirection.ltr,
-                style: AppTypography.tableCell.copyWith(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
+        child: _PurchaseCellFrame(
+          key: cellKey,
+          backgroundColor: AppColors.neutralSurface,
+          child: Center(
+            child: Text(
+              value,
+              textDirection: TextDirection.ltr,
+              style: AppTypography.tableCell.copyWith(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
@@ -519,6 +520,7 @@ class _PurchaseIndexCell extends StatelessWidget {
 
 class _PurchaseInputCell extends StatelessWidget {
   const _PurchaseInputCell({
+    required this.cellKey,
     required this.fieldKey,
     required this.controller,
     required this.focusNode,
@@ -529,6 +531,7 @@ class _PurchaseInputCell extends StatelessWidget {
     this.onSubmitted,
   });
 
+  final Key cellKey;
   final Key fieldKey;
   final TextEditingController controller;
   final FocusNode focusNode;
@@ -540,17 +543,18 @@ class _PurchaseInputCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final border = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(AppRadii.sm),
-      borderSide: const BorderSide(color: AppColors.border),
-    );
+    final backgroundColor = Color.lerp(
+      AppModulePalettes.purchases.light,
+      Colors.white,
+      0.94,
+    )!;
 
     return SizedBox(
       width: width,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 9),
-        child: SizedBox(
-          height: _purchaseTableCellHeight,
+        child: AnimatedBuilder(
+          animation: focusNode,
           child: TextField(
             key: fieldKey,
             controller: controller,
@@ -568,26 +572,12 @@ class _PurchaseInputCell extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
             cursorColor: AppModuleColors.purchases,
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: Color.lerp(
-                AppModulePalettes.purchases.light,
-                Colors.white,
-                0.94,
-              ),
-              border: border,
-              enabledBorder: border,
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppRadii.sm),
-                borderSide: const BorderSide(
-                  color: AppModuleColors.purchases,
-                  width: 1.5,
-                ),
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 10,
-                vertical: 9,
-              ),
+            textAlignVertical: TextAlignVertical.center,
+            decoration: const InputDecoration(
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              contentPadding: EdgeInsets.symmetric(horizontal: 10),
               isDense: true,
             ),
             onSubmitted: (_) {
@@ -599,7 +589,52 @@ class _PurchaseInputCell extends StatelessWidget {
               nextFocusNode?.requestFocus();
             },
           ),
+          builder: (context, child) {
+            final focused = focusNode.hasFocus;
+            return _PurchaseCellFrame(
+              key: cellKey,
+              backgroundColor: backgroundColor,
+              borderColor: focused
+                  ? AppModuleColors.purchases
+                  : AppColors.border,
+              borderWidth: focused ? 1.5 : 1,
+              child: child!,
+            );
+          },
         ),
+      ),
+    );
+  }
+}
+
+class _PurchaseCellFrame extends StatelessWidget {
+  const _PurchaseCellFrame({
+    super.key,
+    required this.backgroundColor,
+    required this.child,
+    this.borderColor = AppColors.border,
+    this.borderWidth = 1,
+  });
+
+  final Color backgroundColor;
+  final Widget child;
+  final Color borderColor;
+  final double borderWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: _purchaseTableCellHeight,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(AppRadii.sm),
+          border: Border.all(
+            color: borderColor,
+            width: borderWidth,
+          ),
+        ),
+        child: child,
       ),
     );
   }
