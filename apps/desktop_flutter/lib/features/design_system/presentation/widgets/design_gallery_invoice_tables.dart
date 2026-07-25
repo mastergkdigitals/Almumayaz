@@ -15,6 +15,12 @@ class _DesignGalleryInvoiceTablesSectionState
     extends State<DesignGalleryInvoiceTablesSection> {
   late final List<_PurchaseDemoRow> _purchaseItems;
   late final List<_SaleDemoRow> _saleItems;
+  final _purchaseScrollController = ScrollController();
+  final _saleScrollController = ScrollController();
+  final _purchaseKeyHoldGuard = AppKeyHoldGuard();
+  final _saleKeyHoldGuard = AppKeyHoldGuard();
+  var _purchaseCurrency = 'دينار';
+  var _saleCurrency = 'دينار';
   var _purchaseSeed = 3;
   var _saleSeed = 3;
 
@@ -31,7 +37,6 @@ class _DesignGalleryInvoiceTablesSectionState
         container: '1',
         purchasePrice: '2,500',
         discount: '0',
-        cost: '150',
         salePrice: '3,000',
       ),
       _PurchaseDemoRow(
@@ -43,7 +48,6 @@ class _DesignGalleryInvoiceTablesSectionState
         container: '10',
         purchasePrice: '1,250',
         discount: '0',
-        cost: '50',
         salePrice: '1,750',
       ),
     ];
@@ -71,6 +75,10 @@ class _DesignGalleryInvoiceTablesSectionState
 
   @override
   void dispose() {
+    _purchaseScrollController.dispose();
+    _saleScrollController.dispose();
+    _purchaseKeyHoldGuard.dispose();
+    _saleKeyHoldGuard.dispose();
     for (final row in _purchaseItems) {
       row.dispose();
     }
@@ -81,22 +89,24 @@ class _DesignGalleryInvoiceTablesSectionState
   }
 
   void _addPurchaseItem() {
+    final newRow = _PurchaseDemoRow(
+      id: 'p${_purchaseSeed++}',
+      code: '',
+      name: '',
+      warehouse: 'الرئيسي',
+      quantity: '1',
+      container: '1',
+      purchasePrice: _purchaseCurrency == 'دولار' ? '0.00' : '0',
+      discount: _purchaseCurrency == 'دولار' ? '0.00' : '0',
+      salePrice: _purchaseCurrency == 'دولار' ? '0.00' : '0',
+    );
     setState(() {
-      _purchaseItems.add(
-        _PurchaseDemoRow(
-          id: 'p${_purchaseSeed++}',
-          code: '',
-          name: '',
-          warehouse: 'الرئيسي',
-          quantity: '1',
-          container: '1',
-          purchasePrice: '0',
-          discount: '0',
-          cost: '0',
-          salePrice: '0',
-        ),
-      );
+      _purchaseItems.add(newRow);
     });
+    _finishAddingRow(
+      controller: _purchaseScrollController,
+      focusNode: newRow.codeFocusNode,
+    );
   }
 
   void _deletePurchaseItem(int index) {
@@ -106,25 +116,104 @@ class _DesignGalleryInvoiceTablesSectionState
   }
 
   void _addSaleItem() {
+    final newRow = _SaleDemoRow(
+      id: 's${_saleSeed++}',
+      code: '',
+      name: '',
+      warehouse: 'الرئيسي',
+      quantity: '1',
+      salePrice: _saleCurrency == 'دولار' ? '0.00' : '0',
+      discount: _saleCurrency == 'دولار' ? '0.00' : '0',
+    );
     setState(() {
-      _saleItems.add(
-        _SaleDemoRow(
-          id: 's${_saleSeed++}',
-          code: '',
-          name: '',
-          warehouse: 'الرئيسي',
-          quantity: '1',
-          salePrice: '0',
-          discount: '0',
-        ),
-      );
+      _saleItems.add(newRow);
     });
+    _finishAddingRow(
+      controller: _saleScrollController,
+      focusNode: newRow.codeFocusNode,
+    );
   }
 
   void _deleteSaleItem(int index) {
     final removed = _saleItems[index];
     setState(() => _saleItems.removeAt(index));
     WidgetsBinding.instance.addPostFrameCallback((_) => removed.dispose());
+  }
+
+  void _finishAddingRow({
+    required ScrollController controller,
+    required FocusNode focusNode,
+  }) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (controller.hasClients) {
+        controller.jumpTo(controller.position.maxScrollExtent);
+      }
+      focusNode.requestFocus();
+    });
+  }
+
+  void _setPurchaseCurrency(String value) {
+    if (_purchaseCurrency == value) return;
+    setState(() {
+      _purchaseCurrency = value;
+      for (final row in _purchaseItems) {
+        _reformatMoneyController(row.purchasePrice, value);
+        _reformatMoneyController(row.discount, value);
+        _reformatMoneyController(row.salePrice, value);
+      }
+    });
+  }
+
+  void _setSaleCurrency(String value) {
+    if (_saleCurrency == value) return;
+    setState(() {
+      _saleCurrency = value;
+      for (final row in _saleItems) {
+        _reformatMoneyController(row.salePrice, value);
+        _reformatMoneyController(row.discount, value);
+      }
+    });
+  }
+
+  void _reformatMoneyController(
+    TextEditingController controller,
+    String currency,
+  ) {
+    final value = AppFormatters.parseNumber(controller.text) ?? 0;
+    final formatted = _formatMoney(value, currency);
+    controller.value = TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+
+  String _formatMoney(num value, String currency) {
+    return currency == 'دولار'
+        ? AppFormatters.usd(value)
+        : AppFormatters.iqd(value);
+  }
+
+  AppMoneyInputFormatter _moneyFormatter(String currency) {
+    return AppMoneyInputFormatter(
+      decimalPlaces: currency == 'دولار' ? 2 : 0,
+    );
+  }
+
+  void _submitPurchaseRow(int index) {
+    if (index == _purchaseItems.length - 1) {
+      _addPurchaseItem();
+      return;
+    }
+    _purchaseItems[index + 1].codeFocusNode.requestFocus();
+  }
+
+  void _submitSaleRow(int index) {
+    if (index == _saleItems.length - 1) {
+      _addSaleItem();
+      return;
+    }
+    _saleItems[index + 1].codeFocusNode.requestFocus();
   }
 
   List<AppTableRow> _purchaseRows() {
@@ -141,15 +230,22 @@ class _DesignGalleryInvoiceTablesSectionState
     return AppTableRow(
       rowKey: Key('designPurchaseRow-${row.id}'),
       cells: [
-        Text((index + 1).toString()),
+        AppInvoiceValueText((index + 1).toString()),
         AppInvoiceCellField(
           fieldKey: Key('designPurchaseCode-${row.id}'),
           controller: row.code,
+          focusNode: row.codeFocusNode,
+          textInputAction: TextInputAction.next,
+          keyHoldGuard: _purchaseKeyHoldGuard,
+          onSubmitted: (_) => AppFocusTraversal.next(context),
           accentColor: AppModuleColors.purchases,
         ),
         AppInvoiceCellField(
           fieldKey: Key('designPurchaseName-${row.id}'),
           controller: row.name,
+          textInputAction: TextInputAction.next,
+          keyHoldGuard: _purchaseKeyHoldGuard,
+          onSubmitted: (_) => AppFocusTraversal.next(context),
           accentColor: AppModuleColors.purchases,
         ),
         AppInvoiceCellDropdown(
@@ -157,6 +253,8 @@ class _DesignGalleryInvoiceTablesSectionState
           accentColor: AppModuleColors.purchases,
           value: row.warehouse.text,
           options: const ['الرئيسي', 'الفرعي'],
+          keyHoldGuard: _purchaseKeyHoldGuard,
+          onSubmitted: (_) => AppFocusTraversal.next(context),
           onChanged: (value) {
             setState(() => row.warehouse.text = value);
           },
@@ -167,6 +265,9 @@ class _DesignGalleryInvoiceTablesSectionState
           accentColor: AppModuleColors.purchases,
           numeric: true,
           inputFormatters: const [AppIntegerInputFormatter()],
+          textInputAction: TextInputAction.next,
+          keyHoldGuard: _purchaseKeyHoldGuard,
+          onSubmitted: (_) => AppFocusTraversal.next(context),
           onChanged: (_) => setState(() {}),
         ),
         AppInvoiceCellField(
@@ -175,13 +276,19 @@ class _DesignGalleryInvoiceTablesSectionState
           accentColor: AppModuleColors.purchases,
           numeric: true,
           inputFormatters: const [AppIntegerInputFormatter()],
+          textInputAction: TextInputAction.next,
+          keyHoldGuard: _purchaseKeyHoldGuard,
+          onSubmitted: (_) => AppFocusTraversal.next(context),
         ),
         AppInvoiceCellField(
           fieldKey: Key('designPurchasePrice-${row.id}'),
           controller: row.purchasePrice,
           accentColor: AppModuleColors.purchases,
           numeric: true,
-          inputFormatters: const [AppMoneyInputFormatter()],
+          inputFormatters: [_moneyFormatter(_purchaseCurrency)],
+          textInputAction: TextInputAction.next,
+          keyHoldGuard: _purchaseKeyHoldGuard,
+          onSubmitted: (_) => AppFocusTraversal.next(context),
           onChanged: (_) => setState(() {}),
         ),
         AppInvoiceCellField(
@@ -189,26 +296,34 @@ class _DesignGalleryInvoiceTablesSectionState
           controller: row.discount,
           accentColor: AppModuleColors.purchases,
           numeric: true,
-          inputFormatters: const [AppMoneyInputFormatter()],
+          inputFormatters: [_moneyFormatter(_purchaseCurrency)],
+          textInputAction: TextInputAction.next,
+          keyHoldGuard: _purchaseKeyHoldGuard,
+          onSubmitted: (_) => AppFocusTraversal.next(context),
           onChanged: (_) => setState(() {}),
         ),
-        Text(row.formatMoney(row.afterDiscount)),
-        Text(row.formatMoney(row.total)),
-        AppInvoiceCellField(
-          fieldKey: Key('designPurchaseCost-${row.id}'),
-          controller: row.cost,
-          accentColor: AppModuleColors.purchases,
-          numeric: true,
-          inputFormatters: const [AppMoneyInputFormatter()],
-          onChanged: (_) => setState(() {}),
+        AppInvoiceValueText(
+          _formatMoney(row.afterDiscount, _purchaseCurrency),
         ),
-        Text(row.formatMoney(row.totalCost)),
+        AppInvoiceValueText(
+          _formatMoney(row.total, _purchaseCurrency),
+        ),
+        AppInvoiceValueText(
+          _formatMoney(row.unitCost, _purchaseCurrency),
+          key: Key('designPurchaseCost-${row.id}'),
+        ),
+        AppInvoiceValueText(
+          _formatMoney(row.totalCost, _purchaseCurrency),
+        ),
         AppInvoiceCellField(
           fieldKey: Key('designPurchaseSalePrice-${row.id}'),
           controller: row.salePrice,
           accentColor: AppModuleColors.purchases,
           numeric: true,
-          inputFormatters: const [AppMoneyInputFormatter()],
+          inputFormatters: [_moneyFormatter(_purchaseCurrency)],
+          textInputAction: TextInputAction.done,
+          keyHoldGuard: _purchaseKeyHoldGuard,
+          onSubmitted: (_) => _submitPurchaseRow(index),
         ),
         AppTableActionButton(
           key: Key(
@@ -227,8 +342,9 @@ class _DesignGalleryInvoiceTablesSectionState
           size: 32,
           iconSize: 19,
           borderRadius: 9,
-          onPressed:
-              isLast ? _addPurchaseItem : () => _deletePurchaseItem(index),
+          onPressed: isLast
+              ? () => _addPurchaseItem()
+              : () => _deletePurchaseItem(index),
         ),
       ],
     );
@@ -248,15 +364,22 @@ class _DesignGalleryInvoiceTablesSectionState
     return AppTableRow(
       rowKey: Key('designSaleRow-${row.id}'),
       cells: [
-        Text((index + 1).toString()),
+        AppInvoiceValueText((index + 1).toString()),
         AppInvoiceCellField(
           fieldKey: Key('designSaleCode-${row.id}'),
           controller: row.code,
+          focusNode: row.codeFocusNode,
+          textInputAction: TextInputAction.next,
+          keyHoldGuard: _saleKeyHoldGuard,
+          onSubmitted: (_) => AppFocusTraversal.next(context),
           accentColor: AppModuleColors.sales,
         ),
         AppInvoiceCellField(
           fieldKey: Key('designSaleName-${row.id}'),
           controller: row.name,
+          textInputAction: TextInputAction.next,
+          keyHoldGuard: _saleKeyHoldGuard,
+          onSubmitted: (_) => AppFocusTraversal.next(context),
           accentColor: AppModuleColors.sales,
         ),
         AppInvoiceCellDropdown(
@@ -264,6 +387,8 @@ class _DesignGalleryInvoiceTablesSectionState
           accentColor: AppModuleColors.sales,
           value: row.warehouse.text,
           options: const ['الرئيسي', 'الفرعي'],
+          keyHoldGuard: _saleKeyHoldGuard,
+          onSubmitted: (_) => AppFocusTraversal.next(context),
           onChanged: (value) {
             setState(() => row.warehouse.text = value);
           },
@@ -274,6 +399,9 @@ class _DesignGalleryInvoiceTablesSectionState
           accentColor: AppModuleColors.sales,
           numeric: true,
           inputFormatters: const [AppIntegerInputFormatter()],
+          textInputAction: TextInputAction.next,
+          keyHoldGuard: _saleKeyHoldGuard,
+          onSubmitted: (_) => AppFocusTraversal.next(context),
           onChanged: (_) => setState(() {}),
         ),
         AppInvoiceCellField(
@@ -281,7 +409,10 @@ class _DesignGalleryInvoiceTablesSectionState
           controller: row.salePrice,
           accentColor: AppModuleColors.sales,
           numeric: true,
-          inputFormatters: const [AppMoneyInputFormatter()],
+          inputFormatters: [_moneyFormatter(_saleCurrency)],
+          textInputAction: TextInputAction.next,
+          keyHoldGuard: _saleKeyHoldGuard,
+          onSubmitted: (_) => AppFocusTraversal.next(context),
           onChanged: (_) => setState(() {}),
         ),
         AppInvoiceCellField(
@@ -289,11 +420,18 @@ class _DesignGalleryInvoiceTablesSectionState
           controller: row.discount,
           accentColor: AppModuleColors.sales,
           numeric: true,
-          inputFormatters: const [AppMoneyInputFormatter()],
+          inputFormatters: [_moneyFormatter(_saleCurrency)],
+          textInputAction: TextInputAction.done,
+          keyHoldGuard: _saleKeyHoldGuard,
+          onSubmitted: (_) => _submitSaleRow(index),
           onChanged: (_) => setState(() {}),
         ),
-        Text(row.formatMoney(row.afterDiscount)),
-        Text(row.formatMoney(row.total)),
+        AppInvoiceValueText(
+          _formatMoney(row.afterDiscount, _saleCurrency),
+        ),
+        AppInvoiceValueText(
+          _formatMoney(row.total, _saleCurrency),
+        ),
         AppTableActionButton(
           key: Key(
             isLast
@@ -311,7 +449,8 @@ class _DesignGalleryInvoiceTablesSectionState
           size: 32,
           iconSize: 19,
           borderRadius: 9,
-          onPressed: isLast ? _addSaleItem : () => _deleteSaleItem(index),
+          onPressed:
+              isLast ? () => _addSaleItem() : () => _deleteSaleItem(index),
         ),
       ],
     );
@@ -340,14 +479,14 @@ class _DesignGalleryInvoiceTablesSectionState
       const SizedBox.shrink(),
       const Text('المجموع'),
       const SizedBox.shrink(),
-      Text(AppFormatters.quantity(quantity)),
+      AppInvoiceValueText(AppFormatters.quantity(quantity)),
       const SizedBox.shrink(),
       const SizedBox.shrink(),
-      Text(AppFormatters.iqd(discount)),
+      AppInvoiceValueText(_formatMoney(discount, _purchaseCurrency)),
       const SizedBox.shrink(),
-      Text(AppFormatters.iqd(total)),
+      AppInvoiceValueText(_formatMoney(total, _purchaseCurrency)),
       const SizedBox.shrink(),
-      Text(AppFormatters.iqd(totalCost)),
+      AppInvoiceValueText(_formatMoney(totalCost, _purchaseCurrency)),
       const SizedBox.shrink(),
       const SizedBox.shrink(),
     ];
@@ -360,7 +499,7 @@ class _DesignGalleryInvoiceTablesSectionState
     );
     final discount = _saleItems.fold<num>(
       0,
-      (sum, row) => sum + row.discountValue,
+      (sum, row) => sum + row.discountTotal,
     );
     final total = _saleItems.fold<num>(
       0,
@@ -372,11 +511,11 @@ class _DesignGalleryInvoiceTablesSectionState
       const SizedBox.shrink(),
       const Text('المجموع'),
       const SizedBox.shrink(),
-      Text(AppFormatters.quantity(quantity)),
+      AppInvoiceValueText(AppFormatters.quantity(quantity)),
       const SizedBox.shrink(),
-      Text(AppFormatters.iqd(discount)),
+      AppInvoiceValueText(_formatMoney(discount, _saleCurrency)),
       const SizedBox.shrink(),
-      Text(AppFormatters.iqd(total)),
+      AppInvoiceValueText(_formatMoney(total, _saleCurrency)),
       const SizedBox.shrink(),
     ];
   }
@@ -390,14 +529,22 @@ class _DesignGalleryInvoiceTablesSectionState
         children: [
           const AppInfoBanner(
             message:
-                'الرأس والمجاميع ثابتان، والصف الأخير للإضافة والصفوف السابقة للحذف. الحقول والحسابات قابلة للتجربة مباشرة.',
+                'الرأس والمجاميع ثابتان، والصف الأخير للإضافة والصفوف '
+                'السابقة للحذف. الحسابات تتبع عملة الفاتورة، وEnter '
+                'ينقل بين الخلايا.',
             icon: Icons.table_chart_rounded,
           ),
           const SizedBox(height: AppSpacing.lg),
-          const _TableTitle(
-            label: 'جدول مواد المشتريات',
+          _TableHeading(
+            title: const _TableTitle(
+              label: 'جدول مواد المشتريات',
+              color: AppModuleColors.purchases,
+              icon: Icons.shopping_cart_checkout_rounded,
+            ),
+            currency: _purchaseCurrency,
             color: AppModuleColors.purchases,
-            icon: Icons.shopping_cart_checkout_rounded,
+            fieldKey: const Key('designPurchaseCurrency'),
+            onCurrencyChanged: _setPurchaseCurrency,
           ),
           const SizedBox(height: AppSpacing.sm),
           AppInvoiceItemsTable.purchase(
@@ -405,12 +552,19 @@ class _DesignGalleryInvoiceTablesSectionState
             tableKey: const Key('designPurchaseItemsDataTable'),
             rows: _purchaseRows(),
             summaryCells: _purchaseSummaryCells(),
+            verticalScrollController: _purchaseScrollController,
           ),
           const SizedBox(height: AppSpacing.lg),
-          const _TableTitle(
-            label: 'جدول مواد المبيعات',
+          _TableHeading(
+            title: const _TableTitle(
+              label: 'جدول مواد المبيعات',
+              color: AppModuleColors.sales,
+              icon: Icons.point_of_sale_rounded,
+            ),
+            currency: _saleCurrency,
             color: AppModuleColors.sales,
-            icon: Icons.point_of_sale_rounded,
+            fieldKey: const Key('designSaleCurrency'),
+            onCurrencyChanged: _setSaleCurrency,
           ),
           const SizedBox(height: AppSpacing.sm),
           AppInvoiceItemsTable.sale(
@@ -418,9 +572,63 @@ class _DesignGalleryInvoiceTablesSectionState
             tableKey: const Key('designSalesItemsDataTable'),
             rows: _saleRows(),
             summaryCells: _saleSummaryCells(),
+            verticalScrollController: _saleScrollController,
           ),
         ],
       ),
+    );
+  }
+}
+
+class _TableHeading extends StatelessWidget {
+  const _TableHeading({
+    required this.title,
+    required this.currency,
+    required this.color,
+    required this.fieldKey,
+    required this.onCurrencyChanged,
+  });
+
+  final Widget title;
+  final String currency;
+  final Color color;
+  final Key fieldKey;
+  final ValueChanged<String> onCurrencyChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(child: title),
+        Container(
+          width: 190,
+          height: 44,
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+          decoration: BoxDecoration(
+            color: Color.alphaBlend(color.withAlpha(8), AppColors.surface),
+            borderRadius: BorderRadius.circular(AppRadii.sm),
+            border: Border.all(color: color.withAlpha(90)),
+          ),
+          child: Row(
+            children: [
+              const Text(
+                'العملة',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: AppInvoiceCellDropdown(
+                  key: fieldKey,
+                  value: currency,
+                  options: const ['دينار', 'دولار'],
+                  accentColor: color,
+                  onChanged: onCurrencyChanged,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -467,7 +675,6 @@ class _PurchaseDemoRow {
     required String container,
     required String purchasePrice,
     required String discount,
-    required String cost,
     required String salePrice,
   })  : code = TextEditingController(text: code),
         name = TextEditingController(text: name),
@@ -476,10 +683,10 @@ class _PurchaseDemoRow {
         container = TextEditingController(text: container),
         purchasePrice = TextEditingController(text: purchasePrice),
         discount = TextEditingController(text: discount),
-        cost = TextEditingController(text: cost),
         salePrice = TextEditingController(text: salePrice);
 
   final String id;
+  final codeFocusNode = FocusNode();
   final TextEditingController code;
   final TextEditingController name;
   final TextEditingController warehouse;
@@ -487,29 +694,31 @@ class _PurchaseDemoRow {
   final TextEditingController container;
   final TextEditingController purchasePrice;
   final TextEditingController discount;
-  final TextEditingController cost;
   final TextEditingController salePrice;
 
   num get _quantity => AppFormatters.parseNumber(quantity.text) ?? 0;
   num get _price => AppFormatters.parseNumber(purchasePrice.text) ?? 0;
   num get _discount => AppFormatters.parseNumber(discount.text) ?? 0;
-  num get _cost => AppFormatters.parseNumber(cost.text) ?? 0;
+  num get _baseTotal => _price * _quantity;
 
   num get afterDiscount {
-    final result = _price - _discount;
+    if (_quantity <= 0) return 0;
+    return total / _quantity;
+  }
+
+  num get total {
+    final result = _baseTotal - _discount;
     return result < 0 ? 0 : result;
   }
 
-  num get total => afterDiscount * _quantity;
-  num get totalCost => total + _cost;
+  // لا توجد مصاريف أو خصومات فاتورة في مثال دليل التصميم.
+  num get totalCost => total;
+  num get unitCost => _quantity <= 0 ? 0 : totalCost / _quantity;
   int get quantityValue => _quantity.toInt();
   num get discountValue => _discount;
 
-  String formatMoney(num value) {
-    return AppFormatters.iqd(value);
-  }
-
   void dispose() {
+    codeFocusNode.dispose();
     code.dispose();
     name.dispose();
     warehouse.dispose();
@@ -517,7 +726,6 @@ class _PurchaseDemoRow {
     container.dispose();
     purchasePrice.dispose();
     discount.dispose();
-    cost.dispose();
     salePrice.dispose();
   }
 }
@@ -539,6 +747,7 @@ class _SaleDemoRow {
         discount = TextEditingController(text: discount);
 
   final String id;
+  final codeFocusNode = FocusNode();
   final TextEditingController code;
   final TextEditingController name;
   final TextEditingController warehouse;
@@ -557,13 +766,10 @@ class _SaleDemoRow {
 
   num get total => afterDiscount * _quantity;
   int get quantityValue => _quantity.toInt();
-  num get discountValue => _discount;
-
-  String formatMoney(num value) {
-    return AppFormatters.iqd(value);
-  }
+  num get discountTotal => _discount * _quantity;
 
   void dispose() {
+    codeFocusNode.dispose();
     code.dispose();
     name.dispose();
     warehouse.dispose();

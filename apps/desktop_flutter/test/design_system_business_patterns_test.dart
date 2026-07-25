@@ -450,6 +450,7 @@ void main() {
     expect(AppInvoiceItemsTable.rowHeight, 54);
     expect(AppInvoiceItemsTable.summaryHeight, 46);
     expect(AppInvoiceItemsTable.outerRadius, 18);
+    expect(purchaseGrid.height, 308);
     expect(purchaseGrid.summaryCells, isNotNull);
 
     final purchaseHeader = tester.widget<Container>(
@@ -496,12 +497,89 @@ void main() {
     );
     expect(quantityField.style?.fontSize, 18);
     expect(quantityField.style?.fontWeight, FontWeight.w700);
+    expect(quantityField.textInputAction, TextInputAction.next);
+    expect(quantityField.onEditingComplete, isNotNull);
+    final iqdPurchaseFormatter = tester
+        .widget<TextField>(
+          find.byKey(const Key('designPurchasePrice-p1')),
+        )
+        .inputFormatters!
+        .whereType<AppMoneyInputFormatter>()
+        .single;
+    expect(
+      iqdPurchaseFormatter.decimalPlaces,
+      0,
+    );
     quantityField.controller!.text = '10';
     quantityField.onChanged?.call('10');
     await tester.pump();
+    final purchaseRowAfterQuantity =
+        tester.widget<AppInvoiceItemsTable>(purchase).rows.first;
     expect(
-      find.descendant(of: purchase, matching: find.text('25,000')),
+      (purchaseRowAfterQuantity.cells[9] as AppInvoiceValueText).value,
+      '25,000',
+    );
+    expect(
+      (purchaseRowAfterQuantity.cells[11] as AppInvoiceValueText).value,
+      '25,000',
+    );
+
+    final discountField = tester.widget<TextField>(
+      find.byKey(const Key('designPurchaseDiscount-p1')),
+    );
+    discountField.controller!.text = '500';
+    discountField.onChanged?.call('500');
+    await tester.pump();
+
+    final purchaseFirstRow =
+        tester.widget<AppInvoiceItemsTable>(purchase).rows.first;
+    expect(
+      (purchaseFirstRow.cells[8] as AppInvoiceValueText).value,
+      '2,450',
+    );
+    expect(
+      (purchaseFirstRow.cells[9] as AppInvoiceValueText).value,
+      '24,500',
+    );
+    expect(
+      (purchaseFirstRow.cells[10] as AppInvoiceValueText).value,
+      '2,450',
+    );
+    expect(
+      (purchaseFirstRow.cells[11] as AppInvoiceValueText).value,
+      '24,500',
+    );
+    expect(
+      find.byKey(const Key('designPurchaseCost-p1')),
       findsOneWidget,
+    );
+    expect(
+      tester.widget(find.byKey(const Key('designPurchaseCost-p1'))),
+      isA<AppInvoiceValueText>(),
+    );
+
+    tester
+        .widget<AppInvoiceCellDropdown>(
+          find.byKey(const Key('designPurchaseCurrency')),
+        )
+        .onChanged('دولار');
+    await tester.pump();
+    final purchaseFirstRowInUsd =
+        tester.widget<AppInvoiceItemsTable>(purchase).rows.first;
+    expect(
+      (purchaseFirstRowInUsd.cells[9] as AppInvoiceValueText).value,
+      '24,500.00',
+    );
+    final usdPurchaseFormatter = tester
+        .widget<TextField>(
+          find.byKey(const Key('designPurchasePrice-p1')),
+        )
+        .inputFormatters!
+        .whereType<AppMoneyInputFormatter>()
+        .single;
+    expect(
+      usdPurchaseFormatter.decimalPlaces,
+      2,
     );
 
     tester
@@ -529,6 +607,7 @@ void main() {
     await reveal(tester, sales);
     final salesGrid = tester.widget<AppInvoiceItemsTable>(sales);
     expect(salesGrid.type, AppInvoiceTableType.sale);
+    expect(salesGrid.height, 308);
     expect(
       AppInvoiceItemsTable.saleColumns
           .map((column) => column.width)
@@ -569,6 +648,30 @@ void main() {
     expect(find.byKey(const Key('designSaleAdd-s2')), findsOneWidget);
     expect(find.byKey(const Key('designSaleDelete-s1')), findsOneWidget);
     expect(find.byKey(const Key('designSalePrice-s1')), findsOneWidget);
+    expect(
+      tester
+          .widget<TextField>(
+            find.byKey(const Key('designSaleDiscount-s1')),
+          )
+          .textInputAction,
+      TextInputAction.done,
+    );
+
+    tester
+        .widget<AppInvoiceCellDropdown>(
+          find.byKey(const Key('designSaleCurrency')),
+        )
+        .onChanged('دولار');
+    await tester.pump();
+    final firstSaleRow = tester.widget<AppInvoiceItemsTable>(sales).rows.first;
+    expect(
+      (firstSaleRow.cells[7] as AppInvoiceValueText).value,
+      '3,000.00',
+    );
+    expect(
+      (firstSaleRow.cells[8] as AppInvoiceValueText).value,
+      '15,000.00',
+    );
 
     tester
         .widget<AppTableActionButton>(
