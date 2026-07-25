@@ -318,7 +318,7 @@ class _DesignGalleryInvoiceTablesSectionState
   }
 
   List<Widget> _purchaseSummaryCells() {
-    final quantity = _purchaseItems.fold<num>(
+    final quantity = _purchaseItems.fold<int>(
       0,
       (sum, row) => sum + row.quantityValue,
     );
@@ -354,7 +354,7 @@ class _DesignGalleryInvoiceTablesSectionState
   }
 
   List<Widget> _saleSummaryCells() {
-    final quantity = _saleItems.fold<num>(
+    final quantity = _saleItems.fold<int>(
       0,
       (sum, row) => sum + row.quantityValue,
     );
@@ -469,7 +469,6 @@ class _PurchaseDemoRow {
     required String discount,
     required String cost,
     required String salePrice,
-    this.isUsd = false,
   })  : code = TextEditingController(text: code),
         name = TextEditingController(text: name),
         warehouse = TextEditingController(text: warehouse),
@@ -481,7 +480,6 @@ class _PurchaseDemoRow {
         salePrice = TextEditingController(text: salePrice);
 
   final String id;
-  final bool isUsd;
   final TextEditingController code;
   final TextEditingController name;
   final TextEditingController warehouse;
@@ -504,11 +502,11 @@ class _PurchaseDemoRow {
 
   num get total => afterDiscount * _quantity;
   num get totalCost => total + _cost;
-  num get quantityValue => _quantity;
+  int get quantityValue => _quantity.toInt();
   num get discountValue => _discount;
 
   String formatMoney(num value) {
-    return isUsd ? AppFormatters.usd(value) : AppFormatters.iqd(value);
+    return AppFormatters.iqd(value);
   }
 
   void dispose() {
@@ -533,7 +531,6 @@ class _SaleDemoRow {
     required String quantity,
     required String salePrice,
     required String discount,
-    this.isUsd = false,
   })  : code = TextEditingController(text: code),
         name = TextEditingController(text: name),
         warehouse = TextEditingController(text: warehouse),
@@ -542,7 +539,6 @@ class _SaleDemoRow {
         discount = TextEditingController(text: discount);
 
   final String id;
-  final bool isUsd;
   final TextEditingController code;
   final TextEditingController name;
   final TextEditingController warehouse;
@@ -560,11 +556,11 @@ class _SaleDemoRow {
   }
 
   num get total => afterDiscount * _quantity;
-  num get quantityValue => _quantity;
+  int get quantityValue => _quantity.toInt();
   num get discountValue => _discount;
 
   String formatMoney(num value) {
-    return isUsd ? AppFormatters.usd(value) : AppFormatters.iqd(value);
+    return AppFormatters.iqd(value);
   }
 
   void dispose() {

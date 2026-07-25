@@ -200,7 +200,10 @@ class _InvoiceGridState extends State<_InvoiceGrid> {
               (sum, column) => sum + column.width,
             ) +
             (AppInvoiceItemsTable.edgeInset * 2);
-        final trailingWidth = math.max(0, tableWidth - occupiedWidth);
+        final trailingWidth = math.max<double>(
+          0.0,
+          tableWidth - occupiedWidth,
+        );
 
         return Container(
           height: widget.height,
