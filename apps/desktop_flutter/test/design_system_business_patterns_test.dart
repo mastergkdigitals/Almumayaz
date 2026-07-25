@@ -1,6 +1,5 @@
 import 'package:erp/core/design/app_design_system.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'design_system_test_harness.dart';
@@ -498,7 +497,7 @@ void main() {
     expect(addButton.backgroundColor, const Color(0xFF16A34A));
 
     addButton.onPressed?.call();
-    await tester.pumpAndSettle();
+    await tester.pump();
 
     expect(find.byKey(const Key('designPurchaseRow-p3')), findsOneWidget);
     expect(find.byKey(const Key('designPurchaseDelete-p2')), findsOneWidget);
@@ -529,7 +528,7 @@ void main() {
     expect(deleteButton.backgroundColor, const Color(0xFFDC2626));
 
     deleteButton.onPressed?.call();
-    await tester.pumpAndSettle();
+    await tester.pump();
 
     expect(find.byKey(const Key('designPurchaseRow-p2')), findsNothing);
     expect(find.byKey(const Key('designPurchaseAdd-p3')), findsOneWidget);
@@ -577,4 +576,3 @@ void main() {
     );
   });
 }
-
