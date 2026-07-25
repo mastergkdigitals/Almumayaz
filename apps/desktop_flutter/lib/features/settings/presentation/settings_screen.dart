@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../core/design/app_design_system.dart';
 
@@ -1325,17 +1326,11 @@ class _GridValueCell extends StatelessWidget {
   const _GridValueCell(
     this.value,
     this.width, {
-    this.textAlign = TextAlign.center,
-    this.textDirection = TextDirection.ltr,
-    this.color = AppColors.textPrimary,
     this.fontWeight = FontWeight.w700,
   });
 
   final String value;
   final double width;
-  final TextAlign textAlign;
-  final TextDirection textDirection;
-  final Color color;
   final FontWeight fontWeight;
 
   @override
@@ -1354,10 +1349,10 @@ class _GridValueCell extends StatelessWidget {
         value,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        textAlign: textAlign,
-        textDirection: textDirection,
+        textAlign: TextAlign.center,
+        textDirection: TextDirection.ltr,
         style: TextStyle(
-          color: color,
+          color: AppColors.textPrimary,
           fontSize: 14,
           fontWeight: fontWeight,
         ),
