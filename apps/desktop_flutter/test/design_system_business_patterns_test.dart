@@ -432,188 +432,77 @@ void main() {
     await tester.pump();
   });
 
-  testWidgets('edits invoice cells and uses last-row actions',
+  testWidgets('shows the modern five-column purchase table and row actions',
       (tester) async {
     await pumpDesignSystemGallery(tester);
 
     final purchase = find.byKey(const Key('designPurchaseItemsTable'));
     await reveal(tester, purchase);
-    final purchaseGrid = tester.widget<AppInvoiceItemsTable>(purchase);
-    expect(purchaseGrid.type, AppInvoiceTableType.purchase);
-    expect(
-      AppInvoiceItemsTable.purchaseColumns
-          .map((column) => column.width)
-          .toList(),
-      [54, 126, 190, 138, 104, 104, 126, 104, 146, 116, 104, 132, 116, 82],
-    );
-    expect(AppInvoiceItemsTable.purchaseColumns.last.label, isEmpty);
-    expect(AppInvoiceItemsTable.headerHeight, 46);
-    expect(AppInvoiceItemsTable.rowHeight, 54);
-    expect(AppInvoiceItemsTable.summaryHeight, 46);
-    expect(AppInvoiceItemsTable.outerRadius, 18);
-    expect(purchaseGrid.height, 308);
-    expect(purchaseGrid.summaryCells, isNotNull);
-    expect(
-      purchaseGrid.summaryCells![4],
-      isA<AppPurchaseInvoiceSummaryValueText>(),
-    );
 
-    final purchaseHeader = tester.widget<Container>(
-      find.descendant(
-        of: purchase,
-        matching: find.byKey(const Key('appInvoiceTableHeader')),
-      ),
-    );
-    expect(
-      (purchaseHeader.decoration! as BoxDecoration).color,
-      Color.lerp(
-        AppModulePalettes.purchases.light,
-        Colors.white,
-        0.82,
-      ),
-    );
-    expect(
-      find.descendant(
-        of: purchase,
-        matching: find.byKey(const Key('appInvoiceTableSummary')),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: purchase, matching: find.text('المجموع')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: purchase, matching: find.text('الحاوية')),
-      findsOneWidget,
-    );
-    expect(tester.widget<AppInvoiceItemsTable>(purchase).rows, hasLength(2));
-    expect(find.byKey(const Key('designPurchaseAddRow')), findsNothing);
+    expect(purchase, findsOneWidget);
+    expect(find.byKey(const Key('designSalesItemsTable')), findsNothing);
+    expect(find.byKey(const Key('designPurchaseTableHeader')), findsOneWidget);
+
+    for (final keyName in const [
+      'index',
+      'code',
+      'name',
+      'quantity',
+      'price',
+    ]) {
+      expect(
+        find.byKey(Key('designPurchaseHeader-$keyName')),
+        findsOneWidget,
+      );
+    }
+
+    expect(find.byKey(const Key('designPurchaseRow-p1')), findsOneWidget);
+    expect(find.byKey(const Key('designPurchaseRow-p2')), findsOneWidget);
     expect(find.byKey(const Key('designPurchaseAdd-p2')), findsOneWidget);
     expect(find.byKey(const Key('designPurchaseDelete-p1')), findsOneWidget);
     expect(find.byKey(const Key('designPurchaseDelete-p2')), findsNothing);
-    expect(
-      find.byKey(const Key('designPurchaseQuantity-p1')),
-      findsOneWidget,
-    );
 
+    final codeField = tester.widget<TextField>(
+      find.byKey(const Key('designPurchaseCode-p1')),
+    );
+    final nameField = tester.widget<TextField>(
+      find.byKey(const Key('designPurchaseName-p1')),
+    );
     final quantityField = tester.widget<TextField>(
       find.byKey(const Key('designPurchaseQuantity-p1')),
     );
-    expect(quantityField.style?.fontSize, 18);
-    expect(quantityField.style?.fontWeight, FontWeight.w700);
-    expect(quantityField.textInputAction, TextInputAction.next);
-    expect(quantityField.onEditingComplete, isNull);
+    final priceField = tester.widget<TextField>(
+      find.byKey(const Key('designPurchasePrice-p1')),
+    );
+
+    expect(codeField.textAlign, TextAlign.right);
+    expect(codeField.textDirection, TextDirection.rtl);
+    expect(nameField.textAlign, TextAlign.right);
+    expect(nameField.textDirection, TextDirection.rtl);
     expect(quantityField.textAlign, TextAlign.center);
     expect(quantityField.textDirection, TextDirection.ltr);
-    expect(quantityField.decoration?.border, InputBorder.none);
-    expect(quantityField.decoration?.enabledBorder, InputBorder.none);
-    expect(quantityField.decoration?.focusedBorder, InputBorder.none);
-    expect(quantityField.decoration?.isCollapsed, isTrue);
     expect(
-      quantityField.decoration?.contentPadding,
-      const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
+      quantityField.inputFormatters!.single,
+      isA<AppIntegerInputFormatter>(),
     );
-    expect(quantityField.inputFormatters, isNull);
-    quantityField.controller!.text = '10';
-    quantityField.onChanged?.call('10');
-    await tester.pump();
-    final purchaseRowAfterQuantity =
-        tester.widget<AppInvoiceItemsTable>(purchase).rows.first;
-    expect(
-      (purchaseRowAfterQuantity.cells[9]
-              as AppPurchaseInvoiceValueText)
-          .value,
-      '25,000',
-    );
-    expect(
-      (purchaseRowAfterQuantity.cells[11]
-              as AppPurchaseInvoiceValueText)
-          .value,
-      '25,000',
-    );
+    expect(priceField.textAlign, TextAlign.center);
+    expect(priceField.textDirection, TextDirection.ltr);
 
-    final discountField = tester.widget<TextField>(
-      find.byKey(const Key('designPurchaseDiscount-p1')),
+    final addButton = tester.widget<AppTableActionButton>(
+      find.byKey(const Key('designPurchaseAdd-p2')),
     );
-    discountField.controller!.text = '500';
-    discountField.onChanged?.call('500');
-    await tester.pump();
+    expect(addButton.icon, Icons.add_rounded);
+    expect(addButton.size, 32);
+    expect(addButton.iconSize, 19);
+    expect(addButton.borderRadius, 9);
+    expect(addButton.backgroundColor, const Color(0xFF16A34A));
 
-    final purchaseFirstRow =
-        tester.widget<AppInvoiceItemsTable>(purchase).rows.first;
-    expect(
-      (purchaseFirstRow.cells[8] as AppPurchaseInvoiceValueText).value,
-      '2,450',
-    );
-    expect(
-      (purchaseFirstRow.cells[9] as AppPurchaseInvoiceValueText).value,
-      '24,500',
-    );
-    expect(
-      (purchaseFirstRow.cells[10] as AppPurchaseInvoiceValueText).value,
-      '2,450',
-    );
-    expect(
-      (purchaseFirstRow.cells[11] as AppPurchaseInvoiceValueText).value,
-      '24,500',
-    );
-    expect(
-      find.byKey(const Key('designPurchaseCost-p1')),
-      findsOneWidget,
-    );
-    expect(
-      tester.widget(find.byKey(const Key('designPurchaseCost-p1'))),
-      isA<AppPurchaseInvoiceValueText>(),
-    );
+    addButton.onPressed?.call();
+    await tester.pumpAndSettle();
 
-    discountField.controller!.text = '30000';
-    discountField.onChanged?.call('30000');
-    await tester.pump();
-    final purchaseRowWithNegativeTotal =
-        tester.widget<AppInvoiceItemsTable>(purchase).rows.first;
-    expect(
-      (purchaseRowWithNegativeTotal.cells[9]
-              as AppPurchaseInvoiceValueText)
-          .value,
-      '-5,000',
-    );
-    discountField.controller!.text = '500';
-    discountField.onChanged?.call('500');
-    await tester.pump();
-
-    tester
-        .widget<AppInvoiceCellDropdown>(
-          find.byKey(const Key('designPurchaseCurrency')),
-        )
-        .onChanged('دولار');
-    await tester.pump();
-    final purchaseFirstRowInUsd =
-        tester.widget<AppInvoiceItemsTable>(purchase).rows.first;
-    expect(
-      (purchaseFirstRowInUsd.cells[9]
-              as AppPurchaseInvoiceValueText)
-          .value,
-      '24,500.00',
-    );
-    expect(
-      tester
-          .widget<TextField>(
-            find.byKey(const Key('designPurchasePrice-p1')),
-          )
-          .inputFormatters,
-      isNull,
-    );
-
-    tester
-        .widget<AppTableActionButton>(
-          find.byKey(const Key('designPurchaseAdd-p2')),
-        )
-        .onPressed
-        ?.call();
-    await tester.pump();
-
-    expect(tester.widget<AppInvoiceItemsTable>(purchase).rows, hasLength(3));
+    expect(find.byKey(const Key('designPurchaseRow-p3')), findsOneWidget);
+    expect(find.byKey(const Key('designPurchaseDelete-p2')), findsOneWidget);
+    expect(find.byKey(const Key('designPurchaseAdd-p3')), findsOneWidget);
     expect(
       tester
           .widget<TextField>(
@@ -626,254 +515,66 @@ void main() {
     expect(
       tester
           .widget<TextField>(
-            find.byKey(const Key('designPurchaseContainer-p3')),
+            find.byKey(const Key('designPurchasePrice-p3')),
           )
           .controller!
           .text,
       '0',
     );
-    expect(find.byKey(const Key('designPurchaseDelete-p2')), findsOneWidget);
+
+    final deleteButton = tester.widget<AppTableActionButton>(
+      find.byKey(const Key('designPurchaseDelete-p2')),
+    );
+    expect(deleteButton.icon, Icons.close_rounded);
+    expect(deleteButton.backgroundColor, const Color(0xFFDC2626));
+
+    deleteButton.onPressed?.call();
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('designPurchaseRow-p2')), findsNothing);
     expect(find.byKey(const Key('designPurchaseAdd-p3')), findsOneWidget);
-
-    tester
-        .widget<AppTableActionButton>(
-          find.byKey(const Key('designPurchaseDelete-p2')),
-        )
-        .onPressed
-        ?.call();
-    await tester.pump();
-    expect(tester.widget<AppInvoiceItemsTable>(purchase).rows, hasLength(2));
-
-    final sales = find.byKey(const Key('designSalesItemsTable'));
-    await reveal(tester, sales);
-    final salesGrid = tester.widget<AppInvoiceItemsTable>(sales);
-    expect(salesGrid.type, AppInvoiceTableType.sale);
-    expect(salesGrid.height, 308);
-    expect(
-      AppInvoiceItemsTable.saleColumns
-          .map((column) => column.width)
-          .toList(),
-      [54, 126, 190, 138, 104, 126, 104, 146, 116, 82],
-    );
-    expect(
-      AppInvoiceItemsTable.saleColumns
-          .map((column) => column.grow)
-          .toList(),
-      [0, 0.75, 3, 1.35, 0.70, 0.90, 0.70, 1.45, 1.55, 0],
-    );
-    expect(salesGrid.summaryCells, isNotNull);
-    final salesHeader = tester.widget<Container>(
-      find.descendant(
-        of: sales,
-        matching: find.byKey(const Key('appInvoiceTableHeader')),
-      ),
-    );
-    expect(
-      (salesHeader.decoration! as BoxDecoration).color,
-      Color.lerp(
-        AppModulePalettes.sales.light,
-        Colors.white,
-        0.82,
-      ),
-    );
-    expect(
-      find.descendant(of: sales, matching: find.text('الحاوية')),
-      findsNothing,
-    );
-    expect(
-      find.descendant(of: sales, matching: find.text('سعر البيع')),
-      findsOneWidget,
-    );
-    expect(tester.widget<AppInvoiceItemsTable>(sales).rows, hasLength(2));
-    expect(find.byKey(const Key('designSaleAddRow')), findsNothing);
-    expect(find.byKey(const Key('designSaleAdd-s2')), findsOneWidget);
-    expect(find.byKey(const Key('designSaleDelete-s1')), findsOneWidget);
-    expect(find.byKey(const Key('designSalePrice-s1')), findsOneWidget);
-    expect(
-      tester
-          .widget<TextField>(
-            find.byKey(const Key('designSaleDiscount-s1')),
-          )
-          .textInputAction,
-      TextInputAction.done,
-    );
-
-    tester
-        .widget<AppInvoiceCellDropdown>(
-          find.byKey(const Key('designSaleCurrency')),
-        )
-        .onChanged('دولار');
-    await tester.pump();
-    final firstSaleRow = tester.widget<AppInvoiceItemsTable>(sales).rows.first;
-    expect(
-      (firstSaleRow.cells[7] as AppInvoiceValueText).value,
-      '3,000.00',
-    );
-    expect(
-      (firstSaleRow.cells[8] as AppInvoiceValueText).value,
-      '15,000.00',
-    );
-
-    tester
-        .widget<AppTableActionButton>(
-          find.byKey(const Key('designSaleAdd-s2')),
-        )
-        .onPressed
-        ?.call();
-    await tester.pump();
-
-    expect(tester.widget<AppInvoiceItemsTable>(sales).rows, hasLength(3));
-    expect(find.byKey(const Key('designSaleDelete-s2')), findsOneWidget);
-    expect(find.byKey(const Key('designSaleAdd-s3')), findsOneWidget);
-
-    tester
-        .widget<AppTableActionButton>(
-          find.byKey(const Key('designSaleDelete-s2')),
-        )
-        .onPressed
-        ?.call();
-    await tester.pump();
-    expect(tester.widget<AppInvoiceItemsTable>(sales).rows, hasLength(2));
-
-    final purchaseAdd = tester.widget<AppTableActionButton>(
-      find.byKey(const Key('designPurchaseAdd-p3')),
-    );
-    final salesDelete = tester.widget<AppTableActionButton>(
-      find.byKey(const Key('designSaleDelete-s1')),
-    );
-    expect(purchaseAdd.size, 32);
-    expect(purchaseAdd.iconSize, 19);
-    expect(purchaseAdd.borderRadius, 9);
-    expect(purchaseAdd.backgroundColor, const Color(0xFF16A34A));
-    expect(salesDelete.icon, Icons.close_rounded);
-    expect(salesDelete.backgroundColor, const Color(0xFFDC2626));
-    await tester.pump(const Duration(milliseconds: 150));
   });
 
-  testWidgets('matches the old purchase cell focus and lookup behavior',
+  testWidgets('moves through the new purchase fields with Enter',
       (tester) async {
     await pumpDesignSystemGallery(tester);
 
     final purchase = find.byKey(const Key('designPurchaseItemsTable'));
     await reveal(tester, purchase);
 
-    final codeFinder =
-        find.byKey(const Key('designPurchaseCode-p1'));
-    final nameFinder =
-        find.byKey(const Key('designPurchaseName-p1'));
-    final quantityFinder =
-        find.byKey(const Key('designPurchaseQuantity-p1'));
+    final code = find.byKey(const Key('designPurchaseCode-p1'));
+    final name = find.byKey(const Key('designPurchaseName-p1'));
+    final quantity = find.byKey(const Key('designPurchaseQuantity-p1'));
+    final price = find.byKey(const Key('designPurchasePrice-p1'));
+    final nextCode = find.byKey(const Key('designPurchaseCode-p2'));
 
-    final codeField = tester.widget<TextField>(codeFinder);
-    expect(codeField.textAlign, TextAlign.right);
-    expect(codeField.textDirection, TextDirection.rtl);
-    expect(codeField.textInputAction, TextInputAction.search);
-    expect(codeField.decoration?.border, InputBorder.none);
-    expect(codeField.decoration?.focusedBorder, InputBorder.none);
-
-    final quantityField = tester.widget<TextField>(quantityFinder);
-    expect(quantityField.textAlign, TextAlign.center);
-    expect(quantityField.textDirection, TextDirection.ltr);
-    expect(quantityField.textInputAction, TextInputAction.next);
-    expect(quantityField.decoration?.focusedBorder, InputBorder.none);
-
-    await tester.tap(codeFinder);
+    await tester.tap(code);
     await tester.pump();
-    expect(
-      find.byKey(const Key('appPurchaseAutocompleteMenu')),
-      findsOneWidget,
-    );
+    expect(tester.widget<TextField>(code).focusNode!.hasFocus, isTrue);
 
-    final autocompleteDecoration = tester.widget<DecoratedBox>(
-      find.byKey(const Key('appPurchaseAutocompleteMenu')),
-    );
-    final autocompleteBox =
-        autocompleteDecoration.decoration as BoxDecoration;
+    await tester.testTextInput.receiveAction(TextInputAction.next);
+    await tester.pump();
+    expect(tester.widget<TextField>(name).focusNode!.hasFocus, isTrue);
+
+    await tester.testTextInput.receiveAction(TextInputAction.next);
+    await tester.pump();
+    expect(tester.widget<TextField>(quantity).focusNode!.hasFocus, isTrue);
+
+    await tester.testTextInput.receiveAction(TextInputAction.next);
+    await tester.pump();
+    expect(tester.widget<TextField>(price).focusNode!.hasFocus, isTrue);
+
+    await tester.testTextInput.receiveAction(TextInputAction.next);
+    await tester.pump();
+    expect(tester.widget<TextField>(nextCode).focusNode!.hasFocus, isTrue);
+
+    final focusedBorder =
+        tester.widget<TextField>(price).decoration!.focusedBorder;
+    expect(focusedBorder, isA<OutlineInputBorder>());
     expect(
-      autocompleteBox.borderRadius,
-      BorderRadius.circular(12),
-    );
-    expect(
-      (autocompleteBox.border! as Border).top.color,
+      (focusedBorder! as OutlineInputBorder).borderSide.color,
       AppModuleColors.purchases,
     );
-    expect(autocompleteBox.boxShadow!.single.blurRadius, 18);
-    expect(
-      autocompleteBox.boxShadow!.single.offset,
-      const Offset(0, 8),
-    );
-
-    await tester.enterText(codeFinder, 'P-002');
-    await tester.pump();
-    expect(
-      tester.widget<TextField>(nameFinder).controller!.text,
-      isEmpty,
-    );
-
-    await tester.testTextInput.receiveAction(TextInputAction.search);
-    await tester.pump();
-    expect(
-      tester.widget<TextField>(codeFinder).controller!.text,
-      'P-002',
-    );
-    expect(
-      tester.widget<TextField>(nameFinder).controller!.text,
-      'قلم أزرق',
-    );
-    expect(
-      tester.widget<TextField>(nameFinder).focusNode!.hasFocus,
-      isTrue,
-    );
-
-    await tester.testTextInput.receiveAction(TextInputAction.search);
-    await tester.pump();
-
-    final purchaseRow =
-        tester.widget<AppInvoiceItemsTable>(purchase).rows.first;
-    final warehouse =
-        purchaseRow.cells[3] as AppPurchaseInvoiceCellDropdown;
-    expect(warehouse.focusNode.hasFocus, isTrue);
-
-    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
-    await tester.pump();
-    expect(
-      find.byKey(const Key('appPurchaseWarehouseMenu')),
-      findsOneWidget,
-    );
-
-    final warehouseDecoration = tester.widget<DecoratedBox>(
-      find.byKey(const Key('appPurchaseWarehouseMenu')),
-    );
-    final warehouseBox =
-        warehouseDecoration.decoration as BoxDecoration;
-    expect(warehouseBox.borderRadius, BorderRadius.circular(16));
-    expect(
-      (warehouseBox.border! as Border).top.color,
-      AppModuleColors.purchases,
-    );
-    expect(warehouseBox.boxShadow!.single.blurRadius, 18);
-
-    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
-    await tester.pump();
-    expect(
-      tester.widget<TextField>(quantityFinder).focusNode!.hasFocus,
-      isTrue,
-    );
-    final focusedQuantity = tester.widget<TextField>(quantityFinder);
-    expect(focusedQuantity.decoration?.border, InputBorder.none);
-    expect(focusedQuantity.decoration?.focusedBorder, InputBorder.none);
-
-    final cost = find.byKey(const Key('designPurchaseCost-p1'));
-    expect(
-      find.descendant(of: cost, matching: find.byType(FittedBox)),
-      findsNothing,
-    );
-    final costText = tester.widget<Text>(
-      find.descendant(of: cost, matching: find.byType(Text)),
-    );
-    expect(costText.maxLines, 1);
-    expect(costText.overflow, TextOverflow.ellipsis);
-    expect(costText.textDirection, TextDirection.ltr);
-    await tester.pump(const Duration(milliseconds: 150));
   });
 }
+
