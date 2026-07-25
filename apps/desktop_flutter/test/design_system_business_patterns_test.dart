@@ -482,10 +482,13 @@ void main() {
     ]) {
       expect(field.expands, isFalse);
       expect(field.maxLines, 1);
-      expect(field.textAlignVertical, TextAlignVertical.center);
+      expect(field.textAlignVertical, isNull);
       expect(field.cursorColor, Colors.black);
       expect(field.decoration?.isCollapsed, isTrue);
-      expect(field.decoration?.contentPadding, EdgeInsets.zero);
+      expect(
+        field.decoration?.contentPadding,
+        const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
+      );
       expect(field.decoration?.filled, isFalse);
       for (final border in [
         field.decoration?.border,

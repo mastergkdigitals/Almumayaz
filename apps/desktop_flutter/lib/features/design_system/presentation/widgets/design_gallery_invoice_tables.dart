@@ -524,59 +524,52 @@ class _PurchaseInputCell extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
         child: AnimatedBuilder(
           animation: focusNode,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                TextField(
-                  key: fieldKey,
-                  controller: controller,
-                  focusNode: focusNode,
-                  keyboardType: numeric
-                      ? TextInputType.numberWithOptions(
-                          decimal: !wholeNumber,
-                        )
-                      : TextInputType.text,
-                  inputFormatters: wholeNumber
-                      ? const [AppIntegerInputFormatter()]
-                      : null,
-                  textInputAction: TextInputAction.next,
-                  maxLines: 1,
-                  textAlign: numeric ? TextAlign.center : TextAlign.right,
-                  textDirection:
-                      numeric ? TextDirection.ltr : TextDirection.rtl,
-                  style: AppTypography.tableCell.copyWith(
-                    color: emphasized
-                        ? _purchaseGreenDark
-                        : AppColors.textPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
-                  cursorColor: Colors.black,
-                  textAlignVertical: TextAlignVertical.center,
-                  decoration: const InputDecoration(
-                    filled: false,
-                    isCollapsed: true,
-                    contentPadding: EdgeInsets.zero,
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    disabledBorder: InputBorder.none,
-                    errorBorder: InputBorder.none,
-                    focusedErrorBorder: InputBorder.none,
-                  ),
-                  onSubmitted: (_) {
-                    final submit = onSubmitted;
-                    if (submit != null) {
-                      submit();
-                      return;
-                    }
-                    nextFocusNode?.requestFocus();
-                  },
+          child: Center(
+            child: TextField(
+              key: fieldKey,
+              controller: controller,
+              focusNode: focusNode,
+              keyboardType: numeric
+                  ? TextInputType.numberWithOptions(
+                      decimal: !wholeNumber,
+                    )
+                  : TextInputType.text,
+              inputFormatters: wholeNumber
+                  ? const [AppIntegerInputFormatter()]
+                  : null,
+              textInputAction: TextInputAction.next,
+              maxLines: 1,
+              textAlign: numeric ? TextAlign.center : TextAlign.right,
+              textDirection: numeric ? TextDirection.ltr : TextDirection.rtl,
+              style: AppTypography.tableCell.copyWith(
+                color:
+                    emphasized ? _purchaseGreenDark : AppColors.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+              cursorColor: Colors.black,
+              decoration: const InputDecoration(
+                filled: false,
+                isCollapsed: true,
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 6,
+                  vertical: 7,
                 ),
-              ],
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                disabledBorder: InputBorder.none,
+                errorBorder: InputBorder.none,
+                focusedErrorBorder: InputBorder.none,
+              ),
+              onSubmitted: (_) {
+                final submit = onSubmitted;
+                if (submit != null) {
+                  submit();
+                  return;
+                }
+                nextFocusNode?.requestFocus();
+              },
             ),
           ),
           builder: (context, child) {
