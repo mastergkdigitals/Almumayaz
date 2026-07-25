@@ -5,6 +5,9 @@ import '../../../../core/design/app_design_system.dart';
 import 'design_gallery_section.dart';
 
 const _purchaseTableCellHeight = 56.0;
+const _purchaseCellRadius = 3.0;
+const _purchaseCellFontSize = 16.0;
+const _purchaseHeaderFontSize = 14.0;
 const _purchaseGreen = AppModuleColors.purchases;
 const _purchaseGreenDark = Color(0xFF064E3B);
 final _purchaseGreenSoft = Color.alphaBlend(
@@ -24,9 +27,10 @@ final _purchaseStrongLine = Color.alphaBlend(
   AppColors.border,
 );
 const _purchaseWarehouseOptions = <String>[
-  'المخزن الرئيسي',
-  'مخزن الكرادة',
-  'مخزن المنصور',
+  'الرئيسي',
+  'الرصافة',
+  'الكرادة',
+  'المنصور',
 ];
 
 class DesignGalleryInvoiceTablesSection extends StatefulWidget {
@@ -52,7 +56,7 @@ class _DesignGalleryInvoiceTablesSectionState
         id: 'p1',
         code: 'P-001',
         name: 'دفتر ملاحظات',
-        warehouse: 'المخزن الرئيسي',
+        warehouse: 'الرئيسي',
         quantity: '100',
         container: '10',
         purchasePrice: '2,500',
@@ -63,7 +67,7 @@ class _DesignGalleryInvoiceTablesSectionState
         id: 'p2',
         code: 'P-002',
         name: 'قلم أزرق',
-        warehouse: 'مخزن الكرادة',
+        warehouse: 'الكرادة',
         quantity: '1,000',
         container: '20',
         purchasePrice: '1,250',
@@ -342,7 +346,7 @@ class _PurchaseTableHeader extends StatelessWidget {
           ),
           _PurchaseHeaderCell(
             key: const Key('designPurchaseHeader-priceAfterDiscount'),
-            label: 'السعر بعد الخصم',
+            label: 'السعر بعد\nالخصم',
             width: widths.priceAfterDiscount,
           ),
           _PurchaseHeaderCell(
@@ -357,7 +361,7 @@ class _PurchaseTableHeader extends StatelessWidget {
           ),
           _PurchaseHeaderCell(
             key: const Key('designPurchaseHeader-totalCost'),
-            label: 'إجمالي الكلفة',
+            label: 'إجمالي\nالكلفة',
             width: widths.totalCost,
           ),
           _PurchaseHeaderCell(
@@ -392,22 +396,22 @@ class _PurchaseHeaderCell extends StatelessWidget {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(_purchaseCellRadius),
             border: Border.all(color: _purchaseLine),
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 2),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                label,
-                maxLines: 1,
-                textAlign: TextAlign.center,
-                style: AppTypography.tableHeader.copyWith(
-                  color: _purchaseGreenDark,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                ),
+            child: Text(
+              label,
+              maxLines: 2,
+              softWrap: true,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: AppTypography.tableHeader.copyWith(
+                color: _purchaseGreenDark,
+                fontSize: _purchaseHeaderFontSize,
+                height: 1.1,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ),
@@ -587,7 +591,7 @@ class _PurchaseTableRow extends StatelessWidget {
                       variant: AppButtonVariant.danger,
                       size: 44,
                       iconSize: 19,
-                      borderRadius: 13,
+                      borderRadius: _purchaseCellRadius,
                       onPressed: canDelete ? onDelete : null,
                     ),
                   ),
@@ -628,14 +632,15 @@ class _PurchaseIndexCell extends StatelessWidget {
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: highlighted ? _purchaseGreen : _purchaseGreenSoft,
-              borderRadius: BorderRadius.circular(13),
+              borderRadius: BorderRadius.circular(_purchaseCellRadius),
+              border: Border.all(color: _purchaseLine),
             ),
             child: Text(
               value,
               textDirection: TextDirection.ltr,
               style: AppTypography.tableCell.copyWith(
                 color: highlighted ? Colors.white : _purchaseGreenDark,
-                fontSize: 18,
+                fontSize: _purchaseCellFontSize,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -694,6 +699,7 @@ class _PurchaseWarehouseCell extends StatelessWidget {
               focusNode: focusNode,
               keyHoldGuard: keyHoldGuard,
               accentColor: AppModuleColors.purchases,
+              fontSize: _purchaseCellFontSize,
               onChanged: onChanged,
               onSubmitted: (_) => nextFocusNode.requestFocus(),
             ),
@@ -799,7 +805,7 @@ class _PurchaseInputCell extends StatelessWidget {
                 style: AppTypography.tableCell.copyWith(
                   color:
                       emphasized ? _purchaseGreenDark : AppColors.textPrimary,
-                  fontSize: 18,
+                  fontSize: _purchaseCellFontSize,
                   fontWeight: FontWeight.w700,
                 ),
                 cursorColor: Colors.black,
@@ -885,7 +891,7 @@ class _PurchaseValueCell extends StatelessWidget {
               style: AppTypography.tableCell.copyWith(
                 color:
                     emphasized ? _purchaseGreenDark : AppColors.textPrimary,
-                fontSize: 18,
+                fontSize: _purchaseCellFontSize,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -917,7 +923,7 @@ class _PurchaseCellFrame extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: backgroundColor,
-          borderRadius: BorderRadius.circular(13),
+          borderRadius: BorderRadius.circular(_purchaseCellRadius),
           border: Border.all(
             color: borderColor,
             width: borderWidth,
