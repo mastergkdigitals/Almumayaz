@@ -5,12 +5,29 @@ import '../../../../core/design/app_design_system.dart';
 import 'design_gallery_section.dart';
 
 const _purchaseTableCellHeight = 56.0;
-const _purchaseGreen = Color(0xFF10966A);
-const _purchaseGreenDark = Color(0xFF075E45);
-const _purchaseGreenSoft = Color(0xFFE8F7F0);
-const _purchaseTableSurface = Color(0xFFF3F7F5);
-const _purchaseLine = Color(0xFFDCE9E3);
-const _purchaseStrongLine = Color(0xFFB8DDCC);
+const _purchaseGreen = AppModuleColors.purchases;
+const _purchaseGreenDark = Color(0xFF064E3B);
+final _purchaseGreenSoft = Color.alphaBlend(
+  AppModuleColors.purchases.withAlpha(18),
+  AppColors.surface,
+);
+final _purchaseTableSurface = Color.alphaBlend(
+  AppModuleColors.purchases.withAlpha(8),
+  AppColors.surface,
+);
+final _purchaseLine = Color.alphaBlend(
+  AppModuleColors.purchases.withAlpha(96),
+  AppColors.border,
+);
+final _purchaseStrongLine = Color.alphaBlend(
+  AppModuleColors.purchases.withAlpha(150),
+  AppColors.border,
+);
+const _purchaseWarehouseOptions = <String>[
+  'المخزن الرئيسي',
+  'مخزن الكرادة',
+  'مخزن المنصور',
+];
 
 class DesignGalleryInvoiceTablesSection extends StatefulWidget {
   const DesignGalleryInvoiceTablesSection({super.key});
@@ -71,7 +88,7 @@ class _DesignGalleryInvoiceTablesSectionState
       id: 'p${_purchaseSeed++}',
       code: '',
       name: '',
-      warehouse: '',
+      warehouse: _purchaseWarehouseOptions.first,
       quantity: '0',
       container: '0',
       purchasePrice: '0',
@@ -194,21 +211,9 @@ class _SoftPurchaseTable extends StatelessWidget {
     required this.onChanged,
   });
 
-  static const _minimumTableWidth = 1670.0;
   static const _indexWidth = 54.0;
-  static const _codeWidth = 126.0;
-  static const _nameWidth = 190.0;
-  static const _warehouseWidth = 138.0;
-  static const _quantityWidth = 104.0;
-  static const _containerWidth = 104.0;
-  static const _purchasePriceWidth = 126.0;
-  static const _discountWidth = 104.0;
-  static const _priceAfterDiscountWidth = 146.0;
-  static const _totalWidth = 116.0;
-  static const _costWidth = 104.0;
-  static const _totalCostWidth = 132.0;
-  static const _salePriceWidth = 116.0;
-  static const _actionWidth = 82.0;
+  static const _actionWidth = 54.0;
+  static const _tableInset = 8.0;
 
   final List<_PurchaseDemoRow> rows;
   final ScrollController scrollController;
@@ -221,28 +226,17 @@ class _SoftPurchaseTable extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final tableWidth = constraints.maxWidth < _minimumTableWidth
-            ? _minimumTableWidth
-            : constraints.maxWidth;
-        final nameWidth = _nameWidth + tableWidth - _minimumTableWidth;
-        final widths = _PurchaseTableWidths(
+        final tableWidth = constraints.hasBoundedWidth
+            ? constraints.maxWidth
+            : 1622.0;
+        final widths = _PurchaseTableWidths.fit(
+          tableWidth - (_tableInset * 2),
           index: _indexWidth,
-          code: _codeWidth,
-          name: nameWidth,
-          warehouse: _warehouseWidth,
-          quantity: _quantityWidth,
-          container: _containerWidth,
-          purchasePrice: _purchasePriceWidth,
-          discount: _discountWidth,
-          priceAfterDiscount: _priceAfterDiscountWidth,
-          total: _totalWidth,
-          cost: _costWidth,
-          totalCost: _totalCostWidth,
-          salePrice: _salePriceWidth,
           action: _actionWidth,
         );
 
         return Container(
+          key: const Key('designPurchaseTableSurface'),
           height: 340,
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
@@ -253,45 +247,39 @@ class _SoftPurchaseTable extends StatelessWidget {
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: _purchaseLine),
           ),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: SizedBox(
-              width: tableWidth,
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _PurchaseTableHeader(widths: widths),
-                    const SizedBox(height: 7),
-                    Expanded(
-                      child: Scrollbar(
-                        controller: scrollController,
-                        thumbVisibility: rows.length > 2,
-                        child: ListView.builder(
-                          controller: scrollController,
-                          padding: EdgeInsets.zero,
-                          itemCount: rows.length,
-                          itemBuilder: (context, index) {
-                            final row = rows[index];
-                            return _PurchaseTableRow(
-                              key: Key('designPurchaseRow-${row.id}'),
-                              index: index,
-                              row: row,
-                              widths: widths,
-                              keyHoldGuard: keyHoldGuard,
-                              canDelete: rows.length > 1,
-                              onDelete: () => onDeleteRow(index),
-                              onChanged: onChanged,
-                              onLastCellSubmitted: onAddRow,
-                            );
-                          },
-                        ),
-                      ),
+          child: Padding(
+            padding: const EdgeInsets.all(_tableInset),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _PurchaseTableHeader(widths: widths),
+                const SizedBox(height: 7),
+                Expanded(
+                  child: Scrollbar(
+                    controller: scrollController,
+                    thumbVisibility: rows.length > 2,
+                    child: ListView.builder(
+                      controller: scrollController,
+                      padding: EdgeInsets.zero,
+                      itemCount: rows.length,
+                      itemBuilder: (context, index) {
+                        final row = rows[index];
+                        return _PurchaseTableRow(
+                          key: Key('designPurchaseRow-${row.id}'),
+                          index: index,
+                          row: row,
+                          widths: widths,
+                          keyHoldGuard: keyHoldGuard,
+                          canDelete: rows.length > 1,
+                          onDelete: () => onDeleteRow(index),
+                          onChanged: onChanged,
+                          onLastCellSubmitted: onAddRow,
+                        );
+                      },
                     ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
         );
@@ -399,7 +387,7 @@ class _PurchaseHeaderCell extends StatelessWidget {
     return SizedBox(
       width: width,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 2),
         child: Container(
           alignment: Alignment.center,
           decoration: BoxDecoration(
@@ -407,15 +395,20 @@ class _PurchaseHeaderCell extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: _purchaseLine),
           ),
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: AppTypography.tableHeader.copyWith(
-              color: _purchaseGreenDark,
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                maxLines: 1,
+                textAlign: TextAlign.center,
+                style: AppTypography.tableHeader.copyWith(
+                  color: _purchaseGreenDark,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ),
           ),
         ),
@@ -448,152 +441,162 @@ class _PurchaseTableRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 72,
-      child: Row(
-        children: [
-          _PurchaseIndexCell(
-            cellKey: Key('designPurchaseIndexCell-${row.id}'),
-            value: '${index + 1}',
-            width: widths.index,
-            highlighted: index == 0,
-          ),
-          _PurchaseInputCell(
-            cellKey: Key('designPurchaseCodeCell-${row.id}'),
-            fieldKey: Key('designPurchaseCode-${row.id}'),
-            controller: row.code,
-            focusNode: row.codeFocusNode,
-            nextFocusNode: row.nameFocusNode,
-            keyHoldGuard: keyHoldGuard,
-            width: widths.code,
-            emphasized: true,
-            onChanged: (_) => onChanged(),
-          ),
-          _PurchaseInputCell(
-            cellKey: Key('designPurchaseNameCell-${row.id}'),
-            fieldKey: Key('designPurchaseName-${row.id}'),
-            controller: row.name,
-            focusNode: row.nameFocusNode,
-            nextFocusNode: row.warehouseFocusNode,
-            keyHoldGuard: keyHoldGuard,
-            width: widths.name,
-            onChanged: (_) => onChanged(),
-          ),
-          _PurchaseInputCell(
-            cellKey: Key('designPurchaseWarehouseCell-${row.id}'),
-            fieldKey: Key('designPurchaseWarehouse-${row.id}'),
-            controller: row.warehouse,
-            focusNode: row.warehouseFocusNode,
-            nextFocusNode: row.quantityFocusNode,
-            keyHoldGuard: keyHoldGuard,
-            width: widths.warehouse,
-            onChanged: (_) => onChanged(),
-          ),
-          _PurchaseInputCell(
-            cellKey: Key('designPurchaseQuantityCell-${row.id}'),
-            fieldKey: Key('designPurchaseQuantity-${row.id}'),
-            controller: row.quantity,
-            focusNode: row.quantityFocusNode,
-            nextFocusNode: row.containerFocusNode,
-            keyHoldGuard: keyHoldGuard,
-            width: widths.quantity,
-            numeric: true,
-            wholeNumber: true,
-            onChanged: (_) => onChanged(),
-          ),
-          _PurchaseInputCell(
-            cellKey: Key('designPurchaseContainerCell-${row.id}'),
-            fieldKey: Key('designPurchaseContainer-${row.id}'),
-            controller: row.container,
-            focusNode: row.containerFocusNode,
-            nextFocusNode: row.purchasePriceFocusNode,
-            keyHoldGuard: keyHoldGuard,
-            width: widths.container,
-            numeric: true,
-            wholeNumber: true,
-            onChanged: (_) => onChanged(),
-          ),
-          _PurchaseInputCell(
-            cellKey: Key('designPurchasePurchasePriceCell-${row.id}'),
-            fieldKey: Key('designPurchasePurchasePrice-${row.id}'),
-            controller: row.purchasePrice,
-            focusNode: row.purchasePriceFocusNode,
-            nextFocusNode: row.discountFocusNode,
-            keyHoldGuard: keyHoldGuard,
-            width: widths.purchasePrice,
-            numeric: true,
-            emphasized: true,
-            onChanged: (_) => onChanged(),
-          ),
-          _PurchaseInputCell(
-            cellKey: Key('designPurchaseDiscountCell-${row.id}'),
-            fieldKey: Key('designPurchaseDiscount-${row.id}'),
-            controller: row.discount,
-            focusNode: row.discountFocusNode,
-            nextFocusNode: row.salePriceFocusNode,
-            keyHoldGuard: keyHoldGuard,
-            width: widths.discount,
-            numeric: true,
-            onChanged: (_) => onChanged(),
-          ),
-          _PurchaseValueCell(
-            cellKey: Key('designPurchasePriceAfterDiscountCell-${row.id}'),
-            valueKey: Key('designPurchasePriceAfterDiscount-${row.id}'),
-            value: AppFormatters.money(row.priceAfterDiscount),
-            width: widths.priceAfterDiscount,
-          ),
-          _PurchaseValueCell(
-            cellKey: Key('designPurchaseTotalCell-${row.id}'),
-            valueKey: Key('designPurchaseTotal-${row.id}'),
-            value: AppFormatters.money(row.lineTotal),
-            width: widths.total,
-            emphasized: true,
-          ),
-          _PurchaseValueCell(
-            cellKey: Key('designPurchaseCostCell-${row.id}'),
-            valueKey: Key('designPurchaseCost-${row.id}'),
-            value: AppFormatters.money(row.unitCost),
-            width: widths.cost,
-          ),
-          _PurchaseValueCell(
-            cellKey: Key('designPurchaseTotalCostCell-${row.id}'),
-            valueKey: Key('designPurchaseTotalCost-${row.id}'),
-            value: AppFormatters.money(row.totalCost),
-            width: widths.totalCost,
-            emphasized: true,
-          ),
-          _PurchaseInputCell(
-            cellKey: Key('designPurchaseSalePriceCell-${row.id}'),
-            fieldKey: Key('designPurchaseSalePrice-${row.id}'),
-            controller: row.salePrice,
-            focusNode: row.salePriceFocusNode,
-            keyHoldGuard: keyHoldGuard,
-            width: widths.salePrice,
-            numeric: true,
-            emphasized: true,
-            onChanged: (_) => onChanged(),
-            onSubmitted: onLastCellSubmitted,
-          ),
-          SizedBox(
-            width: widths.action,
-            child: ExcludeFocus(
-              child: Center(
-                child: AppTableActionButton(
-                  key: Key('designPurchaseDelete-${row.id}'),
-                  tooltipKey: Key('designPurchaseDeleteTooltip-${row.id}'),
-                  icon: Icons.close_rounded,
-                  tooltip: 'حذف السطر',
-                  variant: AppButtonVariant.danger,
-                  size: 44,
-                  iconSize: 19,
-                  borderRadius: 13,
-                  onPressed: canDelete ? onDelete : null,
+    return AnimatedBuilder(
+      animation: row.focusListenable,
+      builder: (context, _) {
+        return SizedBox(
+          height: 72,
+          child: Row(
+            children: [
+              _PurchaseIndexCell(
+                cellKey: Key('designPurchaseIndexCell-${row.id}'),
+                value: '${index + 1}',
+                width: widths.index,
+                highlighted: row.hasFocusedCell,
+              ),
+              _PurchaseInputCell(
+                cellKey: Key('designPurchaseCodeCell-${row.id}'),
+                fieldKey: Key('designPurchaseCode-${row.id}'),
+                controller: row.code,
+                focusNode: row.codeFocusNode,
+                nextFocusNode: row.nameFocusNode,
+                keyHoldGuard: keyHoldGuard,
+                width: widths.code,
+                emphasized: true,
+                onChanged: (_) => onChanged(),
+              ),
+              _PurchaseInputCell(
+                cellKey: Key('designPurchaseNameCell-${row.id}'),
+                fieldKey: Key('designPurchaseName-${row.id}'),
+                controller: row.name,
+                focusNode: row.nameFocusNode,
+                nextFocusNode: row.warehouseFocusNode,
+                keyHoldGuard: keyHoldGuard,
+                width: widths.name,
+                onChanged: (_) => onChanged(),
+              ),
+              _PurchaseWarehouseCell(
+                key: Key('designPurchaseWarehouseDropdown-${row.id}'),
+                cellKey: Key('designPurchaseWarehouseCell-${row.id}'),
+                fieldKey: Key('designPurchaseWarehouse-${row.id}'),
+                value: row.warehouse,
+                focusNode: row.warehouseFocusNode,
+                nextFocusNode: row.quantityFocusNode,
+                keyHoldGuard: keyHoldGuard,
+                width: widths.warehouse,
+                onChanged: (value) {
+                  row.warehouse = value;
+                  onChanged();
+                },
+              ),
+              _PurchaseInputCell(
+                cellKey: Key('designPurchaseQuantityCell-${row.id}'),
+                fieldKey: Key('designPurchaseQuantity-${row.id}'),
+                controller: row.quantity,
+                focusNode: row.quantityFocusNode,
+                nextFocusNode: row.containerFocusNode,
+                keyHoldGuard: keyHoldGuard,
+                width: widths.quantity,
+                numeric: true,
+                wholeNumber: true,
+                onChanged: (_) => onChanged(),
+              ),
+              _PurchaseInputCell(
+                cellKey: Key('designPurchaseContainerCell-${row.id}'),
+                fieldKey: Key('designPurchaseContainer-${row.id}'),
+                controller: row.container,
+                focusNode: row.containerFocusNode,
+                nextFocusNode: row.purchasePriceFocusNode,
+                keyHoldGuard: keyHoldGuard,
+                width: widths.container,
+                numeric: true,
+                wholeNumber: true,
+                onChanged: (_) => onChanged(),
+              ),
+              _PurchaseInputCell(
+                cellKey: Key('designPurchasePurchasePriceCell-${row.id}'),
+                fieldKey: Key('designPurchasePurchasePrice-${row.id}'),
+                controller: row.purchasePrice,
+                focusNode: row.purchasePriceFocusNode,
+                nextFocusNode: row.discountFocusNode,
+                keyHoldGuard: keyHoldGuard,
+                width: widths.purchasePrice,
+                numeric: true,
+                emphasized: true,
+                onChanged: (_) => onChanged(),
+              ),
+              _PurchaseInputCell(
+                cellKey: Key('designPurchaseDiscountCell-${row.id}'),
+                fieldKey: Key('designPurchaseDiscount-${row.id}'),
+                controller: row.discount,
+                focusNode: row.discountFocusNode,
+                nextFocusNode: row.salePriceFocusNode,
+                keyHoldGuard: keyHoldGuard,
+                width: widths.discount,
+                numeric: true,
+                onChanged: (_) => onChanged(),
+              ),
+              _PurchaseValueCell(
+                cellKey: Key('designPurchasePriceAfterDiscountCell-${row.id}'),
+                valueKey: Key('designPurchasePriceAfterDiscount-${row.id}'),
+                value: AppFormatters.money(row.priceAfterDiscount),
+                width: widths.priceAfterDiscount,
+              ),
+              _PurchaseValueCell(
+                cellKey: Key('designPurchaseTotalCell-${row.id}'),
+                valueKey: Key('designPurchaseTotal-${row.id}'),
+                value: AppFormatters.money(row.lineTotal),
+                width: widths.total,
+                emphasized: true,
+              ),
+              _PurchaseValueCell(
+                cellKey: Key('designPurchaseCostCell-${row.id}'),
+                valueKey: Key('designPurchaseCost-${row.id}'),
+                value: AppFormatters.money(row.unitCost),
+                width: widths.cost,
+              ),
+              _PurchaseValueCell(
+                cellKey: Key('designPurchaseTotalCostCell-${row.id}'),
+                valueKey: Key('designPurchaseTotalCost-${row.id}'),
+                value: AppFormatters.money(row.totalCost),
+                width: widths.totalCost,
+                emphasized: true,
+              ),
+              _PurchaseInputCell(
+                cellKey: Key('designPurchaseSalePriceCell-${row.id}'),
+                fieldKey: Key('designPurchaseSalePrice-${row.id}'),
+                controller: row.salePrice,
+                focusNode: row.salePriceFocusNode,
+                keyHoldGuard: keyHoldGuard,
+                width: widths.salePrice,
+                numeric: true,
+                emphasized: true,
+                onChanged: (_) => onChanged(),
+                onSubmitted: onLastCellSubmitted,
+              ),
+              SizedBox(
+                width: widths.action,
+                child: ExcludeFocus(
+                  child: Center(
+                    child: AppTableActionButton(
+                      key: Key('designPurchaseDelete-${row.id}'),
+                      tooltipKey:
+                          Key('designPurchaseDeleteTooltip-${row.id}'),
+                      icon: Icons.close_rounded,
+                      tooltip: 'حذف السطر',
+                      variant: AppButtonVariant.danger,
+                      size: 44,
+                      iconSize: 19,
+                      borderRadius: 13,
+                      onPressed: canDelete ? onDelete : null,
+                    ),
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -616,7 +619,7 @@ class _PurchaseIndexCell extends StatelessWidget {
     return SizedBox(
       width: width,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
         child: Center(
           child: Container(
             key: cellKey,
@@ -637,6 +640,74 @@ class _PurchaseIndexCell extends StatelessWidget {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PurchaseWarehouseCell extends StatelessWidget {
+  const _PurchaseWarehouseCell({
+    super.key,
+    required this.cellKey,
+    required this.fieldKey,
+    required this.value,
+    required this.focusNode,
+    required this.nextFocusNode,
+    required this.keyHoldGuard,
+    required this.width,
+    required this.onChanged,
+  });
+
+  final Key cellKey;
+  final Key fieldKey;
+  final String value;
+  final FocusNode focusNode;
+  final FocusNode nextFocusNode;
+  final AppKeyHoldGuard keyHoldGuard;
+  final double width;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    void advanceWithTab() {
+      keyHoldGuard.runOnce(
+        keys: {LogicalKeyboardKey.tab},
+        action: () => AppFocusTraversal.next(context),
+      );
+    }
+
+    return SizedBox(
+      width: width,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
+        child: AnimatedBuilder(
+          animation: focusNode,
+          child: CallbackShortcuts(
+            bindings: {
+              const SingleActivator(LogicalKeyboardKey.tab): advanceWithTab,
+            },
+            child: AppInvoiceCellDropdown(
+              fieldKey: fieldKey,
+              value: value,
+              options: _purchaseWarehouseOptions,
+              focusNode: focusNode,
+              keyHoldGuard: keyHoldGuard,
+              accentColor: AppModuleColors.purchases,
+              onChanged: onChanged,
+              onSubmitted: (_) => nextFocusNode.requestFocus(),
+            ),
+          ),
+          builder: (context, child) {
+            final focused = focusNode.hasFocus;
+            return _PurchaseCellFrame(
+              key: cellKey,
+              backgroundColor: Colors.white,
+              borderColor: focused ? _purchaseGreen : _purchaseLine,
+              borderWidth: focused ? 1.5 : 1,
+              child: child!,
+            );
+          },
         ),
       ),
     );
@@ -701,7 +772,7 @@ class _PurchaseInputCell extends StatelessWidget {
     return SizedBox(
       width: width,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
         child: AnimatedBuilder(
           animation: focusNode,
           child: Center(
@@ -798,7 +869,7 @@ class _PurchaseValueCell extends StatelessWidget {
     return SizedBox(
       width: width,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
         child: _PurchaseCellFrame(
           key: cellKey,
           backgroundColor: Colors.white,
@@ -876,6 +947,35 @@ class _PurchaseTableWidths {
     required this.action,
   });
 
+  factory _PurchaseTableWidths.fit(
+    double totalWidth, {
+    required double index,
+    required double action,
+  }) {
+    const baseDataWidth = 1506.0;
+    final availableDataWidth = totalWidth - index - action;
+    final scale = availableDataWidth > 0
+        ? availableDataWidth / baseDataWidth
+        : 0.0;
+
+    return _PurchaseTableWidths(
+      index: index,
+      code: 126 * scale,
+      name: 190 * scale,
+      warehouse: 138 * scale,
+      quantity: 104 * scale,
+      container: 104 * scale,
+      purchasePrice: 126 * scale,
+      discount: 104 * scale,
+      priceAfterDiscount: 146 * scale,
+      total: 116 * scale,
+      cost: 104 * scale,
+      totalCost: 132 * scale,
+      salePrice: 116 * scale,
+      action: action,
+    );
+  }
+
   final double index;
   final double code;
   final double name;
@@ -905,12 +1005,24 @@ class _PurchaseDemoRow {
     required String salePrice,
   })  : code = TextEditingController(text: code),
         name = TextEditingController(text: name),
-        warehouse = TextEditingController(text: warehouse),
+        warehouse = warehouse,
         quantity = TextEditingController(text: quantity),
         container = TextEditingController(text: container),
         purchasePrice = TextEditingController(text: purchasePrice),
         discount = TextEditingController(text: discount),
-        salePrice = TextEditingController(text: salePrice);
+        salePrice = TextEditingController(text: salePrice) {
+    focusNodes = [
+      codeFocusNode,
+      nameFocusNode,
+      warehouseFocusNode,
+      quantityFocusNode,
+      containerFocusNode,
+      purchasePriceFocusNode,
+      discountFocusNode,
+      salePriceFocusNode,
+    ];
+    focusListenable = Listenable.merge(focusNodes);
+  }
 
   final String id;
   final codeFocusNode = FocusNode();
@@ -923,12 +1035,16 @@ class _PurchaseDemoRow {
   final salePriceFocusNode = FocusNode();
   final TextEditingController code;
   final TextEditingController name;
-  final TextEditingController warehouse;
+  String warehouse;
   final TextEditingController quantity;
   final TextEditingController container;
   final TextEditingController purchasePrice;
   final TextEditingController discount;
   final TextEditingController salePrice;
+  late final List<FocusNode> focusNodes;
+  late final Listenable focusListenable;
+
+  bool get hasFocusedCell => focusNodes.any((node) => node.hasFocus);
 
   double get _quantityValue => _numberValue(quantity);
 
@@ -952,17 +1068,11 @@ class _PurchaseDemoRow {
   }
 
   void dispose() {
-    codeFocusNode.dispose();
-    nameFocusNode.dispose();
-    warehouseFocusNode.dispose();
-    quantityFocusNode.dispose();
-    containerFocusNode.dispose();
-    purchasePriceFocusNode.dispose();
-    discountFocusNode.dispose();
-    salePriceFocusNode.dispose();
+    for (final focusNode in focusNodes) {
+      focusNode.dispose();
+    }
     code.dispose();
     name.dispose();
-    warehouse.dispose();
     quantity.dispose();
     container.dispose();
     purchasePrice.dispose();
