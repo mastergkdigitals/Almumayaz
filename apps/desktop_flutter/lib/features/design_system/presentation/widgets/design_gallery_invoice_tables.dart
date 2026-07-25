@@ -3,7 +3,14 @@ import 'package:flutter/material.dart';
 import '../../../../core/design/app_design_system.dart';
 import 'design_gallery_section.dart';
 
-const _purchaseTableCellHeight = 44.0;
+const _purchaseTableCellHeight = 56.0;
+const _purchaseGreen = Color(0xFF10966A);
+const _purchaseGreenDark = Color(0xFF075E45);
+const _purchaseGreenSoft = Color(0xFFE8F7F0);
+const _purchaseTableSurface = Color(0xFFF3F7F5);
+const _purchaseLine = Color(0xFFDCE9E3);
+const _purchaseStrongLine = Color(0xFFB8DDCC);
+const _purchaseDanger = Color(0xFFD94A4A);
 
 class DesignGalleryInvoiceTablesSection extends StatefulWidget {
   const DesignGalleryInvoiceTablesSection({super.key});
@@ -96,14 +103,14 @@ class _DesignGalleryInvoiceTablesSectionState
         children: [
           const AppInfoBanner(
             message:
-                'تصميم أولي خفيف لجدول المشتريات بخمسة أعمدة أساسية. '
-                'الزر الأخضر يضيف سطراً جديداً، والزر الأحمر يحذف السطر.',
+                'تصميم الخلايا الناعمة المختار لجدول المشتريات. '
+                'يمكنك الكتابة داخل الخلايا وإضافة الصفوف أو حذفها.',
             icon: Icons.table_chart_rounded,
           ),
           const SizedBox(height: AppSpacing.lg),
           const _PurchaseTableHeading(),
           const SizedBox(height: AppSpacing.sm),
-          _ModernPurchaseTable(
+          _SoftPurchaseTable(
             key: const Key('designPurchaseItemsTable'),
             rows: _purchaseItems,
             scrollController: _purchaseScrollController,
@@ -165,8 +172,8 @@ class _PurchaseTableHeading extends StatelessWidget {
   }
 }
 
-class _ModernPurchaseTable extends StatelessWidget {
-  const _ModernPurchaseTable({
+class _SoftPurchaseTable extends StatelessWidget {
+  const _SoftPurchaseTable({
     super.key,
     required this.rows,
     required this.scrollController,
@@ -175,12 +182,11 @@ class _ModernPurchaseTable extends StatelessWidget {
     required this.onPriceSubmitted,
   });
 
-  static const _minimumTableWidth = 980.0;
+  static const _minimumTableWidth = 920.0;
   static const _indexWidth = 64.0;
-  static const _codeWidth = 180.0;
-  static const _baseNameWidth = 330.0;
-  static const _quantityWidth = 140.0;
-  static const _priceWidth = 180.0;
+  static const _codeWidth = 170.0;
+  static const _quantityWidth = 130.0;
+  static const _priceWidth = 170.0;
   static const _actionWidth = 82.0;
 
   final List<_PurchaseDemoRow> rows;
@@ -196,8 +202,13 @@ class _ModernPurchaseTable extends StatelessWidget {
         final tableWidth = constraints.maxWidth < _minimumTableWidth
             ? _minimumTableWidth
             : constraints.maxWidth;
-        final extraWidth = tableWidth - _minimumTableWidth;
-        final nameWidth = _baseNameWidth + extraWidth;
+        final contentWidth = tableWidth - 28;
+        final nameWidth = contentWidth -
+            _indexWidth -
+            _codeWidth -
+            _quantityWidth -
+            _priceWidth -
+            _actionWidth;
         final widths = _PurchaseTableWidths(
           index: _indexWidth,
           code: _codeWidth,
@@ -208,54 +219,56 @@ class _ModernPurchaseTable extends StatelessWidget {
         );
 
         return Container(
-          height: 300,
+          height: 340,
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(AppRadii.lg),
-            border: Border.all(
-              color: Color.lerp(
-                AppColors.border,
-                AppModuleColors.purchases,
-                0.28,
-              )!,
-              width: 1.2,
-            ),
-            boxShadow: AppShadows.soft,
+            color: _purchaseTableSurface,
+            borderRadius: BorderRadius.circular(20),
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadii.lg - 1),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SizedBox(
-                width: tableWidth,
+          foregroundDecoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: _purchaseLine),
+          ),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(
+              width: tableWidth,
+              child: Padding(
+                padding: const EdgeInsets.all(14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _PurchaseTableHeader(widths: widths),
+                    const SizedBox(height: 7),
                     Expanded(
                       child: Scrollbar(
                         controller: scrollController,
-                        thumbVisibility: rows.length > 3,
+                        thumbVisibility: rows.length > 2,
                         child: ListView.builder(
                           controller: scrollController,
                           padding: EdgeInsets.zero,
                           itemCount: rows.length,
                           itemBuilder: (context, index) {
                             final row = rows[index];
-                            final isLast = index == rows.length - 1;
                             return _PurchaseTableRow(
                               key: Key('designPurchaseRow-${row.id}'),
                               index: index,
                               row: row,
                               widths: widths,
-                              isLast: isLast,
-                              onAdd: onAddRow,
                               onDelete: () => onDeleteRow(index),
                               onPriceSubmitted: () =>
                                   onPriceSubmitted(index),
                             );
                           },
                         ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: _PurchaseAddButton(
+                        key: const Key('designPurchaseAdd'),
+                        onPressed: onAddRow,
                       ),
                     ),
                   ],
@@ -276,21 +289,9 @@ class _PurchaseTableHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       key: const Key('designPurchaseTableHeader'),
-      height: 52,
-      decoration: BoxDecoration(
-        color: Color.lerp(
-          AppModulePalettes.purchases.light,
-          Colors.white,
-          0.78,
-        ),
-        border: Border(
-          bottom: BorderSide(
-            color: AppModuleColors.purchases.withAlpha(70),
-          ),
-        ),
-      ),
+      height: 48,
       child: Row(
         children: [
           _PurchaseHeaderCell(
@@ -339,29 +340,38 @@ class _PurchaseHeaderCell extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: width,
-      child: Text(
-        label,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        textAlign: TextAlign.center,
-        style: AppTypography.tableHeader.copyWith(
-          color: AppModulePalettes.purchases.dark,
-          fontSize: 15,
-          fontWeight: FontWeight.w800,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Container(
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: _purchaseLine),
+          ),
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: AppTypography.tableHeader.copyWith(
+              color: _purchaseGreenDark,
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
         ),
       ),
     );
   }
 }
 
-class _PurchaseTableRow extends StatefulWidget {
+class _PurchaseTableRow extends StatelessWidget {
   const _PurchaseTableRow({
     super.key,
     required this.index,
     required this.row,
     required this.widths,
-    required this.isLast,
-    required this.onAdd,
     required this.onDelete,
     required this.onPriceSubmitted,
   });
@@ -369,114 +379,68 @@ class _PurchaseTableRow extends StatefulWidget {
   final int index;
   final _PurchaseDemoRow row;
   final _PurchaseTableWidths widths;
-  final bool isLast;
-  final VoidCallback onAdd;
   final VoidCallback onDelete;
   final VoidCallback onPriceSubmitted;
 
   @override
-  State<_PurchaseTableRow> createState() => _PurchaseTableRowState();
-}
-
-class _PurchaseTableRowState extends State<_PurchaseTableRow> {
-  var _hovered = false;
-
-  @override
   Widget build(BuildContext context) {
-    final row = widget.row;
-    final background = _hovered
-        ? Color.lerp(
-            AppModulePalettes.purchases.light,
-            Colors.white,
-            0.91,
-          )
-        : AppColors.surface;
-
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: AnimatedContainer(
-        duration: AppDurations.fast,
-        height: 62,
-        decoration: BoxDecoration(
-          color: background,
-          border: Border(
-            bottom: BorderSide(color: AppColors.border.withAlpha(150)),
+    return SizedBox(
+      height: 72,
+      child: Row(
+        children: [
+          _PurchaseIndexCell(
+            cellKey: Key('designPurchaseIndexCell-${row.id}'),
+            value: '${index + 1}',
+            width: widths.index,
+            highlighted: index == 0,
           ),
-        ),
-        child: Row(
-          children: [
-            _PurchaseIndexCell(
-              cellKey: Key('designPurchaseIndexCell-${row.id}'),
-              value: '${widget.index + 1}',
-              width: widget.widths.index,
-            ),
-            _PurchaseInputCell(
-              cellKey: Key('designPurchaseCodeCell-${row.id}'),
-              fieldKey: Key('designPurchaseCode-${row.id}'),
-              controller: row.code,
-              focusNode: row.codeFocusNode,
-              nextFocusNode: row.nameFocusNode,
-              width: widget.widths.code,
-            ),
-            _PurchaseInputCell(
-              cellKey: Key('designPurchaseNameCell-${row.id}'),
-              fieldKey: Key('designPurchaseName-${row.id}'),
-              controller: row.name,
-              focusNode: row.nameFocusNode,
-              nextFocusNode: row.quantityFocusNode,
-              width: widget.widths.name,
-            ),
-            _PurchaseInputCell(
-              cellKey: Key('designPurchaseQuantityCell-${row.id}'),
-              fieldKey: Key('designPurchaseQuantity-${row.id}'),
-              controller: row.quantity,
-              focusNode: row.quantityFocusNode,
-              nextFocusNode: row.priceFocusNode,
-              width: widget.widths.quantity,
-              numeric: true,
-              wholeNumber: true,
-            ),
-            _PurchaseInputCell(
-              cellKey: Key('designPurchasePriceCell-${row.id}'),
-              fieldKey: Key('designPurchasePrice-${row.id}'),
-              controller: row.price,
-              focusNode: row.priceFocusNode,
-              width: widget.widths.price,
-              numeric: true,
-              onSubmitted: widget.onPriceSubmitted,
-            ),
-            SizedBox(
-              width: widget.widths.action,
-              child: Center(
-                child: AppTableActionButton(
-                  key: Key(
-                    widget.isLast
-                        ? 'designPurchaseAdd-${row.id}'
-                        : 'designPurchaseDelete-${row.id}',
-                  ),
-                  icon: widget.isLast
-                      ? Icons.add_rounded
-                      : Icons.close_rounded,
-                  tooltip: widget.isLast ? 'إضافة سطر' : 'حذف السطر',
-                  variant: widget.isLast
-                      ? AppButtonVariant.primary
-                      : AppButtonVariant.danger,
-                  backgroundColor: widget.isLast
-                      ? const Color(0xFF16A34A)
-                      : const Color(0xFFDC2626),
-                  foregroundColor: Colors.white,
-                  size: 32,
-                  iconSize: 19,
-                  borderRadius: 9,
-                  onPressed: widget.isLast
-                      ? widget.onAdd
-                      : widget.onDelete,
-                ),
+          _PurchaseInputCell(
+            cellKey: Key('designPurchaseCodeCell-${row.id}'),
+            fieldKey: Key('designPurchaseCode-${row.id}'),
+            controller: row.code,
+            focusNode: row.codeFocusNode,
+            nextFocusNode: row.nameFocusNode,
+            width: widths.code,
+            emphasized: true,
+          ),
+          _PurchaseInputCell(
+            cellKey: Key('designPurchaseNameCell-${row.id}'),
+            fieldKey: Key('designPurchaseName-${row.id}'),
+            controller: row.name,
+            focusNode: row.nameFocusNode,
+            nextFocusNode: row.quantityFocusNode,
+            width: widths.name,
+          ),
+          _PurchaseInputCell(
+            cellKey: Key('designPurchaseQuantityCell-${row.id}'),
+            fieldKey: Key('designPurchaseQuantity-${row.id}'),
+            controller: row.quantity,
+            focusNode: row.quantityFocusNode,
+            nextFocusNode: row.priceFocusNode,
+            width: widths.quantity,
+            numeric: true,
+            wholeNumber: true,
+          ),
+          _PurchaseInputCell(
+            cellKey: Key('designPurchasePriceCell-${row.id}'),
+            fieldKey: Key('designPurchasePrice-${row.id}'),
+            controller: row.price,
+            focusNode: row.priceFocusNode,
+            width: widths.price,
+            numeric: true,
+            emphasized: true,
+            onSubmitted: onPriceSubmitted,
+          ),
+          SizedBox(
+            width: widths.action,
+            child: Center(
+              child: _PurchaseDeleteButton(
+                key: Key('designPurchaseDelete-${row.id}'),
+                onPressed: onDelete,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -487,28 +451,37 @@ class _PurchaseIndexCell extends StatelessWidget {
     required this.cellKey,
     required this.value,
     required this.width,
+    required this.highlighted,
   });
 
   final Key cellKey;
   final String value;
   final double width;
+  final bool highlighted;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: width,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 9),
-        child: _PurchaseCellFrame(
-          key: cellKey,
-          backgroundColor: AppColors.neutralSurface,
-          child: Center(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+        child: Center(
+          child: Container(
+            key: cellKey,
+            width: 44,
+            height: 44,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: highlighted ? _purchaseGreen : _purchaseGreenSoft,
+              borderRadius: BorderRadius.circular(13),
+            ),
             child: Text(
               value,
               textDirection: TextDirection.ltr,
               style: AppTypography.tableCell.copyWith(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
+                color: highlighted ? Colors.white : _purchaseGreenDark,
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ),
@@ -528,6 +501,7 @@ class _PurchaseInputCell extends StatelessWidget {
     this.nextFocusNode,
     this.numeric = false,
     this.wholeNumber = false,
+    this.emphasized = false,
     this.onSubmitted,
   });
 
@@ -539,20 +513,15 @@ class _PurchaseInputCell extends StatelessWidget {
   final double width;
   final bool numeric;
   final bool wholeNumber;
+  final bool emphasized;
   final VoidCallback? onSubmitted;
 
   @override
   Widget build(BuildContext context) {
-    final backgroundColor = Color.lerp(
-      AppModulePalettes.purchases.light,
-      Colors.white,
-      0.94,
-    )!;
-
     return SizedBox(
       width: width,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 9),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
         child: AnimatedBuilder(
           animation: focusNode,
           child: TextField(
@@ -568,16 +537,20 @@ class _PurchaseInputCell extends StatelessWidget {
             textAlign: numeric ? TextAlign.center : TextAlign.right,
             textDirection: numeric ? TextDirection.ltr : TextDirection.rtl,
             style: AppTypography.tableCell.copyWith(
-              fontSize: 16,
+              color: emphasized
+                  ? _purchaseGreenDark
+                  : AppColors.textPrimary,
+              fontSize: 18,
               fontWeight: FontWeight.w700,
             ),
-            cursorColor: AppModuleColors.purchases,
+            cursorColor: _purchaseGreen,
             textAlignVertical: TextAlignVertical.center,
             decoration: const InputDecoration(
+              filled: false,
               border: InputBorder.none,
               enabledBorder: InputBorder.none,
               focusedBorder: InputBorder.none,
-              contentPadding: EdgeInsets.symmetric(horizontal: 10),
+              contentPadding: EdgeInsets.symmetric(horizontal: 12),
               isDense: true,
             ),
             onSubmitted: (_) {
@@ -593,10 +566,12 @@ class _PurchaseInputCell extends StatelessWidget {
             final focused = focusNode.hasFocus;
             return _PurchaseCellFrame(
               key: cellKey,
-              backgroundColor: backgroundColor,
+              backgroundColor: Colors.white,
               borderColor: focused
-                  ? AppModuleColors.purchases
-                  : AppColors.border,
+                  ? _purchaseGreen
+                  : emphasized
+                      ? _purchaseStrongLine
+                      : _purchaseLine,
               borderWidth: focused ? 1.5 : 1,
               child: child!,
             );
@@ -628,13 +603,88 @@ class _PurchaseCellFrame extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: backgroundColor,
-          borderRadius: BorderRadius.circular(AppRadii.sm),
+          borderRadius: BorderRadius.circular(13),
           border: Border.all(
             color: borderColor,
             width: borderWidth,
           ),
         ),
         child: child,
+      ),
+    );
+  }
+}
+
+class _PurchaseDeleteButton extends StatelessWidget {
+  const _PurchaseDeleteButton({
+    super.key,
+    required this.onPressed,
+  });
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'حذف السطر',
+      child: Material(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(13),
+          side: const BorderSide(color: Color(0xFFE8C8C8)),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(13),
+          onTap: onPressed,
+          child: const SizedBox(
+            width: 36,
+            height: 36,
+            child: Icon(
+              Icons.close_rounded,
+              color: _purchaseDanger,
+              size: 19,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PurchaseAddButton extends StatelessWidget {
+  const _PurchaseAddButton({
+    super.key,
+    required this.onPressed,
+  });
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: _purchaseGreen,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onPressed,
+        child: const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.add_rounded, color: Colors.white, size: 19),
+              SizedBox(width: 7),
+              Text(
+                'إضافة مادة',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

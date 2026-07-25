@@ -431,7 +431,7 @@ void main() {
     await tester.pump();
   });
 
-  testWidgets('shows the modern five-column purchase table and row actions',
+  testWidgets('shows the selected soft-cell purchase table and row actions',
       (tester) async {
     await pumpDesignSystemGallery(tester);
 
@@ -457,9 +457,9 @@ void main() {
 
     expect(find.byKey(const Key('designPurchaseRow-p1')), findsOneWidget);
     expect(find.byKey(const Key('designPurchaseRow-p2')), findsOneWidget);
-    expect(find.byKey(const Key('designPurchaseAdd-p2')), findsOneWidget);
+    expect(find.byKey(const Key('designPurchaseAdd')), findsOneWidget);
     expect(find.byKey(const Key('designPurchaseDelete-p1')), findsOneWidget);
-    expect(find.byKey(const Key('designPurchaseDelete-p2')), findsNothing);
+    expect(find.byKey(const Key('designPurchaseDelete-p2')), findsOneWidget);
 
     final codeField = tester.widget<TextField>(
       find.byKey(const Key('designPurchaseCode-p1')),
@@ -478,20 +478,35 @@ void main() {
     expect(codeField.textDirection, TextDirection.rtl);
     expect(codeField.decoration?.border, InputBorder.none);
     expect(codeField.decoration?.focusedBorder, InputBorder.none);
+    expect(codeField.style?.fontSize, 18);
     expect(nameField.textAlign, TextAlign.right);
     expect(nameField.textDirection, TextDirection.rtl);
+    expect(nameField.style?.fontSize, 18);
     expect(quantityField.textAlign, TextAlign.center);
     expect(quantityField.textDirection, TextDirection.ltr);
+    expect(quantityField.style?.fontSize, 18);
     expect(
       quantityField.inputFormatters!.single,
       isA<AppIntegerInputFormatter>(),
     );
     expect(priceField.textAlign, TextAlign.center);
     expect(priceField.textDirection, TextDirection.ltr);
+    expect(priceField.style?.fontSize, 18);
 
-    final indexCellHeight = tester
-        .getSize(find.byKey(const Key('designPurchaseIndexCell-p1')))
-        .height;
+    final codeHeader = tester.widget<Text>(
+      find.descendant(
+        of: find.byKey(const Key('designPurchaseHeader-code')),
+        matching: find.text('رمز المادة'),
+      ),
+    );
+    expect(codeHeader.style?.fontSize, 18);
+
+    expect(
+      tester
+          .getSize(find.byKey(const Key('designPurchaseIndexCell-p1')))
+          .height,
+      44,
+    );
     for (final keyName in const [
       'Code',
       'Name',
@@ -504,25 +519,30 @@ void main() {
               find.byKey(Key('designPurchase${keyName}Cell-p1')),
             )
             .height,
-        indexCellHeight,
+        56,
       );
     }
 
-    final addButton = tester.widget<AppTableActionButton>(
-      find.byKey(const Key('designPurchaseAdd-p2')),
+    await tester.enterText(
+      find.byKey(const Key('designPurchaseCode-p1')),
+      'NEW-001',
     );
-    expect(addButton.icon, Icons.add_rounded);
-    expect(addButton.size, 32);
-    expect(addButton.iconSize, 19);
-    expect(addButton.borderRadius, 9);
-    expect(addButton.backgroundColor, const Color(0xFF16A34A));
-
-    addButton.onPressed?.call();
     await tester.pump();
+    expect(codeField.controller?.text, 'NEW-001');
+
+    final addButton = find.byKey(const Key('designPurchaseAdd'));
+    await tester.ensureVisible(addButton);
+    await tester.pump();
+    await tester.tap(
+      find.descendant(of: addButton, matching: find.byType(InkWell)),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.byKey(const Key('designPurchaseRow-p3')), findsOneWidget);
     expect(find.byKey(const Key('designPurchaseDelete-p2')), findsOneWidget);
-    expect(find.byKey(const Key('designPurchaseAdd-p3')), findsOneWidget);
+    expect(find.byKey(const Key('designPurchaseDelete-p3')), findsOneWidget);
+    expect(find.byKey(const Key('designPurchaseAdd')), findsOneWidget);
     expect(
       tester
           .widget<TextField>(
@@ -542,20 +562,20 @@ void main() {
       '0',
     );
 
-    final deleteButton = tester.widget<AppTableActionButton>(
-      find.byKey(const Key('designPurchaseDelete-p2')),
+    final deleteButton =
+        find.byKey(const Key('designPurchaseDelete-p2'));
+    await tester.ensureVisible(deleteButton);
+    await tester.pump();
+    await tester.tap(
+      find.descendant(of: deleteButton, matching: find.byType(InkWell)),
     );
-    expect(deleteButton.icon, Icons.close_rounded);
-    expect(deleteButton.backgroundColor, const Color(0xFFDC2626));
-
-    deleteButton.onPressed?.call();
     await tester.pump();
 
     expect(find.byKey(const Key('designPurchaseRow-p2')), findsNothing);
-    expect(find.byKey(const Key('designPurchaseAdd-p3')), findsOneWidget);
+    expect(find.byKey(const Key('designPurchaseAdd')), findsOneWidget);
   });
 
-  testWidgets('moves through the new purchase fields with Enter',
+  testWidgets('moves through the selected purchase fields with Enter',
       (tester) async {
     await pumpDesignSystemGallery(tester);
 
@@ -606,7 +626,7 @@ void main() {
         .decoration as BoxDecoration;
     expect(
       (focusedCellDecoration.border! as Border).top.color,
-      AppModuleColors.purchases,
+      const Color(0xFF10966A),
     );
   });
 }
