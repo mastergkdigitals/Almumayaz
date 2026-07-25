@@ -863,6 +863,7 @@ class AppInvoiceCellDropdown extends StatefulWidget {
     this.onSubmitted,
     this.keyHoldGuard,
     this.enabled = true,
+    this.fontSize = 18,
   });
 
   final String value;
@@ -874,6 +875,7 @@ class AppInvoiceCellDropdown extends StatefulWidget {
   final ValueChanged<String>? onSubmitted;
   final AppKeyHoldGuard? keyHoldGuard;
   final bool enabled;
+  final double fontSize;
 
   @override
   State<AppInvoiceCellDropdown> createState() =>
@@ -1062,8 +1064,8 @@ class _AppInvoiceCellDropdownState extends State<AppInvoiceCellDropdown> {
                   child: Text(
                     option,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 18,
+                    style: TextStyle(
+                      fontSize: widget.fontSize,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -1126,7 +1128,7 @@ class _AppInvoiceCellDropdownState extends State<AppInvoiceCellDropdown> {
                                 color: widget.enabled
                                     ? _InvoiceGridColors.textPrimary
                                     : AppColors.disabled,
-                                fontSize: 18,
+                                fontSize: widget.fontSize,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
