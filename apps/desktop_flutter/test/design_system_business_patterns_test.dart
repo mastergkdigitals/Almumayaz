@@ -446,6 +446,13 @@ void main() {
     expect(
       find.descendant(
         of: purchase,
+        matching: find.byType(SingleChildScrollView),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: purchase,
         matching: find.text('إضافة مادة'),
       ),
       findsNothing,
@@ -484,11 +491,31 @@ void main() {
     expect(find.byKey(const Key('designPurchaseRow-p1')), findsOneWidget);
     expect(find.byKey(const Key('designPurchaseRow-p2')), findsOneWidget);
 
+    final tableSurface = tester.widget<Container>(
+      find.byKey(const Key('designPurchaseTableSurface')),
+    );
+    final surfaceDecoration = tableSurface.decoration! as BoxDecoration;
+    final surfaceBorder =
+        (tableSurface.foregroundDecoration! as BoxDecoration).border! as Border;
+    expect(
+      surfaceDecoration.color,
+      Color.alphaBlend(
+        AppModuleColors.purchases.withAlpha(8),
+        AppColors.surface,
+      ),
+    );
+    expect(
+      surfaceBorder.top.color,
+      Color.alphaBlend(
+        AppModuleColors.purchases.withAlpha(96),
+        AppColors.border,
+      ),
+    );
+
     final editableFields = <TextField>[
       for (final keyName in const [
         'Code',
         'Name',
-        'Warehouse',
         'Quantity',
         'Container',
         'PurchasePrice',
@@ -523,25 +550,42 @@ void main() {
       }
     }
 
-    for (final field in editableFields.take(3)) {
+    for (final field in editableFields.take(2)) {
       expect(field.textAlign, TextAlign.right);
       expect(field.textDirection, TextDirection.rtl);
       expect(field.style?.fontSize, 18);
     }
-    for (final field in editableFields.skip(3)) {
+    for (final field in editableFields.skip(2)) {
       expect(field.textAlign, TextAlign.center);
       expect(field.textDirection, TextDirection.ltr);
       expect(field.style?.fontSize, 18);
     }
     for (final field in [
+      editableFields[2],
       editableFields[3],
-      editableFields[4],
     ]) {
       expect(
         field.inputFormatters!.single,
         isA<AppIntegerInputFormatter>(),
       );
     }
+
+    final warehouseCell = find.byKey(
+      const Key('designPurchaseWarehouseCell-p1'),
+    );
+    final warehouseDropdownFinder = find.descendant(
+      of: warehouseCell,
+      matching: find.byType(AppInvoiceCellDropdown),
+    );
+    final warehouseDropdown = tester.widget<AppInvoiceCellDropdown>(
+      warehouseDropdownFinder,
+    );
+    expect(warehouseDropdown.value, 'المخزن الرئيسي');
+    expect(
+      warehouseDropdown.options,
+      const ['المخزن الرئيسي', 'مخزن الكرادة', 'مخزن المنصور'],
+    );
+    expect(warehouseDropdown.accentColor, AppModuleColors.purchases);
 
     expect(
       tester
@@ -570,6 +614,14 @@ void main() {
         closeTo(tester.getCenter(cell).dy, 0.01),
       );
     }
+
+    final purchaseRect = tester.getRect(purchase);
+    final firstDeleteRect = tester.getRect(
+      find.byKey(const Key('designPurchaseDelete-p1')),
+    );
+    expect(firstDeleteRect.left, greaterThanOrEqualTo(purchaseRect.left));
+    expect(firstDeleteRect.right, lessThanOrEqualTo(purchaseRect.right));
+
     for (final keyName in const [
       'PriceAfterDiscount',
       'Total',
@@ -784,6 +836,76 @@ void main() {
     );
   });
 
+  testWidgets(
+      'uses the shared warehouse dropdown and highlights only the focused row',
+      (tester) async {
+    await pumpDesignSystemGallery(tester);
+
+    final purchase = find.byKey(const Key('designPurchaseItemsTable'));
+    await reveal(tester, purchase);
+
+    Color indexColor(String rowId) {
+      final decoration = tester
+          .widget<Container>(
+            find.byKey(Key('designPurchaseIndexCell-$rowId')),
+          )
+          .decoration! as BoxDecoration;
+      return decoration.color!;
+    }
+
+    final inactiveColor = Color.alphaBlend(
+      AppModuleColors.purchases.withAlpha(18),
+      AppColors.surface,
+    );
+    expect(indexColor('p1'), inactiveColor);
+    expect(indexColor('p2'), inactiveColor);
+
+    tester
+        .widget<TextField>(
+          find.byKey(const Key('designPurchaseCode-p1')),
+        )
+        .focusNode!
+        .requestFocus();
+    await tester.pump();
+    expect(indexColor('p1'), AppModuleColors.purchases);
+    expect(indexColor('p2'), inactiveColor);
+
+    final secondWarehouseDropdown = tester.widget<AppInvoiceCellDropdown>(
+      find.descendant(
+        of: find.byKey(
+          const Key('designPurchaseWarehouseCell-p2'),
+        ),
+        matching: find.byType(AppInvoiceCellDropdown),
+      ),
+    );
+    secondWarehouseDropdown.focusNode!.requestFocus();
+    await tester.pump();
+    expect(indexColor('p1'), inactiveColor);
+    expect(indexColor('p2'), AppModuleColors.purchases);
+
+    await tester.tap(
+      find.byKey(const Key('designPurchaseWarehouse-p1')),
+    );
+    await tester.pump();
+    final warehouseOption = find.widgetWithText(
+      MenuItemButton,
+      'مخزن المنصور',
+    );
+    expect(warehouseOption, findsOneWidget);
+    await tester.tap(warehouseOption);
+    await tester.pump();
+
+    final firstWarehouseDropdown = tester.widget<AppInvoiceCellDropdown>(
+      find.descendant(
+        of: find.byKey(
+          const Key('designPurchaseWarehouseCell-p1'),
+        ),
+        matching: find.byType(AppInvoiceCellDropdown),
+      ),
+    );
+    expect(firstWarehouseDropdown.value, 'مخزن المنصور');
+  });
+
   testWidgets('moves through purchase fields with Enter and adds a row',
       (tester) async {
     await pumpDesignSystemGallery(tester);
@@ -791,12 +913,22 @@ void main() {
     final purchase = find.byKey(const Key('designPurchaseItemsTable'));
     await reveal(tester, purchase);
 
-    final fields = [
+    final code = find.byKey(const Key('designPurchaseCode-p1'));
+    final name = find.byKey(const Key('designPurchaseName-p1'));
+    final warehouseCell = find.byKey(
+      const Key('designPurchaseWarehouseCell-p1'),
+    );
+    final warehouseDropdown = tester.widget<AppInvoiceCellDropdown>(
+      find.descendant(
+        of: warehouseCell,
+        matching: find.byType(AppInvoiceCellDropdown),
+      ),
+    );
+    final quantity = find.byKey(
+      const Key('designPurchaseQuantity-p1'),
+    );
+    final remainingFields = [
       for (final keyName in const [
-        'Code',
-        'Name',
-        'Warehouse',
-        'Quantity',
         'Container',
         'PurchasePrice',
         'Discount',
@@ -805,20 +937,32 @@ void main() {
         find.byKey(Key('designPurchase$keyName-p1')),
     ];
 
-    await tester.tap(fields.first);
+    await tester.tap(code);
     await tester.pump();
     expect(
-      tester.widget<TextField>(fields.first).focusNode!.hasFocus,
+      tester.widget<TextField>(code).focusNode!.hasFocus,
       isTrue,
     );
 
-    for (var index = 1; index < fields.length; index++) {
+    await tester.testTextInput.receiveAction(TextInputAction.next);
+    await tester.pump();
+    expect(tester.widget<TextField>(name).focusNode!.hasFocus, isTrue);
+
+    await tester.testTextInput.receiveAction(TextInputAction.next);
+    await tester.pump();
+    expect(warehouseDropdown.focusNode!.hasFocus, isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+    await tester.pump();
+    expect(tester.widget<TextField>(quantity).focusNode!.hasFocus, isTrue);
+
+    for (final field in remainingFields) {
       await tester.testTextInput.receiveAction(TextInputAction.next);
       await tester.pump();
-      expect(
-        tester.widget<TextField>(fields[index]).focusNode!.hasFocus,
-        isTrue,
-      );
+      expect(tester.widget<TextField>(field).focusNode!.hasFocus, isTrue);
     }
 
     await tester.testTextInput.receiveAction(TextInputAction.next);
@@ -846,7 +990,7 @@ void main() {
         .decoration as BoxDecoration;
     expect(
       (focusedCellDecoration.border! as Border).top.color,
-      const Color(0xFF10966A),
+      AppModuleColors.purchases,
     );
   });
 
@@ -859,6 +1003,17 @@ void main() {
 
     final code = find.byKey(const Key('designPurchaseCode-p1'));
     final name = find.byKey(const Key('designPurchaseName-p1'));
+    final warehouseDropdown = tester.widget<AppInvoiceCellDropdown>(
+      find.descendant(
+        of: find.byKey(
+          const Key('designPurchaseWarehouseCell-p1'),
+        ),
+        matching: find.byType(AppInvoiceCellDropdown),
+      ),
+    );
+    final quantity = find.byKey(
+      const Key('designPurchaseQuantity-p1'),
+    );
     final salePrice = find.byKey(
       const Key('designPurchaseSalePrice-p1'),
     );
@@ -869,6 +1024,14 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.tab);
     await tester.pump();
     expect(tester.widget<TextField>(name).focusNode!.hasFocus, isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pump();
+    expect(warehouseDropdown.focusNode!.hasFocus, isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pump();
+    expect(tester.widget<TextField>(quantity).focusNode!.hasFocus, isTrue);
 
     tester.widget<TextField>(salePrice).focusNode!.requestFocus();
     await tester.pump();
