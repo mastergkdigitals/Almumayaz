@@ -467,10 +467,10 @@ void main() {
       'container': 'الحاوية',
       'purchasePrice': 'سعر الشراء',
       'discount': 'الخصم',
-      'priceAfterDiscount': 'السعر بعد الخصم',
+      'priceAfterDiscount': 'السعر بعد\nالخصم',
       'total': 'الإجمالي',
       'cost': 'الكلفة',
-      'totalCost': 'إجمالي الكلفة',
+      'totalCost': 'إجمالي\nالكلفة',
       'salePrice': 'سعر البيع',
     };
 
@@ -485,6 +485,27 @@ void main() {
           matching: find.text(header.value),
         ),
         findsOneWidget,
+      );
+      final headerText = tester.widget<Text>(
+        find.descendant(
+          of: headerFinder,
+          matching: find.text(header.value),
+        ),
+      );
+      expect(headerText.maxLines, 2);
+      expect(headerText.softWrap, isTrue);
+      expect(headerText.style?.fontSize, 14);
+      final headerDecoration = tester
+          .widget<Container>(
+            find.descendant(
+              of: headerFinder,
+              matching: find.byType(Container),
+            ),
+          )
+          .decoration! as BoxDecoration;
+      expect(
+        headerDecoration.borderRadius,
+        BorderRadius.circular(3),
       );
     }
 
@@ -553,12 +574,12 @@ void main() {
     for (final field in editableFields.take(2)) {
       expect(field.textAlign, TextAlign.right);
       expect(field.textDirection, TextDirection.rtl);
-      expect(field.style?.fontSize, 18);
+      expect(field.style?.fontSize, 16);
     }
     for (final field in editableFields.skip(2)) {
       expect(field.textAlign, TextAlign.center);
       expect(field.textDirection, TextDirection.ltr);
-      expect(field.style?.fontSize, 18);
+      expect(field.style?.fontSize, 16);
     }
     for (final field in [
       editableFields[2],
@@ -580,17 +601,42 @@ void main() {
     final warehouseDropdown = tester.widget<AppInvoiceCellDropdown>(
       warehouseDropdownFinder,
     );
-    expect(warehouseDropdown.value, 'المخزن الرئيسي');
+    expect(warehouseDropdown.value, 'الرئيسي');
     expect(
       warehouseDropdown.options,
-      const ['المخزن الرئيسي', 'مخزن الكرادة', 'مخزن المنصور'],
+      const ['الرئيسي', 'الرصافة', 'الكرادة', 'المنصور'],
     );
     expect(warehouseDropdown.accentColor, AppModuleColors.purchases);
+    expect(warehouseDropdown.fontSize, 16);
 
+    final firstIndexCell = find.byKey(
+      const Key('designPurchaseIndexCell-p1'),
+    );
+    expect(tester.getSize(firstIndexCell), const Size(44, 44));
+    final firstIndexDecoration =
+        tester.widget<Container>(firstIndexCell).decoration! as BoxDecoration;
+    expect(
+      firstIndexDecoration.borderRadius,
+      BorderRadius.circular(3),
+    );
+    expect(
+      (firstIndexDecoration.border! as Border).top.color,
+      Color.alphaBlend(
+        AppModuleColors.purchases.withAlpha(96),
+        AppColors.border,
+      ),
+    );
     expect(
       tester
-          .getSize(find.byKey(const Key('designPurchaseIndexCell-p1'))),
-      const Size(44, 44),
+          .widget<Text>(
+            find.descendant(
+              of: firstIndexCell,
+              matching: find.text('1'),
+            ),
+          )
+          .style
+          ?.fontSize,
+      16,
     );
     for (final keyName in const [
       'Code',
@@ -609,6 +655,18 @@ void main() {
         Key('designPurchase$keyName-p1'),
       );
       expect(tester.getSize(cell).height, 56);
+      final cellDecoration = tester
+          .widget<DecoratedBox>(
+            find.descendant(
+              of: cell,
+              matching: find.byType(DecoratedBox),
+            ).first,
+          )
+          .decoration as BoxDecoration;
+      expect(
+        cellDecoration.borderRadius,
+        BorderRadius.circular(3),
+      );
       expect(
         tester.getCenter(field).dy,
         closeTo(tester.getCenter(cell).dy, 0.01),
@@ -638,16 +696,13 @@ void main() {
       );
     }
 
-    expect(
-      tester
-          .widget<Text>(
-            find.byKey(
-              const Key('designPurchasePriceAfterDiscount-p1'),
-            ),
-          )
-          .data,
-      '2,450',
+    final priceAfterDiscountText = tester.widget<Text>(
+      find.byKey(
+        const Key('designPurchasePriceAfterDiscount-p1'),
+      ),
     );
+    expect(priceAfterDiscountText.data, '2,450');
+    expect(priceAfterDiscountText.style?.fontSize, 16);
     expect(
       tester
           .widget<Text>(
@@ -727,7 +782,7 @@ void main() {
     expect(deleteButton.tooltip, 'حذف السطر');
     expect(deleteButton.variant, AppButtonVariant.danger);
     expect(deleteButton.size, 44);
-    expect(deleteButton.borderRadius, 13);
+    expect(deleteButton.borderRadius, 3);
     expect(deleteButton.backgroundColor, isNull);
     expect(deleteButton.foregroundColor, isNull);
     expect(tester.getSize(deleteFinder), const Size(44, 44));
@@ -889,7 +944,7 @@ void main() {
     await tester.pump();
     final warehouseOption = find.widgetWithText(
       MenuItemButton,
-      'مخزن المنصور',
+      'المنصور',
     );
     expect(warehouseOption, findsOneWidget);
     tester.widget<MenuItemButton>(warehouseOption).onPressed!.call();
@@ -903,7 +958,7 @@ void main() {
         matching: find.byType(AppInvoiceCellDropdown),
       ),
     );
-    expect(firstWarehouseDropdown.value, 'مخزن المنصور');
+    expect(firstWarehouseDropdown.value, 'المنصور');
   });
 
   testWidgets('moves through purchase fields with Enter and adds a row',
