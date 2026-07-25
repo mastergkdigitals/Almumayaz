@@ -474,6 +474,18 @@ void main() {
       find.byKey(const Key('designPurchasePrice-p1')),
     );
 
+    for (final field in [
+      codeField,
+      nameField,
+      quantityField,
+      priceField,
+    ]) {
+      expect(field.expands, isTrue);
+      expect(field.maxLines, isNull);
+      expect(field.textAlignVertical, TextAlignVertical.center);
+      expect(field.cursorColor, Colors.black);
+    }
+
     expect(codeField.textAlign, TextAlign.right);
     expect(codeField.textDirection, TextDirection.rtl);
     expect(codeField.decoration?.border, InputBorder.none);

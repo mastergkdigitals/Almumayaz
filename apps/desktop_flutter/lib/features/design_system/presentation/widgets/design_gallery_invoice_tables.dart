@@ -534,6 +534,8 @@ class _PurchaseInputCell extends StatelessWidget {
             inputFormatters:
                 wholeNumber ? const [AppIntegerInputFormatter()] : null,
             textInputAction: TextInputAction.next,
+            expands: true,
+            maxLines: null,
             textAlign: numeric ? TextAlign.center : TextAlign.right,
             textDirection: numeric ? TextDirection.ltr : TextDirection.rtl,
             style: AppTypography.tableCell.copyWith(
@@ -543,7 +545,7 @@ class _PurchaseInputCell extends StatelessWidget {
               fontSize: 18,
               fontWeight: FontWeight.w700,
             ),
-            cursorColor: _purchaseGreen,
+            cursorColor: Colors.black,
             textAlignVertical: TextAlignVertical.center,
             decoration: const InputDecoration(
               filled: false,
