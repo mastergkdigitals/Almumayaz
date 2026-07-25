@@ -486,12 +486,23 @@ void main() {
       expect(field.cursorColor, Colors.black);
       expect(field.decoration?.isCollapsed, isTrue);
       expect(field.decoration?.contentPadding, EdgeInsets.zero);
+      expect(field.decoration?.filled, isFalse);
+      for (final border in [
+        field.decoration?.border,
+        field.decoration?.enabledBorder,
+        field.decoration?.focusedBorder,
+        field.decoration?.disabledBorder,
+        field.decoration?.errorBorder,
+        field.decoration?.focusedErrorBorder,
+      ]) {
+        expect(border, InputBorder.none);
+      }
     }
 
     expect(codeField.textAlign, TextAlign.right);
     expect(codeField.textDirection, TextDirection.rtl);
     expect(codeField.decoration?.border, InputBorder.none);
-    expect(codeField.decoration?.focusedBorder, isNull);
+    expect(codeField.decoration?.focusedBorder, InputBorder.none);
     expect(codeField.style?.fontSize, 18);
     expect(nameField.textAlign, TextAlign.right);
     expect(nameField.textDirection, TextDirection.rtl);
@@ -636,7 +647,7 @@ void main() {
 
     expect(
       tester.widget<TextField>(nextCode).decoration!.focusedBorder,
-      isNull,
+      InputBorder.none,
     );
     final focusedCellDecoration = tester
         .widget<DecoratedBox>(

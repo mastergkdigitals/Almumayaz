@@ -556,8 +556,16 @@ class _PurchaseInputCell extends StatelessWidget {
                   ),
                   cursorColor: Colors.black,
                   textAlignVertical: TextAlignVertical.center,
-                  decoration: const InputDecoration.collapsed(
-                    hintText: null,
+                  decoration: const InputDecoration(
+                    filled: false,
+                    isCollapsed: true,
+                    contentPadding: EdgeInsets.zero,
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    disabledBorder: InputBorder.none,
+                    errorBorder: InputBorder.none,
+                    focusedErrorBorder: InputBorder.none,
                   ),
                   onSubmitted: (_) {
                     final submit = onSubmitted;
