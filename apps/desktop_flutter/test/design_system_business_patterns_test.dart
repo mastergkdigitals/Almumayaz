@@ -431,7 +431,7 @@ void main() {
     await tester.pump();
   });
 
-  testWidgets('shows the selected soft-cell purchase table and row actions',
+  testWidgets('shows the complete purchase table and shared delete action',
       (tester) async {
     await pumpDesignSystemGallery(tester);
 
@@ -441,45 +441,65 @@ void main() {
     expect(purchase, findsOneWidget);
     expect(find.byKey(const Key('designSalesItemsTable')), findsNothing);
     expect(find.byKey(const Key('designPurchaseTableHeader')), findsOneWidget);
+    expect(find.byKey(const Key('designPurchaseAdd')), findsNothing);
+    expect(
+      find.descendant(
+        of: purchase,
+        matching: find.text('إضافة مادة'),
+      ),
+      findsNothing,
+    );
 
-    for (final keyName in const [
-      'index',
-      'code',
-      'name',
-      'quantity',
-      'price',
-    ]) {
+    const headers = {
+      'index': 'ت',
+      'code': 'رمز المادة',
+      'name': 'اسم المادة',
+      'warehouse': 'المخزن',
+      'quantity': 'الكمية',
+      'container': 'الحاوية',
+      'purchasePrice': 'سعر الشراء',
+      'discount': 'الخصم',
+      'priceAfterDiscount': 'السعر بعد الخصم',
+      'total': 'الإجمالي',
+      'cost': 'الكلفة',
+      'totalCost': 'إجمالي الكلفة',
+      'salePrice': 'سعر البيع',
+    };
+
+    for (final header in headers.entries) {
+      final headerFinder = find.byKey(
+        Key('designPurchaseHeader-${header.key}'),
+      );
+      expect(headerFinder, findsOneWidget);
       expect(
-        find.byKey(Key('designPurchaseHeader-$keyName')),
+        find.descendant(
+          of: headerFinder,
+          matching: find.text(header.value),
+        ),
         findsOneWidget,
       );
     }
 
     expect(find.byKey(const Key('designPurchaseRow-p1')), findsOneWidget);
     expect(find.byKey(const Key('designPurchaseRow-p2')), findsOneWidget);
-    expect(find.byKey(const Key('designPurchaseAdd')), findsOneWidget);
-    expect(find.byKey(const Key('designPurchaseDelete-p1')), findsOneWidget);
-    expect(find.byKey(const Key('designPurchaseDelete-p2')), findsOneWidget);
 
-    final codeField = tester.widget<TextField>(
-      find.byKey(const Key('designPurchaseCode-p1')),
-    );
-    final nameField = tester.widget<TextField>(
-      find.byKey(const Key('designPurchaseName-p1')),
-    );
-    final quantityField = tester.widget<TextField>(
-      find.byKey(const Key('designPurchaseQuantity-p1')),
-    );
-    final priceField = tester.widget<TextField>(
-      find.byKey(const Key('designPurchasePrice-p1')),
-    );
+    final editableFields = <TextField>[
+      for (final keyName in const [
+        'Code',
+        'Name',
+        'Warehouse',
+        'Quantity',
+        'Container',
+        'PurchasePrice',
+        'Discount',
+        'SalePrice',
+      ])
+        tester.widget<TextField>(
+          find.byKey(Key('designPurchase$keyName-p1')),
+        ),
+    ];
 
-    for (final field in [
-      codeField,
-      nameField,
-      quantityField,
-      priceField,
-    ]) {
+    for (final field in editableFields) {
       expect(field.expands, isFalse);
       expect(field.maxLines, 1);
       expect(field.textAlignVertical, isNull);
@@ -502,44 +522,40 @@ void main() {
       }
     }
 
-    expect(codeField.textAlign, TextAlign.right);
-    expect(codeField.textDirection, TextDirection.rtl);
-    expect(codeField.decoration?.border, InputBorder.none);
-    expect(codeField.decoration?.focusedBorder, InputBorder.none);
-    expect(codeField.style?.fontSize, 18);
-    expect(nameField.textAlign, TextAlign.right);
-    expect(nameField.textDirection, TextDirection.rtl);
-    expect(nameField.style?.fontSize, 18);
-    expect(quantityField.textAlign, TextAlign.center);
-    expect(quantityField.textDirection, TextDirection.ltr);
-    expect(quantityField.style?.fontSize, 18);
-    expect(
-      quantityField.inputFormatters!.single,
-      isA<AppIntegerInputFormatter>(),
-    );
-    expect(priceField.textAlign, TextAlign.center);
-    expect(priceField.textDirection, TextDirection.ltr);
-    expect(priceField.style?.fontSize, 18);
-
-    final codeHeader = tester.widget<Text>(
-      find.descendant(
-        of: find.byKey(const Key('designPurchaseHeader-code')),
-        matching: find.text('رمز المادة'),
-      ),
-    );
-    expect(codeHeader.style?.fontSize, 18);
+    for (final field in editableFields.take(3)) {
+      expect(field.textAlign, TextAlign.right);
+      expect(field.textDirection, TextDirection.rtl);
+      expect(field.style?.fontSize, 18);
+    }
+    for (final field in editableFields.skip(3)) {
+      expect(field.textAlign, TextAlign.center);
+      expect(field.textDirection, TextDirection.ltr);
+      expect(field.style?.fontSize, 18);
+    }
+    for (final field in [
+      editableFields[3],
+      editableFields[4],
+    ]) {
+      expect(
+        field.inputFormatters!.single,
+        isA<AppIntegerInputFormatter>(),
+      );
+    }
 
     expect(
       tester
-          .getSize(find.byKey(const Key('designPurchaseIndexCell-p1')))
-          .height,
-      44,
+          .getSize(find.byKey(const Key('designPurchaseIndexCell-p1'))),
+      const Size(44, 44),
     );
     for (final keyName in const [
       'Code',
       'Name',
+      'Warehouse',
       'Quantity',
-      'Price',
+      'Container',
+      'PurchasePrice',
+      'Discount',
+      'SalePrice',
     ]) {
       final cell = find.byKey(
         Key('designPurchase${keyName}Cell-p1'),
@@ -553,6 +569,145 @@ void main() {
         closeTo(tester.getCenter(cell).dy, 0.01),
       );
     }
+    for (final keyName in const [
+      'PriceAfterDiscount',
+      'Total',
+      'Cost',
+      'TotalCost',
+    ]) {
+      expect(
+        tester
+            .getSize(
+              find.byKey(Key('designPurchase${keyName}Cell-p1')),
+            )
+            .height,
+        56,
+      );
+    }
+
+    expect(
+      tester
+          .widget<Text>(
+            find.byKey(
+              const Key('designPurchasePriceAfterDiscount-p1'),
+            ),
+          )
+          .data,
+      '2,450',
+    );
+    expect(
+      tester
+          .widget<Text>(
+            find.byKey(const Key('designPurchaseTotal-p1')),
+          )
+          .data,
+      '245,000',
+    );
+    expect(
+      tester
+          .widget<Text>(
+            find.byKey(const Key('designPurchaseCost-p1')),
+          )
+          .data,
+      '2,450',
+    );
+    expect(
+      tester
+          .widget<Text>(
+            find.byKey(const Key('designPurchaseTotalCost-p1')),
+          )
+          .data,
+      '245,000',
+    );
+
+    for (final update in const {
+      'Quantity': '2',
+      'PurchasePrice': '100',
+      'Discount': '10',
+    }.entries) {
+      final field = tester.widget<TextField>(
+        find.byKey(Key('designPurchase${update.key}-p1')),
+      );
+      field.controller!.text = update.value;
+      field.onChanged?.call(update.value);
+    }
+    await tester.pump();
+    expect(
+      tester
+          .widget<Text>(
+            find.byKey(
+              const Key('designPurchasePriceAfterDiscount-p1'),
+            ),
+          )
+          .data,
+      '95',
+    );
+    expect(
+      tester
+          .widget<Text>(
+            find.byKey(const Key('designPurchaseTotal-p1')),
+          )
+          .data,
+      '190',
+    );
+    expect(
+      tester
+          .widget<Text>(
+            find.byKey(const Key('designPurchaseCost-p1')),
+          )
+          .data,
+      '95',
+    );
+    expect(
+      tester
+          .widget<Text>(
+            find.byKey(const Key('designPurchaseTotalCost-p1')),
+          )
+          .data,
+      '190',
+    );
+
+    final deleteFinder =
+        find.byKey(const Key('designPurchaseDelete-p1'));
+    final deleteButton =
+        tester.widget<AppTableActionButton>(deleteFinder);
+    expect(deleteButton.tooltip, 'حذف السطر');
+    expect(deleteButton.variant, AppButtonVariant.danger);
+    expect(deleteButton.size, 44);
+    expect(deleteButton.borderRadius, 13);
+    expect(deleteButton.backgroundColor, isNull);
+    expect(deleteButton.foregroundColor, isNull);
+    expect(tester.getSize(deleteFinder), const Size(44, 44));
+    expect(
+      tester
+          .widget<Tooltip>(
+            find.byKey(
+              const Key('designPurchaseDeleteTooltip-p1'),
+            ),
+          )
+          .message,
+      'حذف السطر',
+    );
+    expect(
+      find.ancestor(
+        of: find.byKey(
+          const Key('designPurchaseDeleteTooltip-p1'),
+        ),
+        matching: find.byType(AppTooltip),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<AppButton>(
+            find.descendant(
+              of: deleteFinder,
+              matching: find.byType(AppButton),
+            ),
+          )
+          .variant,
+      AppButtonVariant.danger,
+    );
 
     final codeCellRect = tester.getRect(
       find.byKey(const Key('designPurchaseCodeCell-p1')),
@@ -561,95 +716,119 @@ void main() {
       Offset(codeCellRect.center.dx, codeCellRect.top + 3),
     );
     await tester.pump();
-    expect(codeField.focusNode?.hasFocus, isTrue);
+    expect(editableFields.first.focusNode?.hasFocus, isTrue);
 
     await tester.enterText(
       find.byKey(const Key('designPurchaseCode-p1')),
       'NEW-001',
     );
     await tester.pump();
-    expect(codeField.controller?.text, 'NEW-001');
+    expect(editableFields.first.controller?.text, 'NEW-001');
 
-    final addButton = find.byKey(const Key('designPurchaseAdd'));
-    await tester.ensureVisible(addButton);
-    await tester.pump();
-    await tester.tap(
-      find.descendant(of: addButton, matching: find.byType(InkWell)),
+    final salePrice = find.byKey(
+      const Key('designPurchaseSalePrice-p1'),
     );
+    tester.widget<TextField>(salePrice).focusNode!.requestFocus();
+    await tester.pump();
+    await tester.testTextInput.receiveAction(TextInputAction.next);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.byKey(const Key('designPurchaseRow-p3')), findsOneWidget);
-    expect(find.byKey(const Key('designPurchaseDelete-p2')), findsOneWidget);
     expect(find.byKey(const Key('designPurchaseDelete-p3')), findsOneWidget);
-    expect(find.byKey(const Key('designPurchaseAdd')), findsOneWidget);
-    expect(
-      tester
-          .widget<TextField>(
-            find.byKey(const Key('designPurchaseQuantity-p3')),
-          )
-          .controller!
-          .text,
-      '0',
-    );
-    expect(
-      tester
-          .widget<TextField>(
-            find.byKey(const Key('designPurchasePrice-p3')),
-          )
-          .controller!
-          .text,
-      '0',
-    );
+    for (final keyName in const [
+      'Quantity',
+      'Container',
+      'PurchasePrice',
+      'Discount',
+      'SalePrice',
+    ]) {
+      expect(
+        tester
+            .widget<TextField>(
+              find.byKey(Key('designPurchase$keyName-p3')),
+            )
+            .controller!
+            .text,
+        '0',
+      );
+    }
 
-    final deleteButton =
-        find.byKey(const Key('designPurchaseDelete-p2'));
-    await tester.ensureVisible(deleteButton);
-    await tester.pump();
-    await tester.tap(
-      find.descendant(of: deleteButton, matching: find.byType(InkWell)),
-    );
+    tester
+        .widget<AppTableActionButton>(
+          find.byKey(const Key('designPurchaseDelete-p2')),
+        )
+        .onPressed
+        ?.call();
     await tester.pump();
 
     expect(find.byKey(const Key('designPurchaseRow-p2')), findsNothing);
-    expect(find.byKey(const Key('designPurchaseAdd')), findsOneWidget);
+
+    tester
+        .widget<AppTableActionButton>(
+          find.byKey(const Key('designPurchaseDelete-p3')),
+        )
+        .onPressed
+        ?.call();
+    await tester.pump();
+
+    expect(find.byKey(const Key('designPurchaseRow-p3')), findsNothing);
+    expect(
+      tester
+          .widget<AppTableActionButton>(
+            find.byKey(const Key('designPurchaseDelete-p1')),
+          )
+          .onPressed,
+      isNull,
+    );
   });
 
-  testWidgets('moves through the selected purchase fields with Enter',
+  testWidgets('moves through purchase fields with Enter and adds a row',
       (tester) async {
     await pumpDesignSystemGallery(tester);
 
     final purchase = find.byKey(const Key('designPurchaseItemsTable'));
     await reveal(tester, purchase);
 
-    final code = find.byKey(const Key('designPurchaseCode-p1'));
-    final name = find.byKey(const Key('designPurchaseName-p1'));
-    final quantity = find.byKey(const Key('designPurchaseQuantity-p1'));
-    final price = find.byKey(const Key('designPurchasePrice-p1'));
-    final nextCode = find.byKey(const Key('designPurchaseCode-p2'));
+    final fields = [
+      for (final keyName in const [
+        'Code',
+        'Name',
+        'Warehouse',
+        'Quantity',
+        'Container',
+        'PurchasePrice',
+        'Discount',
+        'SalePrice',
+      ])
+        find.byKey(Key('designPurchase$keyName-p1')),
+    ];
 
-    await tester.tap(code);
+    await tester.tap(fields.first);
     await tester.pump();
-    expect(tester.widget<TextField>(code).focusNode!.hasFocus, isTrue);
-
-    await tester.testTextInput.receiveAction(TextInputAction.next);
-    await tester.pump();
-    expect(tester.widget<TextField>(name).focusNode!.hasFocus, isTrue);
-
-    await tester.testTextInput.receiveAction(TextInputAction.next);
-    await tester.pump();
-    expect(tester.widget<TextField>(quantity).focusNode!.hasFocus, isTrue);
-
-    await tester.testTextInput.receiveAction(TextInputAction.next);
-    await tester.pump();
-    expect(tester.widget<TextField>(price).focusNode!.hasFocus, isTrue);
-
-    await tester.testTextInput.receiveAction(TextInputAction.next);
-    await tester.pump();
-    expect(tester.widget<TextField>(nextCode).focusNode!.hasFocus, isTrue);
-
     expect(
-      tester.widget<TextField>(nextCode).decoration!.focusedBorder,
+      tester.widget<TextField>(fields.first).focusNode!.hasFocus,
+      isTrue,
+    );
+
+    for (var index = 1; index < fields.length; index++) {
+      await tester.testTextInput.receiveAction(TextInputAction.next);
+      await tester.pump();
+      expect(
+        tester.widget<TextField>(fields[index]).focusNode!.hasFocus,
+        isTrue,
+      );
+    }
+
+    await tester.testTextInput.receiveAction(TextInputAction.next);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final newCode = find.byKey(const Key('designPurchaseCode-p3'));
+    expect(find.byKey(const Key('designPurchaseRow-p3')), findsOneWidget);
+    expect(tester.widget<TextField>(newCode).focusNode!.hasFocus, isTrue);
+    expect(
+      tester.widget<TextField>(newCode).decoration!.focusedBorder,
       InputBorder.none,
     );
     final focusedCellDecoration = tester
@@ -657,7 +836,7 @@ void main() {
           find
               .descendant(
                 of: find.byKey(
-                  const Key('designPurchaseCodeCell-p2'),
+                  const Key('designPurchaseCodeCell-p3'),
                 ),
                 matching: find.byType(DecoratedBox),
               )
@@ -668,5 +847,33 @@ void main() {
       (focusedCellDecoration.border! as Border).top.color,
       const Color(0xFF10966A),
     );
+  });
+
+  testWidgets('moves through purchase fields with Tab without adding a row',
+      (tester) async {
+    await pumpDesignSystemGallery(tester);
+
+    final purchase = find.byKey(const Key('designPurchaseItemsTable'));
+    await reveal(tester, purchase);
+
+    final code = find.byKey(const Key('designPurchaseCode-p1'));
+    final name = find.byKey(const Key('designPurchaseName-p1'));
+    final salePrice = find.byKey(
+      const Key('designPurchaseSalePrice-p1'),
+    );
+    final nextCode = find.byKey(const Key('designPurchaseCode-p2'));
+
+    tester.widget<TextField>(code).focusNode!.requestFocus();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pump();
+    expect(tester.widget<TextField>(name).focusNode!.hasFocus, isTrue);
+
+    tester.widget<TextField>(salePrice).focusNode!.requestFocus();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pump();
+    expect(tester.widget<TextField>(nextCode).focusNode!.hasFocus, isTrue);
+    expect(find.byKey(const Key('designPurchaseRow-p3')), findsNothing);
   });
 }
