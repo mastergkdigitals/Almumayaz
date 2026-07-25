@@ -41,11 +41,10 @@ class _DesignGalleryInvoiceTablesSectionState
         warehouse: 'الفرعي',
         quantity: '1,000',
         container: '10',
-        purchasePrice: '1.25',
+        purchasePrice: '1,250',
         discount: '0',
-        cost: '0.05',
-        salePrice: '1.75',
-        isUsd: true,
+        cost: '50',
+        salePrice: '1,750',
       ),
     ];
     _saleItems = [
@@ -64,9 +63,8 @@ class _DesignGalleryInvoiceTablesSectionState
         name: 'طابعة مكتبية',
         warehouse: 'الرئيسي',
         quantity: '1',
-        salePrice: '175.00',
-        discount: '5.00',
-        isUsd: true,
+        salePrice: '175,000',
+        discount: '5,000',
       ),
     ];
   }
@@ -154,10 +152,14 @@ class _DesignGalleryInvoiceTablesSectionState
           controller: row.name,
           accentColor: AppModuleColors.purchases,
         ),
-        AppInvoiceCellField(
+        AppInvoiceCellDropdown(
           fieldKey: Key('designPurchaseWarehouse-${row.id}'),
-          controller: row.warehouse,
           accentColor: AppModuleColors.purchases,
+          value: row.warehouse.text,
+          options: const ['الرئيسي', 'الفرعي'],
+          onChanged: (value) {
+            setState(() => row.warehouse.text = value);
+          },
         ),
         AppInvoiceCellField(
           fieldKey: Key('designPurchaseQuantity-${row.id}'),
@@ -214,15 +216,17 @@ class _DesignGalleryInvoiceTablesSectionState
                 ? 'designPurchaseAdd-${row.id}'
                 : 'designPurchaseDelete-${row.id}',
           ),
-          icon: isLast ? Icons.add_rounded : Icons.delete_rounded,
+          icon: isLast ? Icons.add_rounded : Icons.close_rounded,
           tooltip: isLast ? 'إضافة سطر' : 'حذف السطر',
           variant: isLast
               ? AppButtonVariant.primary
               : AppButtonVariant.danger,
           backgroundColor:
-              isLast ? AppModuleColors.purchases : null,
-          foregroundColor: isLast ? Colors.white : null,
-          size: 36,
+              isLast ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
+          foregroundColor: Colors.white,
+          size: 32,
+          iconSize: 19,
+          borderRadius: 9,
           onPressed:
               isLast ? _addPurchaseItem : () => _deletePurchaseItem(index),
         ),
@@ -255,10 +259,14 @@ class _DesignGalleryInvoiceTablesSectionState
           controller: row.name,
           accentColor: AppModuleColors.sales,
         ),
-        AppInvoiceCellField(
+        AppInvoiceCellDropdown(
           fieldKey: Key('designSaleWarehouse-${row.id}'),
-          controller: row.warehouse,
           accentColor: AppModuleColors.sales,
+          value: row.warehouse.text,
+          options: const ['الرئيسي', 'الفرعي'],
+          onChanged: (value) {
+            setState(() => row.warehouse.text = value);
+          },
         ),
         AppInvoiceCellField(
           fieldKey: Key('designSaleQuantity-${row.id}'),
@@ -292,18 +300,85 @@ class _DesignGalleryInvoiceTablesSectionState
                 ? 'designSaleAdd-${row.id}'
                 : 'designSaleDelete-${row.id}',
           ),
-          icon: isLast ? Icons.add_rounded : Icons.delete_rounded,
+          icon: isLast ? Icons.add_rounded : Icons.close_rounded,
           tooltip: isLast ? 'إضافة سطر' : 'حذف السطر',
           variant: isLast
               ? AppButtonVariant.primary
               : AppButtonVariant.danger,
-          backgroundColor: isLast ? AppModuleColors.sales : null,
-          foregroundColor: isLast ? Colors.white : null,
-          size: 36,
+          backgroundColor:
+              isLast ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
+          foregroundColor: Colors.white,
+          size: 32,
+          iconSize: 19,
+          borderRadius: 9,
           onPressed: isLast ? _addSaleItem : () => _deleteSaleItem(index),
         ),
       ],
     );
+  }
+
+  List<Widget> _purchaseSummaryCells() {
+    final quantity = _purchaseItems.fold<num>(
+      0,
+      (sum, row) => sum + row.quantityValue,
+    );
+    final discount = _purchaseItems.fold<num>(
+      0,
+      (sum, row) => sum + row.discountValue,
+    );
+    final total = _purchaseItems.fold<num>(
+      0,
+      (sum, row) => sum + row.total,
+    );
+    final totalCost = _purchaseItems.fold<num>(
+      0,
+      (sum, row) => sum + row.totalCost,
+    );
+
+    return [
+      const SizedBox.shrink(),
+      const SizedBox.shrink(),
+      const Text('المجموع'),
+      const SizedBox.shrink(),
+      Text(AppFormatters.quantity(quantity)),
+      const SizedBox.shrink(),
+      const SizedBox.shrink(),
+      Text(AppFormatters.iqd(discount)),
+      const SizedBox.shrink(),
+      Text(AppFormatters.iqd(total)),
+      const SizedBox.shrink(),
+      Text(AppFormatters.iqd(totalCost)),
+      const SizedBox.shrink(),
+      const SizedBox.shrink(),
+    ];
+  }
+
+  List<Widget> _saleSummaryCells() {
+    final quantity = _saleItems.fold<num>(
+      0,
+      (sum, row) => sum + row.quantityValue,
+    );
+    final discount = _saleItems.fold<num>(
+      0,
+      (sum, row) => sum + row.discountValue,
+    );
+    final total = _saleItems.fold<num>(
+      0,
+      (sum, row) => sum + row.total,
+    );
+
+    return [
+      const SizedBox.shrink(),
+      const SizedBox.shrink(),
+      const Text('المجموع'),
+      const SizedBox.shrink(),
+      Text(AppFormatters.quantity(quantity)),
+      const SizedBox.shrink(),
+      Text(AppFormatters.iqd(discount)),
+      const SizedBox.shrink(),
+      Text(AppFormatters.iqd(total)),
+      const SizedBox.shrink(),
+    ];
   }
 
   @override
@@ -315,7 +390,7 @@ class _DesignGalleryInvoiceTablesSectionState
         children: [
           const AppInfoBanner(
             message:
-                'الصف الأخير يحمل زر الإضافة، والصفوف السابقة تحمل زر الحذف. جميع حقول الإدخال قابلة للتجربة والحسابات تتحدث مباشرة.',
+                'الرأس والمجاميع ثابتان، والصف الأخير للإضافة والصفوف السابقة للحذف. الحقول والحسابات قابلة للتجربة مباشرة.',
             icon: Icons.table_chart_rounded,
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -329,6 +404,7 @@ class _DesignGalleryInvoiceTablesSectionState
             key: const Key('designPurchaseItemsTable'),
             tableKey: const Key('designPurchaseItemsDataTable'),
             rows: _purchaseRows(),
+            summaryCells: _purchaseSummaryCells(),
           ),
           const SizedBox(height: AppSpacing.lg),
           const _TableTitle(
@@ -341,6 +417,7 @@ class _DesignGalleryInvoiceTablesSectionState
             key: const Key('designSalesItemsTable'),
             tableKey: const Key('designSalesItemsDataTable'),
             rows: _saleRows(),
+            summaryCells: _saleSummaryCells(),
           ),
         ],
       ),
@@ -427,6 +504,8 @@ class _PurchaseDemoRow {
 
   num get total => afterDiscount * _quantity;
   num get totalCost => total + _cost;
+  num get quantityValue => _quantity;
+  num get discountValue => _discount;
 
   String formatMoney(num value) {
     return isUsd ? AppFormatters.usd(value) : AppFormatters.iqd(value);
@@ -481,6 +560,8 @@ class _SaleDemoRow {
   }
 
   num get total => afterDiscount * _quantity;
+  num get quantityValue => _quantity;
+  num get discountValue => _discount;
 
   String formatMoney(num value) {
     return isUsd ? AppFormatters.usd(value) : AppFormatters.iqd(value);

@@ -59,6 +59,7 @@ class AppTooltipIconButton extends StatelessWidget {
     this.variant = AppButtonVariant.navigation,
     this.backgroundColor,
     this.foregroundColor,
+    this.borderRadius,
   });
 
   final IconData icon;
@@ -71,6 +72,7 @@ class AppTooltipIconButton extends StatelessWidget {
   final AppButtonVariant variant;
   final Color? backgroundColor;
   final Color? foregroundColor;
+  final double? borderRadius;
 
   @override
   Widget build(BuildContext context) {
@@ -93,6 +95,7 @@ class AppTooltipIconButton extends StatelessWidget {
           height: size,
           padding: EdgeInsets.zero,
           iconSize: iconSize,
+          borderRadius: borderRadius,
           onPressed: onPressed,
         ),
       ),

@@ -397,6 +397,8 @@ class AppTableActionButton extends StatelessWidget {
     this.variant = AppButtonVariant.navigation,
     this.backgroundColor,
     this.foregroundColor,
+    this.iconSize = AppIconSizes.md,
+    this.borderRadius,
   });
 
   final IconData icon;
@@ -407,6 +409,8 @@ class AppTableActionButton extends StatelessWidget {
   final AppButtonVariant variant;
   final Color? backgroundColor;
   final Color? foregroundColor;
+  final double iconSize;
+  final double? borderRadius;
 
   @override
   Widget build(BuildContext context) {
@@ -415,7 +419,8 @@ class AppTableActionButton extends StatelessWidget {
       icon: icon,
       tooltip: tooltip,
       size: size,
-      iconSize: AppIconSizes.md,
+      iconSize: iconSize,
+      borderRadius: borderRadius,
       variant: variant,
       backgroundColor: backgroundColor,
       foregroundColor: foregroundColor,

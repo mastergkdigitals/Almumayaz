@@ -437,20 +437,46 @@ void main() {
 
     final purchase = find.byKey(const Key('designPurchaseItemsTable'));
     await reveal(tester, purchase);
-    final purchaseTable =
-        find.byKey(const Key('designPurchaseItemsDataTable'));
-
-    final purchaseGrid = tester.widget<AppDataTable>(purchaseTable);
-    expect(purchaseGrid.accentColor, AppModuleColors.purchases);
+    final purchaseGrid = tester.widget<AppInvoiceItemsTable>(purchase);
+    expect(purchaseGrid.type, AppInvoiceTableType.purchase);
     expect(
-      purchaseGrid.headerBackgroundColor,
-      AppModuleColors.purchases,
+      AppInvoiceItemsTable.purchaseColumns
+          .map((column) => column.width)
+          .toList(),
+      [54, 126, 190, 138, 104, 104, 126, 104, 146, 116, 104, 132, 116, 82],
     );
-    expect(purchaseGrid.headerForegroundColor, AppColors.onStrong);
-    expect(purchaseGrid.showColumnDividers, isTrue);
-    expect(purchaseGrid.showShadow, isFalse);
-    expect(purchaseGrid.rowHeight, 48);
-    expect(purchaseGrid.cellHorizontalPadding, AppSpacing.xs);
+    expect(AppInvoiceItemsTable.purchaseColumns.last.label, isEmpty);
+    expect(AppInvoiceItemsTable.headerHeight, 46);
+    expect(AppInvoiceItemsTable.rowHeight, 54);
+    expect(AppInvoiceItemsTable.summaryHeight, 46);
+    expect(AppInvoiceItemsTable.outerRadius, 18);
+    expect(purchaseGrid.summaryCells, isNotNull);
+
+    final purchaseHeader = tester.widget<Container>(
+      find.descendant(
+        of: purchase,
+        matching: find.byKey(const Key('appInvoiceTableHeader')),
+      ),
+    );
+    expect(
+      (purchaseHeader.decoration! as BoxDecoration).color,
+      Color.lerp(
+        AppModulePalettes.purchases.light,
+        Colors.white,
+        0.82,
+      ),
+    );
+    expect(
+      find.descendant(
+        of: purchase,
+        matching: find.byKey(const Key('appInvoiceTableSummary')),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: purchase, matching: find.text('المجموع')),
+      findsOneWidget,
+    );
     expect(
       find.descendant(of: purchase, matching: find.text('الحاوية')),
       findsOneWidget,
@@ -468,6 +494,8 @@ void main() {
     final quantityField = tester.widget<TextField>(
       find.byKey(const Key('designPurchaseQuantity-p1')),
     );
+    expect(quantityField.style?.fontSize, 18);
+    expect(quantityField.style?.fontWeight, FontWeight.w700);
     quantityField.controller!.text = '10';
     quantityField.onChanged?.call('10');
     await tester.pump();
@@ -499,14 +527,35 @@ void main() {
 
     final sales = find.byKey(const Key('designSalesItemsTable'));
     await reveal(tester, sales);
-    final salesTable = find.byKey(const Key('designSalesItemsDataTable'));
-
-    final salesGrid = tester.widget<AppDataTable>(salesTable);
-    expect(salesGrid.accentColor, AppModuleColors.sales);
-    expect(salesGrid.headerBackgroundColor, AppModuleColors.sales);
-    expect(salesGrid.headerForegroundColor, AppColors.onStrong);
-    expect(salesGrid.showColumnDividers, isTrue);
-    expect(salesGrid.showShadow, isFalse);
+    final salesGrid = tester.widget<AppInvoiceItemsTable>(sales);
+    expect(salesGrid.type, AppInvoiceTableType.sale);
+    expect(
+      AppInvoiceItemsTable.saleColumns
+          .map((column) => column.width)
+          .toList(),
+      [54, 126, 190, 138, 104, 126, 104, 146, 116, 82],
+    );
+    expect(
+      AppInvoiceItemsTable.saleColumns
+          .map((column) => column.grow)
+          .toList(),
+      [0, 0.75, 3, 1.35, 0.70, 0.90, 0.70, 1.45, 1.55, 0],
+    );
+    expect(salesGrid.summaryCells, isNotNull);
+    final salesHeader = tester.widget<Container>(
+      find.descendant(
+        of: sales,
+        matching: find.byKey(const Key('appInvoiceTableHeader')),
+      ),
+    );
+    expect(
+      (salesHeader.decoration! as BoxDecoration).color,
+      Color.lerp(
+        AppModulePalettes.sales.light,
+        Colors.white,
+        0.82,
+      ),
+    );
     expect(
       find.descendant(of: sales, matching: find.text('الحاوية')),
       findsNothing,
@@ -541,5 +590,18 @@ void main() {
         ?.call();
     await tester.pump();
     expect(tester.widget<AppInvoiceItemsTable>(sales).rows, hasLength(2));
+
+    final purchaseAdd = tester.widget<AppTableActionButton>(
+      find.byKey(const Key('designPurchaseAdd-p3')),
+    );
+    final salesDelete = tester.widget<AppTableActionButton>(
+      find.byKey(const Key('designSaleDelete-s1')),
+    );
+    expect(purchaseAdd.size, 32);
+    expect(purchaseAdd.iconSize, 19);
+    expect(purchaseAdd.borderRadius, 9);
+    expect(purchaseAdd.backgroundColor, const Color(0xFF16A34A));
+    expect(salesDelete.icon, Icons.close_rounded);
+    expect(salesDelete.backgroundColor, const Color(0xFFDC2626));
   });
 }

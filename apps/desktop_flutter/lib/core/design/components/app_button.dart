@@ -29,6 +29,7 @@ class AppButton extends StatefulWidget {
     this.variant = AppButtonVariant.primary,
     this.backgroundColor,
     this.foregroundColor,
+    this.borderRadius,
     this.isLoading = false,
     this.width,
     this.height = AppControlHeights.standard,
@@ -45,6 +46,7 @@ class AppButton extends StatefulWidget {
   final AppButtonVariant variant;
   final Color? backgroundColor;
   final Color? foregroundColor;
+  final double? borderRadius;
   final bool isLoading;
   final double? width;
   final double height;
@@ -157,6 +159,13 @@ class _AppButtonState extends State<AppButton> {
               : SystemMouseCursors.click,
         ),
         splashFactory: NoSplash.splashFactory,
+        shape: widget.borderRadius == null
+            ? null
+            : WidgetStatePropertyAll<OutlinedBorder>(
+                RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(widget.borderRadius!),
+                ),
+              ),
       );
     }
 
