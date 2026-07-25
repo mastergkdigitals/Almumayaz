@@ -725,7 +725,7 @@ class AppInvoiceCellField extends StatelessWidget {
       }
 
       guard.runOnce(
-        keys: const {
+        keys: {
           LogicalKeyboardKey.enter,
           LogicalKeyboardKey.numpadEnter,
         },
