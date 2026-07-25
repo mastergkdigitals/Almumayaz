@@ -480,16 +480,18 @@ void main() {
       quantityField,
       priceField,
     ]) {
-      expect(field.expands, isTrue);
-      expect(field.maxLines, isNull);
+      expect(field.expands, isFalse);
+      expect(field.maxLines, 1);
       expect(field.textAlignVertical, TextAlignVertical.center);
       expect(field.cursorColor, Colors.black);
+      expect(field.decoration?.isCollapsed, isTrue);
+      expect(field.decoration?.contentPadding, EdgeInsets.zero);
     }
 
     expect(codeField.textAlign, TextAlign.right);
     expect(codeField.textDirection, TextDirection.rtl);
     expect(codeField.decoration?.border, InputBorder.none);
-    expect(codeField.decoration?.focusedBorder, InputBorder.none);
+    expect(codeField.decoration?.focusedBorder, isNull);
     expect(codeField.style?.fontSize, 18);
     expect(nameField.textAlign, TextAlign.right);
     expect(nameField.textDirection, TextDirection.rtl);
@@ -525,15 +527,27 @@ void main() {
       'Quantity',
       'Price',
     ]) {
+      final cell = find.byKey(
+        Key('designPurchase${keyName}Cell-p1'),
+      );
+      final field = find.byKey(
+        Key('designPurchase$keyName-p1'),
+      );
+      expect(tester.getSize(cell).height, 56);
       expect(
-        tester
-            .getSize(
-              find.byKey(Key('designPurchase${keyName}Cell-p1')),
-            )
-            .height,
-        56,
+        tester.getCenter(field).dy,
+        closeTo(tester.getCenter(cell).dy, 0.01),
       );
     }
+
+    final codeCellRect = tester.getRect(
+      find.byKey(const Key('designPurchaseCodeCell-p1')),
+    );
+    await tester.tapAt(
+      Offset(codeCellRect.center.dx, codeCellRect.top + 3),
+    );
+    await tester.pump();
+    expect(codeField.focusNode?.hasFocus, isTrue);
 
     await tester.enterText(
       find.byKey(const Key('designPurchaseCode-p1')),
@@ -622,7 +636,7 @@ void main() {
 
     expect(
       tester.widget<TextField>(nextCode).decoration!.focusedBorder,
-      InputBorder.none,
+      isNull,
     );
     final focusedCellDecoration = tester
         .widget<DecoratedBox>(

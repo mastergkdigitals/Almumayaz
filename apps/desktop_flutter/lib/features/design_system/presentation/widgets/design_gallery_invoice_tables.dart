@@ -524,58 +524,72 @@ class _PurchaseInputCell extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
         child: AnimatedBuilder(
           animation: focusNode,
-          child: TextField(
-            key: fieldKey,
-            controller: controller,
-            focusNode: focusNode,
-            keyboardType: numeric
-                ? TextInputType.numberWithOptions(decimal: !wholeNumber)
-                : TextInputType.text,
-            inputFormatters:
-                wholeNumber ? const [AppIntegerInputFormatter()] : null,
-            textInputAction: TextInputAction.next,
-            expands: true,
-            maxLines: null,
-            textAlign: numeric ? TextAlign.center : TextAlign.right,
-            textDirection: numeric ? TextDirection.ltr : TextDirection.rtl,
-            style: AppTypography.tableCell.copyWith(
-              color: emphasized
-                  ? _purchaseGreenDark
-                  : AppColors.textPrimary,
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextField(
+                  key: fieldKey,
+                  controller: controller,
+                  focusNode: focusNode,
+                  keyboardType: numeric
+                      ? TextInputType.numberWithOptions(
+                          decimal: !wholeNumber,
+                        )
+                      : TextInputType.text,
+                  inputFormatters: wholeNumber
+                      ? const [AppIntegerInputFormatter()]
+                      : null,
+                  textInputAction: TextInputAction.next,
+                  maxLines: 1,
+                  textAlign: numeric ? TextAlign.center : TextAlign.right,
+                  textDirection:
+                      numeric ? TextDirection.ltr : TextDirection.rtl,
+                  style: AppTypography.tableCell.copyWith(
+                    color: emphasized
+                        ? _purchaseGreenDark
+                        : AppColors.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  cursorColor: Colors.black,
+                  textAlignVertical: TextAlignVertical.center,
+                  decoration: const InputDecoration.collapsed(
+                    hintText: null,
+                  ),
+                  onSubmitted: (_) {
+                    final submit = onSubmitted;
+                    if (submit != null) {
+                      submit();
+                      return;
+                    }
+                    nextFocusNode?.requestFocus();
+                  },
+                ),
+              ],
             ),
-            cursorColor: Colors.black,
-            textAlignVertical: TextAlignVertical.center,
-            decoration: const InputDecoration(
-              filled: false,
-              border: InputBorder.none,
-              enabledBorder: InputBorder.none,
-              focusedBorder: InputBorder.none,
-              contentPadding: EdgeInsets.symmetric(horizontal: 12),
-              isDense: true,
-            ),
-            onSubmitted: (_) {
-              final submit = onSubmitted;
-              if (submit != null) {
-                submit();
-                return;
-              }
-              nextFocusNode?.requestFocus();
-            },
           ),
           builder: (context, child) {
             final focused = focusNode.hasFocus;
-            return _PurchaseCellFrame(
-              key: cellKey,
-              backgroundColor: Colors.white,
-              borderColor: focused
-                  ? _purchaseGreen
-                  : emphasized
-                      ? _purchaseStrongLine
-                      : _purchaseLine,
-              borderWidth: focused ? 1.5 : 1,
-              child: child!,
+            return MouseRegion(
+              cursor: SystemMouseCursors.text,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => focusNode.requestFocus(),
+                child: _PurchaseCellFrame(
+                  key: cellKey,
+                  backgroundColor: Colors.white,
+                  borderColor: focused
+                      ? _purchaseGreen
+                      : emphasized
+                          ? _purchaseStrongLine
+                          : _purchaseLine,
+                  borderWidth: focused ? 1.5 : 1,
+                  child: child!,
+                ),
+              ),
             );
           },
         ),
