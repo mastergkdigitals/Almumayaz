@@ -145,7 +145,7 @@ class _TemplatePanel extends StatelessWidget {
                   horizontal: 13,
                   vertical: 8,
                 ),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: _purchaseGreen,
                   borderRadius: BorderRadius.circular(AppRadii.md),
                 ),
@@ -785,7 +785,7 @@ class _ModernLedgerTable extends StatelessWidget {
                               horizontal: 10,
                               vertical: 6,
                             ),
-                            decoration: const BoxDecoration(
+                            decoration: BoxDecoration(
                               color: _purchaseGreenSoft,
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -816,8 +816,8 @@ class _ModernLedgerTable extends StatelessWidget {
                               horizontal: 12,
                               vertical: 6,
                             ),
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFF0F4F2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF0F4F2),
                               borderRadius: BorderRadius.circular(999),
                             ),
                             child: Text(
