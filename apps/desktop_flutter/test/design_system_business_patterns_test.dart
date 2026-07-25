@@ -1,5 +1,6 @@
 import 'package:erp/core/design/app_design_system.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'design_system_test_harness.dart';
@@ -452,6 +453,10 @@ void main() {
     expect(AppInvoiceItemsTable.outerRadius, 18);
     expect(purchaseGrid.height, 308);
     expect(purchaseGrid.summaryCells, isNotNull);
+    expect(
+      purchaseGrid.summaryCells![4],
+      isA<AppPurchaseInvoiceSummaryValueText>(),
+    );
 
     final purchaseHeader = tester.widget<Container>(
       find.descendant(
@@ -498,29 +503,33 @@ void main() {
     expect(quantityField.style?.fontSize, 18);
     expect(quantityField.style?.fontWeight, FontWeight.w700);
     expect(quantityField.textInputAction, TextInputAction.next);
-    expect(quantityField.onEditingComplete, isNotNull);
-    final iqdPurchaseFormatter = tester
-        .widget<TextField>(
-          find.byKey(const Key('designPurchasePrice-p1')),
-        )
-        .inputFormatters!
-        .whereType<AppMoneyInputFormatter>()
-        .single;
+    expect(quantityField.onEditingComplete, isNull);
+    expect(quantityField.textAlign, TextAlign.center);
+    expect(quantityField.textDirection, TextDirection.ltr);
+    expect(quantityField.decoration?.border, InputBorder.none);
+    expect(quantityField.decoration?.enabledBorder, InputBorder.none);
+    expect(quantityField.decoration?.focusedBorder, InputBorder.none);
+    expect(quantityField.decoration?.isCollapsed, isTrue);
     expect(
-      iqdPurchaseFormatter.decimalPlaces,
-      0,
+      quantityField.decoration?.contentPadding,
+      const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
     );
+    expect(quantityField.inputFormatters, isNull);
     quantityField.controller!.text = '10';
     quantityField.onChanged?.call('10');
     await tester.pump();
     final purchaseRowAfterQuantity =
         tester.widget<AppInvoiceItemsTable>(purchase).rows.first;
     expect(
-      (purchaseRowAfterQuantity.cells[9] as AppInvoiceValueText).value,
+      (purchaseRowAfterQuantity.cells[9]
+              as AppPurchaseInvoiceValueText)
+          .value,
       '25,000',
     );
     expect(
-      (purchaseRowAfterQuantity.cells[11] as AppInvoiceValueText).value,
+      (purchaseRowAfterQuantity.cells[11]
+              as AppPurchaseInvoiceValueText)
+          .value,
       '25,000',
     );
 
@@ -534,19 +543,19 @@ void main() {
     final purchaseFirstRow =
         tester.widget<AppInvoiceItemsTable>(purchase).rows.first;
     expect(
-      (purchaseFirstRow.cells[8] as AppInvoiceValueText).value,
+      (purchaseFirstRow.cells[8] as AppPurchaseInvoiceValueText).value,
       '2,450',
     );
     expect(
-      (purchaseFirstRow.cells[9] as AppInvoiceValueText).value,
+      (purchaseFirstRow.cells[9] as AppPurchaseInvoiceValueText).value,
       '24,500',
     );
     expect(
-      (purchaseFirstRow.cells[10] as AppInvoiceValueText).value,
+      (purchaseFirstRow.cells[10] as AppPurchaseInvoiceValueText).value,
       '2,450',
     );
     expect(
-      (purchaseFirstRow.cells[11] as AppInvoiceValueText).value,
+      (purchaseFirstRow.cells[11] as AppPurchaseInvoiceValueText).value,
       '24,500',
     );
     expect(
@@ -555,8 +564,23 @@ void main() {
     );
     expect(
       tester.widget(find.byKey(const Key('designPurchaseCost-p1'))),
-      isA<AppInvoiceValueText>(),
+      isA<AppPurchaseInvoiceValueText>(),
     );
+
+    discountField.controller!.text = '30000';
+    discountField.onChanged?.call('30000');
+    await tester.pump();
+    final purchaseRowWithNegativeTotal =
+        tester.widget<AppInvoiceItemsTable>(purchase).rows.first;
+    expect(
+      (purchaseRowWithNegativeTotal.cells[9]
+              as AppPurchaseInvoiceValueText)
+          .value,
+      '-5,000',
+    );
+    discountField.controller!.text = '500';
+    discountField.onChanged?.call('500');
+    await tester.pump();
 
     tester
         .widget<AppInvoiceCellDropdown>(
@@ -567,19 +591,18 @@ void main() {
     final purchaseFirstRowInUsd =
         tester.widget<AppInvoiceItemsTable>(purchase).rows.first;
     expect(
-      (purchaseFirstRowInUsd.cells[9] as AppInvoiceValueText).value,
+      (purchaseFirstRowInUsd.cells[9]
+              as AppPurchaseInvoiceValueText)
+          .value,
       '24,500.00',
     );
-    final usdPurchaseFormatter = tester
-        .widget<TextField>(
-          find.byKey(const Key('designPurchasePrice-p1')),
-        )
-        .inputFormatters!
-        .whereType<AppMoneyInputFormatter>()
-        .single;
     expect(
-      usdPurchaseFormatter.decimalPlaces,
-      2,
+      tester
+          .widget<TextField>(
+            find.byKey(const Key('designPurchasePrice-p1')),
+          )
+          .inputFormatters,
+      isNull,
     );
 
     tester
@@ -591,6 +614,24 @@ void main() {
     await tester.pump();
 
     expect(tester.widget<AppInvoiceItemsTable>(purchase).rows, hasLength(3));
+    expect(
+      tester
+          .widget<TextField>(
+            find.byKey(const Key('designPurchaseQuantity-p3')),
+          )
+          .controller!
+          .text,
+      '0',
+    );
+    expect(
+      tester
+          .widget<TextField>(
+            find.byKey(const Key('designPurchaseContainer-p3')),
+          )
+          .controller!
+          .text,
+      '0',
+    );
     expect(find.byKey(const Key('designPurchaseDelete-p2')), findsOneWidget);
     expect(find.byKey(const Key('designPurchaseAdd-p3')), findsOneWidget);
 
@@ -706,5 +747,133 @@ void main() {
     expect(purchaseAdd.backgroundColor, const Color(0xFF16A34A));
     expect(salesDelete.icon, Icons.close_rounded);
     expect(salesDelete.backgroundColor, const Color(0xFFDC2626));
+    await tester.pump(const Duration(milliseconds: 150));
+  });
+
+  testWidgets('matches the old purchase cell focus and lookup behavior',
+      (tester) async {
+    await pumpDesignSystemGallery(tester);
+
+    final purchase = find.byKey(const Key('designPurchaseItemsTable'));
+    await reveal(tester, purchase);
+
+    final codeFinder =
+        find.byKey(const Key('designPurchaseCode-p1'));
+    final nameFinder =
+        find.byKey(const Key('designPurchaseName-p1'));
+    final quantityFinder =
+        find.byKey(const Key('designPurchaseQuantity-p1'));
+
+    final codeField = tester.widget<TextField>(codeFinder);
+    expect(codeField.textAlign, TextAlign.right);
+    expect(codeField.textDirection, TextDirection.rtl);
+    expect(codeField.textInputAction, TextInputAction.search);
+    expect(codeField.decoration?.border, InputBorder.none);
+    expect(codeField.decoration?.focusedBorder, InputBorder.none);
+
+    final quantityField = tester.widget<TextField>(quantityFinder);
+    expect(quantityField.textAlign, TextAlign.center);
+    expect(quantityField.textDirection, TextDirection.ltr);
+    expect(quantityField.textInputAction, TextInputAction.next);
+    expect(quantityField.decoration?.focusedBorder, InputBorder.none);
+
+    await tester.tap(codeFinder);
+    await tester.pump();
+    expect(
+      find.byKey(const Key('appPurchaseAutocompleteMenu')),
+      findsOneWidget,
+    );
+
+    final autocompleteDecoration = tester.widget<DecoratedBox>(
+      find.byKey(const Key('appPurchaseAutocompleteMenu')),
+    );
+    final autocompleteBox =
+        autocompleteDecoration.decoration as BoxDecoration;
+    expect(
+      autocompleteBox.borderRadius,
+      BorderRadius.circular(12),
+    );
+    expect(
+      (autocompleteBox.border! as Border).top.color,
+      AppModuleColors.purchases,
+    );
+    expect(autocompleteBox.boxShadow!.single.blurRadius, 18);
+    expect(
+      autocompleteBox.boxShadow!.single.offset,
+      const Offset(0, 8),
+    );
+
+    await tester.enterText(codeFinder, 'P-002');
+    await tester.pump();
+    expect(
+      tester.widget<TextField>(nameFinder).controller!.text,
+      isEmpty,
+    );
+
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pump();
+    expect(
+      tester.widget<TextField>(codeFinder).controller!.text,
+      'P-002',
+    );
+    expect(
+      tester.widget<TextField>(nameFinder).controller!.text,
+      'قلم أزرق',
+    );
+    expect(
+      tester.widget<TextField>(nameFinder).focusNode!.hasFocus,
+      isTrue,
+    );
+
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pump();
+
+    final purchaseRow =
+        tester.widget<AppInvoiceItemsTable>(purchase).rows.first;
+    final warehouse =
+        purchaseRow.cells[3] as AppPurchaseInvoiceCellDropdown;
+    expect(warehouse.focusNode.hasFocus, isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+    expect(
+      find.byKey(const Key('appPurchaseWarehouseMenu')),
+      findsOneWidget,
+    );
+
+    final warehouseDecoration = tester.widget<DecoratedBox>(
+      find.byKey(const Key('appPurchaseWarehouseMenu')),
+    );
+    final warehouseBox =
+        warehouseDecoration.decoration as BoxDecoration;
+    expect(warehouseBox.borderRadius, BorderRadius.circular(16));
+    expect(
+      (warehouseBox.border! as Border).top.color,
+      AppModuleColors.purchases,
+    );
+    expect(warehouseBox.boxShadow!.single.blurRadius, 18);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+    expect(
+      tester.widget<TextField>(quantityFinder).focusNode!.hasFocus,
+      isTrue,
+    );
+    final focusedQuantity = tester.widget<TextField>(quantityFinder);
+    expect(focusedQuantity.decoration?.border, InputBorder.none);
+    expect(focusedQuantity.decoration?.focusedBorder, InputBorder.none);
+
+    final cost = find.byKey(const Key('designPurchaseCost-p1'));
+    expect(
+      find.descendant(of: cost, matching: find.byType(FittedBox)),
+      findsNothing,
+    );
+    final costText = tester.widget<Text>(
+      find.descendant(of: cost, matching: find.byType(Text)),
+    );
+    expect(costText.maxLines, 1);
+    expect(costText.overflow, TextOverflow.ellipsis);
+    expect(costText.textDirection, TextDirection.ltr);
+    await tester.pump(const Duration(milliseconds: 150));
   });
 }

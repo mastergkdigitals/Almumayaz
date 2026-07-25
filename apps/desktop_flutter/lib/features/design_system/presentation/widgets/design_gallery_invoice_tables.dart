@@ -13,6 +13,27 @@ class DesignGalleryInvoiceTablesSection extends StatefulWidget {
 
 class _DesignGalleryInvoiceTablesSectionState
     extends State<DesignGalleryInvoiceTablesSection> {
+  static const _purchaseProducts = <_PurchaseDemoProduct>[
+    _PurchaseDemoProduct(
+      code: 'P-001',
+      name: 'دفتر ملاحظات',
+      salePriceIqd: 3000,
+      salePriceUsd: 2,
+    ),
+    _PurchaseDemoProduct(
+      code: 'P-002',
+      name: 'قلم أزرق',
+      salePriceIqd: 1750,
+      salePriceUsd: 1.25,
+    ),
+    _PurchaseDemoProduct(
+      code: 'P-003',
+      name: 'طابعة مكتبية',
+      salePriceIqd: 175000,
+      salePriceUsd: 125,
+    ),
+  ];
+
   late final List<_PurchaseDemoRow> _purchaseItems;
   late final List<_SaleDemoRow> _saleItems;
   final _purchaseScrollController = ScrollController();
@@ -94,8 +115,8 @@ class _DesignGalleryInvoiceTablesSectionState
       code: '',
       name: '',
       warehouse: 'الرئيسي',
-      quantity: '1',
-      container: '1',
+      quantity: '0',
+      container: '0',
       purchasePrice: _purchaseCurrency == 'دولار' ? '0.00' : '0',
       discount: _purchaseCurrency == 'دولار' ? '0.00' : '0',
       salePrice: _purchaseCurrency == 'دولار' ? '0.00' : '0',
@@ -201,11 +222,71 @@ class _DesignGalleryInvoiceTablesSectionState
   }
 
   void _submitPurchaseRow(int index) {
-    if (index == _purchaseItems.length - 1) {
-      _addPurchaseItem();
+    final row = _purchaseItems[index];
+    if (row.selectedProductCode == null || row.quantityValue <= 0) {
+      AppToast.showError(
+        context,
+        'أكمل بيانات السطر قبل إضافة سطر جديد',
+      );
+      row.salePriceFocusNode.requestFocus();
       return;
     }
-    _purchaseItems[index + 1].codeFocusNode.requestFocus();
+    _addPurchaseItem();
+  }
+
+  void _selectPurchaseProduct(
+    _PurchaseDemoRow row,
+    _PurchaseDemoProduct product,
+  ) {
+    setState(() {
+      row.selectedProductCode = product.code;
+      row.code.text = product.code;
+      row.name.text = product.name;
+      row.salePrice.text = _formatMoney(
+        _purchaseCurrency == 'دولار'
+            ? product.salePriceUsd
+            : product.salePriceIqd,
+        _purchaseCurrency,
+      );
+    });
+  }
+
+  void _changePurchaseProductCode(
+    _PurchaseDemoRow row,
+    String value,
+  ) {
+    setState(() {
+      row.selectedProductCode = null;
+      row.name.clear();
+      row.salePrice.clear();
+    });
+  }
+
+  void _changePurchaseProductName(
+    _PurchaseDemoRow row,
+    String value,
+  ) {
+    setState(() {
+      row.selectedProductCode = null;
+      row.code.clear();
+      row.salePrice.clear();
+    });
+  }
+
+  void _commitPurchaseProduct(
+    _PurchaseDemoRow row,
+    String value, {
+    required bool byCode,
+  }) {
+    final normalized = value.trim().toLowerCase();
+    for (final product in _purchaseProducts) {
+      final candidate =
+          (byCode ? product.code : product.name).trim().toLowerCase();
+      if (candidate == normalized) {
+        _selectPurchaseProduct(row, product);
+        return;
+      }
+    }
   }
 
   void _submitSaleRow(int index) {
@@ -230,98 +311,109 @@ class _DesignGalleryInvoiceTablesSectionState
     return AppTableRow(
       rowKey: Key('designPurchaseRow-${row.id}'),
       cells: [
-        AppInvoiceValueText((index + 1).toString()),
-        AppInvoiceCellField(
+        AppPurchaseInvoiceValueText((index + 1).toString()),
+        AppPurchaseInvoiceAutocomplete<_PurchaseDemoProduct>(
           fieldKey: Key('designPurchaseCode-${row.id}'),
           controller: row.code,
           focusNode: row.codeFocusNode,
-          textInputAction: TextInputAction.next,
+          nextFocusNode: row.nameFocusNode,
+          enabled: true,
+          options: _purchaseProducts,
+          optionLabel: (product) => product.code,
+          optionSubtitle: (product) => product.name,
+          optionSearchValues: (product) => [product.code, product.name],
+          minMenuWidth: 260,
           keyHoldGuard: _purchaseKeyHoldGuard,
-          onSubmitted: (_) => AppFocusTraversal.next(context),
-          accentColor: AppModuleColors.purchases,
+          onChanged: (value) => _changePurchaseProductCode(row, value),
+          onSelected: (product) => _selectPurchaseProduct(row, product),
+          onSubmitted: (value) =>
+              _commitPurchaseProduct(row, value, byCode: true),
+          onFocusLost: (value) =>
+              _commitPurchaseProduct(row, value, byCode: true),
         ),
-        AppInvoiceCellField(
+        AppPurchaseInvoiceAutocomplete<_PurchaseDemoProduct>(
           fieldKey: Key('designPurchaseName-${row.id}'),
           controller: row.name,
-          textInputAction: TextInputAction.next,
+          focusNode: row.nameFocusNode,
+          nextFocusNode: row.warehouseFocusNode,
+          enabled: true,
+          options: _purchaseProducts,
+          optionLabel: (product) => product.name,
+          optionSubtitle: (product) => product.code,
+          optionSearchValues: (product) => [product.name, product.code],
+          minMenuWidth: 280,
           keyHoldGuard: _purchaseKeyHoldGuard,
-          onSubmitted: (_) => AppFocusTraversal.next(context),
-          accentColor: AppModuleColors.purchases,
+          onChanged: (value) => _changePurchaseProductName(row, value),
+          onSelected: (product) => _selectPurchaseProduct(row, product),
+          onSubmitted: (value) =>
+              _commitPurchaseProduct(row, value, byCode: false),
+          onFocusLost: (value) =>
+              _commitPurchaseProduct(row, value, byCode: false),
         ),
-        AppInvoiceCellDropdown(
+        AppPurchaseInvoiceCellDropdown(
           fieldKey: Key('designPurchaseWarehouse-${row.id}'),
-          accentColor: AppModuleColors.purchases,
           value: row.warehouse.text,
           options: const ['الرئيسي', 'الفرعي'],
-          keyHoldGuard: _purchaseKeyHoldGuard,
-          onSubmitted: (_) => AppFocusTraversal.next(context),
+          focusNode: row.warehouseFocusNode,
+          nextFocusNode: row.quantityFocusNode,
+          enabled: true,
           onChanged: (value) {
             setState(() => row.warehouse.text = value);
           },
         ),
-        AppInvoiceCellField(
+        AppPurchaseInvoiceCellField(
           fieldKey: Key('designPurchaseQuantity-${row.id}'),
           controller: row.quantity,
-          accentColor: AppModuleColors.purchases,
+          focusNode: row.quantityFocusNode,
+          nextFocusNode: row.containerFocusNode,
           numeric: true,
-          inputFormatters: const [AppIntegerInputFormatter()],
-          textInputAction: TextInputAction.next,
           keyHoldGuard: _purchaseKeyHoldGuard,
-          onSubmitted: (_) => AppFocusTraversal.next(context),
           onChanged: (_) => setState(() {}),
         ),
-        AppInvoiceCellField(
+        AppPurchaseInvoiceCellField(
           fieldKey: Key('designPurchaseContainer-${row.id}'),
           controller: row.container,
-          accentColor: AppModuleColors.purchases,
+          focusNode: row.containerFocusNode,
+          nextFocusNode: row.purchasePriceFocusNode,
           numeric: true,
-          inputFormatters: const [AppIntegerInputFormatter()],
-          textInputAction: TextInputAction.next,
           keyHoldGuard: _purchaseKeyHoldGuard,
-          onSubmitted: (_) => AppFocusTraversal.next(context),
         ),
-        AppInvoiceCellField(
+        AppPurchaseInvoiceCellField(
           fieldKey: Key('designPurchasePrice-${row.id}'),
           controller: row.purchasePrice,
-          accentColor: AppModuleColors.purchases,
+          focusNode: row.purchasePriceFocusNode,
+          nextFocusNode: row.discountFocusNode,
           numeric: true,
-          inputFormatters: [_moneyFormatter(_purchaseCurrency)],
-          textInputAction: TextInputAction.next,
           keyHoldGuard: _purchaseKeyHoldGuard,
-          onSubmitted: (_) => AppFocusTraversal.next(context),
           onChanged: (_) => setState(() {}),
         ),
-        AppInvoiceCellField(
+        AppPurchaseInvoiceCellField(
           fieldKey: Key('designPurchaseDiscount-${row.id}'),
           controller: row.discount,
-          accentColor: AppModuleColors.purchases,
+          focusNode: row.discountFocusNode,
+          nextFocusNode: row.salePriceFocusNode,
           numeric: true,
-          inputFormatters: [_moneyFormatter(_purchaseCurrency)],
-          textInputAction: TextInputAction.next,
           keyHoldGuard: _purchaseKeyHoldGuard,
-          onSubmitted: (_) => AppFocusTraversal.next(context),
           onChanged: (_) => setState(() {}),
         ),
-        AppInvoiceValueText(
+        AppPurchaseInvoiceValueText(
           _formatMoney(row.afterDiscount, _purchaseCurrency),
         ),
-        AppInvoiceValueText(
+        AppPurchaseInvoiceValueText(
           _formatMoney(row.total, _purchaseCurrency),
         ),
-        AppInvoiceValueText(
+        AppPurchaseInvoiceValueText(
           _formatMoney(row.unitCost, _purchaseCurrency),
           key: Key('designPurchaseCost-${row.id}'),
         ),
-        AppInvoiceValueText(
+        AppPurchaseInvoiceValueText(
           _formatMoney(row.totalCost, _purchaseCurrency),
         ),
-        AppInvoiceCellField(
+        AppPurchaseInvoiceCellField(
           fieldKey: Key('designPurchaseSalePrice-${row.id}'),
           controller: row.salePrice,
-          accentColor: AppModuleColors.purchases,
+          focusNode: row.salePriceFocusNode,
           numeric: true,
-          inputFormatters: [_moneyFormatter(_purchaseCurrency)],
-          textInputAction: TextInputAction.done,
           keyHoldGuard: _purchaseKeyHoldGuard,
           onSubmitted: (_) => _submitPurchaseRow(index),
         ),
@@ -479,14 +571,22 @@ class _DesignGalleryInvoiceTablesSectionState
       const SizedBox.shrink(),
       const Text('المجموع'),
       const SizedBox.shrink(),
-      AppInvoiceValueText(AppFormatters.quantity(quantity)),
+      AppPurchaseInvoiceSummaryValueText(
+        AppFormatters.quantity(quantity),
+      ),
       const SizedBox.shrink(),
       const SizedBox.shrink(),
-      AppInvoiceValueText(_formatMoney(discount, _purchaseCurrency)),
+      AppPurchaseInvoiceSummaryValueText(
+        _formatMoney(discount, _purchaseCurrency),
+      ),
       const SizedBox.shrink(),
-      AppInvoiceValueText(_formatMoney(total, _purchaseCurrency)),
+      AppPurchaseInvoiceSummaryValueText(
+        _formatMoney(total, _purchaseCurrency),
+      ),
       const SizedBox.shrink(),
-      AppInvoiceValueText(_formatMoney(totalCost, _purchaseCurrency)),
+      AppPurchaseInvoiceSummaryValueText(
+        _formatMoney(totalCost, _purchaseCurrency),
+      ),
       const SizedBox.shrink(),
       const SizedBox.shrink(),
     ];
@@ -683,10 +783,18 @@ class _PurchaseDemoRow {
         container = TextEditingController(text: container),
         purchasePrice = TextEditingController(text: purchasePrice),
         discount = TextEditingController(text: discount),
-        salePrice = TextEditingController(text: salePrice);
+        salePrice = TextEditingController(text: salePrice),
+        selectedProductCode = code.isEmpty ? null : code;
 
   final String id;
   final codeFocusNode = FocusNode();
+  final nameFocusNode = FocusNode();
+  final warehouseFocusNode = FocusNode();
+  final quantityFocusNode = FocusNode();
+  final containerFocusNode = FocusNode();
+  final purchasePriceFocusNode = FocusNode();
+  final discountFocusNode = FocusNode();
+  final salePriceFocusNode = FocusNode();
   final TextEditingController code;
   final TextEditingController name;
   final TextEditingController warehouse;
@@ -695,6 +803,7 @@ class _PurchaseDemoRow {
   final TextEditingController purchasePrice;
   final TextEditingController discount;
   final TextEditingController salePrice;
+  String? selectedProductCode;
 
   num get _quantity => AppFormatters.parseNumber(quantity.text) ?? 0;
   num get _price => AppFormatters.parseNumber(purchasePrice.text) ?? 0;
@@ -706,10 +815,7 @@ class _PurchaseDemoRow {
     return total / _quantity;
   }
 
-  num get total {
-    final result = _baseTotal - _discount;
-    return result < 0 ? 0 : result;
-  }
+  num get total => _baseTotal - _discount;
 
   // لا توجد مصاريف أو خصومات فاتورة في مثال دليل التصميم.
   num get totalCost => total;
@@ -719,6 +825,13 @@ class _PurchaseDemoRow {
 
   void dispose() {
     codeFocusNode.dispose();
+    nameFocusNode.dispose();
+    warehouseFocusNode.dispose();
+    quantityFocusNode.dispose();
+    containerFocusNode.dispose();
+    purchasePriceFocusNode.dispose();
+    discountFocusNode.dispose();
+    salePriceFocusNode.dispose();
     code.dispose();
     name.dispose();
     warehouse.dispose();
@@ -728,6 +841,20 @@ class _PurchaseDemoRow {
     discount.dispose();
     salePrice.dispose();
   }
+}
+
+class _PurchaseDemoProduct {
+  const _PurchaseDemoProduct({
+    required this.code,
+    required this.name,
+    required this.salePriceIqd,
+    required this.salePriceUsd,
+  });
+
+  final String code;
+  final String name;
+  final num salePriceIqd;
+  final num salePriceUsd;
 }
 
 class _SaleDemoRow {

@@ -9,6 +9,7 @@ export 'components/app_feedback.dart';
 export 'components/app_fields.dart';
 export 'components/app_header_button.dart';
 export 'components/app_invoice_table.dart';
+export 'components/app_purchase_invoice_cells.dart';
 export 'components/app_loading_indicator.dart';
 export 'components/app_loading_overlay.dart';
 export 'components/app_module_dialog.dart';

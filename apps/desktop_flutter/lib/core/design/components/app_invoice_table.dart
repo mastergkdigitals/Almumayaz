@@ -99,6 +99,7 @@ class AppInvoiceItemsTable extends StatelessWidget {
           ? AppModulePalettes.purchases
           : AppModulePalettes.sales,
       expandColumns: !isPurchase,
+      legacyPurchase: isPurchase,
     );
   }
 }
@@ -139,6 +140,7 @@ class _InvoiceGrid extends StatefulWidget {
     required this.isLoading,
     required this.palette,
     required this.expandColumns,
+    required this.legacyPurchase,
     super.key,
   });
 
@@ -150,6 +152,7 @@ class _InvoiceGrid extends StatefulWidget {
   final bool isLoading;
   final AppModulePalette palette;
   final bool expandColumns;
+  final bool legacyPurchase;
 
   @override
   State<_InvoiceGrid> createState() => _InvoiceGridState();
@@ -238,6 +241,40 @@ class _InvoiceGridState extends State<_InvoiceGrid> {
           tableWidth - occupiedWidth,
         );
 
+        final tableContent = SingleChildScrollView(
+          controller: _horizontalScrollController,
+          scrollDirection: Axis.horizontal,
+          child: SizedBox(
+            width: tableWidth,
+            height: tableHeight,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _InvoiceHeaderRow(
+                  columns: columns,
+                  trailingWidth: trailingWidth,
+                  colors: colors,
+                ),
+                Expanded(
+                  child: _buildBody(
+                    columns: columns,
+                    trailingWidth: trailingWidth,
+                    colors: colors,
+                  ),
+                ),
+                if (widget.summaryCells != null)
+                  _InvoiceSummaryRow(
+                    columns: columns,
+                    cells: widget.summaryCells!,
+                    trailingWidth: trailingWidth,
+                    colors: colors,
+                    scaleDown: !widget.legacyPurchase,
+                  ),
+              ],
+            ),
+          ),
+        );
+
         return Container(
           height: tableHeight,
           decoration: BoxDecoration(
@@ -251,43 +288,18 @@ class _InvoiceGridState extends State<_InvoiceGrid> {
               width: 1.4,
             ),
           ),
-          clipBehavior: Clip.antiAlias,
-          child: Scrollbar(
-            controller: _horizontalScrollController,
-            scrollbarOrientation: ScrollbarOrientation.bottom,
-            child: SingleChildScrollView(
-              controller: _horizontalScrollController,
-              scrollDirection: Axis.horizontal,
-              child: SizedBox(
-                width: tableWidth,
-                height: tableHeight,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _InvoiceHeaderRow(
-                      columns: columns,
-                      trailingWidth: trailingWidth,
-                      colors: colors,
-                    ),
-                    Expanded(
-                      child: _buildBody(
-                        columns: columns,
-                        trailingWidth: trailingWidth,
-                        colors: colors,
-                      ),
-                    ),
-                    if (widget.summaryCells != null)
-                      _InvoiceSummaryRow(
-                        columns: columns,
-                        cells: widget.summaryCells!,
-                        trailingWidth: trailingWidth,
-                        colors: colors,
-                      ),
-                  ],
+          clipBehavior:
+              widget.legacyPurchase ? Clip.none : Clip.antiAlias,
+          child: widget.legacyPurchase
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(17),
+                  child: tableContent,
+                )
+              : Scrollbar(
+                  controller: _horizontalScrollController,
+                  scrollbarOrientation: ScrollbarOrientation.bottom,
+                  child: tableContent,
                 ),
-              ),
-            ),
-          ),
         );
       },
     );
@@ -313,6 +325,25 @@ class _InvoiceGridState extends State<_InvoiceGrid> {
             fontSize: 18,
             fontWeight: FontWeight.w700,
           ),
+        ),
+      );
+    }
+
+    if (widget.legacyPurchase) {
+      return SingleChildScrollView(
+        controller: _verticalScrollController,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final row in widget.rows)
+              _InvoiceBodyRow(
+                key: row.rowKey,
+                columns: columns,
+                row: row,
+                trailingWidth: trailingWidth,
+                colors: colors,
+              ),
+          ],
         ),
       );
     }
@@ -572,12 +603,14 @@ class _InvoiceSummaryRow extends StatelessWidget {
     required this.cells,
     required this.trailingWidth,
     required this.colors,
+    required this.scaleDown,
   });
 
   final List<AppInvoiceTableColumn> columns;
   final List<Widget> cells;
   final double trailingWidth;
   final _InvoiceGridColors colors;
+  final bool scaleDown;
 
   @override
   Widget build(BuildContext context) {
@@ -599,22 +632,10 @@ class _InvoiceSummaryRow extends StatelessWidget {
                     vertical: 12,
                   ),
                   child: Center(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Directionality(
-                        textDirection: columns[index].numeric
-                            ? TextDirection.ltr
-                            : TextDirection.rtl,
-                        child: DefaultTextStyle(
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: _InvoiceGridColors.textPrimary,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                          ),
-                          child: cells[index],
-                        ),
-                      ),
+                    child: _InvoiceSummaryCellContent(
+                      numeric: columns[index].numeric,
+                      scaleDown: scaleDown,
+                      child: cells[index],
                     ),
                   ),
                 ),
@@ -625,6 +646,37 @@ class _InvoiceSummaryRow extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _InvoiceSummaryCellContent extends StatelessWidget {
+  const _InvoiceSummaryCellContent({
+    required this.numeric,
+    required this.scaleDown,
+    required this.child,
+  });
+
+  final bool numeric;
+  final bool scaleDown;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final content = Directionality(
+      textDirection: numeric ? TextDirection.ltr : TextDirection.rtl,
+      child: DefaultTextStyle(
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: _InvoiceGridColors.textPrimary,
+          fontSize: 18,
+          fontWeight: FontWeight.w800,
+        ),
+        child: child,
+      ),
+    );
+
+    if (!scaleDown) return content;
+    return FittedBox(fit: BoxFit.scaleDown, child: content);
   }
 }
 
