@@ -289,6 +289,9 @@ class _CardRowsTable extends StatelessWidget {
           decoration: BoxDecoration(
             color: _purchaseGreenPale,
             borderRadius: BorderRadius.circular(20),
+          ),
+          foregroundDecoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
             border: Border.all(color: _purchaseLine),
           ),
           child: Column(
@@ -326,7 +329,6 @@ class _CardRowsTable extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(15),
-                    border: Border.all(color: const Color(0xFFE1EEE8)),
                     boxShadow: const [
                       BoxShadow(
                         color: Color(0x0A075E45),
@@ -334,6 +336,10 @@ class _CardRowsTable extends StatelessWidget {
                         offset: Offset(0, 3),
                       ),
                     ],
+                  ),
+                  foregroundDecoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(15),
+                    border: Border.all(color: const Color(0xFFE1EEE8)),
                   ),
                   child: Row(
                     children: [
@@ -427,6 +433,9 @@ class _CompactGridTable extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          foregroundDecoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: const Color(0xFFBFDCCF)),
           ),
@@ -542,6 +551,9 @@ class _SoftCellsTable extends StatelessWidget {
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: const Color(0xFFF3F7F5),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          foregroundDecoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: const Color(0xFFDCE9E3)),
           ),
@@ -666,6 +678,9 @@ class _ModernLedgerTable extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+          ),
+          foregroundDecoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: _purchaseLine),
           ),
