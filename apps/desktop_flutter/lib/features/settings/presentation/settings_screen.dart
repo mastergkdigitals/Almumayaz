@@ -10,15 +10,62 @@ const _purchaseLine = Color(0xFFD4E9DF);
 const _purchaseDanger = Color(0xFFD94A4A);
 const _templateMinimumWidth = 920.0;
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    void showPreviewMessage() {
-      AppToast.showInfo(context, 'هذا نموذج للمقارنة البصرية فقط');
-    }
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
 
+class _SettingsScreenState extends State<SettingsScreen> {
+  final List<List<_PreviewRow>> _templateRows = List.generate(
+    4,
+    (index) => _createPreviewRows(index + 1),
+  );
+  final _nextRowNumbers = <int>[4, 4, 4, 4];
+
+  void _addRow(int templateIndex) {
+    setState(() {
+      final templateNumber = templateIndex + 1;
+      final rowNumber = _nextRowNumbers[templateIndex]++;
+      _templateRows[templateIndex].add(
+        _PreviewRow(
+          id: 't$templateNumber-r$rowNumber',
+          code: '',
+          name: '',
+          quantity: '0',
+          price: '0',
+        ),
+      );
+    });
+  }
+
+  void _deleteRow(int templateIndex, _PreviewRow row) {
+    setState(() {
+      _templateRows[templateIndex].remove(row);
+    });
+  }
+
+  void _updateRow(
+    _PreviewRow row,
+    _PreviewField field,
+    String value,
+  ) {
+    setState(() {
+      if (field == _PreviewField.code) {
+        row.code = value;
+      } else if (field == _PreviewField.name) {
+        row.name = value;
+      } else if (field == _PreviewField.quantity) {
+        row.quantity = value;
+      } else {
+        row.price = value;
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return AppScreenShell(
       key: const Key('settingsScreen'),
       title: 'الإعدادات',
@@ -38,7 +85,7 @@ class SettingsScreen extends StatelessWidget {
                   const AppInfoBanner(
                     message:
                         'أربعة اتجاهات جديدة بالكامل لجدول المشتريات. '
-                        'قارن بينها واختر النموذج الأقرب لذوقك.',
+                        'اكتب داخل الخلايا وأضف الصفوف أو احذفها قبل الاختيار.',
                     icon: Icons.dashboard_customize_rounded,
                   ),
                   const SizedBox(height: AppSpacing.lg),
@@ -51,7 +98,10 @@ class SettingsScreen extends StatelessWidget {
                     badge: 'واسع',
                     child: _CardRowsTable(
                       key: const Key('purchaseTableTemplate1'),
-                      onAction: showPreviewMessage,
+                      rows: _templateRows[0],
+                      onAdd: () => _addRow(0),
+                      onDelete: (row) => _deleteRow(0, row),
+                      onChanged: _updateRow,
                     ),
                   ),
                   const SizedBox(height: AppSpacing.lg),
@@ -64,7 +114,10 @@ class SettingsScreen extends StatelessWidget {
                     badge: 'مضغوط',
                     child: _CompactGridTable(
                       key: const Key('purchaseTableTemplate2'),
-                      onAction: showPreviewMessage,
+                      rows: _templateRows[1],
+                      onAdd: () => _addRow(1),
+                      onDelete: (row) => _deleteRow(1, row),
+                      onChanged: _updateRow,
                     ),
                   ),
                   const SizedBox(height: AppSpacing.lg),
@@ -77,7 +130,10 @@ class SettingsScreen extends StatelessWidget {
                     badge: 'مرن',
                     child: _SoftCellsTable(
                       key: const Key('purchaseTableTemplate3'),
-                      onAction: showPreviewMessage,
+                      rows: _templateRows[2],
+                      onAdd: () => _addRow(2),
+                      onDelete: (row) => _deleteRow(2, row),
+                      onChanged: _updateRow,
                     ),
                   ),
                   const SizedBox(height: AppSpacing.lg),
@@ -90,7 +146,10 @@ class SettingsScreen extends StatelessWidget {
                     badge: 'تفصيلي',
                     child: _ModernLedgerTable(
                       key: const Key('purchaseTableTemplate4'),
-                      onAction: showPreviewMessage,
+                      rows: _templateRows[3],
+                      onAdd: () => _addRow(3),
+                      onDelete: (row) => _deleteRow(3, row),
+                      onChanged: _updateRow,
                     ),
                   ),
                 ],
@@ -273,10 +332,16 @@ class _PreviewWidths {
 class _CardRowsTable extends StatelessWidget {
   const _CardRowsTable({
     super.key,
-    required this.onAction,
+    required this.rows,
+    required this.onAdd,
+    required this.onDelete,
+    required this.onChanged,
   });
 
-  final VoidCallback onAction;
+  final List<_PreviewRow> rows;
+  final VoidCallback onAdd;
+  final ValueChanged<_PreviewRow> onDelete;
+  final _PreviewRowChanged onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -309,22 +374,24 @@ class _CardRowsTable extends StatelessWidget {
                       width: widths.action,
                       child: Center(
                         child: _PreviewIconButton(
+                          key: _previewAddKey(1),
                           icon: Icons.add_rounded,
                           tooltip: 'إضافة مادة',
                           foreground: Colors.white,
                           background: _purchaseGreen,
                           borderColor: _purchaseGreen,
                           borderRadius: 12,
-                          onPressed: onAction,
+                          onPressed: onAdd,
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-              for (var index = 0; index < _previewRows.length; index++) ...[
+              for (var index = 0; index < rows.length; index++) ...[
                 if (index > 0) const SizedBox(height: 8),
                 Container(
+                  key: _previewRowKey(1, rows[index]),
                   height: 64,
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -366,40 +433,83 @@ class _CardRowsTable extends StatelessWidget {
                           ),
                         ),
                       ),
-                      _ValueText(
-                        _previewRows[index].code,
-                        widths.code,
+                      _EditableValueCell(
+                        fieldKey: _previewFieldKey(
+                          1,
+                          rows[index],
+                          _PreviewField.code,
+                        ),
+                        initialValue: rows[index].code,
+                        width: widths.code,
                         textAlign: TextAlign.right,
                         textDirection: TextDirection.rtl,
                         fontWeight: FontWeight.w800,
+                        onChanged: (value) => onChanged(
+                          rows[index],
+                          _PreviewField.code,
+                          value,
+                        ),
                       ),
-                      _ValueText(
-                        _previewRows[index].name,
-                        widths.name,
+                      _EditableValueCell(
+                        fieldKey: _previewFieldKey(
+                          1,
+                          rows[index],
+                          _PreviewField.name,
+                        ),
+                        initialValue: rows[index].name,
+                        width: widths.name,
                         textAlign: TextAlign.right,
                         textDirection: TextDirection.rtl,
+                        onChanged: (value) => onChanged(
+                          rows[index],
+                          _PreviewField.name,
+                          value,
+                        ),
                       ),
-                      _ValueText(
-                        _previewRows[index].quantity,
-                        widths.quantity,
+                      _EditableValueCell(
+                        fieldKey: _previewFieldKey(
+                          1,
+                          rows[index],
+                          _PreviewField.quantity,
+                        ),
+                        initialValue: rows[index].quantity,
+                        width: widths.quantity,
+                        inputKind: _PreviewInputKind.wholeNumber,
+                        onChanged: (value) => onChanged(
+                          rows[index],
+                          _PreviewField.quantity,
+                          value,
+                        ),
                       ),
-                      _ValueText(
-                        _previewRows[index].price,
-                        widths.price,
+                      _EditableValueCell(
+                        fieldKey: _previewFieldKey(
+                          1,
+                          rows[index],
+                          _PreviewField.price,
+                        ),
+                        initialValue: rows[index].price,
+                        width: widths.price,
+                        inputKind: _PreviewInputKind.amount,
                         color: _purchaseGreenDark,
                         fontWeight: FontWeight.w800,
+                        onChanged: (value) => onChanged(
+                          rows[index],
+                          _PreviewField.price,
+                          value,
+                        ),
                       ),
                       SizedBox(
                         width: widths.action,
                         child: Center(
                           child: _PreviewIconButton(
+                            key: _previewDeleteKey(1, rows[index]),
                             icon: Icons.close_rounded,
                             tooltip: 'حذف السطر',
                             foreground: _purchaseDanger,
                             background: const Color(0xFFFFF3F3),
                             borderColor: const Color(0xFFF3C8C8),
                             borderRadius: 12,
-                            onPressed: onAction,
+                            onPressed: () => onDelete(rows[index]),
                           ),
                         ),
                       ),
@@ -418,10 +528,16 @@ class _CardRowsTable extends StatelessWidget {
 class _CompactGridTable extends StatelessWidget {
   const _CompactGridTable({
     super.key,
-    required this.onAction,
+    required this.rows,
+    required this.onAdd,
+    required this.onDelete,
+    required this.onChanged,
   });
 
-  final VoidCallback onAction;
+  final List<_PreviewRow> rows;
+  final VoidCallback onAdd;
+  final ValueChanged<_PreviewRow> onDelete;
+  final _PreviewRowChanged onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -452,12 +568,28 @@ class _CompactGridTable extends StatelessWidget {
                     _HeaderText('اسم المادة', widths.name, Colors.white),
                     _HeaderText('الكمية', widths.quantity, Colors.white),
                     _HeaderText('السعر', widths.price, Colors.white),
-                    SizedBox(width: widths.action),
+                    SizedBox(
+                      width: widths.action,
+                      child: Center(
+                        child: _PreviewIconButton(
+                          key: _previewAddKey(2),
+                          icon: Icons.add_rounded,
+                          tooltip: 'إضافة مادة',
+                          foreground: _purchaseGreenDark,
+                          background: Colors.white,
+                          borderColor: Colors.white,
+                          borderRadius: 999,
+                          size: 32,
+                          onPressed: onAdd,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
-              for (var index = 0; index < _previewRows.length; index++)
+              for (var index = 0; index < rows.length; index++)
                 Container(
+                  key: _previewRowKey(2, rows[index]),
                   height: 54,
                   decoration: BoxDecoration(
                     color: index.isEven
@@ -474,51 +606,84 @@ class _CompactGridTable extends StatelessWidget {
                         widths.index,
                         fontWeight: FontWeight.w800,
                       ),
-                      _GridValueCell(
-                        _previewRows[index].code,
-                        widths.code,
+                      _GridEditableCell(
+                        fieldKey: _previewFieldKey(
+                          2,
+                          rows[index],
+                          _PreviewField.code,
+                        ),
+                        initialValue: rows[index].code,
+                        width: widths.code,
                         textAlign: TextAlign.right,
                         textDirection: TextDirection.rtl,
                         fontWeight: FontWeight.w800,
+                        onChanged: (value) => onChanged(
+                          rows[index],
+                          _PreviewField.code,
+                          value,
+                        ),
                       ),
-                      _GridValueCell(
-                        _previewRows[index].name,
-                        widths.name,
+                      _GridEditableCell(
+                        fieldKey: _previewFieldKey(
+                          2,
+                          rows[index],
+                          _PreviewField.name,
+                        ),
+                        initialValue: rows[index].name,
+                        width: widths.name,
                         textAlign: TextAlign.right,
                         textDirection: TextDirection.rtl,
+                        onChanged: (value) => onChanged(
+                          rows[index],
+                          _PreviewField.name,
+                          value,
+                        ),
                       ),
-                      _GridValueCell(
-                        _previewRows[index].quantity,
-                        widths.quantity,
+                      _GridEditableCell(
+                        fieldKey: _previewFieldKey(
+                          2,
+                          rows[index],
+                          _PreviewField.quantity,
+                        ),
+                        initialValue: rows[index].quantity,
+                        width: widths.quantity,
+                        inputKind: _PreviewInputKind.wholeNumber,
+                        onChanged: (value) => onChanged(
+                          rows[index],
+                          _PreviewField.quantity,
+                          value,
+                        ),
                       ),
-                      _GridValueCell(
-                        _previewRows[index].price,
-                        widths.price,
+                      _GridEditableCell(
+                        fieldKey: _previewFieldKey(
+                          2,
+                          rows[index],
+                          _PreviewField.price,
+                        ),
+                        initialValue: rows[index].price,
+                        width: widths.price,
+                        inputKind: _PreviewInputKind.amount,
                         color: _purchaseGreenDark,
                         fontWeight: FontWeight.w800,
+                        onChanged: (value) => onChanged(
+                          rows[index],
+                          _PreviewField.price,
+                          value,
+                        ),
                       ),
                       SizedBox(
                         width: widths.action,
                         child: Center(
                           child: _PreviewIconButton(
-                            icon: index == _previewRows.length - 1
-                                ? Icons.add_rounded
-                                : Icons.close_rounded,
-                            tooltip: index == _previewRows.length - 1
-                                ? 'إضافة مادة'
-                                : 'حذف السطر',
-                            foreground: index == _previewRows.length - 1
-                                ? Colors.white
-                                : _purchaseDanger,
-                            background: index == _previewRows.length - 1
-                                ? _purchaseGreen
-                                : Colors.transparent,
-                            borderColor: index == _previewRows.length - 1
-                                ? _purchaseGreen
-                                : const Color(0xFFE7BABA),
+                            key: _previewDeleteKey(2, rows[index]),
+                            icon: Icons.close_rounded,
+                            tooltip: 'حذف السطر',
+                            foreground: _purchaseDanger,
+                            background: Colors.transparent,
+                            borderColor: const Color(0xFFE7BABA),
                             borderRadius: 999,
                             size: 32,
-                            onPressed: onAction,
+                            onPressed: () => onDelete(rows[index]),
                           ),
                         ),
                       ),
@@ -536,10 +701,16 @@ class _CompactGridTable extends StatelessWidget {
 class _SoftCellsTable extends StatelessWidget {
   const _SoftCellsTable({
     super.key,
-    required this.onAction,
+    required this.rows,
+    required this.onAdd,
+    required this.onDelete,
+    required this.onChanged,
   });
 
-  final VoidCallback onAction;
+  final List<_PreviewRow> rows;
+  final VoidCallback onAdd;
+  final ValueChanged<_PreviewRow> onDelete;
+  final _PreviewRowChanged onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -573,8 +744,9 @@ class _SoftCellsTable extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 7),
-              for (var index = 0; index < _previewRows.length; index++)
+              for (var index = 0; index < rows.length; index++)
                 SizedBox(
+                  key: _previewRowKey(3, rows[index]),
                   height: 68,
                   child: Row(
                     children: [
@@ -605,30 +777,73 @@ class _SoftCellsTable extends StatelessWidget {
                       ),
                       _SoftDataCell(
                         width: widths.code,
-                        text: _previewRows[index].code,
+                        fieldKey: _previewFieldKey(
+                          3,
+                          rows[index],
+                          _PreviewField.code,
+                        ),
+                        initialValue: rows[index].code,
                         textAlign: TextAlign.right,
                         textDirection: TextDirection.rtl,
                         emphasized: true,
+                        onChanged: (value) => onChanged(
+                          rows[index],
+                          _PreviewField.code,
+                          value,
+                        ),
                       ),
                       _SoftDataCell(
                         width: widths.name,
-                        text: _previewRows[index].name,
+                        fieldKey: _previewFieldKey(
+                          3,
+                          rows[index],
+                          _PreviewField.name,
+                        ),
+                        initialValue: rows[index].name,
                         textAlign: TextAlign.right,
                         textDirection: TextDirection.rtl,
+                        onChanged: (value) => onChanged(
+                          rows[index],
+                          _PreviewField.name,
+                          value,
+                        ),
                       ),
                       _SoftDataCell(
                         width: widths.quantity,
-                        text: _previewRows[index].quantity,
+                        fieldKey: _previewFieldKey(
+                          3,
+                          rows[index],
+                          _PreviewField.quantity,
+                        ),
+                        initialValue: rows[index].quantity,
+                        inputKind: _PreviewInputKind.wholeNumber,
+                        onChanged: (value) => onChanged(
+                          rows[index],
+                          _PreviewField.quantity,
+                          value,
+                        ),
                       ),
                       _SoftDataCell(
                         width: widths.price,
-                        text: _previewRows[index].price,
+                        fieldKey: _previewFieldKey(
+                          3,
+                          rows[index],
+                          _PreviewField.price,
+                        ),
+                        initialValue: rows[index].price,
+                        inputKind: _PreviewInputKind.amount,
                         emphasized: true,
+                        onChanged: (value) => onChanged(
+                          rows[index],
+                          _PreviewField.price,
+                          value,
+                        ),
                       ),
                       SizedBox(
                         width: widths.action,
                         child: Center(
                           child: _PreviewIconButton(
+                            key: _previewDeleteKey(3, rows[index]),
                             icon: Icons.close_rounded,
                             tooltip: 'حذف السطر',
                             foreground: _purchaseDanger,
@@ -636,7 +851,7 @@ class _SoftCellsTable extends StatelessWidget {
                             borderColor: const Color(0xFFE8C8C8),
                             borderRadius: 13,
                             size: 36,
-                            onPressed: onAction,
+                            onPressed: () => onDelete(rows[index]),
                           ),
                         ),
                       ),
@@ -647,9 +862,10 @@ class _SoftCellsTable extends StatelessWidget {
               Align(
                 alignment: Alignment.centerLeft,
                 child: _PreviewWideButton(
+                  key: _previewAddKey(3),
                   label: 'إضافة مادة',
                   icon: Icons.add_rounded,
-                  onPressed: onAction,
+                  onPressed: onAdd,
                 ),
               ),
             ],
@@ -663,16 +879,30 @@ class _SoftCellsTable extends StatelessWidget {
 class _ModernLedgerTable extends StatelessWidget {
   const _ModernLedgerTable({
     super.key,
-    required this.onAction,
+    required this.rows,
+    required this.onAdd,
+    required this.onDelete,
+    required this.onChanged,
   });
 
-  final VoidCallback onAction;
+  final List<_PreviewRow> rows;
+  final VoidCallback onAdd;
+  final ValueChanged<_PreviewRow> onDelete;
+  final _PreviewRowChanged onChanged;
 
   @override
   Widget build(BuildContext context) {
     return _PreviewViewport(
       builder: (width) {
         final widths = _PreviewWidths.forWidth(width);
+        final total = rows.fold<num>(0, (sum, row) {
+          final quantity = AppFormatters.parseInteger(row.quantity) ?? 0;
+          final price = AppFormatters.parseNumber(row.price) ?? 0;
+          return sum + quantity * price;
+        });
+        final rowCountLabel = rows.length == 1
+            ? 'مادة واحدة جاهزة للمراجعة'
+            : '${rows.length} مواد جاهزة للمراجعة';
 
         return Container(
           clipBehavior: Clip.antiAlias,
@@ -692,18 +922,18 @@ class _ModernLedgerTable extends StatelessWidget {
                 color: _purchaseGreenPale,
                 child: Row(
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Row(
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.inventory_2_outlined,
                             color: _purchaseGreen,
                             size: 19,
                           ),
-                          SizedBox(width: 8),
+                          const SizedBox(width: 8),
                           Text(
-                            '3 مواد جاهزة للمراجعة',
-                            style: TextStyle(
+                            rowCountLabel,
+                            style: const TextStyle(
                               color: _purchaseGreenDark,
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
@@ -713,10 +943,11 @@ class _ModernLedgerTable extends StatelessWidget {
                       ),
                     ),
                     _PreviewWideButton(
+                      key: _previewAddKey(4),
                       label: 'إضافة مادة',
                       icon: Icons.add_rounded,
                       compact: true,
-                      onPressed: onAction,
+                      onPressed: onAdd,
                     ),
                   ],
                 ),
@@ -756,8 +987,9 @@ class _ModernLedgerTable extends StatelessWidget {
                   ],
                 ),
               ),
-              for (var index = 0; index < _previewRows.length; index++)
+              for (var index = 0; index < rows.length; index++)
                 Container(
+                  key: _previewRowKey(4, rows[index]),
                   height: 60,
                   decoration: BoxDecoration(
                     color: index.isEven
@@ -792,72 +1024,108 @@ class _ModernLedgerTable extends StatelessWidget {
                       ),
                       SizedBox(
                         width: widths.code,
-                        child: Align(
-                          alignment: Alignment.centerRight,
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 12),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 6,
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _purchaseGreenSoft,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: _InlineEditor(
+                            fieldKey: _previewFieldKey(
+                              4,
+                              rows[index],
+                              _PreviewField.code,
                             ),
-                            decoration: BoxDecoration(
-                              color: _purchaseGreenSoft,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              _previewRows[index].code,
-                              textDirection: TextDirection.rtl,
-                              style: const TextStyle(
-                                color: _purchaseGreenDark,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w800,
-                              ),
+                            initialValue: rows[index].code,
+                            textAlign: TextAlign.right,
+                            textDirection: TextDirection.rtl,
+                            color: _purchaseGreenDark,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            onChanged: (value) => onChanged(
+                              rows[index],
+                              _PreviewField.code,
+                              value,
                             ),
                           ),
                         ),
                       ),
-                      _ValueText(
-                        _previewRows[index].name,
-                        widths.name,
+                      _EditableValueCell(
+                        fieldKey: _previewFieldKey(
+                          4,
+                          rows[index],
+                          _PreviewField.name,
+                        ),
+                        initialValue: rows[index].name,
+                        width: widths.name,
                         textAlign: TextAlign.right,
                         textDirection: TextDirection.rtl,
+                        onChanged: (value) => onChanged(
+                          rows[index],
+                          _PreviewField.name,
+                          value,
+                        ),
                       ),
                       SizedBox(
                         width: widths.quantity,
                         child: Center(
                           child: Container(
-                            constraints: const BoxConstraints(minWidth: 58),
+                            width: 82,
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
+                              horizontal: 10,
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
                               color: const Color(0xFFF0F4F2),
                               borderRadius: BorderRadius.circular(999),
                             ),
-                            child: Text(
-                              _previewRows[index].quantity,
+                            child: _InlineEditor(
+                              fieldKey: _previewFieldKey(
+                                4,
+                                rows[index],
+                                _PreviewField.quantity,
+                              ),
+                              initialValue: rows[index].quantity,
                               textAlign: TextAlign.center,
                               textDirection: TextDirection.ltr,
-                              style: const TextStyle(
-                                color: AppColors.textPrimary,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              inputKind: _PreviewInputKind.wholeNumber,
+                              onChanged: (value) => onChanged(
+                                rows[index],
+                                _PreviewField.quantity,
+                                value,
                               ),
                             ),
                           ),
                         ),
                       ),
-                      _ValueText(
-                        _previewRows[index].price,
-                        widths.price,
+                      _EditableValueCell(
+                        fieldKey: _previewFieldKey(
+                          4,
+                          rows[index],
+                          _PreviewField.price,
+                        ),
+                        initialValue: rows[index].price,
+                        width: widths.price,
+                        inputKind: _PreviewInputKind.amount,
                         color: _purchaseGreenDark,
                         fontWeight: FontWeight.w900,
+                        onChanged: (value) => onChanged(
+                          rows[index],
+                          _PreviewField.price,
+                          value,
+                        ),
                       ),
                       SizedBox(
                         width: widths.action,
                         child: Center(
                           child: _PreviewIconButton(
+                            key: _previewDeleteKey(4, rows[index]),
                             icon: Icons.close_rounded,
                             tooltip: 'حذف السطر',
                             foreground: _purchaseDanger,
@@ -865,7 +1133,7 @@ class _ModernLedgerTable extends StatelessWidget {
                             borderColor: Colors.transparent,
                             borderRadius: 999,
                             size: 34,
-                            onPressed: onAction,
+                            onPressed: () => onDelete(rows[index]),
                           ),
                         ),
                       ),
@@ -876,9 +1144,9 @@ class _ModernLedgerTable extends StatelessWidget {
                 height: 50,
                 padding: const EdgeInsets.symmetric(horizontal: 18),
                 color: _purchaseGreenSoft,
-                child: const Row(
+                child: Row(
                   children: [
-                    Expanded(
+                    const Expanded(
                       child: Text(
                         'الإجمالي التقريبي',
                         style: TextStyle(
@@ -889,9 +1157,9 @@ class _ModernLedgerTable extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '1,850,000 د.ع',
+                      '${AppFormatters.iqd(total)} د.ع',
                       textDirection: TextDirection.ltr,
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: _purchaseGreenDark,
                         fontSize: 17,
                         fontWeight: FontWeight.w900,
@@ -937,22 +1205,100 @@ class _HeaderText extends StatelessWidget {
   }
 }
 
-class _ValueText extends StatelessWidget {
-  const _ValueText(
-    this.value,
-    this.width, {
+class _InlineEditor extends StatelessWidget {
+  const _InlineEditor({
+    required this.fieldKey,
+    required this.initialValue,
+    required this.onChanged,
+    this.textAlign = TextAlign.center,
+    this.textDirection = TextDirection.ltr,
+    this.color = AppColors.textPrimary,
+    this.fontSize = 15,
+    this.fontWeight = FontWeight.w700,
+    this.inputKind = _PreviewInputKind.text,
+  });
+
+  final Key fieldKey;
+  final String initialValue;
+  final ValueChanged<String> onChanged;
+  final TextAlign textAlign;
+  final TextDirection textDirection;
+  final Color color;
+  final double fontSize;
+  final FontWeight fontWeight;
+  final _PreviewInputKind inputKind;
+
+  @override
+  Widget build(BuildContext context) {
+    final inputFormatters = switch (inputKind) {
+      _PreviewInputKind.text => null,
+      _PreviewInputKind.wholeNumber => <TextInputFormatter>[
+          FilteringTextInputFormatter.digitsOnly,
+        ],
+      _PreviewInputKind.amount => <TextInputFormatter>[
+          FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+        ],
+    };
+    final keyboardType = switch (inputKind) {
+      _PreviewInputKind.text => TextInputType.text,
+      _PreviewInputKind.wholeNumber => TextInputType.number,
+      _PreviewInputKind.amount =>
+          const TextInputType.numberWithOptions(decimal: true),
+    };
+
+    return TextFormField(
+      key: fieldKey,
+      initialValue: initialValue,
+      maxLines: 1,
+      keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
+      textAlign: textAlign,
+      textDirection: textDirection,
+      textInputAction: TextInputAction.next,
+      onChanged: onChanged,
+      style: TextStyle(
+        color: color,
+        fontSize: fontSize,
+        fontWeight: fontWeight,
+        height: 1,
+      ),
+      decoration: const InputDecoration(
+        isDense: true,
+        filled: false,
+        contentPadding: EdgeInsets.zero,
+        border: InputBorder.none,
+        enabledBorder: InputBorder.none,
+        focusedBorder: InputBorder.none,
+        disabledBorder: InputBorder.none,
+        errorBorder: InputBorder.none,
+        focusedErrorBorder: InputBorder.none,
+      ),
+    );
+  }
+}
+
+class _EditableValueCell extends StatelessWidget {
+  const _EditableValueCell({
+    required this.fieldKey,
+    required this.initialValue,
+    required this.width,
+    required this.onChanged,
     this.textAlign = TextAlign.center,
     this.textDirection = TextDirection.ltr,
     this.color = AppColors.textPrimary,
     this.fontWeight = FontWeight.w700,
+    this.inputKind = _PreviewInputKind.text,
   });
 
-  final String value;
+  final Key fieldKey;
+  final String initialValue;
   final double width;
+  final ValueChanged<String> onChanged;
   final TextAlign textAlign;
   final TextDirection textDirection;
   final Color color;
   final FontWeight fontWeight;
+  final _PreviewInputKind inputKind;
 
   @override
   Widget build(BuildContext context) {
@@ -960,17 +1306,15 @@ class _ValueText extends StatelessWidget {
       width: width,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Text(
-          value,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+        child: _InlineEditor(
+          fieldKey: fieldKey,
+          initialValue: initialValue,
+          onChanged: onChanged,
           textAlign: textAlign,
           textDirection: textDirection,
-          style: TextStyle(
-            color: color,
-            fontSize: 15,
-            fontWeight: fontWeight,
-          ),
+          color: color,
+          fontWeight: fontWeight,
+          inputKind: inputKind,
         ),
       ),
     );
@@ -1022,6 +1366,56 @@ class _GridValueCell extends StatelessWidget {
   }
 }
 
+class _GridEditableCell extends StatelessWidget {
+  const _GridEditableCell({
+    required this.fieldKey,
+    required this.initialValue,
+    required this.width,
+    required this.onChanged,
+    this.textAlign = TextAlign.center,
+    this.textDirection = TextDirection.ltr,
+    this.color = AppColors.textPrimary,
+    this.fontWeight = FontWeight.w700,
+    this.inputKind = _PreviewInputKind.text,
+  });
+
+  final Key fieldKey;
+  final String initialValue;
+  final double width;
+  final ValueChanged<String> onChanged;
+  final TextAlign textAlign;
+  final TextDirection textDirection;
+  final Color color;
+  final FontWeight fontWeight;
+  final _PreviewInputKind inputKind;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: double.infinity,
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: const BoxDecoration(
+        border: Border(
+          left: BorderSide(color: _purchaseLine),
+        ),
+      ),
+      child: _InlineEditor(
+        fieldKey: fieldKey,
+        initialValue: initialValue,
+        onChanged: onChanged,
+        textAlign: textAlign,
+        textDirection: textDirection,
+        color: color,
+        fontSize: 14,
+        fontWeight: fontWeight,
+        inputKind: inputKind,
+      ),
+    );
+  }
+}
+
 class _SoftHeaderCell extends StatelessWidget {
   const _SoftHeaderCell(this.label, this.width);
 
@@ -1060,19 +1454,30 @@ class _SoftHeaderCell extends StatelessWidget {
 class _SoftDataCell extends StatelessWidget {
   const _SoftDataCell({
     required this.width,
-    this.text,
+    this.fieldKey,
+    this.initialValue,
+    this.onChanged,
     this.child,
     this.textAlign = TextAlign.center,
     this.textDirection = TextDirection.ltr,
     this.emphasized = false,
-  }) : assert(text != null || child != null);
+    this.inputKind = _PreviewInputKind.text,
+  }) : assert(
+          child != null ||
+              (fieldKey != null &&
+                  initialValue != null &&
+                  onChanged != null),
+        );
 
   final double width;
-  final String? text;
+  final Key? fieldKey;
+  final String? initialValue;
+  final ValueChanged<String>? onChanged;
   final Widget? child;
   final TextAlign textAlign;
   final TextDirection textDirection;
   final bool emphasized;
+  final _PreviewInputKind inputKind;
 
   @override
   Widget build(BuildContext context) {
@@ -1093,20 +1498,19 @@ class _SoftDataCell extends StatelessWidget {
                       : const Color(0xFFDCE9E3),
                 ),
               ),
-              child: Text(
-                text!,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              child: _InlineEditor(
+                fieldKey: fieldKey!,
+                initialValue: initialValue!,
+                onChanged: onChanged!,
                 textAlign: textAlign,
                 textDirection: textDirection,
-                style: TextStyle(
-                  color: emphasized
-                      ? _purchaseGreenDark
-                      : AppColors.textPrimary,
-                  fontSize: 14,
-                  fontWeight:
-                      emphasized ? FontWeight.w800 : FontWeight.w700,
-                ),
+                color: emphasized
+                    ? _purchaseGreenDark
+                    : AppColors.textPrimary,
+                fontSize: 14,
+                fontWeight:
+                    emphasized ? FontWeight.w800 : FontWeight.w700,
+                inputKind: inputKind,
               ),
             ),
       ),
@@ -1116,6 +1520,7 @@ class _SoftDataCell extends StatelessWidget {
 
 class _PreviewIconButton extends StatelessWidget {
   const _PreviewIconButton({
+    super.key,
     required this.icon,
     required this.tooltip,
     required this.foreground,
@@ -1161,6 +1566,7 @@ class _PreviewIconButton extends StatelessWidget {
 
 class _PreviewWideButton extends StatelessWidget {
   const _PreviewWideButton({
+    super.key,
     required this.label,
     required this.icon,
     required this.onPressed,
@@ -1207,36 +1613,80 @@ class _PreviewWideButton extends StatelessWidget {
 }
 
 class _PreviewRow {
-  const _PreviewRow({
+  _PreviewRow({
+    required this.id,
     required this.code,
     required this.name,
     required this.quantity,
     required this.price,
   });
 
-  final String code;
-  final String name;
-  final String quantity;
-  final String price;
+  final String id;
+  String code;
+  String name;
+  String quantity;
+  String price;
 }
 
-const _previewRows = <_PreviewRow>[
-  _PreviewRow(
-    code: 'P-001',
-    name: 'دفتر ملاحظات',
-    quantity: '100',
-    price: '2,500',
-  ),
-  _PreviewRow(
-    code: 'P-002',
-    name: 'قلم أزرق',
-    quantity: '1,000',
-    price: '1,250',
-  ),
-  _PreviewRow(
-    code: 'P-003',
-    name: 'طابعة مكتبية',
-    quantity: '2',
-    price: '175,000',
-  ),
-];
+enum _PreviewField { code, name, quantity, price }
+
+enum _PreviewInputKind { text, wholeNumber, amount }
+
+typedef _PreviewRowChanged = void Function(
+  _PreviewRow row,
+  _PreviewField field,
+  String value,
+);
+
+List<_PreviewRow> _createPreviewRows(int templateNumber) {
+  return [
+    _PreviewRow(
+      id: 't$templateNumber-r1',
+      code: 'P-001',
+      name: 'دفتر ملاحظات',
+      quantity: '100',
+      price: '2,500',
+    ),
+    _PreviewRow(
+      id: 't$templateNumber-r2',
+      code: 'P-002',
+      name: 'قلم أزرق',
+      quantity: '1,000',
+      price: '1,250',
+    ),
+    _PreviewRow(
+      id: 't$templateNumber-r3',
+      code: 'P-003',
+      name: 'طابعة مكتبية',
+      quantity: '2',
+      price: '175,000',
+    ),
+  ];
+}
+
+Key _previewRowKey(int templateNumber, _PreviewRow row) {
+  return Key('template${templateNumber}Row-${row.id}');
+}
+
+Key _previewAddKey(int templateNumber) {
+  return Key('template${templateNumber}AddRow');
+}
+
+Key _previewDeleteKey(int templateNumber, _PreviewRow row) {
+  return Key('template${templateNumber}DeleteRow-${row.id}');
+}
+
+Key _previewFieldKey(
+  int templateNumber,
+  _PreviewRow row,
+  _PreviewField field,
+) {
+  final fieldName = switch (field) {
+    _PreviewField.code => 'Code',
+    _PreviewField.name => 'Name',
+    _PreviewField.quantity => 'Quantity',
+    _PreviewField.price => 'Price',
+  };
+
+  return Key('template$templateNumber${fieldName}Field-${row.id}');
+}
