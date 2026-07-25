@@ -892,7 +892,7 @@ void main() {
       'مخزن المنصور',
     );
     expect(warehouseOption, findsOneWidget);
-    await tester.tap(warehouseOption);
+    tester.widget<MenuItemButton>(warehouseOption).onPressed!.call();
     await tester.pump();
 
     final firstWarehouseDropdown = tester.widget<AppInvoiceCellDropdown>(
