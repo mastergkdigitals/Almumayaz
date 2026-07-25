@@ -676,14 +676,14 @@ class _PurchaseInputCell extends StatelessWidget {
   Widget build(BuildContext context) {
     void advanceWithTab() {
       keyHoldGuard.runOnce(
-        keys: const {LogicalKeyboardKey.tab},
+        keys: {LogicalKeyboardKey.tab},
         action: () => AppFocusTraversal.next(context),
       );
     }
 
     void submit() {
       keyHoldGuard.runOnce(
-        keys: const {
+        keys: {
           LogicalKeyboardKey.enter,
           LogicalKeyboardKey.numpadEnter,
         },
