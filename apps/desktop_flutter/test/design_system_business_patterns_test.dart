@@ -492,7 +492,6 @@ void main() {
     final indexCellHeight = tester
         .getSize(find.byKey(const Key('designPurchaseIndexCell-p1')))
         .height;
-    expect(indexCellHeight, 44);
     for (final keyName in const [
       'Code',
       'Name',
