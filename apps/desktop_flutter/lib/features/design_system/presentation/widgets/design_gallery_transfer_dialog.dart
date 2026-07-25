@@ -305,7 +305,7 @@ class _DesignGalleryTransferDialogState
                   vertical: 88,
                 ),
                 child: Icon(
-                  Icons.arrow_back_rounded,
+                  Icons.arrow_forward_rounded,
                   color: AppModuleColors.warehouses,
                   size: AppIconSizes.xl,
                 ),

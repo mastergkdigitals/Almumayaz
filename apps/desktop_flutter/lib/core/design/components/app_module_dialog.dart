@@ -235,12 +235,14 @@ class AppDialogSection extends StatelessWidget {
     required this.child,
     super.key,
     this.icon,
+    this.expandChild = false,
   });
 
   final String title;
   final IconData? icon;
   final Color accentColor;
   final Widget child;
+  final bool expandChild;
 
   @override
   Widget build(BuildContext context) {
@@ -281,7 +283,7 @@ class AppDialogSection extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          child,
+          if (expandChild) Expanded(child: child) else child,
         ],
       ),
     );

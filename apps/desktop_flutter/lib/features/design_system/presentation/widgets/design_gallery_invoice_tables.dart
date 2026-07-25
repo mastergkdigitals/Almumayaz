@@ -147,18 +147,22 @@ class _DesignGalleryInvoiceTablesSectionState
         AppInvoiceCellField(
           fieldKey: Key('designPurchaseCode-${row.id}'),
           controller: row.code,
+          accentColor: AppModuleColors.purchases,
         ),
         AppInvoiceCellField(
           fieldKey: Key('designPurchaseName-${row.id}'),
           controller: row.name,
+          accentColor: AppModuleColors.purchases,
         ),
         AppInvoiceCellField(
           fieldKey: Key('designPurchaseWarehouse-${row.id}'),
           controller: row.warehouse,
+          accentColor: AppModuleColors.purchases,
         ),
         AppInvoiceCellField(
           fieldKey: Key('designPurchaseQuantity-${row.id}'),
           controller: row.quantity,
+          accentColor: AppModuleColors.purchases,
           numeric: true,
           inputFormatters: const [AppIntegerInputFormatter()],
           onChanged: (_) => setState(() {}),
@@ -166,12 +170,14 @@ class _DesignGalleryInvoiceTablesSectionState
         AppInvoiceCellField(
           fieldKey: Key('designPurchaseContainer-${row.id}'),
           controller: row.container,
+          accentColor: AppModuleColors.purchases,
           numeric: true,
           inputFormatters: const [AppIntegerInputFormatter()],
         ),
         AppInvoiceCellField(
           fieldKey: Key('designPurchasePrice-${row.id}'),
           controller: row.purchasePrice,
+          accentColor: AppModuleColors.purchases,
           numeric: true,
           inputFormatters: const [AppMoneyInputFormatter()],
           onChanged: (_) => setState(() {}),
@@ -179,6 +185,7 @@ class _DesignGalleryInvoiceTablesSectionState
         AppInvoiceCellField(
           fieldKey: Key('designPurchaseDiscount-${row.id}'),
           controller: row.discount,
+          accentColor: AppModuleColors.purchases,
           numeric: true,
           inputFormatters: const [AppMoneyInputFormatter()],
           onChanged: (_) => setState(() {}),
@@ -188,6 +195,7 @@ class _DesignGalleryInvoiceTablesSectionState
         AppInvoiceCellField(
           fieldKey: Key('designPurchaseCost-${row.id}'),
           controller: row.cost,
+          accentColor: AppModuleColors.purchases,
           numeric: true,
           inputFormatters: const [AppMoneyInputFormatter()],
           onChanged: (_) => setState(() {}),
@@ -196,6 +204,7 @@ class _DesignGalleryInvoiceTablesSectionState
         AppInvoiceCellField(
           fieldKey: Key('designPurchaseSalePrice-${row.id}'),
           controller: row.salePrice,
+          accentColor: AppModuleColors.purchases,
           numeric: true,
           inputFormatters: const [AppMoneyInputFormatter()],
         ),
@@ -213,6 +222,7 @@ class _DesignGalleryInvoiceTablesSectionState
           backgroundColor:
               isLast ? AppModuleColors.purchases : null,
           foregroundColor: isLast ? Colors.white : null,
+          size: 36,
           onPressed:
               isLast ? _addPurchaseItem : () => _deletePurchaseItem(index),
         ),
@@ -238,18 +248,22 @@ class _DesignGalleryInvoiceTablesSectionState
         AppInvoiceCellField(
           fieldKey: Key('designSaleCode-${row.id}'),
           controller: row.code,
+          accentColor: AppModuleColors.sales,
         ),
         AppInvoiceCellField(
           fieldKey: Key('designSaleName-${row.id}'),
           controller: row.name,
+          accentColor: AppModuleColors.sales,
         ),
         AppInvoiceCellField(
           fieldKey: Key('designSaleWarehouse-${row.id}'),
           controller: row.warehouse,
+          accentColor: AppModuleColors.sales,
         ),
         AppInvoiceCellField(
           fieldKey: Key('designSaleQuantity-${row.id}'),
           controller: row.quantity,
+          accentColor: AppModuleColors.sales,
           numeric: true,
           inputFormatters: const [AppIntegerInputFormatter()],
           onChanged: (_) => setState(() {}),
@@ -257,6 +271,7 @@ class _DesignGalleryInvoiceTablesSectionState
         AppInvoiceCellField(
           fieldKey: Key('designSalePrice-${row.id}'),
           controller: row.salePrice,
+          accentColor: AppModuleColors.sales,
           numeric: true,
           inputFormatters: const [AppMoneyInputFormatter()],
           onChanged: (_) => setState(() {}),
@@ -264,6 +279,7 @@ class _DesignGalleryInvoiceTablesSectionState
         AppInvoiceCellField(
           fieldKey: Key('designSaleDiscount-${row.id}'),
           controller: row.discount,
+          accentColor: AppModuleColors.sales,
           numeric: true,
           inputFormatters: const [AppMoneyInputFormatter()],
           onChanged: (_) => setState(() {}),
@@ -283,6 +299,7 @@ class _DesignGalleryInvoiceTablesSectionState
               : AppButtonVariant.danger,
           backgroundColor: isLast ? AppModuleColors.sales : null,
           foregroundColor: isLast ? Colors.white : null,
+          size: 36,
           onPressed: isLast ? _addSaleItem : () => _deleteSaleItem(index),
         ),
       ],

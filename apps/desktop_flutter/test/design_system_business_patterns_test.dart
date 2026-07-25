@@ -286,6 +286,20 @@ void main() {
     expect(find.byKey(const Key('designTransferProduct')), findsOneWidget);
     expect(find.byKey(const Key('designTransferQuantity')), findsOneWidget);
     expect(
+      find.descendant(
+        of: transferDialog,
+        matching: find.byIcon(Icons.arrow_forward_rounded),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: transferDialog,
+        matching: find.byIcon(Icons.arrow_back_rounded),
+      ),
+      findsNothing,
+    );
+    expect(
       tester
           .getTopLeft(find.byKey(const Key('designTransferProduct')))
           .dy,
@@ -426,10 +440,17 @@ void main() {
     final purchaseTable =
         find.byKey(const Key('designPurchaseItemsDataTable'));
 
+    final purchaseGrid = tester.widget<AppDataTable>(purchaseTable);
+    expect(purchaseGrid.accentColor, AppModuleColors.purchases);
     expect(
-      tester.widget<AppDataTable>(purchaseTable).accentColor,
+      purchaseGrid.headerBackgroundColor,
       AppModuleColors.purchases,
     );
+    expect(purchaseGrid.headerForegroundColor, AppColors.onStrong);
+    expect(purchaseGrid.showColumnDividers, isTrue);
+    expect(purchaseGrid.showShadow, isFalse);
+    expect(purchaseGrid.rowHeight, 48);
+    expect(purchaseGrid.cellHorizontalPadding, AppSpacing.xs);
     expect(
       find.descendant(of: purchase, matching: find.text('الحاوية')),
       findsOneWidget,
@@ -480,10 +501,12 @@ void main() {
     await reveal(tester, sales);
     final salesTable = find.byKey(const Key('designSalesItemsDataTable'));
 
-    expect(
-      tester.widget<AppDataTable>(salesTable).accentColor,
-      AppModuleColors.sales,
-    );
+    final salesGrid = tester.widget<AppDataTable>(salesTable);
+    expect(salesGrid.accentColor, AppModuleColors.sales);
+    expect(salesGrid.headerBackgroundColor, AppModuleColors.sales);
+    expect(salesGrid.headerForegroundColor, AppColors.onStrong);
+    expect(salesGrid.showColumnDividers, isTrue);
+    expect(salesGrid.showShadow, isFalse);
     expect(
       find.descendant(of: sales, matching: find.text('الحاوية')),
       findsNothing,

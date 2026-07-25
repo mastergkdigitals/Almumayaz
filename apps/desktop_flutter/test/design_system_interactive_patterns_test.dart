@@ -15,6 +15,18 @@ void main() {
     await tester.tap(groupsButton);
     await tester.pump();
 
+    final groupsDialog =
+        find.byKey(const Key('designGroupsTypesDialog'));
+    final initialDialogHeight = tester.getSize(groupsDialog).height;
+    expect(
+      find.byKey(const Key('designGroupsTypesDialogPrimaryList')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('designGroupsTypesDialogSecondaryList')),
+      findsOneWidget,
+    );
+
     final primaryField =
         find.byKey(const Key('designGroupsTypesDialogPrimaryField'));
     await tester.enterText(primaryField, 'أثاث مكتبي');
@@ -23,6 +35,7 @@ void main() {
     );
     await tester.pump();
 
+    expect(tester.getSize(groupsDialog).height, initialDialogHeight);
     expect(find.text('أثاث مكتبي'), findsOneWidget);
     expect(
       find.byKey(

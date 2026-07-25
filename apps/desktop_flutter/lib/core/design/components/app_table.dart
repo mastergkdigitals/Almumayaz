@@ -46,6 +46,13 @@ class AppDataTable extends StatefulWidget {
     this.emptyState,
     this.verticalScrollController,
     this.accentColor,
+    this.headerBackgroundColor,
+    this.headerForegroundColor,
+    this.cellHorizontalPadding = AppSpacing.md,
+    this.showColumnDividers = false,
+    this.showShadow = true,
+    this.borderRadius = AppRadii.lg,
+    this.alternatingRowColor,
   });
 
   final List<AppTableColumn> columns;
@@ -58,6 +65,13 @@ class AppDataTable extends StatefulWidget {
   final Widget? emptyState;
   final ScrollController? verticalScrollController;
   final Color? accentColor;
+  final Color? headerBackgroundColor;
+  final Color? headerForegroundColor;
+  final double cellHorizontalPadding;
+  final bool showColumnDividers;
+  final bool showShadow;
+  final double borderRadius;
+  final Color? alternatingRowColor;
 
   @override
   State<AppDataTable> createState() => _AppDataTableState();
@@ -86,7 +100,7 @@ class _AppDataTableState extends State<AppDataTable> {
       'Every table row must contain one cell for each column.',
     );
 
-    final borderRadius = BorderRadius.circular(AppRadii.lg);
+    final borderRadius = BorderRadius.circular(widget.borderRadius);
     final columnWidths = <int, TableColumnWidth>{
       for (var index = 0; index < widget.columns.length; index++)
         index: FlexColumnWidth(widget.columns[index].flex),
@@ -96,7 +110,7 @@ class _AppDataTableState extends State<AppDataTable> {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: borderRadius,
-        boxShadow: AppShadows.soft,
+        boxShadow: widget.showShadow ? AppShadows.soft : null,
       ),
       foregroundDecoration: BoxDecoration(
         borderRadius: borderRadius,
@@ -131,6 +145,10 @@ class _AppDataTableState extends State<AppDataTable> {
                         columnWidths: columnWidths,
                         height: widget.headerHeight,
                         accentColor: widget.accentColor,
+                        backgroundColor: widget.headerBackgroundColor,
+                        foregroundColor: widget.headerForegroundColor,
+                        horizontalPadding: widget.cellHorizontalPadding,
+                        showColumnDividers: widget.showColumnDividers,
                       ),
                       Expanded(
                         child: _buildBody(columnWidths),
@@ -177,6 +195,11 @@ class _AppDataTableState extends State<AppDataTable> {
             columnWidths: columnWidths,
             height: widget.rowHeight,
             showBottomBorder: index < widget.rows.length - 1,
+            horizontalPadding: widget.cellHorizontalPadding,
+            showColumnDividers: widget.showColumnDividers,
+            backgroundColor: index.isOdd
+                ? widget.alternatingRowColor
+                : null,
           );
         },
       ),
@@ -190,18 +213,30 @@ class _TableHeader extends StatelessWidget {
     required this.columnWidths,
     required this.height,
     required this.accentColor,
+    required this.backgroundColor,
+    required this.foregroundColor,
+    required this.horizontalPadding,
+    required this.showColumnDividers,
   });
 
   final List<AppTableColumn> columns;
   final Map<int, TableColumnWidth> columnWidths;
   final double height;
   final Color? accentColor;
+  final Color? backgroundColor;
+  final Color? foregroundColor;
+  final double horizontalPadding;
+  final bool showColumnDividers;
 
   @override
   Widget build(BuildContext context) {
-    final headerColor = accentColor == null
-        ? AppColors.tableHeaderSurface
-        : Color.alphaBlend(accentColor!.withAlpha(18), AppColors.surface);
+    final headerColor = backgroundColor ??
+        (accentColor == null
+            ? AppColors.tableHeaderSurface
+            : Color.alphaBlend(
+                accentColor!.withAlpha(18),
+                AppColors.surface,
+              ));
 
     return Container(
       height: height,
@@ -217,18 +252,33 @@ class _TableHeader extends StatelessWidget {
         children: [
           TableRow(
             children: [
-              for (final column in columns)
-                SizedBox(
-                  height: height,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md,
-                    ),
-                    child: Center(
-                      child: Text(
-                        column.label,
-                        textAlign: TextAlign.center,
-                        style: AppTypography.tableHeader,
+              for (var index = 0; index < columns.length; index++)
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    border: showColumnDividers &&
+                            index < columns.length - 1
+                        ? const Border(
+                            left: BorderSide(
+                              color: AppColors.border,
+                              width: 0.8,
+                            ),
+                          )
+                        : null,
+                  ),
+                  child: SizedBox(
+                    height: height,
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: horizontalPadding,
+                      ),
+                      child: Center(
+                        child: Text(
+                          columns[index].label,
+                          textAlign: TextAlign.center,
+                          style: AppTypography.tableHeader.copyWith(
+                            color: foregroundColor,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -248,6 +298,9 @@ class _TableBodyRow extends StatelessWidget {
     required this.columnWidths,
     required this.height,
     required this.showBottomBorder,
+    required this.horizontalPadding,
+    required this.showColumnDividers,
+    required this.backgroundColor,
   });
 
   final List<AppTableColumn> columns;
@@ -255,12 +308,17 @@ class _TableBodyRow extends StatelessWidget {
   final Map<int, TableColumnWidth> columnWidths;
   final double height;
   final bool showBottomBorder;
+  final double horizontalPadding;
+  final bool showColumnDividers;
+  final Color? backgroundColor;
 
   @override
   Widget build(BuildContext context) {
     return Material(
       key: row.rowKey,
-      color: row.selected ? AppColors.infoSurface : AppColors.surface,
+      color: row.selected
+          ? AppColors.infoSurface
+          : backgroundColor ?? AppColors.surface,
       child: InkWell(
         onTap: row.onTap,
         mouseCursor: row.onTap == null
@@ -285,21 +343,34 @@ class _TableBodyRow extends StatelessWidget {
               TableRow(
                 children: [
                   for (var index = 0; index < row.cells.length; index++)
-                    SizedBox(
-                      height: height,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.md,
-                        ),
-                        child: Center(
-                          child: Directionality(
-                            textDirection: columns[index].numeric
-                                ? TextDirection.ltr
-                                : TextDirection.rtl,
-                            child: DefaultTextStyle(
-                              textAlign: TextAlign.center,
-                              style: AppTypography.tableCell,
-                              child: row.cells[index],
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        border: showColumnDividers &&
+                                index < row.cells.length - 1
+                            ? const Border(
+                                left: BorderSide(
+                                  color: AppColors.border,
+                                  width: 0.8,
+                                ),
+                              )
+                            : null,
+                      ),
+                      child: SizedBox(
+                        height: height,
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: horizontalPadding,
+                          ),
+                          child: Center(
+                            child: Directionality(
+                              textDirection: columns[index].numeric
+                                  ? TextDirection.ltr
+                                  : TextDirection.rtl,
+                              child: DefaultTextStyle(
+                                textAlign: TextAlign.center,
+                                style: AppTypography.tableCell,
+                                child: row.cells[index],
+                              ),
                             ),
                           ),
                         ),

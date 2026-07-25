@@ -279,13 +279,17 @@ class _ManagementDialogState extends State<_ManagementDialog> {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ],
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(child: _buildPrimarySection()),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(child: _buildSecondarySection()),
-        ],
+      child: SizedBox(
+        key: Key('${_spec.keyName}Content'),
+        height: 390,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(child: _buildPrimarySection()),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(child: _buildSecondarySection()),
+          ],
+        ),
       ),
     );
   }
@@ -295,6 +299,7 @@ class _ManagementDialogState extends State<_ManagementDialog> {
       title: _spec.primaryTitle,
       icon: Icons.folder_rounded,
       accentColor: _spec.accentColor,
+      expandChild: true,
       child: Column(
         children: [
           _ManagementEditor(
@@ -307,21 +312,23 @@ class _ManagementDialogState extends State<_ManagementDialog> {
             onCommit: _commitPrimary,
           ),
           const SizedBox(height: AppSpacing.md),
-          _ManagementEntries(
-            entries: _primaryEntries,
-            keyPrefix: '${_spec.keyName}Primary',
-            accentColor: _spec.accentColor,
-            selectedId: _selectedParentId,
-            onSelected: (entry) {
-              setState(() {
-                _selectedParentId = entry.id;
-                _editingSecondaryId = null;
-                _secondaryController.clear();
-              });
-            },
-            onEdit: _editPrimary,
-            onDelete: _deletePrimary,
-            canDelete: _primaryEntries.length > 1,
+          Expanded(
+            child: _ManagementEntries(
+              entries: _primaryEntries,
+              keyPrefix: '${_spec.keyName}Primary',
+              accentColor: _spec.accentColor,
+              selectedId: _selectedParentId,
+              onSelected: (entry) {
+                setState(() {
+                  _selectedParentId = entry.id;
+                  _editingSecondaryId = null;
+                  _secondaryController.clear();
+                });
+              },
+              onEdit: _editPrimary,
+              onDelete: _deletePrimary,
+              canDelete: _primaryEntries.length > 1,
+            ),
           ),
         ],
       ),
@@ -333,6 +340,7 @@ class _ManagementDialogState extends State<_ManagementDialog> {
       title: _spec.secondaryTitle,
       icon: Icons.account_tree_rounded,
       accentColor: _spec.accentColor,
+      expandChild: true,
       child: Column(
         children: [
           AppDropdownField<String>(
@@ -365,12 +373,14 @@ class _ManagementDialogState extends State<_ManagementDialog> {
             onCommit: _commitSecondary,
           ),
           const SizedBox(height: AppSpacing.md),
-          _ManagementEntries(
-            entries: _visibleSecondaryEntries,
-            keyPrefix: '${_spec.keyName}Secondary',
-            accentColor: _spec.accentColor,
-            onEdit: _editSecondary,
-            onDelete: _deleteSecondary,
+          Expanded(
+            child: _ManagementEntries(
+              entries: _visibleSecondaryEntries,
+              keyPrefix: '${_spec.keyName}Secondary',
+              accentColor: _spec.accentColor,
+              onEdit: _editSecondary,
+              onDelete: _deleteSecondary,
+            ),
           ),
         ],
       ),
@@ -456,26 +466,27 @@ class _ManagementEntries extends StatelessWidget {
       );
     }
 
-    return Column(
-      children: [
-        for (var index = 0; index < entries.length; index++) ...[
-          if (index > 0) const SizedBox(height: AppSpacing.sm),
-          _ManagementEntryTile(
-            key: Key('${keyPrefix}Row-${entries[index].id}'),
-            entry: entries[index],
-            accentColor: accentColor,
-            selected: entries[index].id == selectedId,
-            onSelected: onSelected == null
-                ? null
-                : () => onSelected!(entries[index]),
-            editKey: Key('${keyPrefix}Edit-${entries[index].id}'),
-            deleteKey: Key('${keyPrefix}Delete-${entries[index].id}'),
-            onEdit: () => onEdit(entries[index]),
-            onDelete:
-                canDelete ? () => onDelete(entries[index]) : null,
-          ),
-        ],
-      ],
+    return ListView.separated(
+      key: Key('${keyPrefix}List'),
+      padding: EdgeInsets.zero,
+      itemCount: entries.length,
+      separatorBuilder: (_, _) =>
+          const SizedBox(height: AppSpacing.sm),
+      itemBuilder: (context, index) {
+        final entry = entries[index];
+        return _ManagementEntryTile(
+          key: Key('${keyPrefix}Row-${entry.id}'),
+          entry: entry,
+          accentColor: accentColor,
+          selected: entry.id == selectedId,
+          onSelected:
+              onSelected == null ? null : () => onSelected!(entry),
+          editKey: Key('${keyPrefix}Edit-${entry.id}'),
+          deleteKey: Key('${keyPrefix}Delete-${entry.id}'),
+          onEdit: () => onEdit(entry),
+          onDelete: canDelete ? () => onDelete(entry) : null,
+        );
+      },
     );
   }
 }

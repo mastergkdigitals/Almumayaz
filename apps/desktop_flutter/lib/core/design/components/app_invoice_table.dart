@@ -62,18 +62,29 @@ class AppInvoiceItemsTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isPurchase = type == AppInvoiceTableType.purchase;
+    final accentColor = isPurchase
+        ? AppModuleColors.purchases
+        : AppModuleColors.sales;
     return AppDataTable(
       key: tableKey,
       columns: isPurchase ? purchaseColumns : saleColumns,
       rows: rows,
       height: height,
-      headerHeight: 52,
-      rowHeight: 54,
-      minimumColumnWidth: 112,
+      headerHeight: 48,
+      rowHeight: 48,
+      minimumColumnWidth: 104,
       isLoading: isLoading,
-      accentColor: isPurchase
-          ? AppModuleColors.purchases
-          : AppModuleColors.sales,
+      accentColor: accentColor,
+      headerBackgroundColor: accentColor,
+      headerForegroundColor: AppColors.onStrong,
+      cellHorizontalPadding: AppSpacing.xs,
+      showColumnDividers: true,
+      showShadow: false,
+      borderRadius: AppRadii.md,
+      alternatingRowColor: Color.alphaBlend(
+        accentColor.withAlpha(7),
+        AppColors.surface,
+      ),
     );
   }
 }
@@ -86,6 +97,7 @@ class AppInvoiceCellField extends StatelessWidget {
     this.numeric = false,
     this.inputFormatters,
     this.onChanged,
+    this.accentColor = AppColors.primary,
   });
 
   final TextEditingController controller;
@@ -93,11 +105,12 @@ class AppInvoiceCellField extends StatelessWidget {
   final bool numeric;
   final List<TextInputFormatter>? inputFormatters;
   final ValueChanged<String>? onChanged;
+  final Color accentColor;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 38,
+      height: 36,
       child: TextField(
         key: fieldKey,
         controller: controller,
@@ -116,20 +129,19 @@ class AppInvoiceCellField extends StatelessWidget {
         ),
         decoration: InputDecoration(
           isDense: true,
-          filled: true,
-          fillColor: AppColors.surface,
+          filled: false,
           contentPadding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.sm,
+            horizontal: AppSpacing.xs,
             vertical: AppSpacing.xs,
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(AppRadii.sm),
-            borderSide: const BorderSide(color: AppColors.border),
+            borderSide: BorderSide.none,
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(AppRadii.sm),
-            borderSide: const BorderSide(
-              color: Colors.black,
+            borderSide: BorderSide(
+              color: accentColor,
               width: 1.4,
             ),
           ),
