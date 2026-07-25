@@ -3,6 +3,7 @@ import '../../../core/design/app_design_system.dart';
 import '../../about/presentation/about_screen.dart';
 import '../../auth/presentation/login_screen.dart';
 import '../../parties/presentation/parties_screen.dart';
+import '../../purchases/presentation/purchase_screen.dart';
 import 'dashboard_card.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -70,6 +71,15 @@ class DashboardScreen extends StatelessWidget {
   ];
 
   void _openModule(BuildContext context, _ModuleItem item) {
+    if (item.id == 'purchases') {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => const PurchaseScreen(),
+        ),
+      );
+      return;
+    }
+
     if (item.id == 'parties') {
       Navigator.of(context).push(
         MaterialPageRoute<void>(
