@@ -579,10 +579,13 @@ class _PurchaseAutocompleteOptionState<T>
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.right,
-                      style: const TextStyle(
+                      style: (Theme.of(context).textTheme.bodyMedium ??
+                              const TextStyle())
+                          .copyWith(
                         color: _textPrimary,
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
+                        height: kTextHeightNone,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -591,10 +594,13 @@ class _PurchaseAutocompleteOptionState<T>
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.right,
-                      style: const TextStyle(
+                      style: (Theme.of(context).textTheme.bodySmall ??
+                              const TextStyle())
+                          .copyWith(
                         color: AppColors.textSecondary,
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
+                        height: kTextHeightNone,
                       ),
                     ),
                   ],
@@ -604,10 +610,13 @@ class _PurchaseAutocompleteOptionState<T>
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.right,
-                  style: const TextStyle(
+                  style: (Theme.of(context).textTheme.bodyMedium ??
+                          const TextStyle())
+                      .copyWith(
                     color: _textPrimary,
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
+                    height: kTextHeightNone,
                   ),
                 ),
         ),
