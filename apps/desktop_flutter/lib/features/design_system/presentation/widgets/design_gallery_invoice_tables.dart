@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../../core/design/app_design_system.dart';
 import 'design_gallery_section.dart';
 
+const _purchaseTableCellHeight = 44.0;
+
 class DesignGalleryInvoiceTablesSection extends StatefulWidget {
   const DesignGalleryInvoiceTablesSection({super.key});
 
@@ -490,19 +492,22 @@ class _PurchaseIndexCell extends StatelessWidget {
       width: width,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 9),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: AppColors.neutralSurface,
-            borderRadius: BorderRadius.circular(AppRadii.sm),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Center(
-            child: Text(
-              value,
-              textDirection: TextDirection.ltr,
-              style: AppTypography.tableCell.copyWith(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
+        child: SizedBox(
+          height: _purchaseTableCellHeight,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: AppColors.neutralSurface,
+              borderRadius: BorderRadius.circular(AppRadii.sm),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Center(
+              child: Text(
+                value,
+                textDirection: TextDirection.ltr,
+                style: AppTypography.tableCell.copyWith(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),
@@ -544,53 +549,56 @@ class _PurchaseInputCell extends StatelessWidget {
       width: width,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 9),
-        child: TextField(
-          key: fieldKey,
-          controller: controller,
-          focusNode: focusNode,
-          keyboardType: numeric
-              ? TextInputType.numberWithOptions(decimal: !wholeNumber)
-              : TextInputType.text,
-          inputFormatters:
-              wholeNumber ? const [AppIntegerInputFormatter()] : null,
-          textInputAction: TextInputAction.next,
-          textAlign: numeric ? TextAlign.center : TextAlign.right,
-          textDirection: numeric ? TextDirection.ltr : TextDirection.rtl,
-          style: AppTypography.tableCell.copyWith(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-          ),
-          cursorColor: AppModuleColors.purchases,
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: Color.lerp(
-              AppModulePalettes.purchases.light,
-              Colors.white,
-              0.94,
+        child: SizedBox(
+          height: _purchaseTableCellHeight,
+          child: TextField(
+            key: fieldKey,
+            controller: controller,
+            focusNode: focusNode,
+            keyboardType: numeric
+                ? TextInputType.numberWithOptions(decimal: !wholeNumber)
+                : TextInputType.text,
+            inputFormatters:
+                wholeNumber ? const [AppIntegerInputFormatter()] : null,
+            textInputAction: TextInputAction.next,
+            textAlign: numeric ? TextAlign.center : TextAlign.right,
+            textDirection: numeric ? TextDirection.ltr : TextDirection.rtl,
+            style: AppTypography.tableCell.copyWith(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
             ),
-            border: border,
-            enabledBorder: border,
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadii.sm),
-              borderSide: const BorderSide(
-                color: AppModuleColors.purchases,
-                width: 1.5,
+            cursorColor: AppModuleColors.purchases,
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: Color.lerp(
+                AppModulePalettes.purchases.light,
+                Colors.white,
+                0.94,
               ),
+              border: border,
+              enabledBorder: border,
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppRadii.sm),
+                borderSide: const BorderSide(
+                  color: AppModuleColors.purchases,
+                  width: 1.5,
+                ),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 9,
+              ),
+              isDense: true,
             ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 10,
-              vertical: 9,
-            ),
-            isDense: true,
+            onSubmitted: (_) {
+              final submit = onSubmitted;
+              if (submit != null) {
+                submit();
+                return;
+              }
+              nextFocusNode?.requestFocus();
+            },
           ),
-          onSubmitted: (_) {
-            final submit = onSubmitted;
-            if (submit != null) {
-              submit();
-              return;
-            }
-            nextFocusNode?.requestFocus();
-          },
         ),
       ),
     );
