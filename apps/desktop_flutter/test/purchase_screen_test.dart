@@ -158,22 +158,24 @@ void main() {
       'purchasePaymentTypeField': Icons.payments_outlined,
       'purchaseCurrencyField': Icons.currency_exchange_rounded,
     };
-    final referenceFieldHeight = tester
-        .getSize(find.byKey(const Key('purchaseInvoiceNumberField')))
-        .height;
+    const dropdownLabels = <String, String>{
+      'purchaseWarehouseField': 'المخزن',
+      'purchaseTypeField': 'نوع الشراء',
+      'purchasePaymentTypeField': 'نوع الدفع',
+      'purchaseCurrencyField': 'العملة',
+    };
     double? selectedValueY;
     for (final dropdownKey in dropdownIcons.keys) {
       final dropdown = _dropdown(tester, dropdownKey);
       expect(dropdown.icon, dropdownIcons[dropdownKey]);
-      expect(dropdown.textDirection, TextDirection.rtl);
-      expect(dropdown.textAlign, TextAlign.center);
+      expect(dropdown.textDirection, isNull);
+      expect(dropdown.textAlign, TextAlign.start);
       expect(dropdown.useIntrinsicHeight, isFalse);
-      expect(dropdown.singleLineLabel, isTrue);
       expect(dropdown.contentPadding, isNull);
 
       final currentHeight =
           tester.getSize(find.byKey(Key(dropdownKey))).height;
-      expect(currentHeight, closeTo(referenceFieldHeight, 0.1));
+      expect(currentHeight, AppControlHeights.large);
 
       final decorator = tester.widget<InputDecorator>(
         find.descendant(
@@ -186,12 +188,11 @@ void main() {
         dropdownIcons[dropdownKey],
       );
       expect(decorator.decoration.contentPadding, isNull);
-      final label = decorator.decoration.label! as Text;
-      expect(label.maxLines, 1);
-      expect(label.softWrap, isFalse);
-      expect(label.overflow, TextOverflow.ellipsis);
+      expect(decorator.decoration.labelText, dropdownLabels[dropdownKey]);
+      expect(decorator.decoration.label, isNull);
+      expect(decorator.isEmpty, isFalse);
       expect(decorator.baseStyle, AppTypography.fieldText);
-      expect(decorator.textAlign, TextAlign.center);
+      expect(decorator.textAlign, TextAlign.start);
       expect(decorator.textAlignVertical, TextAlignVertical.center);
       expect(decorator.expands, isTrue);
 
@@ -206,12 +207,13 @@ void main() {
         matching: find.text(valueText),
       );
       final selectedText = tester.widget<Text>(valueFinder);
-      expect(selectedText.textAlign, TextAlign.center);
+      expect(selectedText.textDirection, isNull);
+      expect(selectedText.textAlign, TextAlign.start);
       expect(selectedText.maxLines, 1);
       expect(selectedText.overflow, TextOverflow.ellipsis);
       expect(
-        tester.getCenter(valueFinder).dx,
-        closeTo(tester.getCenter(find.byKey(Key(dropdownKey))).dx, 1),
+        Directionality.of(tester.element(valueFinder)),
+        TextDirection.rtl,
       );
 
       final currentValueY = tester.getCenter(valueFinder).dy;
