@@ -709,7 +709,11 @@ class _PurchaseHeaderPanel extends StatelessWidget {
                   onChanged: onPurchaseTypeChanged,
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
               Expanded(
                 child: AppDropdownField<String>(
                   fieldKey: const Key('purchasePaymentTypeField'),
@@ -750,11 +754,7 @@ class _PurchaseHeaderPanel extends StatelessWidget {
                   textInputAction: TextInputAction.next,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 flex: 2,
                 child: AppSearchableDropdownField<_PurchaseSupplierOption>(
@@ -777,7 +777,7 @@ class _PurchaseHeaderPanel extends StatelessWidget {
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
-                flex: 3,
+                flex: 2,
                 child: AppTextField(
                   fieldKey: const Key('purchaseNotesField'),
                   controller: notesController,

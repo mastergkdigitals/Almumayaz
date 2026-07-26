@@ -150,6 +150,42 @@ void main() {
     expect(warehouseDecorator.decoration.labelText, 'المخزن');
     expect(warehouseDecorator.isEmpty, isFalse);
 
+    for (final entry in const {
+      'purchaseWarehouseField': 'المخزن',
+      'purchaseTypeField': 'نوع الشراء',
+      'purchasePaymentTypeField': 'نوع الدفع',
+      'purchaseCurrencyField': 'العملة',
+    }.entries) {
+      final dropdown = find.byKey(Key(entry.key));
+      final size = tester.getSize(dropdown);
+      expect(size.width, greaterThanOrEqualTo(165));
+      expect(size.height, AppControlHeights.large);
+
+      final field = tester.widget<AppDropdownField<String>>(
+        find.ancestor(
+          of: dropdown,
+          matching: find.byType(AppDropdownField<String>),
+        ),
+      );
+      expect(field.accentColor, AppModuleColors.purchases);
+
+      final decorator = tester.widget<InputDecorator>(
+        find.descendant(
+          of: dropdown,
+          matching: find.byType(InputDecorator),
+        ),
+      );
+      expect(decorator.decoration.labelText, entry.value);
+      expect(decorator.isEmpty, isFalse);
+    }
+
+    expect(
+      tester
+          .getCenter(find.byKey(const Key('purchasePaymentTypeField')))
+          .dy,
+      tester.getCenter(find.byKey(const Key('purchaseSupplierField'))).dy,
+    );
+
     expect(
       tester
           .widget<TextFormField>(
