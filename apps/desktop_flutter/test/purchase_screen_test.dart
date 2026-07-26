@@ -4,18 +4,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('shows the purchase fields and buttons without a table',
+  testWidgets('shows the purchase fields, old table, and buttons',
       (tester) async {
     await _openPurchaseScreen(tester);
 
     expect(find.byKey(const Key('purchaseScreen')), findsOneWidget);
     expect(find.text('إدارة فواتير الشراء من المجهزين'), findsOneWidget);
     expect(find.byKey(const Key('purchaseHeaderPanel')), findsOneWidget);
-    expect(find.byKey(const Key('purchaseFutureTableSpace')), findsOneWidget);
+    expect(find.byKey(const Key('purchaseTablePanel')), findsOneWidget);
     expect(find.byKey(const Key('purchaseTotalsPanel')), findsOneWidget);
     expect(find.byKey(const Key('purchaseActionBar')), findsOneWidget);
-    expect(find.byKey(const Key('purchaseItemsTable')), findsNothing);
-    expect(find.byKey(const Key('purchaseTableHeader')), findsNothing);
+    expect(find.byKey(const Key('purchaseItemsTable')), findsOneWidget);
+    expect(find.byKey(const Key('purchaseTableSurface')), findsOneWidget);
+    expect(find.byKey(const Key('appInvoiceTableHeader')), findsOneWidget);
 
     const firstRowFieldKeys = [
       'purchaseInvoiceNumberField',
@@ -125,6 +126,7 @@ void main() {
 
     for (final panelKey in const [
       'purchaseHeaderPanel',
+      'purchaseTablePanel',
       'purchaseTotalsPanel',
     ]) {
       final panel = tester.widget<Container>(find.byKey(Key(panelKey)));
@@ -375,6 +377,103 @@ void main() {
     expect(find.byKey(const Key('dashboardCard_purchases')), findsOneWidget);
   });
 
+  testWidgets('uses the old purchase grid sizes and mouse row actions',
+      (tester) async {
+    await _openPurchaseScreen(tester);
+
+    expect(
+      AppInvoiceItemsTable.purchaseColumns.map((column) => column.width),
+      const [
+        54,
+        126,
+        190,
+        138,
+        104,
+        104,
+        126,
+        104,
+        146,
+        116,
+        104,
+        132,
+        116,
+        82,
+      ],
+    );
+    expect(AppInvoiceItemsTable.headerHeight, 46);
+    expect(AppInvoiceItemsTable.rowHeight, 54);
+    expect(AppInvoiceItemsTable.summaryHeight, 46);
+    expect(AppInvoiceItemsTable.cellHeight, 38);
+    expect(AppInvoiceItemsTable.outerRadius, 18);
+    expect(AppInvoiceItemsTable.cellRadius, 3);
+
+    for (final key in const [
+      'purchaseCode-item-1',
+      'purchaseName-item-1',
+      'purchaseWarehouse-item-1',
+      'purchaseQuantity-item-1',
+      'purchaseContainer-item-1',
+      'purchasePurchasePrice-item-1',
+      'purchaseDiscount-item-1',
+      'purchaseSalePrice-item-1',
+    ]) {
+      expect(find.byKey(Key(key)), findsOneWidget);
+    }
+
+    final table = find.byKey(const Key('purchaseItemsTable'));
+    expect(
+      find.descendant(
+        of: table,
+        matching: find.byWidgetPredicate(
+          (widget) => widget is AppPurchaseInvoiceAutocomplete<dynamic>,
+        ),
+      ),
+      findsNothing,
+    );
+
+    for (final key in const [
+      'purchaseCode-item-1',
+      'purchaseName-item-1',
+    ]) {
+      final field = tester.widget<TextField>(find.byKey(Key(key)));
+      expect(field.focusNode, isNull);
+      expect(field.onSubmitted, isNull);
+      expect(field.textDirection, TextDirection.rtl);
+      expect(field.textAlign, TextAlign.right);
+    }
+
+    final add = tester.widget<AppTableActionButton>(
+      find.byKey(const Key('purchaseAdd-item-1')),
+    );
+    expect(add.icon, Icons.add_rounded);
+    expect(add.tooltip, 'إضافة سطر');
+    expect(add.size, 32);
+    expect(add.iconSize, 19);
+    expect(add.borderRadius, 9);
+    add.onPressed?.call();
+    await tester.pump();
+
+    expect(find.byKey(const Key('purchaseRow-item-1')), findsOneWidget);
+    expect(find.byKey(const Key('purchaseRow-item-2')), findsOneWidget);
+
+    final remove = tester.widget<AppTableActionButton>(
+      find.byKey(const Key('purchaseDelete-item-1')),
+    );
+    expect(remove.icon, Icons.close_rounded);
+    expect(remove.tooltip, 'حذف السطر');
+    expect(remove.size, 32);
+    expect(remove.iconSize, 19);
+    expect(remove.borderRadius, 9);
+    expect(find.byKey(const Key('purchaseAdd-item-2')), findsOneWidget);
+
+    remove.onPressed?.call();
+    await tester.pump();
+
+    expect(find.byKey(const Key('purchaseRow-item-1')), findsNothing);
+    expect(find.byKey(const Key('purchaseRow-item-2')), findsOneWidget);
+    expect(find.byKey(const Key('purchaseAdd-item-2')), findsOneWidget);
+  });
+
   testWidgets('filters and selects suppliers by name or number',
       (tester) async {
     await _openPurchaseScreen(tester, size: const Size(1440, 900));
@@ -404,7 +503,7 @@ void main() {
       _button(tester, 'purchaseStatementButton').onPressed,
       isNotNull,
     );
-    expect(find.byKey(const Key('purchaseItemsTable')), findsNothing);
+    expect(find.byKey(const Key('purchaseItemsTable')), findsOneWidget);
   });
 
   testWidgets('updates currency and temporary action states',
@@ -478,7 +577,7 @@ void main() {
 
     expect(_button(tester, 'purchaseUpdateButton').onPressed, isNotNull);
     expect(_button(tester, 'purchaseUndoButton').onPressed, isNotNull);
-    expect(find.byKey(const Key('purchaseItemsTable')), findsNothing);
+    expect(find.byKey(const Key('purchaseItemsTable')), findsOneWidget);
   });
 }
 

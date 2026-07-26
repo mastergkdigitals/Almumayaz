@@ -10,28 +10,20 @@ const purchaseWarehouseNames = <String>[
   'المنصور',
 ];
 
-const _cellHeight = 56.0;
-const _cellRadius = 3.0;
-const _cellFontSize = 16.0;
-const _headerFontSize = 14.0;
-const _purchaseGreen = AppModuleColors.purchases;
-const _purchaseGreenDark = Color(0xFF064E3B);
-final _purchaseGreenSoft = Color.alphaBlend(
-  AppModuleColors.purchases.withAlpha(18),
-  AppColors.surface,
-);
-final _tableSurface = Color.alphaBlend(
-  AppModuleColors.purchases.withAlpha(8),
-  AppColors.surface,
-);
-final _line = Color.alphaBlend(
-  AppModuleColors.purchases.withAlpha(96),
-  AppColors.border,
-);
-final _strongLine = Color.alphaBlend(
-  AppModuleColors.purchases.withAlpha(150),
-  AppColors.border,
-);
+const _purchaseTextColor = Color(0xFF111827);
+const _purchaseAddColor = Color(0xFF16A34A);
+const _purchaseDeleteColor = Color(0xFFDC2626);
+
+final _purchaseSelectedTint = Color.lerp(
+  AppModulePalettes.purchases.light,
+  Colors.white,
+  0.58,
+)!;
+final _purchaseHoverTint = Color.lerp(
+  AppModulePalettes.purchases.light,
+  Colors.white,
+  0.78,
+)!;
 
 class PurchaseItemSeed {
   const PurchaseItemSeed({
@@ -172,29 +164,9 @@ class PurchaseItemRow {
         container = TextEditingController(text: seed.container),
         purchasePrice = TextEditingController(text: seed.purchasePrice),
         discount = TextEditingController(text: seed.discount),
-        salePrice = TextEditingController(text: seed.salePrice) {
-    focusNodes = [
-      codeFocusNode,
-      nameFocusNode,
-      warehouseFocusNode,
-      quantityFocusNode,
-      containerFocusNode,
-      purchasePriceFocusNode,
-      discountFocusNode,
-      salePriceFocusNode,
-    ];
-    focusListenable = Listenable.merge(focusNodes);
-  }
+        salePrice = TextEditingController(text: seed.salePrice);
 
   final String id;
-  final codeFocusNode = FocusNode();
-  final nameFocusNode = FocusNode();
-  final warehouseFocusNode = FocusNode();
-  final quantityFocusNode = FocusNode();
-  final containerFocusNode = FocusNode();
-  final purchasePriceFocusNode = FocusNode();
-  final discountFocusNode = FocusNode();
-  final salePriceFocusNode = FocusNode();
   final TextEditingController code;
   final TextEditingController name;
   String warehouse;
@@ -203,8 +175,6 @@ class PurchaseItemRow {
   final TextEditingController purchasePrice;
   final TextEditingController discount;
   final TextEditingController salePrice;
-  late final List<FocusNode> focusNodes;
-  late final Listenable focusListenable;
 
   PurchaseItemSeed get seed => PurchaseItemSeed(
         code: code.text,
@@ -216,8 +186,6 @@ class PurchaseItemRow {
         discount: discount.text,
         salePrice: salePrice.text,
       );
-
-  bool get hasFocusedCell => focusNodes.any((node) => node.hasFocus);
 
   double get quantityValue => _numberValue(quantity);
   double get discountValue => _numberValue(discount);
@@ -241,9 +209,6 @@ class PurchaseItemRow {
   }
 
   void dispose() {
-    for (final focusNode in focusNodes) {
-      focusNode.dispose();
-    }
     code.dispose();
     name.dispose();
     quantity.dispose();
@@ -259,39 +224,42 @@ class PurchaseItemsTable extends StatefulWidget {
     required this.controller,
     super.key,
     this.keyPrefix = 'purchase',
+    this.currencyCode = 'IQD',
   });
 
   final PurchaseItemsController controller;
   final String keyPrefix;
+  final String currencyCode;
 
   @override
   State<PurchaseItemsTable> createState() => _PurchaseItemsTableState();
 }
 
 class _PurchaseItemsTableState extends State<PurchaseItemsTable> {
-  final _scrollController = ScrollController();
-  final _keyHoldGuard = AppKeyHoldGuard();
+  final _verticalScrollController = ScrollController();
 
   @override
   void dispose() {
-    _keyHoldGuard.dispose();
-    _scrollController.dispose();
+    _verticalScrollController.dispose();
     super.dispose();
   }
 
   void _addRow() {
-    final row = widget.controller.addRow();
+    widget.controller.addRow();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: AppDurations.normal,
-          curve: Curves.easeOutCubic,
-        );
-      }
-      row.codeFocusNode.requestFocus();
+      if (!mounted || !_verticalScrollController.hasClients) return;
+      _verticalScrollController.animateTo(
+        _verticalScrollController.position.maxScrollExtent,
+        duration: AppDurations.normal,
+        curve: Curves.easeOutCubic,
+      );
     });
+  }
+
+  String _money(double value) {
+    return widget.currencyCode == 'USD'
+        ? AppFormatters.usd(value)
+        : AppFormatters.iqd(value);
   }
 
   @override
@@ -301,469 +269,430 @@ class _PurchaseItemsTableState extends State<PurchaseItemsTable> {
       builder: (context, _) {
         return LayoutBuilder(
           builder: (context, constraints) {
-            final tableWidth = constraints.hasBoundedWidth
-                ? constraints.maxWidth
-                : 1622.0;
-            final widths = _PurchaseTableWidths.fit(
-              tableWidth - (_PurchaseTable._tableInset * 2),
-              index: _PurchaseTable._indexWidth,
-              action: _PurchaseTable._actionWidth,
-            );
+            final tableHeight =
+                constraints.hasBoundedHeight ? constraints.maxHeight : 308.0;
 
-            return _PurchaseTable(
-              keyPrefix: widget.keyPrefix,
-              rows: widget.controller.rows,
-              widths: widths,
-              scrollController: _scrollController,
-              keyHoldGuard: _keyHoldGuard,
-              onAddRow: _addRow,
-              onDeleteRow: widget.controller.removeRow,
-              onChanged: widget.controller.rowChanged,
+            return AppInvoiceItemsTable.purchase(
+              tableKey: Key('${widget.keyPrefix}TableSurface'),
+              height: tableHeight,
+              verticalScrollController: _verticalScrollController,
+              rows: [
+                for (var index = 0;
+                    index < widget.controller.rows.length;
+                    index++)
+                  _row(
+                    widget.controller.rows[index],
+                    index,
+                    index == widget.controller.rows.length - 1,
+                  ),
+              ],
+              summaryCells: _summaryCells(),
             );
           },
         );
       },
     );
   }
+
+  AppTableRow _row(
+    PurchaseItemRow row,
+    int index,
+    bool isLastRow,
+  ) {
+    final keyPrefix = widget.keyPrefix;
+
+    return AppTableRow(
+      rowKey: Key('${keyPrefix}Row-${row.id}'),
+      cells: [
+        Text(
+          '${index + 1}',
+          key: Key('${keyPrefix}Index-${row.id}'),
+          textDirection: TextDirection.ltr,
+        ),
+        _PurchasePlainField(
+          fieldKey: Key('${keyPrefix}Code-${row.id}'),
+          controller: row.code,
+          onChanged: widget.controller.rowChanged,
+        ),
+        _PurchasePlainField(
+          fieldKey: Key('${keyPrefix}Name-${row.id}'),
+          controller: row.name,
+          onChanged: widget.controller.rowChanged,
+        ),
+        _PurchaseWarehouseDropdown(
+          fieldKey: Key('${keyPrefix}Warehouse-${row.id}'),
+          value: row.warehouse,
+          onChanged: (value) {
+            row.warehouse = value;
+            widget.controller.rowChanged();
+          },
+        ),
+        _PurchasePlainField(
+          fieldKey: Key('${keyPrefix}Quantity-${row.id}'),
+          controller: row.quantity,
+          numeric: true,
+          wholeNumber: true,
+          onChanged: widget.controller.rowChanged,
+        ),
+        _PurchasePlainField(
+          fieldKey: Key('${keyPrefix}Container-${row.id}'),
+          controller: row.container,
+          numeric: true,
+          wholeNumber: true,
+          onChanged: widget.controller.rowChanged,
+        ),
+        _PurchasePlainField(
+          fieldKey: Key('${keyPrefix}PurchasePrice-${row.id}'),
+          controller: row.purchasePrice,
+          numeric: true,
+          onChanged: widget.controller.rowChanged,
+        ),
+        _PurchasePlainField(
+          fieldKey: Key('${keyPrefix}Discount-${row.id}'),
+          controller: row.discount,
+          numeric: true,
+          onChanged: widget.controller.rowChanged,
+        ),
+        _PurchaseValue(
+          valueKey: Key('${keyPrefix}PriceAfterDiscount-${row.id}'),
+          value: _money(row.priceAfterDiscount),
+        ),
+        _PurchaseValue(
+          valueKey: Key('${keyPrefix}Total-${row.id}'),
+          value: _money(row.lineTotal),
+        ),
+        _PurchaseValue(
+          valueKey: Key('${keyPrefix}Cost-${row.id}'),
+          value: _money(row.unitCost),
+        ),
+        _PurchaseValue(
+          valueKey: Key('${keyPrefix}TotalCost-${row.id}'),
+          value: _money(row.totalCost),
+        ),
+        _PurchasePlainField(
+          fieldKey: Key('${keyPrefix}SalePrice-${row.id}'),
+          controller: row.salePrice,
+          numeric: true,
+          onChanged: widget.controller.rowChanged,
+        ),
+        AppTableActionButton(
+          key: Key(
+            isLastRow
+                ? '${keyPrefix}Add-${row.id}'
+                : '${keyPrefix}Delete-${row.id}',
+          ),
+          tooltipKey: Key(
+            isLastRow
+                ? '${keyPrefix}AddTooltip-${row.id}'
+                : '${keyPrefix}DeleteTooltip-${row.id}',
+          ),
+          icon: isLastRow ? Icons.add_rounded : Icons.close_rounded,
+          tooltip: isLastRow ? 'إضافة سطر' : 'حذف السطر',
+          variant:
+              isLastRow ? AppButtonVariant.success : AppButtonVariant.danger,
+          backgroundColor:
+              isLastRow ? _purchaseAddColor : _purchaseDeleteColor,
+          foregroundColor: Colors.white,
+          size: 32,
+          iconSize: 19,
+          borderRadius: 9,
+          onPressed:
+              isLastRow ? _addRow : () => widget.controller.removeRow(index),
+        ),
+      ],
+    );
+  }
+
+  List<Widget> _summaryCells() {
+    return [
+      const SizedBox.shrink(),
+      const SizedBox.shrink(),
+      const Text('المجموع'),
+      const SizedBox.shrink(),
+      Text(
+        AppFormatters.quantity(widget.controller.quantityTotal.round()),
+        key: Key('${widget.keyPrefix}QuantityTotal'),
+      ),
+      const SizedBox.shrink(),
+      const SizedBox.shrink(),
+      Text(
+        _money(widget.controller.discountTotal),
+        key: Key('${widget.keyPrefix}DiscountTotal'),
+      ),
+      const SizedBox.shrink(),
+      Text(
+        _money(widget.controller.subtotal),
+        key: Key('${widget.keyPrefix}Subtotal'),
+      ),
+      const SizedBox.shrink(),
+      Text(
+        _money(widget.controller.totalCost),
+        key: Key('${widget.keyPrefix}TotalCost'),
+      ),
+      const SizedBox.shrink(),
+      const SizedBox.shrink(),
+    ];
+  }
 }
 
-class _PurchaseTable extends StatelessWidget {
-  const _PurchaseTable({
-    required this.keyPrefix,
-    required this.rows,
-    required this.widths,
-    required this.scrollController,
-    required this.keyHoldGuard,
-    required this.onAddRow,
-    required this.onDeleteRow,
+class _PurchasePlainField extends StatelessWidget {
+  const _PurchasePlainField({
+    required this.fieldKey,
+    required this.controller,
     required this.onChanged,
+    this.numeric = false,
+    this.wholeNumber = false,
   });
 
-  static const _indexWidth = 54.0;
-  static const _actionWidth = 54.0;
-  static const _tableInset = 8.0;
-
-  final String keyPrefix;
-  final List<PurchaseItemRow> rows;
-  final _PurchaseTableWidths widths;
-  final ScrollController scrollController;
-  final AppKeyHoldGuard keyHoldGuard;
-  final VoidCallback onAddRow;
-  final ValueChanged<int> onDeleteRow;
+  final Key fieldKey;
+  final TextEditingController controller;
   final VoidCallback onChanged;
+  final bool numeric;
+  final bool wholeNumber;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      key: Key('${keyPrefix}TableSurface'),
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: _tableSurface,
-        borderRadius: BorderRadius.circular(20),
+    final inputFormatters = numeric
+        ? <TextInputFormatter>[
+            if (wholeNumber)
+              const AppIntegerInputFormatter()
+            else
+              const AppMoneyInputFormatter(),
+          ]
+        : null;
+
+    return SizedBox(
+      height: AppInvoiceItemsTable.cellHeight,
+      child: TextField(
+        key: fieldKey,
+        controller: controller,
+        keyboardType: numeric
+            ? TextInputType.numberWithOptions(decimal: !wholeNumber)
+            : TextInputType.text,
+        inputFormatters: inputFormatters,
+        maxLines: 1,
+        textAlign: numeric ? TextAlign.center : TextAlign.right,
+        textDirection: numeric ? TextDirection.ltr : TextDirection.rtl,
+        cursorColor: AppColors.cursor,
+        style: const TextStyle(
+          color: _purchaseTextColor,
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+        ),
+        decoration: const InputDecoration(
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          disabledBorder: InputBorder.none,
+          errorBorder: InputBorder.none,
+          focusedErrorBorder: InputBorder.none,
+          isCollapsed: true,
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: 6,
+            vertical: 7,
+          ),
+        ),
+        onChanged: (_) => onChanged(),
       ),
-      foregroundDecoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _line),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(_tableInset),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+    );
+  }
+}
+
+class _PurchaseValue extends StatelessWidget {
+  const _PurchaseValue({
+    required this.valueKey,
+    required this.value,
+  });
+
+  final Key valueKey;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      value,
+      key: valueKey,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      textAlign: TextAlign.center,
+      textDirection: TextDirection.ltr,
+    );
+  }
+}
+
+class _PurchaseWarehouseDropdown extends StatefulWidget {
+  const _PurchaseWarehouseDropdown({
+    required this.fieldKey,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final Key fieldKey;
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  State<_PurchaseWarehouseDropdown> createState() =>
+      _PurchaseWarehouseDropdownState();
+}
+
+class _PurchaseWarehouseDropdownState
+    extends State<_PurchaseWarehouseDropdown> {
+  final _layerLink = LayerLink();
+  final _anchorKey = GlobalKey();
+  OverlayEntry? _overlayEntry;
+
+  bool get _isOpen => _overlayEntry != null;
+
+  @override
+  void didUpdateWidget(covariant _PurchaseWarehouseDropdown oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _overlayEntry?.markNeedsBuild();
+  }
+
+  @override
+  void deactivate() {
+    _hideMenu(updateState: false);
+    super.deactivate();
+  }
+
+  @override
+  void dispose() {
+    _hideMenu(updateState: false);
+    super.dispose();
+  }
+
+  void _toggleMenu() {
+    if (_isOpen) {
+      _hideMenu();
+    } else {
+      _showMenu();
+    }
+  }
+
+  void _showMenu() {
+    if (!mounted || _isOpen) return;
+
+    final overlay = Overlay.maybeOf(context, rootOverlay: true);
+    final fieldRenderObject = _anchorKey.currentContext?.findRenderObject();
+    final overlayRenderObject = overlay?.context.findRenderObject();
+
+    if (overlay == null ||
+        fieldRenderObject is! RenderBox ||
+        overlayRenderObject is! RenderBox ||
+        !fieldRenderObject.attached ||
+        !overlayRenderObject.attached ||
+        !fieldRenderObject.hasSize ||
+        !overlayRenderObject.hasSize) {
+      return;
+    }
+
+    final fieldSize = fieldRenderObject.size;
+    final fieldOffset = fieldRenderObject.localToGlobal(
+      Offset.zero,
+      ancestor: overlayRenderObject,
+    );
+    final overlaySize = overlayRenderObject.size;
+    final spaceBelow = overlaySize.height - fieldOffset.dy - fieldSize.height;
+    final spaceAbove = fieldOffset.dy;
+    final openBelow = spaceBelow >= 180 || spaceBelow >= spaceAbove;
+    final availableSpace = (openBelow ? spaceBelow : spaceAbove) - 12;
+    final maxMenuHeight = availableSpace.clamp(96.0, 260.0).toDouble();
+
+    _overlayEntry = OverlayEntry(
+      builder: (context) {
+        return Stack(
           children: [
-            _PurchaseTableHeader(
-              keyPrefix: keyPrefix,
-              widths: widths,
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: _hideMenu,
+                child: const SizedBox.expand(),
+              ),
             ),
-            const SizedBox(height: 7),
-            Expanded(
-              child: Scrollbar(
-                controller: scrollController,
-                thumbVisibility: rows.length > 2,
-                child: ListView.builder(
-                  controller: scrollController,
-                  padding: EdgeInsets.zero,
-                  itemCount: rows.length,
-                  itemBuilder: (context, index) {
-                    final row = rows[index];
-                    return _PurchaseTableRow(
-                      key: Key('${keyPrefix}Row-${row.id}'),
-                      keyPrefix: keyPrefix,
-                      index: index,
-                      row: row,
-                      widths: widths,
-                      keyHoldGuard: keyHoldGuard,
-                      canDelete: rows.length > 1,
-                      onDelete: () => onDeleteRow(index),
-                      onChanged: onChanged,
-                      onLastCellSubmitted: onAddRow,
-                    );
-                  },
+            CompositedTransformFollower(
+              link: _layerLink,
+              targetAnchor:
+                  openBelow ? Alignment.bottomRight : Alignment.topRight,
+              followerAnchor:
+                  openBelow ? Alignment.topRight : Alignment.bottomRight,
+              offset: Offset(0, openBelow ? 4 : -4),
+              showWhenUnlinked: false,
+              child: Directionality(
+                textDirection: TextDirection.rtl,
+                child: _PurchaseWarehouseMenu(
+                  width: fieldSize.width,
+                  maxHeight: maxMenuHeight,
+                  selectedValue: widget.value,
+                  onSelected: _selectValue,
                 ),
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PurchaseTableHeader extends StatelessWidget {
-  const _PurchaseTableHeader({
-    required this.keyPrefix,
-    required this.widths,
-  });
-
-  final String keyPrefix;
-  final _PurchaseTableWidths widths;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      key: Key('${keyPrefix}TableHeader'),
-      height: 48,
-      child: Row(
-        children: [
-          _PurchaseHeaderCell(
-            key: Key('${keyPrefix}Header-index'),
-            label: 'ت',
-            width: widths.index,
-          ),
-          _PurchaseHeaderCell(
-            key: Key('${keyPrefix}Header-code'),
-            label: 'رمز المادة',
-            width: widths.code,
-          ),
-          _PurchaseHeaderCell(
-            key: Key('${keyPrefix}Header-name'),
-            label: 'اسم المادة',
-            width: widths.name,
-          ),
-          _PurchaseHeaderCell(
-            key: Key('${keyPrefix}Header-warehouse'),
-            label: 'المخزن',
-            width: widths.warehouse,
-          ),
-          _PurchaseHeaderCell(
-            key: Key('${keyPrefix}Header-quantity'),
-            label: 'الكمية',
-            width: widths.quantity,
-          ),
-          _PurchaseHeaderCell(
-            key: Key('${keyPrefix}Header-container'),
-            label: 'الحاوية',
-            width: widths.container,
-          ),
-          _PurchaseHeaderCell(
-            key: Key('${keyPrefix}Header-purchasePrice'),
-            label: 'سعر الشراء',
-            width: widths.purchasePrice,
-          ),
-          _PurchaseHeaderCell(
-            key: Key('${keyPrefix}Header-discount'),
-            label: 'الخصم',
-            width: widths.discount,
-          ),
-          _PurchaseHeaderCell(
-            key: Key('${keyPrefix}Header-priceAfterDiscount'),
-            label: 'السعر بعد\nالخصم',
-            width: widths.priceAfterDiscount,
-          ),
-          _PurchaseHeaderCell(
-            key: Key('${keyPrefix}Header-total'),
-            label: 'الإجمالي',
-            width: widths.total,
-          ),
-          _PurchaseHeaderCell(
-            key: Key('${keyPrefix}Header-cost'),
-            label: 'الكلفة',
-            width: widths.cost,
-          ),
-          _PurchaseHeaderCell(
-            key: Key('${keyPrefix}Header-totalCost'),
-            label: 'إجمالي\nالكلفة',
-            width: widths.totalCost,
-          ),
-          _PurchaseHeaderCell(
-            key: Key('${keyPrefix}Header-salePrice'),
-            label: 'سعر البيع',
-            width: widths.salePrice,
-          ),
-          SizedBox(width: widths.action),
-        ],
-      ),
-    );
-  }
-}
-
-class _PurchaseHeaderCell extends StatelessWidget {
-  const _PurchaseHeaderCell({
-    required this.label,
-    required this.width,
-    super.key,
-  });
-
-  final String label;
-  final double width;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: width,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2),
-        child: Container(
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(_cellRadius),
-            border: Border.all(color: _line),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 2),
-            child: Text(
-              label,
-              maxLines: 2,
-              softWrap: true,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: AppTypography.tableHeader.copyWith(
-                color: _purchaseGreenDark,
-                fontSize: _headerFontSize,
-                height: 1.1,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PurchaseTableRow extends StatelessWidget {
-  const _PurchaseTableRow({
-    required this.keyPrefix,
-    required this.index,
-    required this.row,
-    required this.widths,
-    required this.keyHoldGuard,
-    required this.canDelete,
-    required this.onDelete,
-    required this.onChanged,
-    required this.onLastCellSubmitted,
-    super.key,
-  });
-
-  final String keyPrefix;
-  final int index;
-  final PurchaseItemRow row;
-  final _PurchaseTableWidths widths;
-  final AppKeyHoldGuard keyHoldGuard;
-  final bool canDelete;
-  final VoidCallback onDelete;
-  final VoidCallback onChanged;
-  final VoidCallback onLastCellSubmitted;
-
-  Key _key(String name) => Key('$keyPrefix$name-${row.id}');
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: row.focusListenable,
-      builder: (context, _) {
-        return SizedBox(
-          height: 72,
-          child: Row(
-            children: [
-              _PurchaseIndexCell(
-                cellKey: _key('IndexCell'),
-                value: '${index + 1}',
-                width: widths.index,
-                highlighted: row.hasFocusedCell,
-              ),
-              _PurchaseInputCell(
-                cellKey: _key('CodeCell'),
-                fieldKey: _key('Code'),
-                controller: row.code,
-                focusNode: row.codeFocusNode,
-                nextFocusNode: row.nameFocusNode,
-                keyHoldGuard: keyHoldGuard,
-                width: widths.code,
-                emphasized: true,
-                onChanged: (_) => onChanged(),
-              ),
-              _PurchaseInputCell(
-                cellKey: _key('NameCell'),
-                fieldKey: _key('Name'),
-                controller: row.name,
-                focusNode: row.nameFocusNode,
-                nextFocusNode: row.warehouseFocusNode,
-                keyHoldGuard: keyHoldGuard,
-                width: widths.name,
-                onChanged: (_) => onChanged(),
-              ),
-              _PurchaseWarehouseCell(
-                cellKey: _key('WarehouseCell'),
-                fieldKey: _key('Warehouse'),
-                value: row.warehouse,
-                focusNode: row.warehouseFocusNode,
-                nextFocusNode: row.quantityFocusNode,
-                keyHoldGuard: keyHoldGuard,
-                width: widths.warehouse,
-                onChanged: (value) {
-                  row.warehouse = value;
-                  onChanged();
-                },
-              ),
-              _PurchaseInputCell(
-                cellKey: _key('QuantityCell'),
-                fieldKey: _key('Quantity'),
-                controller: row.quantity,
-                focusNode: row.quantityFocusNode,
-                nextFocusNode: row.containerFocusNode,
-                keyHoldGuard: keyHoldGuard,
-                width: widths.quantity,
-                numeric: true,
-                wholeNumber: true,
-                onChanged: (_) => onChanged(),
-              ),
-              _PurchaseInputCell(
-                cellKey: _key('ContainerCell'),
-                fieldKey: _key('Container'),
-                controller: row.container,
-                focusNode: row.containerFocusNode,
-                nextFocusNode: row.purchasePriceFocusNode,
-                keyHoldGuard: keyHoldGuard,
-                width: widths.container,
-                numeric: true,
-                wholeNumber: true,
-                onChanged: (_) => onChanged(),
-              ),
-              _PurchaseInputCell(
-                cellKey: _key('PurchasePriceCell'),
-                fieldKey: _key('PurchasePrice'),
-                controller: row.purchasePrice,
-                focusNode: row.purchasePriceFocusNode,
-                nextFocusNode: row.discountFocusNode,
-                keyHoldGuard: keyHoldGuard,
-                width: widths.purchasePrice,
-                numeric: true,
-                emphasized: true,
-                onChanged: (_) => onChanged(),
-              ),
-              _PurchaseInputCell(
-                cellKey: _key('DiscountCell'),
-                fieldKey: _key('Discount'),
-                controller: row.discount,
-                focusNode: row.discountFocusNode,
-                nextFocusNode: row.salePriceFocusNode,
-                keyHoldGuard: keyHoldGuard,
-                width: widths.discount,
-                numeric: true,
-                onChanged: (_) => onChanged(),
-              ),
-              _PurchaseValueCell(
-                cellKey: _key('PriceAfterDiscountCell'),
-                valueKey: _key('PriceAfterDiscount'),
-                value: AppFormatters.money(row.priceAfterDiscount),
-                width: widths.priceAfterDiscount,
-              ),
-              _PurchaseValueCell(
-                cellKey: _key('TotalCell'),
-                valueKey: _key('Total'),
-                value: AppFormatters.money(row.lineTotal),
-                width: widths.total,
-                emphasized: true,
-              ),
-              _PurchaseValueCell(
-                cellKey: _key('CostCell'),
-                valueKey: _key('Cost'),
-                value: AppFormatters.money(row.unitCost),
-                width: widths.cost,
-              ),
-              _PurchaseValueCell(
-                cellKey: _key('TotalCostCell'),
-                valueKey: _key('TotalCost'),
-                value: AppFormatters.money(row.totalCost),
-                width: widths.totalCost,
-                emphasized: true,
-              ),
-              _PurchaseInputCell(
-                cellKey: _key('SalePriceCell'),
-                fieldKey: _key('SalePrice'),
-                controller: row.salePrice,
-                focusNode: row.salePriceFocusNode,
-                keyHoldGuard: keyHoldGuard,
-                width: widths.salePrice,
-                numeric: true,
-                emphasized: true,
-                onChanged: (_) => onChanged(),
-                onSubmitted: onLastCellSubmitted,
-              ),
-              SizedBox(
-                width: widths.action,
-                child: ExcludeFocus(
-                  child: Center(
-                    child: AppTableActionButton(
-                      key: _key('Delete'),
-                      tooltipKey: _key('DeleteTooltip'),
-                      icon: Icons.close_rounded,
-                      tooltip: 'حذف السطر',
-                      variant: AppButtonVariant.danger,
-                      size: 44,
-                      iconSize: 19,
-                      borderRadius: _cellRadius,
-                      onPressed: canDelete ? onDelete : null,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
         );
       },
     );
+
+    overlay.insert(_overlayEntry!);
+    setState(() {});
   }
-}
 
-class _PurchaseIndexCell extends StatelessWidget {
-  const _PurchaseIndexCell({
-    required this.cellKey,
-    required this.value,
-    required this.width,
-    required this.highlighted,
-  });
+  void _hideMenu({bool updateState = true}) {
+    final overlayEntry = _overlayEntry;
+    if (overlayEntry == null) return;
 
-  final Key cellKey;
-  final String value;
-  final double width;
-  final bool highlighted;
+    _overlayEntry = null;
+    overlayEntry.remove();
+    if (mounted && updateState) setState(() {});
+  }
+
+  void _selectValue(String value) {
+    widget.onChanged(value);
+    _hideMenu();
+  }
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: width,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
-        child: Center(
-          child: Container(
-            key: cellKey,
-            width: 44,
-            height: 44,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: highlighted ? _purchaseGreen : _purchaseGreenSoft,
-              borderRadius: BorderRadius.circular(_cellRadius),
-              border: Border.all(color: _line),
-            ),
-            child: Text(
-              value,
-              textDirection: TextDirection.ltr,
-              style: AppTypography.tableCell.copyWith(
-                color: highlighted ? Colors.white : _purchaseGreenDark,
-                fontSize: _cellFontSize,
-                fontWeight: FontWeight.w800,
+      key: widget.fieldKey,
+      height: AppInvoiceItemsTable.cellHeight,
+      child: CompositedTransformTarget(
+        key: _anchorKey,
+        link: _layerLink,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: _toggleMenu,
+          child: MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              child: Directionality(
+                textDirection: TextDirection.rtl,
+                child: Row(
+                  children: [
+                    Icon(
+                      _isOpen
+                          ? Icons.expand_less_rounded
+                          : Icons.expand_more_rounded,
+                      color: AppModuleColors.purchases,
+                      size: 18,
+                    ),
+                    Expanded(
+                      child: Text(
+                        widget.value,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: _purchaseTextColor,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 18),
+                  ],
+                ),
               ),
             ),
           ),
@@ -773,343 +702,132 @@ class _PurchaseIndexCell extends StatelessWidget {
   }
 }
 
-class _PurchaseWarehouseCell extends StatelessWidget {
-  const _PurchaseWarehouseCell({
-    required this.cellKey,
-    required this.fieldKey,
-    required this.value,
-    required this.focusNode,
-    required this.nextFocusNode,
-    required this.keyHoldGuard,
+class _PurchaseWarehouseMenu extends StatelessWidget {
+  const _PurchaseWarehouseMenu({
     required this.width,
-    required this.onChanged,
+    required this.maxHeight,
+    required this.selectedValue,
+    required this.onSelected,
   });
 
-  final Key cellKey;
-  final Key fieldKey;
-  final String value;
-  final FocusNode focusNode;
-  final FocusNode nextFocusNode;
-  final AppKeyHoldGuard keyHoldGuard;
   final double width;
-  final ValueChanged<String> onChanged;
+  final double maxHeight;
+  final String selectedValue;
+  final ValueChanged<String> onSelected;
 
   @override
   Widget build(BuildContext context) {
-    void advanceWithTab() {
-      keyHoldGuard.runOnce(
-        keys: {LogicalKeyboardKey.tab},
-        action: () => AppFocusTraversal.next(context),
-      );
-    }
-
-    return SizedBox(
-      width: width,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
-        child: AnimatedBuilder(
-          animation: focusNode,
-          child: CallbackShortcuts(
-            bindings: {
-              const SingleActivator(LogicalKeyboardKey.tab): advanceWithTab,
-            },
-            child: AppInvoiceCellDropdown(
-              fieldKey: fieldKey,
-              value: value,
-              options: purchaseWarehouseNames,
-              focusNode: focusNode,
-              keyHoldGuard: keyHoldGuard,
-              accentColor: AppModuleColors.purchases,
-              fontSize: _cellFontSize,
-              onChanged: onChanged,
-              onSubmitted: (_) => nextFocusNode.requestFocus(),
-            ),
+    return Material(
+      color: Colors.transparent,
+      child: ConstrainedBox(
+        constraints: BoxConstraints.tightFor(width: width),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            border: Border.all(color: AppModuleColors.purchases),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(36),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
-          builder: (context, child) {
-            final focused = focusNode.hasFocus;
-            return _PurchaseCellFrame(
-              key: cellKey,
-              borderColor: focused ? _purchaseGreen : _line,
-              borderWidth: focused ? 1.5 : 1,
-              child: child!,
-            );
-          },
-        ),
-      ),
-    );
-  }
-}
-
-class _PurchaseInputCell extends StatelessWidget {
-  const _PurchaseInputCell({
-    required this.cellKey,
-    required this.fieldKey,
-    required this.controller,
-    required this.focusNode,
-    required this.keyHoldGuard,
-    required this.width,
-    this.nextFocusNode,
-    this.numeric = false,
-    this.wholeNumber = false,
-    this.emphasized = false,
-    this.onChanged,
-    this.onSubmitted,
-  });
-
-  final Key cellKey;
-  final Key fieldKey;
-  final TextEditingController controller;
-  final FocusNode focusNode;
-  final AppKeyHoldGuard keyHoldGuard;
-  final FocusNode? nextFocusNode;
-  final double width;
-  final bool numeric;
-  final bool wholeNumber;
-  final bool emphasized;
-  final ValueChanged<String>? onChanged;
-  final VoidCallback? onSubmitted;
-
-  @override
-  Widget build(BuildContext context) {
-    void advanceWithTab() {
-      keyHoldGuard.runOnce(
-        keys: {LogicalKeyboardKey.tab},
-        action: () => AppFocusTraversal.next(context),
-      );
-    }
-
-    void submit() {
-      keyHoldGuard.runOnce(
-        keys: {
-          LogicalKeyboardKey.enter,
-          LogicalKeyboardKey.numpadEnter,
-        },
-        action: () {
-          final callback = onSubmitted;
-          if (callback != null) {
-            callback();
-            return;
-          }
-          nextFocusNode?.requestFocus();
-        },
-      );
-    }
-
-    return SizedBox(
-      width: width,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
-        child: AnimatedBuilder(
-          animation: focusNode,
-          child: Center(
-            child: CallbackShortcuts(
-              bindings: {
-                const SingleActivator(LogicalKeyboardKey.tab): advanceWithTab,
-              },
-              child: TextField(
-                key: fieldKey,
-                controller: controller,
-                focusNode: focusNode,
-                keyboardType: numeric
-                    ? TextInputType.numberWithOptions(
-                        decimal: !wholeNumber,
-                      )
-                    : TextInputType.text,
-                inputFormatters: wholeNumber
-                    ? const [AppIntegerInputFormatter()]
-                    : null,
-                textInputAction: TextInputAction.next,
-                maxLines: 1,
-                textAlign: numeric ? TextAlign.center : TextAlign.right,
-                textDirection: numeric ? TextDirection.ltr : TextDirection.rtl,
-                style: AppTypography.tableCell.copyWith(
-                  color:
-                      emphasized ? _purchaseGreenDark : AppColors.textPrimary,
-                  fontSize: _cellFontSize,
-                  fontWeight: FontWeight.w700,
-                ),
-                cursorColor: Colors.black,
-                decoration: const InputDecoration(
-                  filled: false,
-                  isCollapsed: true,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 7,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(15),
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: maxHeight),
+                child: SingleChildScrollView(
+                  primary: false,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (final warehouse in purchaseWarehouseNames)
+                        _PurchaseWarehouseMenuItem(
+                          value: warehouse,
+                          selected: warehouse == selectedValue,
+                          onSelected: onSelected,
+                        ),
+                    ],
                   ),
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  disabledBorder: InputBorder.none,
-                  errorBorder: InputBorder.none,
-                  focusedErrorBorder: InputBorder.none,
                 ),
-                onChanged: onChanged,
-                onSubmitted: (_) => submit(),
               ),
             ),
           ),
-          builder: (context, child) {
-            final focused = focusNode.hasFocus;
-            return MouseRegion(
-              cursor: SystemMouseCursors.text,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => focusNode.requestFocus(),
-                child: _PurchaseCellFrame(
-                  key: cellKey,
-                  borderColor: focused
-                      ? _purchaseGreen
-                      : emphasized
-                          ? _strongLine
-                          : _line,
-                  borderWidth: focused ? 1.5 : 1,
-                  child: child!,
-                ),
-              ),
-            );
-          },
         ),
       ),
     );
   }
 }
 
-class _PurchaseValueCell extends StatelessWidget {
-  const _PurchaseValueCell({
-    required this.cellKey,
-    required this.valueKey,
+class _PurchaseWarehouseMenuItem extends StatefulWidget {
+  const _PurchaseWarehouseMenuItem({
     required this.value,
-    required this.width,
-    this.emphasized = false,
+    required this.selected,
+    required this.onSelected,
   });
 
-  final Key cellKey;
-  final Key valueKey;
   final String value;
-  final double width;
-  final bool emphasized;
+  final bool selected;
+  final ValueChanged<String> onSelected;
+
+  @override
+  State<_PurchaseWarehouseMenuItem> createState() =>
+      _PurchaseWarehouseMenuItemState();
+}
+
+class _PurchaseWarehouseMenuItemState
+    extends State<_PurchaseWarehouseMenuItem> {
+  bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: width,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
-        child: _PurchaseCellFrame(
-          key: cellKey,
-          borderColor: emphasized ? _strongLine : _line,
-          child: Center(
-            child: Text(
-              value,
-              key: valueKey,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              textDirection: TextDirection.ltr,
-              style: AppTypography.tableCell.copyWith(
-                color:
-                    emphasized ? _purchaseGreenDark : AppColors.textPrimary,
-                fontSize: _cellFontSize,
-                fontWeight: FontWeight.w700,
-              ),
+    final foreground = widget.selected
+        ? AppModulePalettes.purchases.dark
+        : _purchaseTextColor;
+    final background = widget.selected
+        ? _purchaseSelectedTint
+        : _hovered
+            ? _purchaseHoverTint
+            : Colors.transparent;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) {
+        if (!widget.selected) setState(() => _hovered = true);
+      },
+      onExit: (_) {
+        if (_hovered) setState(() => _hovered = false);
+      },
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => widget.onSelected(widget.value),
+        child: Container(
+          height: 44,
+          width: double.infinity,
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            widget.value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: foreground,
+              fontSize: 18,
+              fontWeight:
+                  widget.selected ? FontWeight.w800 : FontWeight.w700,
             ),
           ),
         ),
       ),
     );
   }
-}
-
-class _PurchaseCellFrame extends StatelessWidget {
-  const _PurchaseCellFrame({
-    required this.child,
-    super.key,
-    this.borderColor = AppColors.border,
-    this.borderWidth = 1,
-  });
-
-  final Widget child;
-  final Color borderColor;
-  final double borderWidth;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: _cellHeight,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(_cellRadius),
-          border: Border.all(
-            color: borderColor,
-            width: borderWidth,
-          ),
-        ),
-        child: child,
-      ),
-    );
-  }
-}
-
-class _PurchaseTableWidths {
-  const _PurchaseTableWidths({
-    required this.index,
-    required this.code,
-    required this.name,
-    required this.warehouse,
-    required this.quantity,
-    required this.container,
-    required this.purchasePrice,
-    required this.discount,
-    required this.priceAfterDiscount,
-    required this.total,
-    required this.cost,
-    required this.totalCost,
-    required this.salePrice,
-    required this.action,
-  });
-
-  factory _PurchaseTableWidths.fit(
-    double totalWidth, {
-    required double index,
-    required double action,
-  }) {
-    const baseDataWidth = 1506.0;
-    final availableDataWidth = totalWidth - index - action;
-    final scale = availableDataWidth > 0
-        ? availableDataWidth / baseDataWidth
-        : 0.0;
-
-    return _PurchaseTableWidths(
-      index: index,
-      code: 126 * scale,
-      name: 190 * scale,
-      warehouse: 138 * scale,
-      quantity: 104 * scale,
-      container: 104 * scale,
-      purchasePrice: 126 * scale,
-      discount: 104 * scale,
-      priceAfterDiscount: 146 * scale,
-      total: 116 * scale,
-      cost: 104 * scale,
-      totalCost: 132 * scale,
-      salePrice: 116 * scale,
-      action: action,
-    );
-  }
-
-  final double index;
-  final double code;
-  final double name;
-  final double warehouse;
-  final double quantity;
-  final double container;
-  final double purchasePrice;
-  final double discount;
-  final double priceAfterDiscount;
-  final double total;
-  final double cost;
-  final double totalCost;
-  final double salePrice;
-  final double action;
 }

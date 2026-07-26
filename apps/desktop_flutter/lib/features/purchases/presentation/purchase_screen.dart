@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../core/design/app_design_system.dart';
+import 'widgets/purchase_items_table.dart';
 
 const _purchaseTypeOptions = <AppDropdownOption<String>>[
   AppDropdownOption(value: 'local', label: 'محلي'),
@@ -63,6 +64,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
   final _totalController = TextEditingController();
   final _remainingController = TextEditingController();
   final _supplierBalanceController = TextEditingController();
+  final _itemsController = PurchaseItemsController(idPrefix: 'item-');
   final _savedInvoices = <_PurchaseFormData>[];
 
   late DateTime _invoiceDate;
@@ -116,6 +118,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
     _totalController.dispose();
     _remainingController.dispose();
     _supplierBalanceController.dispose();
+    _itemsController.dispose();
     super.dispose();
   }
 
@@ -517,11 +520,25 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
               onPaymentTypeChanged: _changePaymentType,
               onCurrencyChanged: _changeCurrency,
             ),
-            const Expanded(
-              child: SizedBox(
-                key: Key('purchaseFutureTableSpace'),
+            const SizedBox(height: AppSpacing.sm),
+            Expanded(
+              child: Container(
+                key: const Key('purchaseTablePanel'),
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(AppRadii.lg),
+                  border: Border.all(color: AppColors.border),
+                  boxShadow: AppShadows.soft,
+                ),
+                child: PurchaseItemsTable(
+                  key: const Key('purchaseItemsTable'),
+                  controller: _itemsController,
+                  currencyCode: _currency,
+                ),
               ),
             ),
+            const SizedBox(height: AppSpacing.sm),
             _PurchaseTotalsPanel(
               expensesController: _expensesController,
               invoiceDiscountController: _invoiceDiscountController,
