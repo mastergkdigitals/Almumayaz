@@ -37,7 +37,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: ListView.separated(
           padding: const EdgeInsets.all(AppSpacing.xl),
           itemCount: 8,
-          separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
+          separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
           itemBuilder: (context, index) {
             return _DesignRow(
               number: index + 1,
