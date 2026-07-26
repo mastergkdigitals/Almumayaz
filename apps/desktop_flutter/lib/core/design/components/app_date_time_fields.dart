@@ -17,6 +17,7 @@ class AppDateField extends StatefulWidget {
     this.lastDate,
     this.enabled = true,
     this.accentColor,
+    this.showPickerButton = true,
   });
 
   final String label;
@@ -27,6 +28,7 @@ class AppDateField extends StatefulWidget {
   final DateTime? lastDate;
   final bool enabled;
   final Color? accentColor;
+  final bool showPickerButton;
 
   @override
   State<AppDateField> createState() => _AppDateFieldState();
@@ -89,15 +91,17 @@ class _AppDateFieldState extends State<AppDateField> {
       textDirection: TextDirection.ltr,
       textAlign: TextAlign.right,
       onTap: _pickDate,
-      suffixIcon: AppTooltip(
-        message: 'اختيار التاريخ',
-        verticalOffset: AppControlHeights.large / 2 + AppSpacing.sm,
-        child: AppFieldIconButton(
-          icon: Icons.edit_calendar_rounded,
-          color: widget.accentColor ?? AppColors.primary,
-          onPressed: widget.enabled ? _pickDate : null,
-        ),
-      ),
+      suffixIcon: widget.showPickerButton
+          ? AppTooltip(
+              message: 'اختيار التاريخ',
+              verticalOffset: AppControlHeights.large / 2 + AppSpacing.sm,
+              child: AppFieldIconButton(
+                icon: Icons.edit_calendar_rounded,
+                color: widget.accentColor ?? AppColors.primary,
+                onPressed: widget.enabled ? _pickDate : null,
+              ),
+            )
+          : null,
     );
   }
 
