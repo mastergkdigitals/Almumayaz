@@ -11,6 +11,25 @@ class AppDropdownOption<T> {
   final String label;
 }
 
+enum AppDropdownVisualStyle { standard, oldPurchase }
+
+const _oldPurchaseTextColor = Color(0xFF111827);
+const _oldPurchaseSecondaryTextColor = Color(0xFF64748B);
+const _oldPurchaseBorderColor = Color(0xFFE5E7EB);
+const _oldPurchaseFieldRadius = 14.0;
+const _oldPurchaseMenuRadius = 16.0;
+
+final _oldPurchaseSelectedTint = Color.lerp(
+  AppModulePalettes.purchases.light,
+  Colors.white,
+  0.58,
+)!;
+final _oldPurchaseHoverTint = Color.lerp(
+  AppModulePalettes.purchases.light,
+  Colors.white,
+  0.78,
+)!;
+
 class AppDropdownField<T> extends StatefulWidget {
   const AppDropdownField({
     required this.label,
@@ -26,8 +45,10 @@ class AppDropdownField<T> extends StatefulWidget {
     this.keyHoldGuard,
     this.textDirection,
     this.textAlign = TextAlign.start,
+    this.menuTextDirection,
     this.useIntrinsicHeight = false,
     this.contentPadding,
+    this.visualStyle = AppDropdownVisualStyle.standard,
     this.enabled = true,
   });
 
@@ -43,8 +64,10 @@ class AppDropdownField<T> extends StatefulWidget {
   final AppKeyHoldGuard? keyHoldGuard;
   final TextDirection? textDirection;
   final TextAlign textAlign;
+  final TextDirection? menuTextDirection;
   final bool useIntrinsicHeight;
   final EdgeInsetsGeometry? contentPadding;
+  final AppDropdownVisualStyle visualStyle;
   final bool enabled;
 
   @override
@@ -64,6 +87,8 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
   bool _isHovered = false;
   bool _isOpen = false;
 
+  bool get _usesOldPurchaseStyle =>
+      widget.visualStyle == AppDropdownVisualStyle.oldPurchase;
   FocusNode get _focusNode => widget.focusNode ?? _internalFocusNode;
   AppKeyHoldGuard get _keyHoldGuard =>
       widget.keyHoldGuard ??
@@ -185,16 +210,21 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
   }
 
   Widget _buildSelectedValue(Color valueColor) {
+    final textStyle = _usesOldPurchaseStyle
+        ? const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+          )
+        : AppTypography.fieldText.copyWith(
+            fontWeight: FontWeight.w600,
+          );
     final value = Text(
       widget.value == null ? '' : _selectedLabel,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       textDirection: widget.textDirection,
       textAlign: widget.textAlign,
-      style: AppTypography.fieldText.copyWith(
-        color: valueColor,
-        fontWeight: FontWeight.w600,
-      ),
+      style: textStyle.copyWith(color: valueColor),
     );
 
     if (!widget.useIntrinsicHeight) {
@@ -206,6 +236,7 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
 
   @override
   Widget build(BuildContext context) {
+    final usesOldPurchaseStyle = _usesOldPurchaseStyle;
     final accentColor = widget.accentColor ?? AppColors.primary;
     final openBackgroundColor = Color.alphaBlend(
       accentColor.withAlpha(14),
@@ -219,20 +250,36 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
       accentColor.withAlpha(22),
       AppColors.surface,
     );
-    final borderColor = _isOpen
-        ? accentColor
-        : _isHovered
-            ? AppColors.controlHoverBorder
-            : AppColors.border;
+    final borderColor = usesOldPurchaseStyle
+        ? _oldPurchaseBorderColor
+        : _isOpen
+            ? accentColor
+            : _isHovered
+                ? AppColors.controlHoverBorder
+                : AppColors.border;
     final backgroundColor = !widget.enabled
         ? AppColors.disabledSurface
-        : _isOpen
-            ? openBackgroundColor
-            : _isHovered
-                ? hoverBackgroundColor
-                : AppColors.surface;
-    final valueColor =
-        widget.enabled ? AppColors.textPrimary : AppColors.disabled;
+        : usesOldPurchaseStyle
+            ? AppColors.surface
+            : _isOpen
+                ? openBackgroundColor
+                : _isHovered
+                    ? hoverBackgroundColor
+                    : AppColors.surface;
+    final valueColor = widget.enabled
+        ? usesOldPurchaseStyle
+            ? _oldPurchaseTextColor
+            : AppColors.textPrimary
+        : usesOldPurchaseStyle
+            ? _oldPurchaseTextColor.withAlpha(97)
+            : AppColors.disabled;
+    final iconColor = widget.enabled
+        ? accentColor
+        : usesOldPurchaseStyle
+            ? accentColor.withAlpha(107)
+            : AppColors.disabled;
+    final fieldRadius =
+        usesOldPurchaseStyle ? _oldPurchaseFieldRadius : AppRadii.md;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -251,9 +298,14 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
                 const WidgetStatePropertyAll<Color>(AppColors.surface),
             surfaceTintColor:
                 const WidgetStatePropertyAll<Color>(Colors.transparent),
-            shadowColor:
-                const WidgetStatePropertyAll<Color>(AppColors.menuShadow),
-            elevation: const WidgetStatePropertyAll<double>(4),
+            shadowColor: WidgetStatePropertyAll<Color>(
+              usesOldPurchaseStyle
+                  ? Colors.black.withAlpha(36)
+                  : AppColors.menuShadow,
+            ),
+            elevation: WidgetStatePropertyAll<double>(
+              usesOldPurchaseStyle ? 8 : 4,
+            ),
             fixedSize: WidgetStatePropertyAll<Size>(
               Size.fromWidth(menuWidth),
             ),
@@ -263,8 +315,16 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
             ),
             shape: WidgetStatePropertyAll<OutlinedBorder>(
               RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadii.md),
-                side: const BorderSide(color: AppColors.border),
+                borderRadius: BorderRadius.circular(
+                  usesOldPurchaseStyle
+                      ? _oldPurchaseMenuRadius
+                      : AppRadii.md,
+                ),
+                side: BorderSide(
+                  color: usesOldPurchaseStyle
+                      ? accentColor
+                      : AppColors.border,
+                ),
               ),
             ),
           ),
@@ -291,11 +351,14 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
                     ? () => _selectOption(option)
                     : null,
                 style: ButtonStyle(
-                  minimumSize:
-                      const WidgetStatePropertyAll<Size>(Size(0, 44)),
-                  padding:
-                      const WidgetStatePropertyAll<EdgeInsetsGeometry>(
-                    EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                  minimumSize: WidgetStatePropertyAll<Size>(
+                    Size(0, usesOldPurchaseStyle ? 48 : 44),
+                  ),
+                  padding: WidgetStatePropertyAll<EdgeInsetsGeometry>(
+                    EdgeInsets.symmetric(
+                      horizontal:
+                          usesOldPurchaseStyle ? 12 : AppSpacing.md,
+                    ),
                   ),
                   elevation:
                       const WidgetStatePropertyAll<double>(0),
@@ -305,56 +368,97 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
                       const WidgetStatePropertyAll<Color>(Colors.transparent),
                   backgroundColor: WidgetStateProperty.resolveWith<Color?>(
                     (states) {
-                      if (isSelected) return selectedBackgroundColor;
+                      if (isSelected) {
+                        return usesOldPurchaseStyle
+                            ? _oldPurchaseSelectedTint
+                            : selectedBackgroundColor;
+                      }
                       if (states.contains(WidgetState.hovered) ||
                           states.contains(WidgetState.focused)) {
-                        return AppColors.controlHoverSurface;
+                        return usesOldPurchaseStyle
+                            ? _oldPurchaseHoverTint
+                            : AppColors.controlHoverSurface;
                       }
                       return Colors.transparent;
                     },
                   ),
                   foregroundColor: WidgetStatePropertyAll<Color>(
-                    isSelected ? accentColor : AppColors.textPrimary,
+                    isSelected
+                        ? usesOldPurchaseStyle
+                            ? AppModulePalettes.purchases.dark
+                            : accentColor
+                        : usesOldPurchaseStyle
+                            ? _oldPurchaseTextColor
+                            : AppColors.textPrimary,
                   ),
                   shape: WidgetStatePropertyAll<OutlinedBorder>(
                     RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadii.sm),
+                      borderRadius: BorderRadius.circular(
+                        usesOldPurchaseStyle ? 10 : AppRadii.sm,
+                      ),
                     ),
                   ),
                   alignment: Alignment.center,
-                  animationDuration: AppDurations.fast,
+                  animationDuration: usesOldPurchaseStyle
+                      ? Duration.zero
+                      : AppDurations.fast,
                 ),
-                child: SizedBox(
-                  height: 42,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Center(
-                        child: Text(
-                          option.label,
-                          textAlign: TextAlign.center,
-                          style: AppTypography.fieldText.copyWith(
-                            color: isSelected
-                                ? accentColor
-                                : AppColors.textPrimary,
-                            fontWeight: isSelected
-                                ? FontWeight.w700
-                                : FontWeight.w600,
+                child: usesOldPurchaseStyle
+                    ? SizedBox(
+                        height: 46,
+                        width: double.infinity,
+                        child: Center(
+                          child: Text(
+                            option.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            textDirection: widget.menuTextDirection ??
+                                widget.textDirection,
+                            style: TextStyle(
+                              color: isSelected
+                                  ? AppModulePalettes.purchases.dark
+                                  : _oldPurchaseTextColor,
+                              fontSize: 18,
+                              fontWeight: isSelected
+                                  ? FontWeight.w800
+                                  : FontWeight.w700,
+                            ),
                           ),
+                        ),
+                      )
+                    : SizedBox(
+                        height: 42,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Center(
+                              child: Text(
+                                option.label,
+                                textAlign: TextAlign.center,
+                                style: AppTypography.fieldText.copyWith(
+                                  color: isSelected
+                                      ? accentColor
+                                      : AppColors.textPrimary,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w700
+                                      : FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            if (isSelected)
+                              Align(
+                                alignment:
+                                    AlignmentDirectional.centerStart,
+                                child: Icon(
+                                  Icons.check_rounded,
+                                  size: AppIconSizes.sm,
+                                  color: accentColor,
+                                ),
+                              ),
+                          ],
                         ),
                       ),
-                      if (isSelected)
-                        Align(
-                          alignment: AlignmentDirectional.centerStart,
-                          child: Icon(
-                            Icons.check_rounded,
-                            size: AppIconSizes.sm,
-                            color: accentColor,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
               ),
             );
           }).toList(growable: false),
@@ -383,7 +487,7 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
                     mouseCursor: widget.enabled
                         ? SystemMouseCursors.click
                         : SystemMouseCursors.basic,
-                    borderRadius: BorderRadius.circular(AppRadii.md),
+                    borderRadius: BorderRadius.circular(fieldRadius),
                     hoverColor: Colors.transparent,
                     focusColor: Colors.transparent,
                     highlightColor: Colors.transparent,
@@ -411,52 +515,81 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
                           enabled: widget.enabled,
                           labelText: widget.label,
                           hintText: 'اختر ${widget.label}',
-                          contentPadding: widget.contentPadding,
+                          labelStyle: usesOldPurchaseStyle
+                              ? const TextStyle(
+                                  color: _oldPurchaseSecondaryTextColor,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                )
+                              : null,
+                          contentPadding: widget.contentPadding ??
+                              (usesOldPurchaseStyle
+                                  ? const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 14,
+                                    )
+                                  : null),
                           prefixIcon: widget.icon == null
                               ? null
                               : Icon(
                                   widget.icon,
-                                  color: widget.enabled
-                                      ? accentColor
-                                      : AppColors.disabled,
+                                  color: iconColor,
+                                  size: usesOldPurchaseStyle
+                                      ? AppIconSizes.md
+                                      : null,
                                 ),
-                          suffixIcon: AnimatedRotation(
-                            turns: _isOpen ? 0.5 : 0,
-                            duration: AppDurations.fast,
-                            child: Icon(
-                              Icons.keyboard_arrow_down_rounded,
-                              size: AppIconSizes.md,
-                              color: widget.enabled
-                                  ? accentColor
-                                  : AppColors.disabled,
-                            ),
-                          ),
+                          suffixIcon: usesOldPurchaseStyle
+                              ? Icon(
+                                  _isOpen
+                                      ? Icons.keyboard_arrow_up_rounded
+                                      : Icons.keyboard_arrow_down_rounded,
+                                  size: AppIconSizes.md,
+                                  color: iconColor,
+                                )
+                              : AnimatedRotation(
+                                  turns: _isOpen ? 0.5 : 0,
+                                  duration: AppDurations.fast,
+                                  child: Icon(
+                                    Icons.keyboard_arrow_down_rounded,
+                                    size: AppIconSizes.md,
+                                    color: iconColor,
+                                  ),
+                                ),
                           filled: true,
                           fillColor: backgroundColor,
-                          floatingLabelStyle:
-                              AppTypography.fieldText.copyWith(
-                            color: widget.enabled
-                                ? accentColor
-                                : AppColors.disabled,
-                          ),
+                          floatingLabelStyle: usesOldPurchaseStyle
+                              ? TextStyle(
+                                  color: iconColor,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                )
+                              : AppTypography.fieldText.copyWith(
+                                  color: iconColor,
+                                ),
+                          border: usesOldPurchaseStyle
+                              ? OutlineInputBorder(
+                                  borderRadius:
+                                      BorderRadius.circular(fieldRadius),
+                                )
+                              : null,
                           enabledBorder: OutlineInputBorder(
-                            borderRadius:
-                                BorderRadius.circular(AppRadii.md),
+                            borderRadius: BorderRadius.circular(fieldRadius),
                             borderSide: BorderSide(color: borderColor),
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius:
-                                BorderRadius.circular(AppRadii.md),
+                            borderRadius: BorderRadius.circular(fieldRadius),
                             borderSide: BorderSide(
                               color: accentColor,
                               width: 1.6,
                             ),
                           ),
                           disabledBorder: OutlineInputBorder(
-                            borderRadius:
-                                BorderRadius.circular(AppRadii.md),
-                            borderSide:
-                                const BorderSide(color: AppColors.border),
+                            borderRadius: BorderRadius.circular(fieldRadius),
+                            borderSide: BorderSide(
+                              color: usesOldPurchaseStyle
+                                  ? _oldPurchaseBorderColor
+                                  : AppColors.border,
+                            ),
                           ),
                         ),
                         child: _buildSelectedValue(valueColor),

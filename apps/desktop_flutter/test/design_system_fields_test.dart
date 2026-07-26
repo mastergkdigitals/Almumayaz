@@ -112,6 +112,21 @@ void main() {
     final dropdown = find.byKey(const Key('designCurrencyDropdown'));
     await reveal(tester, dropdown);
 
+    final dropdownWidget = tester.widget<AppDropdownField<String>>(
+      find.ancestor(
+        of: dropdown,
+        matching: find.byType(AppDropdownField<String>),
+      ),
+    );
+    expect(
+      dropdownWidget.visualStyle,
+      AppDropdownVisualStyle.oldPurchase,
+    );
+    expect(dropdownWidget.accentColor, AppModuleColors.purchases);
+    expect(dropdownWidget.textDirection, TextDirection.ltr);
+    expect(dropdownWidget.textAlign, TextAlign.center);
+    expect(dropdownWidget.menuTextDirection, TextDirection.ltr);
+
     final decorator = tester.widget<InputDecorator>(
       find.descendant(
         of: dropdown,
@@ -119,7 +134,41 @@ void main() {
       ),
     );
     expect(decorator.decoration.labelText, 'العملة');
-    expect(decorator.decoration.contentPadding, isNull);
+    expect(
+      decorator.decoration.contentPadding,
+      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    );
+    expect(
+      decorator.decoration.labelStyle,
+      const TextStyle(
+        color: Color(0xFF64748B),
+        fontSize: 18,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+    final enabledBorder =
+        decorator.decoration.enabledBorder! as OutlineInputBorder;
+    expect(
+      enabledBorder.borderRadius,
+      BorderRadius.circular(14),
+    );
+    expect(enabledBorder.borderSide.color, const Color(0xFFE5E7EB));
+    final focusedBorder =
+        decorator.decoration.focusedBorder! as OutlineInputBorder;
+    expect(
+      focusedBorder.borderRadius,
+      BorderRadius.circular(14),
+    );
+    expect(focusedBorder.borderSide.color, AppModuleColors.purchases);
+    expect(focusedBorder.borderSide.width, 1.6);
+    final prefixIcon = decorator.decoration.prefixIcon! as Icon;
+    expect(prefixIcon.icon, Icons.currency_exchange_rounded);
+    expect(prefixIcon.color, AppModuleColors.purchases);
+    expect(prefixIcon.size, 20);
+    final suffixIcon = decorator.decoration.suffixIcon! as Icon;
+    expect(suffixIcon.icon, Icons.keyboard_arrow_down_rounded);
+    expect(suffixIcon.color, AppModuleColors.purchases);
+    expect(suffixIcon.size, 20);
     expect(decorator.baseStyle, isNull);
     expect(decorator.textAlign, isNull);
     expect(decorator.textAlignVertical, isNull);
@@ -133,6 +182,31 @@ void main() {
       find.descendant(of: dropdown, matching: find.text('دينار')),
       findsOneWidget,
     );
+    final selectedValue = tester.widget<Text>(
+      find.descendant(of: dropdown, matching: find.text('دينار')),
+    );
+    expect(selectedValue.textDirection, TextDirection.ltr);
+    expect(selectedValue.textAlign, TextAlign.center);
+    expect(selectedValue.style?.color, const Color(0xFF111827));
+    expect(selectedValue.style?.fontSize, 20);
+    expect(selectedValue.style?.fontWeight, FontWeight.w700);
+
+    final menuAnchor = tester.widget<MenuAnchor>(
+      find.descendant(
+        of: dropdown,
+        matching: find.byType(MenuAnchor),
+      ),
+    );
+    final menuStyle = menuAnchor.style!;
+    expect(
+      menuStyle.shadowColor?.resolve(<WidgetState>{}),
+      Colors.black.withAlpha(36),
+    );
+    expect(menuStyle.elevation?.resolve(<WidgetState>{}), 8);
+    final menuShape = menuStyle.shape?.resolve(<WidgetState>{})
+        as RoundedRectangleBorder;
+    expect(menuShape.borderRadius, BorderRadius.circular(16));
+    expect(menuShape.side.color, AppModuleColors.purchases);
 
     await tester.tap(dropdown);
     await tester.pump();
@@ -142,7 +216,55 @@ void main() {
     expect(dollar, findsOneWidget);
     final label = tester.widget<Text>(dollar);
     expect(label.style?.fontSize, 18);
-    expect(label.style?.fontWeight, FontWeight.w600);
+    expect(label.style?.fontWeight, FontWeight.w700);
+    expect(label.style?.color, const Color(0xFF111827));
+    expect(label.textDirection, TextDirection.ltr);
+
+    final selectedOption = find.widgetWithText(MenuItemButton, 'دينار');
+    final selectedButton = tester.widget<MenuItemButton>(selectedOption);
+    expect(
+      selectedButton.style?.minimumSize?.resolve(<WidgetState>{}),
+      const Size(0, 48),
+    );
+    expect(
+      selectedButton.style?.backgroundColor?.resolve(<WidgetState>{}),
+      Color.lerp(
+        AppModulePalettes.purchases.light,
+        Colors.white,
+        0.58,
+      ),
+    );
+    final selectedOptionLabel = tester.widget<Text>(
+      find.descendant(
+        of: selectedOption,
+        matching: find.text('دينار'),
+      ),
+    );
+    expect(selectedOptionLabel.style?.fontWeight, FontWeight.w800);
+    expect(
+      selectedOptionLabel.style?.color,
+      AppModulePalettes.purchases.dark,
+    );
+    expect(
+      find.descendant(
+        of: selectedOption,
+        matching: find.byIcon(Icons.check_rounded),
+      ),
+      findsNothing,
+    );
+
+    final dollarOption = find.widgetWithText(MenuItemButton, 'دولار');
+    final dollarButton = tester.widget<MenuItemButton>(dollarOption);
+    expect(
+      dollarButton.style?.backgroundColor?.resolve(
+        <WidgetState>{WidgetState.hovered},
+      ),
+      Color.lerp(
+        AppModulePalettes.purchases.light,
+        Colors.white,
+        0.78,
+      ),
+    );
 
     await tester.tap(dollar);
     await tester.pump();
