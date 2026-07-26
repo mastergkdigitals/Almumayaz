@@ -120,7 +120,12 @@ void main() {
     );
     expect(decorator.decoration.labelText, 'العملة');
     expect(decorator.decoration.contentPadding, isNull);
+    expect(decorator.baseStyle, AppTypography.fieldText);
+    expect(decorator.textAlign, TextAlign.start);
+    expect(decorator.textAlignVertical, TextAlignVertical.center);
+    expect(decorator.expands, isTrue);
     expect(decorator.isEmpty, isFalse);
+    expect(tester.getSize(dropdown).height, AppControlHeights.large);
     expect(
       find.descendant(of: dropdown, matching: find.text('دينار')),
       findsOneWidget,

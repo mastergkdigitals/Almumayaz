@@ -27,13 +27,6 @@ const _warehouseOptions = <AppDropdownOption<String>>[
   AppDropdownOption(value: 'المنصور', label: 'المنصور'),
 ];
 
-const _purchaseLongLabelDropdownPadding = EdgeInsetsDirectional.fromSTEB(
-  AppSpacing.md,
-  AppSpacing.md + AppSpacing.xs,
-  AppSpacing.md,
-  AppSpacing.sm,
-);
-
 const _supplierOptions = <_PurchaseSupplierOption>[
   _PurchaseSupplierOption(number: 1, name: 'شركة النخيل للتجارة'),
   _PurchaseSupplierOption(number: 3, name: 'مجهز الرافدين'),
@@ -624,6 +617,7 @@ class _PurchaseHeaderPanel extends StatelessWidget {
           Row(
             children: [
               Expanded(
+                flex: 4,
                 child: AppTextField(
                   fieldKey: const Key('purchaseInvoiceNumberField'),
                   controller: invoiceNumberController,
@@ -639,6 +633,7 @@ class _PurchaseHeaderPanel extends StatelessWidget {
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
+                flex: 4,
                 child: AppDateField(
                   fieldKey: const Key('purchaseDateField'),
                   label: 'التاريخ',
@@ -649,6 +644,7 @@ class _PurchaseHeaderPanel extends StatelessWidget {
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
+                flex: 4,
                 child: AppTimeField(
                   fieldKey: const Key('purchaseTimeField'),
                   label: 'الوقت',
@@ -658,6 +654,7 @@ class _PurchaseHeaderPanel extends StatelessWidget {
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
+                flex: 4,
                 child: AppDropdownField<String>(
                   fieldKey: const Key('purchaseWarehouseField'),
                   label: 'المخزن',
@@ -671,6 +668,7 @@ class _PurchaseHeaderPanel extends StatelessWidget {
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
+                flex: 5,
                 child: AppDropdownField<String>(
                   fieldKey: const Key('purchaseTypeField'),
                   label: 'نوع الشراء',
@@ -679,12 +677,12 @@ class _PurchaseHeaderPanel extends StatelessWidget {
                   options: _purchaseTypeOptions,
                   textDirection: TextDirection.rtl,
                   textAlign: TextAlign.right,
-                  contentPadding: _purchaseLongLabelDropdownPadding,
                   onChanged: onPurchaseTypeChanged,
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
+                flex: 5,
                 child: AppDropdownField<String>(
                   fieldKey: const Key('purchasePaymentTypeField'),
                   label: 'نوع الدفع',
@@ -693,12 +691,12 @@ class _PurchaseHeaderPanel extends StatelessWidget {
                   options: _paymentTypeOptions,
                   textDirection: TextDirection.rtl,
                   textAlign: TextAlign.right,
-                  contentPadding: _purchaseLongLabelDropdownPadding,
                   onChanged: onPaymentTypeChanged,
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
+                flex: 4,
                 child: AppDropdownField<String>(
                   fieldKey: const Key('purchaseCurrencyField'),
                   label: 'العملة',
@@ -712,6 +710,7 @@ class _PurchaseHeaderPanel extends StatelessWidget {
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
+                flex: 4,
                 child: AppTextField(
                   fieldKey: const Key('purchaseExchangeRateField'),
                   controller: exchangeRateController,
