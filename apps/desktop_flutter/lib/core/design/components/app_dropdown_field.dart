@@ -458,9 +458,9 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
                           ),
                         ),
                         child: _buildSelectedValue(valueColor),
+                      ),
                     ),
                   ),
-                ),
                 ),
               ),
             );
