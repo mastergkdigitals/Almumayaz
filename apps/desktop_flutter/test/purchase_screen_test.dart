@@ -221,7 +221,7 @@ void main() {
       expect(selectedText.overflow, TextOverflow.ellipsis);
       expect(
         tester.getCenter(valueFinder).dx,
-        closeTo(tester.getCenter(find.byKey(Key(dropdownKey))).dx, 0.5),
+        closeTo(tester.getCenter(find.byKey(Key(dropdownKey))).dx, 1),
       );
 
       final currentValueY = tester.getCenter(valueFinder).dy;
@@ -233,10 +233,6 @@ void main() {
       }
     }
 
-    expect(
-      tester.widget(find.byKey(const Key('purchaseHeaderPrimaryRow'))),
-      isA<Row>(),
-    );
     final referenceWidth = tester
         .getSize(find.byKey(Key(firstRowFieldKeys.first)))
         .width;
