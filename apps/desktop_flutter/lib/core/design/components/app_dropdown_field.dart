@@ -25,7 +25,7 @@ class AppDropdownField<T> extends StatefulWidget {
     this.onSubmitted,
     this.keyHoldGuard,
     this.textDirection,
-    this.textAlign = TextAlign.start,
+    this.textAlign = TextAlign.center,
     this.enabled = true,
   });
 
@@ -364,19 +364,17 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
                     splashColor: Colors.transparent,
                     overlayColor:
                         const WidgetStatePropertyAll<Color>(Colors.transparent),
-                    child: SizedBox(
-                      height: AppControlHeights.large,
-                      child: InputDecorator(
-                        baseStyle: AppTypography.fieldText,
-                        textAlign: widget.textAlign,
-                        textAlignVertical: TextAlignVertical.center,
-                        expands: true,
+                    child: InputDecorator(
                         isEmpty: widget.value == null,
                         isFocused: _isOpen || _focusNode.hasFocus,
                         decoration: InputDecoration(
                           enabled: widget.enabled,
                           labelText: widget.label,
                           hintText: 'اختر ${widget.label}',
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.md,
+                            vertical: AppSpacing.md,
+                          ),
                           prefixIcon: widget.icon == null
                               ? null
                               : Icon(
@@ -424,8 +422,10 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
                                 const BorderSide(color: AppColors.border),
                           ),
                         ),
-                        child: Text(
-                          widget.value == null ? '' : _selectedLabel,
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: Text(
+                            widget.value == null ? '' : _selectedLabel,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           textDirection: widget.textDirection,
