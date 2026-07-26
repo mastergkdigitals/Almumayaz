@@ -1,4 +1,5 @@
 import 'package:erp/app/app.dart';
+import 'package:erp/core/design/app_design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -27,9 +28,12 @@ void main() {
       expect(find.byKey(Key(removedKey)), findsNothing);
     }
 
-    await tester.tap(find.byKey(const Key('appScreenBackButton')));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
+    final backButton = tester.widget<AppHeaderIconButton>(
+      find.byKey(const Key('appScreenBackButton')),
+    );
+    expect(backButton.onPressed, isNotNull);
+    backButton.onPressed!.call();
+    await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('purchaseScreen')), findsNothing);
     expect(find.byKey(const Key('dashboardCard_purchases')), findsOneWidget);
