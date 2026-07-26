@@ -33,8 +33,12 @@ class AppButton extends StatefulWidget {
     this.textStyle,
     this.isLoading = false,
     this.width,
+    this.minWidth,
     this.height = AppControlHeights.standard,
-  });
+  }) : assert(
+          width == null || minWidth == null,
+          'Provide either width or minWidth, not both.',
+        );
 
   final String label;
   final VoidCallback? onPressed;
@@ -51,6 +55,7 @@ class AppButton extends StatefulWidget {
   final TextStyle? textStyle;
   final bool isLoading;
   final double? width;
+  final double? minWidth;
   final double height;
 
   @override
@@ -99,7 +104,7 @@ class _AppButtonState extends State<AppButton> {
 
     final EdgeInsetsGeometry? effectivePadding =
         widget.padding ??
-            (widget.width == null
+            (widget.width == null && widget.minWidth == null
                 ? null
                 : EdgeInsets.symmetric(
                     horizontal: hasLabel ? AppSpacing.xs : 0,
@@ -154,6 +159,11 @@ class _AppButtonState extends State<AppButton> {
             ? null
             : WidgetStatePropertyAll<EdgeInsetsGeometry>(
                 effectivePadding,
+              ),
+        minimumSize: widget.minWidth == null
+            ? null
+            : WidgetStatePropertyAll<Size>(
+                Size(widget.minWidth!, widget.height),
               ),
         mouseCursor: WidgetStateProperty.resolveWith<MouseCursor?>(
           (states) => states.contains(WidgetState.disabled)
@@ -369,7 +379,7 @@ class AppRecordNavigation extends StatelessWidget {
             label: 'الأول',
             icon: Icons.first_page_rounded,
             variant: variant,
-            width: buttonWidth,
+            minWidth: buttonWidth,
             height: buttonHeight,
             padding: buttonPadding,
             iconSize: iconSize,
@@ -382,7 +392,7 @@ class AppRecordNavigation extends StatelessWidget {
             label: 'السابق',
             icon: Icons.chevron_left_rounded,
             variant: variant,
-            width: buttonWidth,
+            minWidth: buttonWidth,
             height: buttonHeight,
             padding: buttonPadding,
             iconSize: iconSize,
@@ -396,7 +406,7 @@ class AppRecordNavigation extends StatelessWidget {
             icon: Icons.chevron_right_rounded,
             iconPosition: AppButtonIconPosition.afterLabel,
             variant: variant,
-            width: buttonWidth,
+            minWidth: buttonWidth,
             height: buttonHeight,
             padding: buttonPadding,
             iconSize: iconSize,
@@ -410,7 +420,7 @@ class AppRecordNavigation extends StatelessWidget {
             icon: Icons.last_page_rounded,
             iconPosition: AppButtonIconPosition.afterLabel,
             variant: variant,
-            width: buttonWidth,
+            minWidth: buttonWidth,
             height: buttonHeight,
             padding: buttonPadding,
             iconSize: iconSize,

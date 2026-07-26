@@ -113,21 +113,23 @@ void main() {
       Key('designActionBarDelete'),
     ];
     for (final key in buttonKeys.take(4)) {
-      expect(
-        tester.getSize(find.byKey(key)),
-        const Size(104, 52),
-      );
+      final size = tester.getSize(find.byKey(key));
+      expect(size.width, greaterThanOrEqualTo(104));
+      expect(size.height, 52);
     }
     for (final key in buttonKeys.skip(4)) {
-      expect(
-        tester.getSize(find.byKey(key)),
-        const Size(108, 52),
-      );
+      final size = tester.getSize(find.byKey(key));
+      expect(size.width, greaterThanOrEqualTo(108));
+      expect(size.height, 52);
     }
 
     AppButton appButton(String key) =>
         tester.widget<AppButton>(find.byKey(Key(key)));
 
+    expect(appButton('designActionBarFirst').minWidth, 104);
+    expect(appButton('designActionBarFirst').width, isNull);
+    expect(appButton('designActionBarSave').minWidth, 108);
+    expect(appButton('designActionBarSave').width, isNull);
     expect(appButton('designActionBarSave').onPressed, isNotNull);
     expect(appButton('designActionBarUpdate').onPressed, isNull);
     expect(appButton('designActionBarUndo').onPressed, isNull);
