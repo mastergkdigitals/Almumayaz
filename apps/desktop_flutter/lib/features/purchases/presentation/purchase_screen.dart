@@ -614,10 +614,10 @@ class _PurchaseHeaderPanel extends StatelessWidget {
       panelKey: const Key('purchaseHeaderPanel'),
       child: Column(
         children: [
-          Row(
-            children: [
-              Expanded(
-                flex: 4,
+          _PurchaseFieldRow(
+            rowKey: const Key('purchaseHeaderPrimaryRow'),
+            slots: [
+              _PurchaseFieldSlot(
                 child: AppTextField(
                   fieldKey: const Key('purchaseInvoiceNumberField'),
                   controller: invoiceNumberController,
@@ -631,20 +631,17 @@ class _PurchaseHeaderPanel extends StatelessWidget {
                   textInputAction: TextInputAction.next,
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                flex: 4,
+              _PurchaseFieldSlot(
                 child: AppDateField(
                   fieldKey: const Key('purchaseDateField'),
                   label: 'التاريخ',
                   value: invoiceDate,
                   accentColor: AppModuleColors.purchases,
+                  showPickerButton: false,
                   onChanged: onDateChanged,
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                flex: 4,
+              _PurchaseFieldSlot(
                 child: AppTimeField(
                   fieldKey: const Key('purchaseTimeField'),
                   label: 'الوقت',
@@ -652,65 +649,79 @@ class _PurchaseHeaderPanel extends StatelessWidget {
                   accentColor: AppModuleColors.purchases,
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                flex: 4,
+              _PurchaseFieldSlot(
                 child: AppDropdownField<String>(
                   fieldKey: const Key('purchaseWarehouseField'),
                   label: 'المخزن',
+                  icon: Icons.warehouse_rounded,
                   accentColor: AppModuleColors.purchases,
                   value: warehouse,
                   options: _warehouseOptions,
                   textDirection: TextDirection.rtl,
-                  textAlign: TextAlign.right,
+                  textAlign: TextAlign.center,
+                  useIntrinsicHeight: true,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.md,
+                  ),
                   onChanged: onWarehouseChanged,
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                flex: 5,
+              _PurchaseFieldSlot(
                 child: AppDropdownField<String>(
                   fieldKey: const Key('purchaseTypeField'),
                   label: 'نوع الشراء',
+                  icon: Icons.shopping_cart_checkout_rounded,
                   accentColor: AppModuleColors.purchases,
                   value: purchaseType,
                   options: _purchaseTypeOptions,
                   textDirection: TextDirection.rtl,
-                  textAlign: TextAlign.right,
+                  textAlign: TextAlign.center,
+                  useIntrinsicHeight: true,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.md,
+                  ),
                   onChanged: onPurchaseTypeChanged,
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                flex: 5,
+              _PurchaseFieldSlot(
                 child: AppDropdownField<String>(
                   fieldKey: const Key('purchasePaymentTypeField'),
                   label: 'نوع الدفع',
+                  icon: Icons.payments_outlined,
                   accentColor: AppModuleColors.purchases,
                   value: paymentType,
                   options: _paymentTypeOptions,
                   textDirection: TextDirection.rtl,
-                  textAlign: TextAlign.right,
+                  textAlign: TextAlign.center,
+                  useIntrinsicHeight: true,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.md,
+                  ),
                   onChanged: onPaymentTypeChanged,
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                flex: 4,
+              _PurchaseFieldSlot(
                 child: AppDropdownField<String>(
                   fieldKey: const Key('purchaseCurrencyField'),
                   label: 'العملة',
+                  icon: Icons.currency_exchange_rounded,
                   accentColor: AppModuleColors.purchases,
                   value: currency,
                   options: _currencyOptions,
                   textDirection: TextDirection.rtl,
-                  textAlign: TextAlign.right,
+                  textAlign: TextAlign.center,
+                  useIntrinsicHeight: true,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.md,
+                  ),
                   onChanged: onCurrencyChanged,
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                flex: 4,
+              _PurchaseFieldSlot(
                 child: AppTextField(
                   fieldKey: const Key('purchaseExchangeRateField'),
                   controller: exchangeRateController,
@@ -728,10 +739,11 @@ class _PurchaseHeaderPanel extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
-              Expanded(
+          const SizedBox(height: 12),
+          _PurchaseFieldRow(
+            rowKey: const Key('purchaseHeaderSecondaryRow'),
+            slots: [
+              _PurchaseFieldSlot(
                 flex: 2,
                 child: AppSearchableDropdownField<_PurchaseSupplierOption>(
                   fieldKey: const Key('purchaseSupplierField'),
@@ -753,8 +765,7 @@ class _PurchaseHeaderPanel extends StatelessWidget {
                   onSelected: (_) {},
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
+              _PurchaseFieldSlot(
                 flex: 3,
                 child: AppTextField(
                   fieldKey: const Key('purchaseNotesField'),
@@ -771,6 +782,75 @@ class _PurchaseHeaderPanel extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _PurchaseFieldSlot {
+  const _PurchaseFieldSlot({
+    required this.child,
+    this.flex = 1,
+    this.minWidth = 126,
+  });
+
+  final Widget child;
+  final int flex;
+  final double minWidth;
+}
+
+class _PurchaseFieldRow extends StatelessWidget {
+  const _PurchaseFieldRow({
+    required this.slots,
+    this.rowKey,
+  });
+
+  static const _gap = 10.0;
+
+  final List<_PurchaseFieldSlot> slots;
+  final Key? rowKey;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final minimumWidth =
+            slots.fold<double>(
+              0,
+              (sum, slot) => sum + slot.minWidth,
+            ) +
+            _gap * (slots.length - 1);
+
+        if (constraints.maxWidth < minimumWidth) {
+          return Wrap(
+            key: rowKey,
+            textDirection: TextDirection.rtl,
+            spacing: _gap,
+            runSpacing: _gap,
+            children: [
+              for (final slot in slots)
+                SizedBox(
+                  width: slot.minWidth,
+                  child: slot.child,
+                ),
+            ],
+          );
+        }
+
+        return Row(
+          key: rowKey,
+          textDirection: TextDirection.rtl,
+          children: [
+            for (var index = 0; index < slots.length; index++) ...[
+              Expanded(
+                flex: slots[index].flex,
+                child: slots[index].child,
+              ),
+              if (index != slots.length - 1)
+                const SizedBox(width: _gap),
+            ],
+          ],
+        );
+      },
     );
   }
 }
