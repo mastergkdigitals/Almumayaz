@@ -200,6 +200,10 @@ void main() {
           vertical: AppSpacing.md,
         ),
       );
+      final label = decorator.decoration.label! as Text;
+      expect(label.maxLines, 1);
+      expect(label.softWrap, isFalse);
+      expect(label.overflow, TextOverflow.ellipsis);
       expect(decorator.baseStyle, isNull);
       expect(decorator.textAlign, isNull);
       expect(decorator.textAlignVertical, isNull);

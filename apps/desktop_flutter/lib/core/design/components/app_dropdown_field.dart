@@ -409,7 +409,16 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
                         isFocused: _isOpen || _focusNode.hasFocus,
                         decoration: InputDecoration(
                           enabled: widget.enabled,
-                          labelText: widget.label,
+                          labelText:
+                              widget.useIntrinsicHeight ? null : widget.label,
+                          label: widget.useIntrinsicHeight
+                              ? Text(
+                                  widget.label,
+                                  maxLines: 1,
+                                  softWrap: false,
+                                  overflow: TextOverflow.ellipsis,
+                                )
+                              : null,
                           hintText: 'اختر ${widget.label}',
                           contentPadding: widget.contentPadding,
                           prefixIcon: widget.icon == null
