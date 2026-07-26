@@ -28,12 +28,22 @@ const _warehouseOptions = <AppDropdownOption<String>>[
   AppDropdownOption(value: 'المنصور', label: 'المنصور'),
 ];
 
-const _supplierOptions = <String>[
-  'مجهز الرافدين',
-  'شركة النخيل للتجارة',
-  'أسواق الكرادة',
-  'مجهز دجلة',
+const _supplierOptions = <_PurchaseSupplierOption>[
+  _PurchaseSupplierOption(number: 1, name: 'شركة النخيل للتجارة'),
+  _PurchaseSupplierOption(number: 3, name: 'مجهز الرافدين'),
+  _PurchaseSupplierOption(number: 6, name: 'شركة الموصل الحديثة'),
+  _PurchaseSupplierOption(number: 9, name: 'مجهز الفرات'),
 ];
+
+class _PurchaseSupplierOption {
+  const _PurchaseSupplierOption({
+    required this.number,
+    required this.name,
+  });
+
+  final int number;
+  final String name;
+}
 
 class PurchaseScreen extends StatefulWidget {
   const PurchaseScreen({super.key});
@@ -54,8 +64,6 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
   final _totalController = TextEditingController();
   final _remainingController = TextEditingController();
   final _supplierBalanceController = TextEditingController();
-  final _searchController = TextEditingController();
-  final _searchFocusNode = FocusNode();
   final _itemsController = PurchaseItemsController();
   final _savedInvoices = <_PurchaseFormData>[];
 
@@ -112,8 +120,6 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
     _totalController.dispose();
     _remainingController.dispose();
     _supplierBalanceController.dispose();
-    _searchController.dispose();
-    _searchFocusNode.dispose();
     _itemsController.dispose();
     super.dispose();
   }
@@ -385,13 +391,9 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
   }
 
   List<int> get _visibleInvoiceIndexes {
-    final query = _searchController.text.trim().toLowerCase();
     return [
       for (var index = 0; index < _savedInvoices.length; index++)
-        if (query.isEmpty ||
-            _savedInvoices[index].invoiceNumber.toLowerCase().contains(query) ||
-            _savedInvoices[index].supplier.toLowerCase().contains(query))
-          index,
+        index,
     ];
   }
 
@@ -436,11 +438,43 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
     if (indexes.isNotEmpty) _loadInvoice(indexes.last);
   }
 
-  void _searchChanged(String _) => setState(() {});
+  Future<void> _openInvoiceSearchDialog() async {
+    final invoice = await AppRecordSearchDialog.show<_PurchaseFormData>(
+      context,
+      title: 'بحث قوائم الشراء',
+      hint: 'اسم المجهز أو رقم القائمة أو اسم المادة',
+      accentColor: AppModuleColors.purchases,
+      records: [
+        for (final savedInvoice in _savedInvoices)
+          AppSearchRecord(
+            value: savedInvoice,
+            title: 'قائمة شراء رقم ${savedInvoice.invoiceNumber}',
+            subtitle: savedInvoice.supplier.trim().isEmpty
+                ? 'بدون مجهز'
+                : savedInvoice.supplier,
+            details:
+                '${AppFormatters.date(savedInvoice.date)} • '
+                '${savedInvoice.items.length} مواد',
+            searchTerms: [
+              savedInvoice.invoiceNumber,
+              savedInvoice.supplier,
+              for (final item in savedInvoice.items) ...[
+                item.code,
+                item.name,
+              ],
+            ],
+          ),
+      ],
+      emptyTitle: 'لا توجد قوائم شراء محفوظة',
+      noResultsTitle: 'لا توجد قوائم شراء مطابقة',
+      dialogKey: const Key('purchaseSearchDialog'),
+      searchFieldKey: const Key('purchaseSearchField'),
+      resultKeyPrefix: 'purchaseSearchResult',
+    );
 
-  void _searchSubmitted(String _) {
-    final indexes = _visibleInvoiceIndexes;
-    if (indexes.isNotEmpty) _loadInvoice(indexes.first);
+    if (!mounted || invoice == null) return;
+    final index = _savedInvoices.indexOf(invoice);
+    if (index >= 0) _loadInvoice(index);
   }
 
   void _showPrintMessage({required bool withoutPrices}) {
@@ -480,37 +514,18 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
       key: const Key('purchaseScreen'),
       title: 'المشتريات',
       subtitle: 'إدارة فواتير الشراء من المجهزين',
+      backgroundColor: Color.alphaBlend(
+        AppModuleColors.purchases.withAlpha(12),
+        AppColors.surface,
+      ),
       onBack: _attemptBack,
-      onSearch: _searchFocusNode.requestFocus,
+      onSearch: _openInvoiceSearchDialog,
       onSave: hasSelectedInvoice
           ? _hasUnsavedChanges
               ? _update
               : null
           : _save,
       onNew: _newInvoice,
-      actions: [
-        AppHeaderIconButton(
-          key: const Key('purchasePrintButton'),
-          tooltipKey: const Key('purchasePrintTooltip'),
-          icon: Icons.print_rounded,
-          tooltip: 'طباعة',
-          onPressed: () => _showPrintMessage(withoutPrices: false),
-        ),
-        AppHeaderIconButton(
-          key: const Key('purchasePrintWithoutPricesButton'),
-          tooltipKey: const Key('purchasePrintWithoutPricesTooltip'),
-          icon: Icons.money_off_rounded,
-          tooltip: 'طباعة بدون أسعار',
-          onPressed: () => _showPrintMessage(withoutPrices: true),
-        ),
-        AppHeaderIconButton(
-          key: const Key('purchaseStatementButton'),
-          tooltipKey: const Key('purchaseStatementTooltip'),
-          icon: Icons.receipt_long_rounded,
-          tooltip: 'كشف حساب المجهز',
-          onPressed: _showSupplierStatement,
-        ),
-      ],
       body: Padding(
         padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
@@ -554,10 +569,19 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
             const SizedBox(height: AppSpacing.sm),
             AppActionBar(
               key: const Key('purchaseActionBar'),
-              searchController: _searchController,
-              searchFocusNode: _searchFocusNode,
-              searchFieldKey: const Key('purchaseSearchField'),
-              searchClearButtonKey: const Key('purchaseSearchClearButton'),
+              middle: _PurchaseUtilityButtons(
+                onSearch: _openInvoiceSearchDialog,
+                onPrint: hasSelectedInvoice
+                    ? () => _showPrintMessage(withoutPrices: false)
+                    : null,
+                onPrintWithoutPrices: hasSelectedInvoice
+                    ? () => _showPrintMessage(withoutPrices: true)
+                    : null,
+                onSupplierStatement:
+                    _supplierController.text.trim().isNotEmpty
+                        ? _showSupplierStatement
+                        : null,
+              ),
               firstButtonKey: const Key('purchaseFirstButton'),
               previousButtonKey: const Key('purchasePreviousButton'),
               nextButtonKey: const Key('purchaseNextButton'),
@@ -566,10 +590,6 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
               updateButtonKey: const Key('purchaseUpdateButton'),
               undoButtonKey: const Key('purchaseUndoButton'),
               deleteButtonKey: const Key('purchaseDeleteButton'),
-              searchLabel: 'بحث في الفواتير',
-              searchHint: 'رقم الفاتورة أو اسم المجهز',
-              onSearchChanged: _searchChanged,
-              onSearchSubmitted: _searchSubmitted,
               onFirst: canMoveBackward ? _first : null,
               onPrevious: canMoveBackward ? _previous : null,
               onNext: canMoveForward ? _next : null,
@@ -736,14 +756,21 @@ class _PurchaseHeaderPanel extends StatelessWidget {
             children: [
               Expanded(
                 flex: 2,
-                child: AppSearchableDropdownField<String>(
+                child: AppSearchableDropdownField<_PurchaseSupplierOption>(
                   fieldKey: const Key('purchaseSupplierField'),
                   controller: supplierController,
                   label: 'اسم المجهز',
+                  hint: 'اكتب للبحث عن مجهز',
                   icon: Icons.person_search_rounded,
                   accentColor: AppModuleColors.purchases,
                   options: _supplierOptions,
-                  displayStringForOption: (supplier) => supplier,
+                  displayStringForOption: (supplier) => supplier.name,
+                  searchTermsForOption: (supplier) => [
+                    supplier.name,
+                    supplier.number.toString(),
+                  ],
+                  optionSubtitle: (supplier) =>
+                      'رقم المجهز: ${supplier.number}',
                   onSelected: (_) {},
                 ),
               ),
@@ -763,6 +790,89 @@ class _PurchaseHeaderPanel extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _PurchaseUtilityButtons extends StatelessWidget {
+  const _PurchaseUtilityButtons({
+    required this.onSearch,
+    required this.onPrint,
+    required this.onPrintWithoutPrices,
+    required this.onSupplierStatement,
+  });
+
+  static const _textStyle = TextStyle(
+    fontSize: 16,
+    fontWeight: FontWeight.w700,
+  );
+
+  final VoidCallback onSearch;
+  final VoidCallback? onPrint;
+  final VoidCallback? onPrintWithoutPrices;
+  final VoidCallback? onSupplierStatement;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      alignment: WrapAlignment.center,
+      runAlignment: WrapAlignment.center,
+      spacing: AppSpacing.sm,
+      runSpacing: AppSpacing.sm,
+      children: [
+        AppButton(
+          key: const Key('purchaseSearchButton'),
+          label: 'بحث',
+          icon: Icons.search_rounded,
+          variant: AppButtonVariant.navigation,
+          width: 78,
+          height: 52,
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          iconSize: 18,
+          iconSpacing: AppSpacing.xs,
+          textStyle: _textStyle,
+          onPressed: onSearch,
+        ),
+        AppButton(
+          key: const Key('purchasePrintButton'),
+          label: 'طباعة',
+          icon: Icons.print_rounded,
+          variant: AppButtonVariant.navigation,
+          width: 84,
+          height: 52,
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          iconSize: 18,
+          iconSpacing: AppSpacing.xs,
+          textStyle: _textStyle,
+          onPressed: onPrint,
+        ),
+        AppButton(
+          key: const Key('purchasePrintWithoutPricesButton'),
+          label: 'طباعة بدون الأسعار',
+          icon: Icons.money_off_rounded,
+          variant: AppButtonVariant.navigation,
+          width: 176,
+          height: 52,
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          iconSize: 18,
+          iconSpacing: AppSpacing.xs,
+          textStyle: _textStyle,
+          onPressed: onPrintWithoutPrices,
+        ),
+        AppButton(
+          key: const Key('purchaseStatementButton'),
+          label: 'كشف حساب المجهز',
+          icon: Icons.receipt_long_outlined,
+          variant: AppButtonVariant.navigation,
+          width: 182,
+          height: 52,
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          iconSize: 18,
+          iconSpacing: AppSpacing.xs,
+          textStyle: _textStyle,
+          onPressed: onSupplierStatement,
+        ),
+      ],
     );
   }
 }

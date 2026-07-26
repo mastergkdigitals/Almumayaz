@@ -6,7 +6,6 @@ import 'app_fields.dart';
 
 class AppActionBar extends StatelessWidget {
   const AppActionBar({
-    required this.searchController,
     required this.onFirst,
     required this.onPrevious,
     required this.onNext,
@@ -16,6 +15,8 @@ class AppActionBar extends StatelessWidget {
     required this.onUndo,
     required this.onDelete,
     super.key,
+    this.searchController,
+    this.middle,
     this.searchFieldKey,
     this.searchClearButtonKey,
     this.searchFocusNode,
@@ -31,13 +32,22 @@ class AppActionBar extends StatelessWidget {
     this.searchHint,
     this.onSearchChanged,
     this.onSearchSubmitted,
+    this.navigationButtonWidth = 104,
     this.buttonWidth = 108,
-  });
+  }) : assert(
+          searchController != null || middle != null,
+          'Provide either searchController or middle.',
+        );
 
   static const _compactWidth = 1180.0;
-  static const _actionPadding = EdgeInsets.symmetric(horizontal: AppSpacing.xs);
+  static const _actionPadding = EdgeInsets.symmetric(horizontal: 6);
+  static const _buttonTextStyle = TextStyle(
+    fontSize: 16,
+    fontWeight: FontWeight.w700,
+  );
 
-  final TextEditingController searchController;
+  final TextEditingController? searchController;
+  final Widget? middle;
   final VoidCallback? onFirst;
   final VoidCallback? onPrevious;
   final VoidCallback? onNext;
@@ -61,6 +71,7 @@ class AppActionBar extends StatelessWidget {
   final String? searchHint;
   final ValueChanged<String>? onSearchChanged;
   final ValueChanged<String>? onSearchSubmitted;
+  final double navigationButtonWidth;
   final double buttonWidth;
 
   Widget _navigation() {
@@ -69,7 +80,7 @@ class AppActionBar extends StatelessWidget {
       previousButtonKey: previousButtonKey,
       nextButtonKey: nextButtonKey,
       lastButtonKey: lastButtonKey,
-      buttonWidth: buttonWidth,
+      buttonWidth: navigationButtonWidth,
       onFirst: onFirst,
       onPrevious: onPrevious,
       onNext: onNext,
@@ -77,9 +88,12 @@ class AppActionBar extends StatelessWidget {
     );
   }
 
-  Widget _search() {
+  Widget _middle() {
+    final customMiddle = middle;
+    if (customMiddle != null) return customMiddle;
+
     return AppSearchField(
-      controller: searchController,
+      controller: searchController!,
       fieldKey: searchFieldKey,
       clearButtonKey: searchClearButtonKey,
       focusNode: searchFocusNode,
@@ -101,9 +115,11 @@ class AppActionBar extends StatelessWidget {
           label: 'حفظ',
           icon: Icons.save_rounded,
           width: buttonWidth,
+          height: 52,
           padding: _actionPadding,
-          iconSize: 16,
-          iconSpacing: AppSpacing.xs / 2,
+          iconSize: 18,
+          iconSpacing: AppSpacing.xs,
+          textStyle: _buttonTextStyle,
           onPressed: onSave,
         ),
         AppButton(
@@ -112,9 +128,11 @@ class AppActionBar extends StatelessWidget {
           icon: Icons.update_rounded,
           variant: AppButtonVariant.success,
           width: buttonWidth,
+          height: 52,
           padding: _actionPadding,
-          iconSize: 16,
-          iconSpacing: AppSpacing.xs / 2,
+          iconSize: 18,
+          iconSpacing: AppSpacing.xs,
+          textStyle: _buttonTextStyle,
           onPressed: onUpdate,
         ),
         AppButton(
@@ -123,9 +141,11 @@ class AppActionBar extends StatelessWidget {
           icon: Icons.undo_rounded,
           variant: AppButtonVariant.warning,
           width: buttonWidth,
+          height: 52,
           padding: _actionPadding,
-          iconSize: 16,
-          iconSpacing: AppSpacing.xs / 2,
+          iconSize: 18,
+          iconSpacing: AppSpacing.xs,
+          textStyle: _buttonTextStyle,
           onPressed: onUndo,
         ),
         AppButton(
@@ -134,9 +154,11 @@ class AppActionBar extends StatelessWidget {
           icon: Icons.delete_rounded,
           variant: AppButtonVariant.danger,
           width: buttonWidth,
+          height: 52,
           padding: _actionPadding,
-          iconSize: 16,
-          iconSpacing: AppSpacing.xs / 2,
+          iconSize: 18,
+          iconSpacing: AppSpacing.xs,
+          textStyle: _buttonTextStyle,
           onPressed: onDelete,
         ),
       ],
@@ -158,7 +180,7 @@ class AppActionBar extends StatelessWidget {
                   child: _navigation(),
                 ),
                 const SizedBox(height: AppSpacing.md),
-                _search(),
+                _middle(),
                 const SizedBox(height: AppSpacing.md),
                 Align(
                   alignment: AlignmentDirectional.centerEnd,
@@ -172,9 +194,9 @@ class AppActionBar extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               _navigation(),
-              const SizedBox(width: AppSpacing.lg),
-              Expanded(child: _search()),
-              const SizedBox(width: AppSpacing.lg),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(child: _middle()),
+              const SizedBox(width: AppSpacing.md),
               _actions(),
             ],
           );

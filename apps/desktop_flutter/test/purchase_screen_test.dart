@@ -24,21 +24,56 @@ void main() {
     expect(find.byKey(const Key('purchaseTotalsPanel')), findsOneWidget);
     expect(find.byKey(const Key('purchaseActionBar')), findsOneWidget);
     expect(find.byKey(const Key('appScreenBackButton')), findsOneWidget);
+    expect(find.byKey(const Key('purchaseSearchButton')), findsOneWidget);
+    expect(find.byKey(const Key('purchaseSearchField')), findsNothing);
+    expect(find.byKey(const Key('purchasePrintButton')), findsOneWidget);
+    expect(
+      find.byKey(const Key('purchasePrintWithoutPricesButton')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('purchaseStatementButton')), findsOneWidget);
+    expect(find.text('طباعة بدون الأسعار'), findsOneWidget);
+    expect(find.text('كشف حساب المجهز'), findsOneWidget);
     expect(
       tester
-          .widget<Tooltip>(
-            find.byKey(const Key('purchasePrintTooltip')),
+          .widget<AppButton>(
+            find.byKey(const Key('purchaseSearchButton')),
           )
-          .message,
-      'طباعة',
+          .onPressed,
+      isNotNull,
     );
     expect(
       tester
-          .widget<Tooltip>(
-            find.byKey(const Key('purchaseStatementTooltip')),
+          .widget<AppButton>(
+            find.byKey(const Key('purchasePrintButton')),
           )
-          .message,
-      'كشف حساب المجهز',
+          .onPressed,
+      isNull,
+    );
+    expect(
+      tester
+          .widget<AppButton>(
+            find.byKey(const Key('purchaseStatementButton')),
+          )
+          .onPressed,
+      isNull,
+    );
+
+    final screenShell = tester.widget<AppScreenShell>(
+      find.byKey(const Key('purchaseScreen')),
+    );
+    expect(screenShell.backgroundColor, isNot(AppColors.background));
+    expect(
+      tester.getCenter(find.byKey(const Key('purchaseSearchButton'))).dx,
+      greaterThan(
+        tester.getCenter(find.byKey(const Key('purchaseSaveButton'))).dx,
+      ),
+    );
+    expect(
+      tester.getCenter(find.byKey(const Key('purchaseSearchButton'))).dx,
+      lessThan(
+        tester.getCenter(find.byKey(const Key('purchaseFirstButton'))).dx,
+      ),
     );
 
     for (final keyName in const [
@@ -86,6 +121,14 @@ void main() {
         findsOneWidget,
       );
     }
+    final wrappedHeader = tester.widget<Text>(
+      find.descendant(
+        of: find.byKey(const Key('purchaseTableHeader')),
+        matching: find.text('السعر بعد\nالخصم'),
+      ),
+    );
+    expect(wrappedHeader.maxLines, 2);
+    expect(wrappedHeader.softWrap, isTrue);
 
     final warehouseDropdown = tester.widget<AppDropdownField<String>>(
       find.ancestor(
@@ -102,6 +145,14 @@ void main() {
       warehouseDropdown.accentColor,
       AppModuleColors.purchases,
     );
+    final warehouseDecorator = tester.widget<InputDecorator>(
+      find.descendant(
+        of: find.byKey(const Key('purchaseWarehouseField')),
+        matching: find.byType(InputDecorator),
+      ),
+    );
+    expect(warehouseDecorator.decoration.labelText, 'المخزن');
+    expect(warehouseDecorator.isEmpty, isFalse);
 
     expect(
       tester
@@ -150,6 +201,8 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.keyF);
     await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(find.byKey(const Key('purchaseSearchDialog')), findsOneWidget);
     expect(
       tester
           .widget<EditableText>(
@@ -161,6 +214,41 @@ void main() {
           .focusNode
           .hasFocus,
       isTrue,
+    );
+  });
+
+  testWidgets('keeps supplier suggestions open and filters while typing',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(const AlmumayazApp());
+    await _login(tester);
+    await tester.tap(find.byKey(const Key('dashboardCard_purchases')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    final supplier = find.byKey(const Key('purchaseSupplierField'));
+    await tester.tap(supplier);
+    await tester.pump();
+    expect(find.text('مجهز الرافدين'), findsOneWidget);
+    expect(find.text('شركة الموصل الحديثة'), findsOneWidget);
+    expect(find.text('رقم المجهز: 6'), findsOneWidget);
+
+    await tester.enterText(supplier, '6');
+    await tester.pump();
+    expect(find.text('شركة الموصل الحديثة'), findsOneWidget);
+    expect(find.text('مجهز الرافدين'), findsNothing);
+
+    await tester.enterText(supplier, 'الموص');
+    await tester.pump();
+    expect(find.text('شركة الموصل الحديثة'), findsOneWidget);
+
+    await tester.tap(find.text('شركة الموصل الحديثة'));
+    await tester.pump();
+    expect(
+      tester.widget<TextFormField>(supplier).controller?.text,
+      'شركة الموصل الحديثة',
     );
   });
 

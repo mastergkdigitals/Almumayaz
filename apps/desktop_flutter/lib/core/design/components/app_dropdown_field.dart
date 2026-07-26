@@ -145,11 +145,17 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
       widget.options.length,
       (_) => FocusNode(),
     );
+    _focusNode.addListener(_handleFocusChanged);
   }
 
   @override
   void didUpdateWidget(covariant AppDropdownField<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.focusNode != widget.focusNode) {
+      (oldWidget.focusNode ?? _internalFocusNode)
+          .removeListener(_handleFocusChanged);
+      _focusNode.addListener(_handleFocusChanged);
+    }
     if (oldWidget.options.length != widget.options.length) {
       _replaceItemFocusNodes();
     }
@@ -157,12 +163,17 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
 
   @override
   void dispose() {
+    _focusNode.removeListener(_handleFocusChanged);
     for (final focusNode in _itemFocusNodes) {
       focusNode.dispose();
     }
     _internalKeyHoldGuard?.dispose();
     _internalFocusNode.dispose();
     super.dispose();
+  }
+
+  void _handleFocusChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
@@ -349,84 +360,74 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
                     splashColor: Colors.transparent,
                     overlayColor:
                         const WidgetStatePropertyAll<Color>(Colors.transparent),
-                    child: AnimatedContainer(
-                      duration: AppDurations.fast,
-                      curve: Curves.easeOutCubic,
+                    child: SizedBox(
                       height: AppControlHeights.large,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.md,
-                      ),
-                      decoration: BoxDecoration(
-                        color: backgroundColor,
-                        borderRadius: BorderRadius.circular(AppRadii.md),
-                        border: Border.all(
-                          color: borderColor,
-                          width: _isOpen ? 1.5 : 1,
+                      child: InputDecorator(
+                        isEmpty: widget.value == null,
+                        isFocused: _isOpen || _focusNode.hasFocus,
+                        decoration: InputDecoration(
+                          enabled: widget.enabled,
+                          labelText: widget.label,
+                          hintText: 'اختر ${widget.label}',
+                          prefixIcon: widget.icon == null
+                              ? null
+                              : Icon(
+                                  widget.icon,
+                                  color: widget.enabled
+                                      ? accentColor
+                                      : AppColors.disabled,
+                                ),
+                          suffixIcon: AnimatedRotation(
+                            turns: _isOpen ? 0.5 : 0,
+                            duration: AppDurations.fast,
+                            child: Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              size: AppIconSizes.md,
+                              color: widget.enabled
+                                  ? accentColor
+                                  : AppColors.disabled,
+                            ),
+                          ),
+                          filled: true,
+                          fillColor: backgroundColor,
+                          floatingLabelStyle:
+                              AppTypography.fieldText.copyWith(
+                            color: widget.enabled
+                                ? accentColor
+                                : AppColors.disabled,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.circular(AppRadii.md),
+                            borderSide: BorderSide(color: borderColor),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.circular(AppRadii.md),
+                            borderSide: BorderSide(
+                              color: accentColor,
+                              width: 1.6,
+                            ),
+                          ),
+                          disabledBorder: OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.circular(AppRadii.md),
+                            borderSide:
+                                const BorderSide(color: AppColors.border),
+                          ),
                         ),
-                      ),
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          if (widget.icon != null)
-                            Align(
-                              alignment: AlignmentDirectional.centerStart,
-                              child: Icon(
-                                widget.icon,
-                                size: AppIconSizes.md,
-                                color: widget.enabled
-                                    ? accentColor
-                                    : AppColors.disabled,
-                              ),
-                            ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 44),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  widget.label,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: widget.enabled
-                                        ? AppColors.textSecondary
-                                        : AppColors.disabled,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                const SizedBox(height: 1),
-                                Text(
-                                  _selectedLabel,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  textAlign: TextAlign.center,
-                                  style: AppTypography.fieldText.copyWith(
-                                    color: widget.enabled
-                                        ? AppColors.textPrimary
-                                        : AppColors.disabled,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
+                        child: Text(
+                          widget.value == null ? '' : _selectedLabel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.start,
+                          style: AppTypography.fieldText.copyWith(
+                            color: widget.enabled
+                                ? AppColors.textPrimary
+                                : AppColors.disabled,
+                            fontWeight: FontWeight.w600,
                           ),
-                          Align(
-                            alignment: AlignmentDirectional.centerEnd,
-                            child: AnimatedRotation(
-                              turns: _isOpen ? 0.5 : 0,
-                              duration: AppDurations.fast,
-                              child: Icon(
-                                Icons.keyboard_arrow_down_rounded,
-                                size: AppIconSizes.md,
-                                color: widget.enabled
-                                    ? accentColor
-                                    : AppColors.disabled,
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ),

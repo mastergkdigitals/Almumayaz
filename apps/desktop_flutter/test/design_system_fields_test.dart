@@ -111,6 +111,20 @@ void main() {
 
     final dropdown = find.byKey(const Key('designCurrencyDropdown'));
     await reveal(tester, dropdown);
+
+    final decorator = tester.widget<InputDecorator>(
+      find.descendant(
+        of: dropdown,
+        matching: find.byType(InputDecorator),
+      ),
+    );
+    expect(decorator.decoration.labelText, 'العملة');
+    expect(decorator.isEmpty, isFalse);
+    expect(
+      find.descendant(of: dropdown, matching: find.text('دينار')),
+      findsOneWidget,
+    );
+
     await tester.tap(dropdown);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 250));

@@ -16,6 +16,7 @@ class AppScreenShell extends StatelessWidget {
     this.onNew,
     this.onRefresh,
     this.actions = const [],
+    this.backgroundColor,
   });
 
   final String title;
@@ -27,11 +28,12 @@ class AppScreenShell extends StatelessWidget {
   final VoidCallback? onNew;
   final VoidCallback? onRefresh;
   final List<Widget> actions;
+  final Color? backgroundColor;
 
   @override
   Widget build(BuildContext context) {
     final page = Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: backgroundColor ?? AppColors.background,
       body: Column(
         children: [
           AppScreenHeader(

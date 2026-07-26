@@ -112,10 +112,16 @@ void main() {
       Key('designActionBarUndo'),
       Key('designActionBarDelete'),
     ];
-    for (final key in buttonKeys) {
+    for (final key in buttonKeys.take(4)) {
       expect(
         tester.getSize(find.byKey(key)),
-        const Size(108, AppControlHeights.standard),
+        const Size(104, 52),
+      );
+    }
+    for (final key in buttonKeys.skip(4)) {
+      expect(
+        tester.getSize(find.byKey(key)),
+        const Size(108, 52),
       );
     }
 
@@ -126,6 +132,19 @@ void main() {
     expect(appButton('designActionBarUpdate').onPressed, isNull);
     expect(appButton('designActionBarUndo').onPressed, isNull);
     expect(appButton('designActionBarDelete').onPressed, isNull);
+
+    final disabledNavigation = tester.widget<OutlinedButton>(
+      find.descendant(
+        of: find.byKey(const Key('designActionBarNext')),
+        matching: find.byType(OutlinedButton),
+      ),
+    );
+    expect(
+      disabledNavigation.style?.side?.resolve(
+        {WidgetState.disabled},
+      )?.color,
+      AppColors.disabled,
+    );
 
     final stateDropdown =
         find.byKey(const Key('designActionBarStateDropdown'));

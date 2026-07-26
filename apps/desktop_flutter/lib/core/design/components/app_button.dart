@@ -30,6 +30,7 @@ class AppButton extends StatefulWidget {
     this.backgroundColor,
     this.foregroundColor,
     this.borderRadius,
+    this.textStyle,
     this.isLoading = false,
     this.width,
     this.height = AppControlHeights.standard,
@@ -47,6 +48,7 @@ class AppButton extends StatefulWidget {
   final Color? backgroundColor;
   final Color? foregroundColor;
   final double? borderRadius;
+  final TextStyle? textStyle;
   final bool isLoading;
   final double? width;
   final double height;
@@ -129,7 +131,7 @@ class _AppButtonState extends State<AppButton> {
               if (hasLabel)
                 Text(
                   widget.label,
-                  style: AppTypography.buttonText,
+                  style: widget.textStyle ?? AppTypography.buttonText,
                 ),
               if (icon != null &&
                   widget.iconPosition == AppButtonIconPosition.afterLabel) ...[
@@ -212,10 +214,17 @@ class _AppButtonState extends State<AppButton> {
             OutlinedButton.styleFrom(
               foregroundColor:
                   widget.foregroundColor ?? AppColors.navigation,
+              disabledForegroundColor: AppColors.disabled,
               backgroundColor:
                   widget.backgroundColor ?? AppColors.surface,
-              side: BorderSide(
-                color: widget.foregroundColor ?? AppColors.navigation,
+              disabledBackgroundColor: AppColors.disabledSurface,
+            ).copyWith(
+              side: WidgetStateProperty.resolveWith<BorderSide?>(
+                (states) => BorderSide(
+                  color: states.contains(WidgetState.disabled)
+                      ? AppColors.disabled
+                      : (widget.foregroundColor ?? AppColors.navigation),
+                ),
               ),
             ),
           ),
@@ -227,10 +236,17 @@ class _AppButtonState extends State<AppButton> {
             OutlinedButton.styleFrom(
               foregroundColor:
                   widget.foregroundColor ?? AppColors.navigation,
+              disabledForegroundColor: AppColors.disabled,
               backgroundColor:
                   widget.backgroundColor ?? AppColors.surface,
-              side: BorderSide(
-                color: widget.foregroundColor ?? AppColors.navigation,
+              disabledBackgroundColor: AppColors.disabledSurface,
+            ).copyWith(
+              side: WidgetStateProperty.resolveWith<BorderSide?>(
+                (states) => BorderSide(
+                  color: states.contains(WidgetState.disabled)
+                      ? AppColors.disabled
+                      : (widget.foregroundColor ?? AppColors.navigation),
+                ),
               ),
             ),
           ),
@@ -310,11 +326,16 @@ class AppRecordNavigation extends StatelessWidget {
     this.nextButtonKey,
     this.lastButtonKey,
     this.variant = AppButtonVariant.navigation,
-    this.buttonWidth = 108,
-    this.buttonPadding = const EdgeInsets.symmetric(horizontal: 2),
-    this.iconSize = 16,
-    this.iconSpacing = AppSpacing.xs / 2,
+    this.buttonWidth = 104,
+    this.buttonHeight = 52,
+    this.buttonPadding = const EdgeInsets.symmetric(horizontal: 6),
+    this.iconSize = 18,
+    this.iconSpacing = AppSpacing.xs,
     this.spacing = AppSpacing.sm,
+    this.textStyle = const TextStyle(
+      fontSize: 16,
+      fontWeight: FontWeight.w700,
+    ),
   });
 
   final VoidCallback? onFirst;
@@ -327,10 +348,12 @@ class AppRecordNavigation extends StatelessWidget {
   final Key? lastButtonKey;
   final AppButtonVariant variant;
   final double buttonWidth;
+  final double buttonHeight;
   final EdgeInsetsGeometry buttonPadding;
   final double iconSize;
   final double iconSpacing;
   final double spacing;
+  final TextStyle textStyle;
 
   @override
   Widget build(BuildContext context) {
@@ -347,9 +370,11 @@ class AppRecordNavigation extends StatelessWidget {
             icon: Icons.first_page_rounded,
             variant: variant,
             width: buttonWidth,
+            height: buttonHeight,
             padding: buttonPadding,
             iconSize: iconSize,
             iconSpacing: iconSpacing,
+            textStyle: textStyle,
             onPressed: onFirst,
           ),
           AppButton(
@@ -358,9 +383,11 @@ class AppRecordNavigation extends StatelessWidget {
             icon: Icons.chevron_left_rounded,
             variant: variant,
             width: buttonWidth,
+            height: buttonHeight,
             padding: buttonPadding,
             iconSize: iconSize,
             iconSpacing: iconSpacing,
+            textStyle: textStyle,
             onPressed: onPrevious,
           ),
           AppButton(
@@ -370,9 +397,11 @@ class AppRecordNavigation extends StatelessWidget {
             iconPosition: AppButtonIconPosition.afterLabel,
             variant: variant,
             width: buttonWidth,
+            height: buttonHeight,
             padding: buttonPadding,
             iconSize: iconSize,
             iconSpacing: iconSpacing,
+            textStyle: textStyle,
             onPressed: onNext,
           ),
           AppButton(
@@ -382,9 +411,11 @@ class AppRecordNavigation extends StatelessWidget {
             iconPosition: AppButtonIconPosition.afterLabel,
             variant: variant,
             width: buttonWidth,
+            height: buttonHeight,
             padding: buttonPadding,
             iconSize: iconSize,
             iconSpacing: iconSpacing,
+            textStyle: textStyle,
             onPressed: onLast,
           ),
         ],

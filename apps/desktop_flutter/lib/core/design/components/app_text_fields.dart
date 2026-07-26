@@ -175,6 +175,7 @@ class AppSearchField extends StatefulWidget {
     this.fieldKey,
     this.clearButtonKey,
     this.hint,
+    this.accentColor,
     this.focusNode,
     this.onChanged,
     this.onSubmitted,
@@ -187,6 +188,7 @@ class AppSearchField extends StatefulWidget {
   final Key? fieldKey;
   final Key? clearButtonKey;
   final String? hint;
+  final Color? accentColor;
   final FocusNode? focusNode;
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
@@ -250,6 +252,7 @@ class _AppSearchFieldState extends State<AppSearchField> {
       fieldKey: widget.fieldKey,
       hint: widget.hint,
       icon: Icons.search_rounded,
+      accentColor: widget.accentColor,
       focusNode: _effectiveFocusNode,
       onChanged: widget.onChanged,
       onSubmitted: widget.onSubmitted,

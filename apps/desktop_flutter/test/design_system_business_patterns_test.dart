@@ -159,6 +159,62 @@ void main() {
     );
   });
 
+  testWidgets('filters records in the shared search dialog',
+      (tester) async {
+    await pumpDesignSystemGallery(tester);
+
+    final button =
+        find.byKey(const Key('designRecordSearchDialogButton'));
+    await reveal(tester, button);
+    await tester.tap(button);
+    await tester.pump();
+
+    final dialog = find.byKey(const Key('designRecordSearchDialog'));
+    expect(dialog, findsOneWidget);
+    expect(find.text('بحث قوائم الشراء'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: dialog,
+        matching: find.text('مجهز الرافدين'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: dialog,
+        matching: find.text('شركة النخيل للتجارة'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.enterText(
+      find.byKey(const Key('designRecordSearchField')),
+      'النخيل',
+    );
+    await tester.pump();
+
+    expect(
+      find.descendant(
+        of: dialog,
+        matching: find.text('شركة النخيل للتجارة'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: dialog,
+        matching: find.text('مجهز الرافدين'),
+      ),
+      findsNothing,
+    );
+
+    await tester.tap(
+      find.byKey(const Key('designRecordSearchResult-0')),
+    );
+    await tester.pump();
+    expect(dialog, findsNothing);
+  });
+
   testWidgets('opens options then the shared statement report',
       (tester) async {
     await pumpDesignSystemGallery(tester);

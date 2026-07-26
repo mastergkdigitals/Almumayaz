@@ -8,6 +8,30 @@ import 'design_gallery_transfer_dialog.dart';
 class DesignGalleryBusinessDialogsSection extends StatelessWidget {
   const DesignGalleryBusinessDialogsSection({super.key});
 
+  static const _searchRecords = [
+    AppSearchRecord(
+      value: '102',
+      title: 'قائمة شراء رقم 102',
+      subtitle: 'مجهز الرافدين',
+      details: '24/07/2026 • 3 مواد',
+      searchTerms: ['102', 'الرافدين', 'دفتر ملاحظات'],
+    ),
+    AppSearchRecord(
+      value: '101',
+      title: 'قائمة شراء رقم 101',
+      subtitle: 'شركة النخيل للتجارة',
+      details: '23/07/2026 • مادتان',
+      searchTerms: ['101', 'النخيل', 'قلم أزرق'],
+    ),
+    AppSearchRecord(
+      value: '100',
+      title: 'قائمة شراء رقم 100',
+      subtitle: 'مجهز دجلة',
+      details: '22/07/2026 • 5 مواد',
+      searchTerms: ['100', 'دجلة', 'ورق طباعة'],
+    ),
+  ];
+
   static final _statementEntries = [
     AppStatementReportEntry(
       date: DateTime(2026, 1, 1),
@@ -61,6 +85,23 @@ class DesignGalleryBusinessDialogsSection extends StatelessWidget {
     );
   }
 
+  Future<void> _showRecordSearch(BuildContext context) async {
+    final result = await AppRecordSearchDialog.show<String>(
+      context,
+      title: 'بحث قوائم الشراء',
+      hint: 'اسم المجهز أو رقم القائمة أو اسم المادة',
+      accentColor: AppModuleColors.purchases,
+      records: _searchRecords,
+      dialogKey: const Key('designRecordSearchDialog'),
+      searchFieldKey: const Key('designRecordSearchField'),
+      resultKeyPrefix: 'designRecordSearchResult',
+    );
+
+    if (result != null && context.mounted) {
+      AppToast.showInfo(context, 'تم اختيار قائمة الشراء رقم $result');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return DesignGallerySection(
@@ -78,6 +119,13 @@ class DesignGalleryBusinessDialogsSection extends StatelessWidget {
             spacing: AppSpacing.md,
             runSpacing: AppSpacing.md,
             children: [
+              AppButton(
+                key: const Key('designRecordSearchDialogButton'),
+                label: 'نموذج البحث',
+                icon: Icons.search_rounded,
+                backgroundColor: AppModuleColors.purchases,
+                onPressed: () => _showRecordSearch(context),
+              ),
               AppButton(
                 key: const Key('designStatementDialogButton'),
                 label: 'كشف الحساب',

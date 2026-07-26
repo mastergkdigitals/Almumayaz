@@ -62,6 +62,15 @@ void main() {
     expect(find.text('شركة النخيل للتجارة'), findsOneWidget);
     expect(AppColors.headerBackground, Colors.white);
 
+    final partyTypeDecorator = tester.widget<InputDecorator>(
+      find.descendant(
+        of: find.byKey(const Key('partyTypeField')),
+        matching: find.byType(InputDecorator),
+      ),
+    );
+    expect(partyTypeDecorator.decoration.labelText, 'نوع الطرف');
+    expect(partyTypeDecorator.isEmpty, isFalse);
+
     expect(
       tester.widget<AppButton>(
         find.byKey(const Key('partiesSaveButton')),
