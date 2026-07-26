@@ -535,7 +535,8 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
             const SizedBox(height: AppSpacing.sm),
             AppActionBar(
               key: const Key('purchaseActionBar'),
-              compactWidth: 1850,
+              navigationButtonWidth: 92,
+              buttonWidth: 92,
               middle: _PurchaseUtilityButtons(
                 onSearch: _openInvoiceSearchDialog,
                 onPrint: hasSelectedInvoice

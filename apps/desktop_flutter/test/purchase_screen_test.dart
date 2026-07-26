@@ -87,8 +87,24 @@ void main() {
         tester.getCenter(find.byKey(const Key('purchaseSearchButton'))).dy;
     final actionsY =
         tester.getCenter(find.byKey(const Key('purchaseSaveButton'))).dy;
-    expect(navigationY, lessThan(utilityY));
-    expect(utilityY, lessThan(actionsY));
+    expect(utilityY, closeTo(navigationY, 0.1));
+    expect(actionsY, closeTo(navigationY, 0.1));
+    for (final buttonKey in const [
+      'purchasePreviousButton',
+      'purchaseNextButton',
+      'purchaseLastButton',
+      'purchasePrintButton',
+      'purchasePrintWithoutPricesButton',
+      'purchaseStatementButton',
+      'purchaseUpdateButton',
+      'purchaseUndoButton',
+      'purchaseDeleteButton',
+    ]) {
+      expect(
+        tester.getCenter(find.byKey(Key(buttonKey))).dy,
+        closeTo(navigationY, 0.1),
+      );
+    }
     expect(
       tester.getCenter(find.byKey(const Key('purchaseFirstButton'))).dx,
       greaterThan(
