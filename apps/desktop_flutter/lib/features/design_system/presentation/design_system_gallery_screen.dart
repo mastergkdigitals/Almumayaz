@@ -7,7 +7,6 @@ import 'widgets/design_gallery_dialogs.dart';
 import 'widgets/design_gallery_feedback.dart';
 import 'widgets/design_gallery_fields.dart';
 import 'widgets/design_gallery_formats.dart';
-import 'widgets/design_gallery_invoice_tables.dart';
 import 'widgets/design_gallery_keyboard.dart';
 import 'widgets/design_gallery_quick_create.dart';
 
@@ -37,8 +36,6 @@ class DesignSystemGalleryScreen extends StatelessWidget {
             DesignGalleryBusinessDialogsSection(),
             SizedBox(height: AppSpacing.lg),
             DesignGalleryQuickCreateSection(),
-            SizedBox(height: AppSpacing.lg),
-            DesignGalleryInvoiceTablesSection(),
             SizedBox(height: AppSpacing.lg),
             DesignGalleryKeyboardSection(),
             SizedBox(height: AppSpacing.lg),
