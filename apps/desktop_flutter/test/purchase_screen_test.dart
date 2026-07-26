@@ -158,30 +158,22 @@ void main() {
       'purchasePaymentTypeField': Icons.payments_outlined,
       'purchaseCurrencyField': Icons.currency_exchange_rounded,
     };
+    final referenceFieldHeight = tester
+        .getSize(find.byKey(const Key('purchaseInvoiceNumberField')))
+        .height;
     double? selectedValueY;
-    double? dropdownHeight;
     for (final dropdownKey in dropdownIcons.keys) {
       final dropdown = _dropdown(tester, dropdownKey);
       expect(dropdown.icon, dropdownIcons[dropdownKey]);
       expect(dropdown.textDirection, TextDirection.rtl);
       expect(dropdown.textAlign, TextAlign.center);
-      expect(dropdown.useIntrinsicHeight, isTrue);
-      expect(
-        dropdown.contentPadding,
-        const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.md,
-        ),
-      );
+      expect(dropdown.useIntrinsicHeight, isFalse);
+      expect(dropdown.singleLineLabel, isTrue);
+      expect(dropdown.contentPadding, isNull);
 
       final currentHeight =
           tester.getSize(find.byKey(Key(dropdownKey))).height;
-      final referenceHeight = dropdownHeight;
-      if (referenceHeight == null) {
-        dropdownHeight = currentHeight;
-      } else {
-        expect(currentHeight, closeTo(referenceHeight, 0.1));
-      }
+      expect(currentHeight, closeTo(referenceFieldHeight, 0.1));
 
       final decorator = tester.widget<InputDecorator>(
         find.descendant(
@@ -193,21 +185,15 @@ void main() {
         (decorator.decoration.prefixIcon! as Icon).icon,
         dropdownIcons[dropdownKey],
       );
-      expect(
-        decorator.decoration.contentPadding,
-        const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.md,
-        ),
-      );
+      expect(decorator.decoration.contentPadding, isNull);
       final label = decorator.decoration.label! as Text;
       expect(label.maxLines, 1);
       expect(label.softWrap, isFalse);
       expect(label.overflow, TextOverflow.ellipsis);
-      expect(decorator.baseStyle, isNull);
-      expect(decorator.textAlign, isNull);
-      expect(decorator.textAlignVertical, isNull);
-      expect(decorator.expands, isFalse);
+      expect(decorator.baseStyle, AppTypography.fieldText);
+      expect(decorator.textAlign, TextAlign.center);
+      expect(decorator.textAlignVertical, TextAlignVertical.center);
+      expect(decorator.expands, isTrue);
 
       final valueText = switch (dropdownKey) {
         'purchaseWarehouseField' => 'الرئيسي',

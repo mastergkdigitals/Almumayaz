@@ -27,6 +27,7 @@ class AppDropdownField<T> extends StatefulWidget {
     this.textDirection,
     this.textAlign = TextAlign.start,
     this.useIntrinsicHeight = false,
+    this.singleLineLabel = false,
     this.contentPadding,
     this.enabled = true,
   });
@@ -44,6 +45,7 @@ class AppDropdownField<T> extends StatefulWidget {
   final TextDirection? textDirection;
   final TextAlign textAlign;
   final bool useIntrinsicHeight;
+  final bool singleLineLabel;
   final EdgeInsetsGeometry? contentPadding;
   final bool enabled;
 
@@ -410,8 +412,8 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
                         decoration: InputDecoration(
                           enabled: widget.enabled,
                           labelText:
-                              widget.useIntrinsicHeight ? null : widget.label,
-                          label: widget.useIntrinsicHeight
+                              widget.singleLineLabel ? null : widget.label,
+                          label: widget.singleLineLabel
                               ? Text(
                                   widget.label,
                                   maxLines: 1,
