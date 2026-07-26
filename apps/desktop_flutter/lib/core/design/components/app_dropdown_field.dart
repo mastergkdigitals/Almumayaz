@@ -24,6 +24,8 @@ class AppDropdownField<T> extends StatefulWidget {
     this.focusNode,
     this.onSubmitted,
     this.keyHoldGuard,
+    this.textDirection,
+    this.textAlign = TextAlign.start,
     this.enabled = true,
   });
 
@@ -37,6 +39,8 @@ class AppDropdownField<T> extends StatefulWidget {
   final FocusNode? focusNode;
   final ValueChanged<T?>? onSubmitted;
   final AppKeyHoldGuard? keyHoldGuard;
+  final TextDirection? textDirection;
+  final TextAlign textAlign;
   final bool enabled;
 
   @override
@@ -420,7 +424,8 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
                           widget.value == null ? '' : _selectedLabel,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.start,
+                          textDirection: widget.textDirection,
+                          textAlign: widget.textAlign,
                           style: AppTypography.fieldText.copyWith(
                             color: widget.enabled
                                 ? AppColors.textPrimary

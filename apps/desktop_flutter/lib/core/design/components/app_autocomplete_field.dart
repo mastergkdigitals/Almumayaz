@@ -22,6 +22,8 @@ class AppAutocompleteField<T extends Object> extends StatefulWidget {
     this.searchTermsForOption,
     this.optionSubtitle,
     this.maxOptions = 24,
+    this.textDirection,
+    this.textAlign = TextAlign.start,
   });
 
   final TextEditingController controller;
@@ -40,6 +42,8 @@ class AppAutocompleteField<T extends Object> extends StatefulWidget {
   final Iterable<String> Function(T option)? searchTermsForOption;
   final String Function(T option)? optionSubtitle;
   final int maxOptions;
+  final TextDirection? textDirection;
+  final TextAlign textAlign;
 
   @override
   State<AppAutocompleteField<T>> createState() =>
@@ -121,6 +125,8 @@ class _AppAutocompleteFieldState<T extends Object>
               icon: widget.icon,
               accentColor: accentColor,
               enabled: widget.enabled,
+              textDirection: widget.textDirection,
+              textAlign: widget.textAlign,
               textInputAction: TextInputAction.search,
               onChanged: widget.onChanged,
               onSubmitted: (value) {

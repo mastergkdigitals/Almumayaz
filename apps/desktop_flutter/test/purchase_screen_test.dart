@@ -158,10 +158,48 @@ void main() {
       'purchasePaymentTypeField',
       'purchaseCurrencyField',
     ]) {
+      final dropdown = _dropdown(tester, dropdownKey);
+      expect(dropdown.icon, isNull);
+      expect(dropdown.textDirection, TextDirection.rtl);
+      expect(dropdown.textAlign, TextAlign.right);
       expect(
         tester.getSize(find.byKey(Key(dropdownKey))).height,
         AppControlHeights.large,
       );
+      final decorator = tester.widget<InputDecorator>(
+        find.descendant(
+          of: find.byKey(Key(dropdownKey)),
+          matching: find.byType(InputDecorator),
+        ),
+      );
+      expect(decorator.decoration.prefixIcon, isNull);
+    }
+
+    for (final fieldKey in const [
+      'purchaseTimeField',
+      'purchaseSupplierField',
+      'purchaseNotesField',
+    ]) {
+      final editable = _editable(tester, fieldKey);
+      expect(editable.textDirection, TextDirection.rtl);
+      expect(editable.textAlign, TextAlign.right);
+    }
+
+    for (final fieldKey in const [
+      'purchaseInvoiceNumberField',
+      'purchaseDateField',
+      'purchaseExchangeRateField',
+      'purchaseExpensesField',
+      'purchaseInvoiceDiscountField',
+      'purchaseDiscountPercentField',
+      'purchasePaidAmountField',
+      'purchaseTotalField',
+      'purchaseRemainingField',
+      'purchaseSupplierBalanceField',
+    ]) {
+      final editable = _editable(tester, fieldKey);
+      expect(editable.textDirection, TextDirection.ltr);
+      expect(editable.textAlign, TextAlign.right);
     }
 
     expect(
@@ -197,6 +235,35 @@ void main() {
     }
     expect(_button(tester, 'purchaseSearchButton').onPressed, isNotNull);
     expect(_button(tester, 'purchaseSaveButton').onPressed, isNotNull);
+
+    _expectUtilityIconButton(
+      tester,
+      buttonKey: 'purchaseSearchButton',
+      tooltipKey: 'purchaseSearchTooltip',
+      icon: Icons.search_rounded,
+      tooltip: 'بحث',
+    );
+    _expectUtilityIconButton(
+      tester,
+      buttonKey: 'purchasePrintButton',
+      tooltipKey: 'purchasePrintTooltip',
+      icon: Icons.print_rounded,
+      tooltip: 'طباعة',
+    );
+    _expectUtilityIconButton(
+      tester,
+      buttonKey: 'purchasePrintWithoutPricesButton',
+      tooltipKey: 'purchasePrintWithoutPricesTooltip',
+      icon: Icons.money_off_rounded,
+      tooltip: 'طباعة بدون الأسعار',
+    );
+    _expectUtilityIconButton(
+      tester,
+      buttonKey: 'purchaseStatementButton',
+      tooltipKey: 'purchaseStatementTooltip',
+      icon: Icons.receipt_long_outlined,
+      tooltip: 'كشف حساب المجهز',
+    );
 
     final backButton = tester.widget<AppHeaderIconButton>(
       find.byKey(const Key('appScreenBackButton')),
@@ -316,7 +383,51 @@ AppDropdownField<String> _dropdown(
 }
 
 AppButton _button(WidgetTester tester, String buttonKey) {
-  return tester.widget<AppButton>(find.byKey(Key(buttonKey)));
+  final finder = find.byKey(Key(buttonKey));
+  final widget = tester.widget<Widget>(finder);
+  if (widget is AppButton) return widget;
+  return tester.widget<AppButton>(
+    find.descendant(
+      of: finder,
+      matching: find.byType(AppButton),
+    ),
+  );
+}
+
+EditableText _editable(WidgetTester tester, String fieldKey) {
+  return tester.widget<EditableText>(
+    find.descendant(
+      of: find.byKey(Key(fieldKey)),
+      matching: find.byType(EditableText),
+    ),
+  );
+}
+
+void _expectUtilityIconButton(
+  WidgetTester tester, {
+  required String buttonKey,
+  required String tooltipKey,
+  required IconData icon,
+  required String tooltip,
+}) {
+  final finder = find.byKey(Key(buttonKey));
+  final button = tester.widget<AppHeaderIconButton>(finder);
+  expect(button.icon, icon);
+  expect(button.tooltip, tooltip);
+  expect(button.tooltipKey, Key(tooltipKey));
+  expect(
+    tester.getSize(finder),
+    tester.getSize(find.byKey(const Key('appScreenBackButton'))),
+  );
+  expect(
+    find.descendant(of: finder, matching: find.byType(Text)),
+    findsNothing,
+  );
+
+  final tooltipWidget = tester.widget<Tooltip>(
+    find.byKey(Key(tooltipKey)),
+  );
+  expect(tooltipWidget.message, tooltip);
 }
 
 String? _fieldText(WidgetTester tester, String fieldKey) {
