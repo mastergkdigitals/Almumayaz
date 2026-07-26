@@ -610,8 +610,15 @@ class _PurchaseHeaderPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _PurchasePanel(
-      panelKey: const Key('purchaseHeaderPanel'),
+    return Container(
+      key: const Key('purchaseHeaderPanel'),
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppShadows.soft,
+      ),
       child: Column(
         children: [
           _PurchaseFieldRow(
@@ -655,6 +662,7 @@ class _PurchaseHeaderPanel extends StatelessWidget {
                   label: 'المخزن',
                   icon: Icons.warehouse_rounded,
                   accentColor: AppModuleColors.purchases,
+                  useIntrinsicHeight: true,
                   value: warehouse,
                   options: _warehouseOptions,
                   onChanged: onWarehouseChanged,
@@ -666,6 +674,7 @@ class _PurchaseHeaderPanel extends StatelessWidget {
                   label: 'نوع الشراء',
                   icon: Icons.shopping_cart_checkout_rounded,
                   accentColor: AppModuleColors.purchases,
+                  useIntrinsicHeight: true,
                   value: purchaseType,
                   options: _purchaseTypeOptions,
                   onChanged: onPurchaseTypeChanged,
@@ -677,6 +686,7 @@ class _PurchaseHeaderPanel extends StatelessWidget {
                   label: 'نوع الدفع',
                   icon: Icons.payments_outlined,
                   accentColor: AppModuleColors.purchases,
+                  useIntrinsicHeight: true,
                   value: paymentType,
                   options: _paymentTypeOptions,
                   onChanged: onPaymentTypeChanged,
@@ -688,6 +698,7 @@ class _PurchaseHeaderPanel extends StatelessWidget {
                   label: 'العملة',
                   icon: Icons.currency_exchange_rounded,
                   accentColor: AppModuleColors.purchases,
+                  useIntrinsicHeight: true,
                   value: currency,
                   options: _currencyOptions,
                   onChanged: onCurrencyChanged,

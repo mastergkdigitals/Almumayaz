@@ -123,6 +123,22 @@ void main() {
     );
     expect(screenShell.backgroundColor, isNot(AppColors.background));
 
+    final headerPanel = tester.widget<Container>(
+      find.byKey(const Key('purchaseHeaderPanel')),
+    );
+    final headerDecoration = headerPanel.decoration! as BoxDecoration;
+    expect(headerPanel.padding, const EdgeInsets.all(AppSpacing.lg));
+    expect(headerDecoration.color, AppColors.surface);
+    expect(
+      headerDecoration.borderRadius,
+      BorderRadius.circular(AppRadii.lg),
+    );
+    expect(
+      (headerDecoration.border! as Border).top.color,
+      AppColors.border,
+    );
+    expect(headerDecoration.boxShadow, AppShadows.soft);
+
     final warehouse = _dropdown(tester, 'purchaseWarehouseField');
     expect(warehouse.value, 'الرئيسي');
     expect(
@@ -164,18 +180,22 @@ void main() {
       'purchasePaymentTypeField': 'نوع الدفع',
       'purchaseCurrencyField': 'العملة',
     };
+    final referenceFieldSize = tester.getSize(
+      find.byKey(const Key('purchaseInvoiceNumberField')),
+    );
     double? selectedValueY;
     for (final dropdownKey in dropdownIcons.keys) {
       final dropdown = _dropdown(tester, dropdownKey);
       expect(dropdown.icon, dropdownIcons[dropdownKey]);
       expect(dropdown.textDirection, isNull);
       expect(dropdown.textAlign, TextAlign.start);
-      expect(dropdown.useIntrinsicHeight, isFalse);
+      expect(dropdown.useIntrinsicHeight, isTrue);
       expect(dropdown.contentPadding, isNull);
 
-      final currentHeight =
-          tester.getSize(find.byKey(Key(dropdownKey))).height;
-      expect(currentHeight, AppControlHeights.large);
+      expect(
+        tester.getSize(find.byKey(Key(dropdownKey))),
+        referenceFieldSize,
+      );
 
       final decorator = tester.widget<InputDecorator>(
         find.descendant(
@@ -191,10 +211,10 @@ void main() {
       expect(decorator.decoration.labelText, dropdownLabels[dropdownKey]);
       expect(decorator.decoration.label, isNull);
       expect(decorator.isEmpty, isFalse);
-      expect(decorator.baseStyle, AppTypography.fieldText);
-      expect(decorator.textAlign, TextAlign.start);
-      expect(decorator.textAlignVertical, TextAlignVertical.center);
-      expect(decorator.expands, isTrue);
+      expect(decorator.baseStyle, isNull);
+      expect(decorator.textAlign, isNull);
+      expect(decorator.textAlignVertical, isNull);
+      expect(decorator.expands, isFalse);
 
       final valueText = switch (dropdownKey) {
         'purchaseWarehouseField' => 'الرئيسي',
