@@ -96,14 +96,11 @@ class _DesignRow extends StatelessWidget {
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
-            child: SizedBox(
-              height: AppControlHeights.large,
-              child: AppTextField(
-                controller: controller,
-                label: 'المخزن',
-                icon: Icons.warehouse_outlined,
-                accentColor: AppModuleColors.settings,
-              ),
+            child: AppTextField(
+              controller: controller,
+              label: 'المخزن',
+              icon: Icons.warehouse_outlined,
+              accentColor: AppModuleColors.settings,
             ),
           ),
           const SizedBox(width: AppSpacing.lg),
@@ -141,6 +138,7 @@ class _DropdownCandidate extends StatelessWidget {
       onChanged: onChanged,
       icon: _iconFor(design),
       accentColor: AppModuleColors.settings,
+      useIntrinsicHeight: true,
       decorationBuilder: (decoration) =>
           _decorationFor(design, decoration),
     );
@@ -188,7 +186,10 @@ class _DropdownCandidate extends StatelessWidget {
         );
       case 4:
         return decoration.copyWith(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 14,
+          ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(28),
             borderSide: const BorderSide(color: border),
