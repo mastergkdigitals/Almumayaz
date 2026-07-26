@@ -790,12 +790,12 @@ class _PurchaseFieldSlot {
   const _PurchaseFieldSlot({
     required this.child,
     this.flex = 1,
-    this.minWidth = 126,
   });
+
+  static const minWidth = 126.0;
 
   final Widget child;
   final int flex;
-  final double minWidth;
 }
 
 class _PurchaseFieldRow extends StatelessWidget {
@@ -816,7 +816,7 @@ class _PurchaseFieldRow extends StatelessWidget {
         final minimumWidth =
             slots.fold<double>(
               0,
-              (sum, slot) => sum + slot.minWidth,
+              (sum, _) => sum + _PurchaseFieldSlot.minWidth,
             ) +
             _gap * (slots.length - 1);
 
@@ -829,7 +829,7 @@ class _PurchaseFieldRow extends StatelessWidget {
             children: [
               for (final slot in slots)
                 SizedBox(
-                  width: slot.minWidth,
+                  width: _PurchaseFieldSlot.minWidth,
                   child: slot.child,
                 ),
             ],

@@ -231,6 +231,8 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
             : _isHovered
                 ? hoverBackgroundColor
                 : AppColors.surface;
+    final valueColor =
+        widget.enabled ? AppColors.textPrimary : AppColors.disabled;
 
     return LayoutBuilder(
       builder: (context, constraints) {

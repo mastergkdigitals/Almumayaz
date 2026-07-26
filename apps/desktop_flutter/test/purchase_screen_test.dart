@@ -250,11 +250,14 @@ void main() {
         tester.getSize(find.byKey(const Key('purchaseNotesField'))).width;
     expect(notesWidth / supplierWidth, closeTo(1.5, 0.01));
 
-    final dateField = tester.widget<TextFormField>(
-      find.byKey(const Key('purchaseDateField')),
+    final dateDecorator = tester.widget<InputDecorator>(
+      find.descendant(
+        of: find.byKey(const Key('purchaseDateField')),
+        matching: find.byType(InputDecorator),
+      ),
     );
-    expect(dateField.decoration?.prefixIcon, isA<Icon>());
-    expect(dateField.decoration?.suffixIcon, isNull);
+    expect(dateDecorator.decoration.prefixIcon, isA<Icon>());
+    expect(dateDecorator.decoration.suffixIcon, isNull);
 
     for (final fieldKey in const [
       'purchaseTimeField',
