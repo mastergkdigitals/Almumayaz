@@ -152,33 +152,58 @@ void main() {
       const ['دينار', 'دولار'],
     );
 
+    const dropdownIcons = <String, IconData>{
+      'purchaseWarehouseField': Icons.warehouse_rounded,
+      'purchaseTypeField': Icons.shopping_cart_checkout_rounded,
+      'purchasePaymentTypeField': Icons.payments_outlined,
+      'purchaseCurrencyField': Icons.currency_exchange_rounded,
+    };
     double? selectedValueY;
-    for (final dropdownKey in const [
-      'purchaseWarehouseField',
-      'purchaseTypeField',
-      'purchasePaymentTypeField',
-      'purchaseCurrencyField',
-    ]) {
+    double? dropdownHeight;
+    for (final dropdownKey in dropdownIcons.keys) {
       final dropdown = _dropdown(tester, dropdownKey);
-      expect(dropdown.icon, isNull);
+      expect(dropdown.icon, dropdownIcons[dropdownKey]);
       expect(dropdown.textDirection, TextDirection.rtl);
-      expect(dropdown.textAlign, TextAlign.right);
+      expect(dropdown.textAlign, TextAlign.center);
+      expect(dropdown.useIntrinsicHeight, isTrue);
       expect(
-        tester.getSize(find.byKey(Key(dropdownKey))).height,
-        AppControlHeights.large,
+        dropdown.contentPadding,
+        const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.md,
+        ),
       );
+
+      final currentHeight =
+          tester.getSize(find.byKey(Key(dropdownKey))).height;
+      final referenceHeight = dropdownHeight;
+      if (referenceHeight == null) {
+        dropdownHeight = currentHeight;
+      } else {
+        expect(currentHeight, closeTo(referenceHeight, 0.1));
+      }
+
       final decorator = tester.widget<InputDecorator>(
         find.descendant(
           of: find.byKey(Key(dropdownKey)),
           matching: find.byType(InputDecorator),
         ),
       );
-      expect(decorator.decoration.prefixIcon, isNull);
-      expect(decorator.decoration.contentPadding, isNull);
-      expect(decorator.baseStyle, AppTypography.fieldText);
-      expect(decorator.textAlign, TextAlign.right);
-      expect(decorator.textAlignVertical, TextAlignVertical.center);
-      expect(decorator.expands, isTrue);
+      expect(
+        (decorator.decoration.prefixIcon! as Icon).icon,
+        dropdownIcons[dropdownKey],
+      );
+      expect(
+        decorator.decoration.contentPadding,
+        const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.md,
+        ),
+      );
+      expect(decorator.baseStyle, isNull);
+      expect(decorator.textAlign, isNull);
+      expect(decorator.textAlignVertical, isNull);
+      expect(decorator.expands, isFalse);
 
       final valueText = switch (dropdownKey) {
         'purchaseWarehouseField' => 'الرئيسي',
@@ -186,12 +211,20 @@ void main() {
         'purchasePaymentTypeField' => 'نقد',
         _ => 'دينار',
       };
-      final currentValueY = tester.getCenter(
-        find.descendant(
-          of: find.byKey(Key(dropdownKey)),
-          matching: find.text(valueText),
-        ),
-      ).dy;
+      final valueFinder = find.descendant(
+        of: find.byKey(Key(dropdownKey)),
+        matching: find.text(valueText),
+      );
+      final selectedText = tester.widget<Text>(valueFinder);
+      expect(selectedText.textAlign, TextAlign.center);
+      expect(selectedText.maxLines, 1);
+      expect(selectedText.overflow, TextOverflow.ellipsis);
+      expect(
+        tester.getCenter(valueFinder).dx,
+        closeTo(tester.getCenter(find.byKey(Key(dropdownKey))).dx, 0.5),
+      );
+
+      final currentValueY = tester.getCenter(valueFinder).dy;
       final referenceValueY = selectedValueY;
       if (referenceValueY == null) {
         selectedValueY = currentValueY;
@@ -200,18 +233,32 @@ void main() {
       }
     }
 
-    final purchaseTypeWidth =
-        tester.getSize(find.byKey(const Key('purchaseTypeField'))).width;
-    final paymentTypeWidth =
-        tester.getSize(find.byKey(const Key('purchasePaymentTypeField'))).width;
-    expect(purchaseTypeWidth, greaterThanOrEqualTo(190));
-    expect(paymentTypeWidth, closeTo(purchaseTypeWidth, 0.1));
     expect(
-      purchaseTypeWidth,
-      greaterThan(
-        tester.getSize(find.byKey(const Key('purchaseWarehouseField'))).width,
-      ),
+      tester.widget(find.byKey(const Key('purchaseHeaderPrimaryRow'))),
+      isA<Row>(),
     );
+    final referenceWidth = tester
+        .getSize(find.byKey(Key(firstRowFieldKeys.first)))
+        .width;
+    expect(referenceWidth, greaterThanOrEqualTo(126));
+    for (final fieldKey in firstRowFieldKeys.skip(1)) {
+      expect(
+        tester.getSize(find.byKey(Key(fieldKey))).width,
+        closeTo(referenceWidth, 0.1),
+      );
+    }
+
+    final supplierWidth =
+        tester.getSize(find.byKey(const Key('purchaseSupplierField'))).width;
+    final notesWidth =
+        tester.getSize(find.byKey(const Key('purchaseNotesField'))).width;
+    expect(notesWidth / supplierWidth, closeTo(1.5, 0.01));
+
+    final dateField = tester.widget<TextFormField>(
+      find.byKey(const Key('purchaseDateField')),
+    );
+    expect(dateField.decoration?.prefixIcon, isA<Icon>());
+    expect(dateField.decoration?.suffixIcon, isNull);
 
     for (final fieldKey in const [
       'purchaseTimeField',
