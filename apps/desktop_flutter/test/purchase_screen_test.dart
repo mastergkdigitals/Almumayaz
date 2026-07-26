@@ -17,7 +17,7 @@ void main() {
     expect(find.byKey(const Key('purchaseItemsTable')), findsNothing);
     expect(find.byKey(const Key('purchaseTableHeader')), findsNothing);
 
-    for (final fieldKey in const [
+    const firstRowFieldKeys = [
       'purchaseInvoiceNumberField',
       'purchaseDateField',
       'purchaseTimeField',
@@ -26,8 +26,15 @@ void main() {
       'purchasePaymentTypeField',
       'purchaseCurrencyField',
       'purchaseExchangeRateField',
+    ];
+    const secondRowFieldKeys = [
       'purchaseSupplierField',
       'purchaseNotesField',
+    ];
+
+    for (final fieldKey in const [
+      ...firstRowFieldKeys,
+      ...secondRowFieldKeys,
       'purchaseExpensesField',
       'purchaseInvoiceDiscountField',
       'purchaseDiscountPercentField',
@@ -38,6 +45,24 @@ void main() {
     ]) {
       expect(find.byKey(Key(fieldKey)), findsOneWidget);
     }
+
+    final firstRowY = tester
+        .getCenter(find.byKey(const Key('purchaseInvoiceNumberField')))
+        .dy;
+    for (final fieldKey in firstRowFieldKeys.skip(1)) {
+      expect(
+        tester.getCenter(find.byKey(Key(fieldKey))).dy,
+        closeTo(firstRowY, 0.1),
+      );
+    }
+
+    final secondRowY =
+        tester.getCenter(find.byKey(const Key('purchaseSupplierField'))).dy;
+    expect(
+      tester.getCenter(find.byKey(const Key('purchaseNotesField'))).dy,
+      closeTo(secondRowY, 0.1),
+    );
+    expect(secondRowY, greaterThan(firstRowY));
 
     for (final buttonKey in const [
       'purchaseFirstButton',
@@ -55,6 +80,27 @@ void main() {
     ]) {
       expect(find.byKey(Key(buttonKey)), findsOneWidget);
     }
+
+    final navigationY =
+        tester.getCenter(find.byKey(const Key('purchaseFirstButton'))).dy;
+    final utilityY =
+        tester.getCenter(find.byKey(const Key('purchaseSearchButton'))).dy;
+    final actionsY =
+        tester.getCenter(find.byKey(const Key('purchaseSaveButton'))).dy;
+    expect(navigationY, lessThan(utilityY));
+    expect(utilityY, lessThan(actionsY));
+    expect(
+      tester.getCenter(find.byKey(const Key('purchaseFirstButton'))).dx,
+      greaterThan(
+        tester.getCenter(find.byKey(const Key('purchaseSearchButton'))).dx,
+      ),
+    );
+    expect(
+      tester.getCenter(find.byKey(const Key('purchaseSearchButton'))).dx,
+      greaterThan(
+        tester.getCenter(find.byKey(const Key('purchaseSaveButton'))).dx,
+      ),
+    );
 
     final screenShell = tester.widget<AppScreenShell>(
       find.byKey(const Key('purchaseScreen')),
