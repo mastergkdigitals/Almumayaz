@@ -151,6 +151,7 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
                   fieldKey: const Key('designCurrencyDropdown'),
                   label: 'العملة',
                   icon: Icons.currency_exchange_rounded,
+                  useIntrinsicHeight: true,
                   value: _currency,
                   options: _currencyOptions,
                   onChanged: (value) {
@@ -343,6 +344,7 @@ class _ModuleFieldsPreview extends StatelessWidget {
                   label: 'العملة',
                   icon: Icons.currency_exchange_rounded,
                   accentColor: data.accentColor,
+                  useIntrinsicHeight: true,
                   value: data.currency,
                   options: _currencyOptions,
                   onChanged: onCurrencyChanged,

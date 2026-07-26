@@ -301,6 +301,7 @@ class _PartyFormState extends State<PartyForm> {
                             accentColor: accentColor,
                             focusNode: _typeFocusNode,
                             keyHoldGuard: _keyHoldGuard,
+                            useIntrinsicHeight: true,
                             value: partyType,
                             options: [
                               for (final type in PartyType.values)

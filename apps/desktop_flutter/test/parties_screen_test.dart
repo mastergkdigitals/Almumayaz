@@ -70,6 +70,21 @@ void main() {
     );
     expect(partyTypeDecorator.decoration.labelText, 'نوع الطرف');
     expect(partyTypeDecorator.isEmpty, isFalse);
+    expect(
+      tester
+          .widget<AppDropdownField<PartyType>>(
+            find.ancestor(
+              of: find.byKey(const Key('partyTypeField')),
+              matching: find.byType(AppDropdownField<PartyType>),
+            ),
+          )
+          .useIntrinsicHeight,
+      isTrue,
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('partyTypeField'))),
+      tester.getSize(find.byKey(const Key('partyNameField'))),
+    );
 
     expect(
       tester.widget<AppButton>(
