@@ -123,21 +123,24 @@ void main() {
     );
     expect(screenShell.backgroundColor, isNot(AppColors.background));
 
-    final headerPanel = tester.widget<Container>(
-      find.byKey(const Key('purchaseHeaderPanel')),
-    );
-    final headerDecoration = headerPanel.decoration! as BoxDecoration;
-    expect(headerPanel.padding, const EdgeInsets.all(AppSpacing.lg));
-    expect(headerDecoration.color, AppColors.surface);
-    expect(
-      headerDecoration.borderRadius,
-      BorderRadius.circular(AppRadii.lg),
-    );
-    expect(
-      (headerDecoration.border! as Border).top.color,
-      AppColors.border,
-    );
-    expect(headerDecoration.boxShadow, AppShadows.soft);
+    for (final panelKey in const [
+      'purchaseHeaderPanel',
+      'purchaseTotalsPanel',
+    ]) {
+      final panel = tester.widget<Container>(find.byKey(Key(panelKey)));
+      final decoration = panel.decoration! as BoxDecoration;
+      expect(panel.padding, const EdgeInsets.all(AppSpacing.lg));
+      expect(decoration.color, AppColors.surface);
+      expect(
+        decoration.borderRadius,
+        BorderRadius.circular(AppRadii.lg),
+      );
+      expect(
+        (decoration.border! as Border).top.color,
+        AppColors.border,
+      );
+      expect(decoration.boxShadow, AppShadows.soft);
+    }
 
     final warehouse = _dropdown(tester, 'purchaseWarehouseField');
     expect(warehouse.value, 'الرئيسي');

@@ -1027,22 +1027,14 @@ class _PurchasePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final borderColor = Color.alphaBlend(
-      AppModuleColors.purchases.withAlpha(96),
-      AppColors.border,
-    );
-    final backgroundColor = Color.alphaBlend(
-      AppModuleColors.purchases.withAlpha(8),
-      AppColors.surface,
-    );
-
     return Container(
       key: panelKey,
-      padding: const EdgeInsets.all(AppSpacing.sm),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: borderColor),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppShadows.soft,
       ),
       child: child,
     );
