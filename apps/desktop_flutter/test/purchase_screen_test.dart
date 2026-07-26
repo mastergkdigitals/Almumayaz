@@ -152,16 +152,31 @@ void main() {
       const ['دينار', 'دولار'],
     );
 
+    const adjustedDropdownKeys = {
+      'purchaseTypeField',
+      'purchasePaymentTypeField',
+    };
+    const adjustedPadding = EdgeInsetsDirectional.fromSTEB(
+      AppSpacing.md,
+      AppSpacing.md + AppSpacing.xs,
+      AppSpacing.md,
+      AppSpacing.sm,
+    );
     for (final dropdownKey in const [
       'purchaseWarehouseField',
       'purchaseTypeField',
       'purchasePaymentTypeField',
       'purchaseCurrencyField',
     ]) {
+      final expectedPadding =
+          adjustedDropdownKeys.contains(dropdownKey)
+              ? adjustedPadding
+              : null;
       final dropdown = _dropdown(tester, dropdownKey);
       expect(dropdown.icon, isNull);
       expect(dropdown.textDirection, TextDirection.rtl);
       expect(dropdown.textAlign, TextAlign.right);
+      expect(dropdown.contentPadding, expectedPadding);
       expect(
         tester.getSize(find.byKey(Key(dropdownKey))).height,
         AppControlHeights.large,
@@ -173,6 +188,7 @@ void main() {
         ),
       );
       expect(decorator.decoration.prefixIcon, isNull);
+      expect(decorator.decoration.contentPadding, expectedPadding);
     }
 
     for (final fieldKey in const [

@@ -27,6 +27,13 @@ const _warehouseOptions = <AppDropdownOption<String>>[
   AppDropdownOption(value: 'المنصور', label: 'المنصور'),
 ];
 
+const _purchaseLongLabelDropdownPadding = EdgeInsetsDirectional.fromSTEB(
+  AppSpacing.md,
+  AppSpacing.md + AppSpacing.xs,
+  AppSpacing.md,
+  AppSpacing.sm,
+);
+
 const _supplierOptions = <_PurchaseSupplierOption>[
   _PurchaseSupplierOption(number: 1, name: 'شركة النخيل للتجارة'),
   _PurchaseSupplierOption(number: 3, name: 'مجهز الرافدين'),
@@ -672,6 +679,7 @@ class _PurchaseHeaderPanel extends StatelessWidget {
                   options: _purchaseTypeOptions,
                   textDirection: TextDirection.rtl,
                   textAlign: TextAlign.right,
+                  contentPadding: _purchaseLongLabelDropdownPadding,
                   onChanged: onPurchaseTypeChanged,
                 ),
               ),
@@ -685,6 +693,7 @@ class _PurchaseHeaderPanel extends StatelessWidget {
                   options: _paymentTypeOptions,
                   textDirection: TextDirection.rtl,
                   textAlign: TextAlign.right,
+                  contentPadding: _purchaseLongLabelDropdownPadding,
                   onChanged: onPaymentTypeChanged,
                 ),
               ),

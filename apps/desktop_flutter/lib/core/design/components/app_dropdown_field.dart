@@ -26,6 +26,7 @@ class AppDropdownField<T> extends StatefulWidget {
     this.keyHoldGuard,
     this.textDirection,
     this.textAlign = TextAlign.start,
+    this.contentPadding,
     this.enabled = true,
   });
 
@@ -41,6 +42,7 @@ class AppDropdownField<T> extends StatefulWidget {
   final AppKeyHoldGuard? keyHoldGuard;
   final TextDirection? textDirection;
   final TextAlign textAlign;
+  final EdgeInsetsGeometry? contentPadding;
   final bool enabled;
 
   @override
@@ -373,6 +375,7 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
                           enabled: widget.enabled,
                           labelText: widget.label,
                           hintText: 'اختر ${widget.label}',
+                          contentPadding: widget.contentPadding,
                           prefixIcon: widget.icon == null
                               ? null
                               : Icon(

@@ -119,6 +119,7 @@ void main() {
       ),
     );
     expect(decorator.decoration.labelText, 'العملة');
+    expect(decorator.decoration.contentPadding, isNull);
     expect(decorator.isEmpty, isFalse);
     expect(
       find.descendant(of: dropdown, matching: find.text('دينار')),
