@@ -184,6 +184,26 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
     if (mounted) setState(() {});
   }
 
+  Widget _buildSelectedValue(Color valueColor) {
+    final value = Text(
+      widget.value == null ? '' : _selectedLabel,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      textDirection: widget.textDirection,
+      textAlign: widget.textAlign,
+      style: AppTypography.fieldText.copyWith(
+        color: valueColor,
+        fontWeight: FontWeight.w600,
+      ),
+    );
+
+    if (!widget.useIntrinsicHeight) {
+      return value;
+    }
+
+    return SizedBox(width: double.infinity, child: value);
+  }
+
   @override
   Widget build(BuildContext context) {
     final accentColor = widget.accentColor ?? AppColors.primary;
@@ -437,22 +457,7 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
                                 const BorderSide(color: AppColors.border),
                           ),
                         ),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: Text(
-                            widget.value == null ? '' : _selectedLabel,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textDirection: widget.textDirection,
-                          textAlign: widget.textAlign,
-                          style: AppTypography.fieldText.copyWith(
-                            color: widget.enabled
-                                ? AppColors.textPrimary
-                                : AppColors.disabled,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
+                        child: _buildSelectedValue(valueColor),
                     ),
                   ),
                 ),
