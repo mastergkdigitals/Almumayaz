@@ -32,6 +32,7 @@ class AppActionBar extends StatelessWidget {
     this.searchHint,
     this.onSearchChanged,
     this.onSearchSubmitted,
+    this.compactWidth = 1180,
     this.navigationButtonWidth = 104,
     this.buttonWidth = 108,
   }) : assert(
@@ -39,7 +40,6 @@ class AppActionBar extends StatelessWidget {
           'Provide either searchController or middle.',
         );
 
-  static const _compactWidth = 1180.0;
   static const _actionPadding = EdgeInsets.symmetric(horizontal: 6);
   static const _buttonTextStyle = TextStyle(
     fontSize: 16,
@@ -71,6 +71,7 @@ class AppActionBar extends StatelessWidget {
   final String? searchHint;
   final ValueChanged<String>? onSearchChanged;
   final ValueChanged<String>? onSearchSubmitted;
+  final double compactWidth;
   final double navigationButtonWidth;
   final double buttonWidth;
 
@@ -171,7 +172,7 @@ class AppActionBar extends StatelessWidget {
       textDirection: TextDirection.rtl,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          if (constraints.maxWidth < _compactWidth) {
+          if (constraints.maxWidth < compactWidth) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [

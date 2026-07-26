@@ -569,6 +569,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
             const SizedBox(height: AppSpacing.sm),
             AppActionBar(
               key: const Key('purchaseActionBar'),
+              compactWidth: 1850,
               middle: _PurchaseUtilityButtons(
                 onSearch: _openInvoiceSearchDialog,
                 onPrint: hasSelectedInvoice
@@ -825,7 +826,7 @@ class _PurchaseUtilityButtons extends StatelessWidget {
           label: 'بحث',
           icon: Icons.search_rounded,
           variant: AppButtonVariant.navigation,
-          width: 78,
+          minWidth: 78,
           height: 52,
           padding: const EdgeInsets.symmetric(horizontal: 6),
           iconSize: 18,
@@ -838,7 +839,7 @@ class _PurchaseUtilityButtons extends StatelessWidget {
           label: 'طباعة',
           icon: Icons.print_rounded,
           variant: AppButtonVariant.navigation,
-          width: 84,
+          minWidth: 84,
           height: 52,
           padding: const EdgeInsets.symmetric(horizontal: 6),
           iconSize: 18,
@@ -851,7 +852,7 @@ class _PurchaseUtilityButtons extends StatelessWidget {
           label: 'طباعة بدون الأسعار',
           icon: Icons.money_off_rounded,
           variant: AppButtonVariant.navigation,
-          width: 176,
+          minWidth: 176,
           height: 52,
           padding: const EdgeInsets.symmetric(horizontal: 6),
           iconSize: 18,
@@ -864,7 +865,7 @@ class _PurchaseUtilityButtons extends StatelessWidget {
           label: 'كشف حساب المجهز',
           icon: Icons.receipt_long_outlined,
           variant: AppButtonVariant.navigation,
-          width: 182,
+          minWidth: 182,
           height: 52,
           padding: const EdgeInsets.symmetric(horizontal: 6),
           iconSize: 18,

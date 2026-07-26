@@ -63,18 +63,14 @@ void main() {
       find.byKey(const Key('purchaseScreen')),
     );
     expect(screenShell.backgroundColor, isNot(AppColors.background));
-    expect(
-      tester.getCenter(find.byKey(const Key('purchaseSearchButton'))).dx,
-      greaterThan(
-        tester.getCenter(find.byKey(const Key('purchaseSaveButton'))).dx,
-      ),
-    );
-    expect(
-      tester.getCenter(find.byKey(const Key('purchaseSearchButton'))).dx,
-      lessThan(
-        tester.getCenter(find.byKey(const Key('purchaseFirstButton'))).dx,
-      ),
-    );
+    final navigationCenter =
+        tester.getCenter(find.byKey(const Key('purchaseFirstButton')));
+    final utilityCenter =
+        tester.getCenter(find.byKey(const Key('purchaseSearchButton')));
+    final actionCenter =
+        tester.getCenter(find.byKey(const Key('purchaseSaveButton')));
+    expect(utilityCenter.dy, greaterThan(navigationCenter.dy));
+    expect(utilityCenter.dy, lessThan(actionCenter.dy));
 
     for (final keyName in const [
       'purchaseInvoiceNumberField',
