@@ -11,6 +11,10 @@ class AppDropdownOption<T> {
   final String label;
 }
 
+typedef AppDropdownDecorationBuilder = InputDecoration Function(
+  InputDecoration decoration,
+);
+
 class AppDropdownField<T> extends StatefulWidget {
   const AppDropdownField({
     required this.label,
@@ -28,6 +32,7 @@ class AppDropdownField<T> extends StatefulWidget {
     this.textAlign = TextAlign.start,
     this.useIntrinsicHeight = false,
     this.contentPadding,
+    this.decorationBuilder,
     this.enabled = true,
   });
 
@@ -45,6 +50,7 @@ class AppDropdownField<T> extends StatefulWidget {
   final TextAlign textAlign;
   final bool useIntrinsicHeight;
   final EdgeInsetsGeometry? contentPadding;
+  final AppDropdownDecorationBuilder? decorationBuilder;
   final bool enabled;
 
   @override
@@ -202,6 +208,53 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
     }
 
     return SizedBox(width: double.infinity, child: value);
+  }
+
+  InputDecoration _buildDecoration({
+    required Color accentColor,
+    required Color backgroundColor,
+    required Color borderColor,
+  }) {
+    final decoration = InputDecoration(
+      enabled: widget.enabled,
+      labelText: widget.label,
+      hintText: 'اختر ${widget.label}',
+      contentPadding: widget.contentPadding,
+      prefixIcon: widget.icon == null
+          ? null
+          : Icon(
+              widget.icon,
+              color: widget.enabled ? accentColor : AppColors.disabled,
+            ),
+      suffixIcon: AnimatedRotation(
+        turns: _isOpen ? 0.5 : 0,
+        duration: AppDurations.fast,
+        child: Icon(
+          Icons.keyboard_arrow_down_rounded,
+          size: AppIconSizes.md,
+          color: widget.enabled ? accentColor : AppColors.disabled,
+        ),
+      ),
+      filled: true,
+      fillColor: backgroundColor,
+      floatingLabelStyle: AppTypography.fieldText.copyWith(
+        color: widget.enabled ? accentColor : AppColors.disabled,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        borderSide: BorderSide(color: borderColor),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        borderSide: BorderSide(color: accentColor, width: 1.6),
+      ),
+      disabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        borderSide: const BorderSide(color: AppColors.border),
+      ),
+    );
+
+    return widget.decorationBuilder?.call(decoration) ?? decoration;
   }
 
   @override
@@ -407,57 +460,10 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
                         expands: !widget.useIntrinsicHeight,
                         isEmpty: widget.value == null,
                         isFocused: _isOpen || _focusNode.hasFocus,
-                        decoration: InputDecoration(
-                          enabled: widget.enabled,
-                          labelText: widget.label,
-                          hintText: 'اختر ${widget.label}',
-                          contentPadding: widget.contentPadding,
-                          prefixIcon: widget.icon == null
-                              ? null
-                              : Icon(
-                                  widget.icon,
-                                  color: widget.enabled
-                                      ? accentColor
-                                      : AppColors.disabled,
-                                ),
-                          suffixIcon: AnimatedRotation(
-                            turns: _isOpen ? 0.5 : 0,
-                            duration: AppDurations.fast,
-                            child: Icon(
-                              Icons.keyboard_arrow_down_rounded,
-                              size: AppIconSizes.md,
-                              color: widget.enabled
-                                  ? accentColor
-                                  : AppColors.disabled,
-                            ),
-                          ),
-                          filled: true,
-                          fillColor: backgroundColor,
-                          floatingLabelStyle:
-                              AppTypography.fieldText.copyWith(
-                            color: widget.enabled
-                                ? accentColor
-                                : AppColors.disabled,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius:
-                                BorderRadius.circular(AppRadii.md),
-                            borderSide: BorderSide(color: borderColor),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius:
-                                BorderRadius.circular(AppRadii.md),
-                            borderSide: BorderSide(
-                              color: accentColor,
-                              width: 1.6,
-                            ),
-                          ),
-                          disabledBorder: OutlineInputBorder(
-                            borderRadius:
-                                BorderRadius.circular(AppRadii.md),
-                            borderSide:
-                                const BorderSide(color: AppColors.border),
-                          ),
+                        decoration: _buildDecoration(
+                          accentColor: accentColor,
+                          backgroundColor: backgroundColor,
+                          borderColor: borderColor,
                         ),
                         child: _buildSelectedValue(valueColor),
                       ),

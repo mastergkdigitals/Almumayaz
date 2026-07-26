@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../../../core/design/app_design_system.dart';
 
-const _options = <String>['الرئيسي', 'الكرادة', 'المنصور'];
+const _options = <AppDropdownOption<String>>[
+  AppDropdownOption(value: 'الرئيسي', label: 'الرئيسي'),
+  AppDropdownOption(value: 'الكرادة', label: 'الكرادة'),
+  AppDropdownOption(value: 'المنصور', label: 'المنصور'),
+];
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -16,7 +20,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     8,
     (_) => TextEditingController(text: 'الرئيسي'),
   );
-  final _values = List<String>.filled(8, _options.first);
+  final _values = List<String>.filled(8, _options.first.value);
 
   @override
   void dispose() {
@@ -92,11 +96,14 @@ class _DesignRow extends StatelessWidget {
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
-            child: AppTextField(
-              controller: controller,
-              label: 'المخزن',
-              icon: Icons.warehouse_outlined,
-              accentColor: AppModuleColors.settings,
+            child: SizedBox(
+              height: AppControlHeights.large,
+              child: AppTextField(
+                controller: controller,
+                label: 'المخزن',
+                icon: Icons.warehouse_outlined,
+                accentColor: AppModuleColors.settings,
+              ),
             ),
           ),
           const SizedBox(width: AppSpacing.lg),
@@ -126,92 +133,38 @@ class _DropdownCandidate extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final decoration = _decorationFor(design);
-
-    return SizedBox(
-      height: AppControlHeights.large,
-      child: DropdownButtonFormField<String>(
-        key: Key('settingsDropdownDesign$design'),
-        initialValue: value,
-        isExpanded: true,
-        icon: Icon(
-          design == 6
-              ? Icons.expand_circle_down_outlined
-              : Icons.keyboard_arrow_down_rounded,
-          color: design == 5
-              ? AppColors.onStrong
-              : AppModuleColors.settings,
-        ),
-        dropdownColor: AppColors.surface,
-        borderRadius: BorderRadius.circular(
-          design == 5 ? AppRadii.xl : AppRadii.md,
-        ),
-        style: AppTypography.fieldText.copyWith(
-          color: AppColors.textPrimary,
-          fontWeight: FontWeight.w600,
-        ),
-        decoration: decoration,
-        selectedItemBuilder: (context) => _options
-            .map(
-              (option) => Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: Text(
-                  option,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.fieldText.copyWith(
-                    color: design == 5
-                        ? AppColors.onStrong
-                        : AppColors.textPrimary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            )
-            .toList(growable: false),
-        items: _options
-            .map(
-              (option) => DropdownMenuItem<String>(
-                value: option,
-                child: Text(
-                  option,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            )
-            .toList(growable: false),
-        onChanged: onChanged,
-      ),
+    return AppDropdownField<String>(
+      fieldKey: Key('settingsDropdownDesign$design'),
+      label: 'المخزن',
+      options: _options,
+      value: value,
+      onChanged: onChanged,
+      icon: _iconFor(design),
+      accentColor: AppModuleColors.settings,
+      decorationBuilder: (decoration) =>
+          _decorationFor(design, decoration),
     );
   }
 
-  InputDecoration _decorationFor(int design) {
+  IconData _iconFor(int design) {
+    return design == 6
+        ? Icons.inventory_2_outlined
+        : Icons.warehouse_outlined;
+  }
+
+  InputDecoration _decorationFor(
+    int design,
+    InputDecoration decoration,
+  ) {
     const accent = AppModuleColors.settings;
     const border = AppColors.border;
-    final standard = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(AppRadii.md),
-      borderSide: const BorderSide(color: border),
-    );
-    final focused = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(AppRadii.md),
-      borderSide: const BorderSide(color: accent, width: 1.6),
-    );
 
     switch (design) {
       case 1:
-        return InputDecoration(
-          labelText: 'المخزن',
-          prefixIcon: const Icon(Icons.warehouse_outlined, color: accent),
-          enabledBorder: standard,
-          focusedBorder: focused,
-        );
+        return decoration;
       case 2:
-        return InputDecoration(
-          labelText: 'المخزن',
-          filled: true,
+        return decoration.copyWith(
           fillColor: AppColors.neutralSurface,
-          prefixIcon: const Icon(Icons.warehouse_rounded, color: accent),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(AppRadii.lg),
             borderSide: BorderSide.none,
@@ -222,21 +175,19 @@ class _DropdownCandidate extends StatelessWidget {
           ),
         );
       case 3:
-        return const InputDecoration(
-          labelText: 'المخزن',
-          prefixIcon: Icon(Icons.warehouse_outlined, color: accent),
-          enabledBorder: UnderlineInputBorder(
+        return decoration.copyWith(
+          border: const UnderlineInputBorder(
+            borderSide: BorderSide(color: border),
+          ),
+          enabledBorder: const UnderlineInputBorder(
             borderSide: BorderSide(color: border, width: 1.4),
           ),
-          focusedBorder: UnderlineInputBorder(
+          focusedBorder: const UnderlineInputBorder(
             borderSide: BorderSide(color: accent, width: 2),
           ),
         );
       case 4:
-        return InputDecoration(
-          labelText: 'المخزن',
-          filled: true,
-          fillColor: AppColors.surface,
+        return decoration.copyWith(
           contentPadding: const EdgeInsets.symmetric(horizontal: 20),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(28),
@@ -248,29 +199,20 @@ class _DropdownCandidate extends StatelessWidget {
           ),
         );
       case 5:
-        return InputDecoration(
-          labelText: 'المخزن',
-          labelStyle: const TextStyle(color: AppColors.onStrong),
-          floatingLabelStyle: const TextStyle(color: AppColors.onStrong),
-          filled: true,
-          fillColor: accent,
-          prefixIcon:
-              const Icon(Icons.warehouse_outlined, color: AppColors.onStrong),
+        return decoration.copyWith(
+          fillColor: const Color(0xFFE5E7EB),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(AppRadii.md),
-            borderSide: const BorderSide(color: accent),
+            borderSide: const BorderSide(color: accent, width: 2),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(AppRadii.md),
-            borderSide: const BorderSide(color: AppColors.textPrimary, width: 2),
+            borderSide: const BorderSide(color: accent, width: 2),
           ),
         );
       case 6:
-        return InputDecoration(
-          labelText: 'المخزن',
-          filled: true,
+        return decoration.copyWith(
           fillColor: const Color(0xFFF3F4F6),
-          prefixIcon: const Icon(Icons.inventory_2_outlined, color: accent),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(AppRadii.sm),
             borderSide: const BorderSide(color: Color(0xFF9CA3AF)),
@@ -281,9 +223,7 @@ class _DropdownCandidate extends StatelessWidget {
           ),
         );
       case 7:
-        return InputDecoration(
-          labelText: 'المخزن',
-          filled: true,
+        return decoration.copyWith(
           fillColor: const Color(0xFFF9FAFB),
           prefixIcon: Container(
             margin: const EdgeInsets.all(6),
@@ -293,13 +233,9 @@ class _DropdownCandidate extends StatelessWidget {
             ),
             child: const Icon(Icons.warehouse_outlined, color: accent),
           ),
-          enabledBorder: standard,
-          focusedBorder: focused,
         );
       default:
-        return InputDecoration(
-          labelText: 'المخزن',
-          prefixIcon: const Icon(Icons.warehouse_outlined, color: accent),
+        return decoration.copyWith(
           suffixText: 'اختيار',
           suffixStyle: const TextStyle(
             color: AppColors.textSecondary,
@@ -310,7 +246,6 @@ class _DropdownCandidate extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppRadii.md),
             borderSide: const BorderSide(color: accent, width: 1.4),
           ),
-          focusedBorder: focused,
         );
     }
   }
