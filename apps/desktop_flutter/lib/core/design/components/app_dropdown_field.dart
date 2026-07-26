@@ -25,7 +25,9 @@ class AppDropdownField<T> extends StatefulWidget {
     this.onSubmitted,
     this.keyHoldGuard,
     this.textDirection,
-    this.textAlign = TextAlign.center,
+    this.textAlign = TextAlign.start,
+    this.useIntrinsicHeight = false,
+    this.contentPadding,
     this.enabled = true,
   });
 
@@ -41,6 +43,8 @@ class AppDropdownField<T> extends StatefulWidget {
   final AppKeyHoldGuard? keyHoldGuard;
   final TextDirection? textDirection;
   final TextAlign textAlign;
+  final bool useIntrinsicHeight;
+  final EdgeInsetsGeometry? contentPadding;
   final bool enabled;
 
   @override
@@ -364,17 +368,28 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
                     splashColor: Colors.transparent,
                     overlayColor:
                         const WidgetStatePropertyAll<Color>(Colors.transparent),
-                    child: InputDecorator(
+                    child: SizedBox(
+                      height: widget.useIntrinsicHeight
+                          ? null
+                          : AppControlHeights.large,
+                      child: InputDecorator(
+                        baseStyle: widget.useIntrinsicHeight
+                            ? null
+                            : AppTypography.fieldText,
+                        textAlign: widget.useIntrinsicHeight
+                            ? null
+                            : widget.textAlign,
+                        textAlignVertical: widget.useIntrinsicHeight
+                            ? null
+                            : TextAlignVertical.center,
+                        expands: !widget.useIntrinsicHeight,
                         isEmpty: widget.value == null,
                         isFocused: _isOpen || _focusNode.hasFocus,
                         decoration: InputDecoration(
                           enabled: widget.enabled,
                           labelText: widget.label,
                           hintText: 'اختر ${widget.label}',
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.md,
-                            vertical: AppSpacing.md,
-                          ),
+                          contentPadding: widget.contentPadding,
                           prefixIcon: widget.icon == null
                               ? null
                               : Icon(
@@ -440,6 +455,7 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
                       ),
                     ),
                   ),
+                ),
                 ),
               ),
             );
