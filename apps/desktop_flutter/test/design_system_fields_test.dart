@@ -228,7 +228,12 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 250));
 
-    final dollar = find.text('دولار');
+    final dollarOption = find.widgetWithText(MenuItemButton, 'دولار');
+    expect(dollarOption, findsOneWidget);
+    final dollar = find.descendant(
+      of: dollarOption,
+      matching: find.text('دولار'),
+    );
     expect(dollar, findsOneWidget);
     final label = tester.widget<Text>(dollar);
     expect(label.style?.fontSize, 18);
@@ -269,7 +274,6 @@ void main() {
       findsNothing,
     );
 
-    final dollarOption = find.widgetWithText(MenuItemButton, 'دولار');
     final dollarButton = tester.widget<MenuItemButton>(dollarOption);
     expect(
       dollarButton.style?.backgroundColor?.resolve(
@@ -282,7 +286,7 @@ void main() {
       ),
     );
 
-    await tester.tap(dollar);
+    await tester.tap(dollarOption);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
   });
