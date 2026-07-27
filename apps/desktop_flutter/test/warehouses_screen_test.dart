@@ -229,6 +229,10 @@ void main() {
     expect(transferDialog.maxHeightFactor, 0.96);
     expect(transferDialog.icon, Icons.compare_arrows_rounded);
     expect(
+      find.byKey(const Key('inventoryTransferCloseButton')),
+      findsNothing,
+    );
+    expect(
       find.ancestor(
         of: find.byKey(const Key('inventoryTransferCreateTab')),
         matching: find.byType(SingleChildScrollView),
@@ -311,6 +315,10 @@ void main() {
     expect(
       find.byKey(const Key('inventoryTransferHistorySearchField')),
       findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('inventoryTransferHistoryCloseButton')),
+      findsNothing,
     );
     expect(
       tester

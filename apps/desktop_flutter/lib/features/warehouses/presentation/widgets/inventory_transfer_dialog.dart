@@ -307,13 +307,6 @@ class _InventoryTransferDialogState
   List<Widget> _createActions() {
     return [
       AppButton(
-        key: const Key('inventoryTransferCloseButton'),
-        label: 'إغلاق',
-        variant: AppButtonVariant.secondary,
-        width: 144,
-        onPressed: _close,
-      ),
-      AppButton(
         key: const Key('inventoryTransferExecuteButton'),
         label: 'تنفيذ النقل',
         icon: Icons.swap_horiz_rounded,
@@ -326,13 +319,6 @@ class _InventoryTransferDialogState
 
   List<Widget> _historyActions() {
     return [
-      AppButton(
-        key: const Key('inventoryTransferHistoryCloseButton'),
-        label: 'إغلاق',
-        variant: AppButtonVariant.secondary,
-        width: 144,
-        onPressed: _close,
-      ),
       AppButton(
         key: const Key('inventoryTransferHistoryRefreshButton'),
         label: 'تحديث السجل',
