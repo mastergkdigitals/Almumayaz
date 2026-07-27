@@ -45,9 +45,9 @@ void main() {
     }
 
     const actions = <String, (IconData, Color)>{
-      'designActionSave': (Icons.add_rounded, AppColors.green),
-      'designActionUndo': (Icons.close_rounded, AppColors.grey),
-      'designActionUpdate': (Icons.save_rounded, AppColors.blue),
+      'designActionSave': (Icons.add_rounded, AppColors.blue),
+      'designActionUndo': (Icons.close_rounded, AppColors.orange),
+      'designActionUpdate': (Icons.save_rounded, AppColors.green),
       'designActionDelete': (Icons.delete_rounded, AppColors.red),
     };
     for (final entry in actions.entries) {
@@ -165,15 +165,15 @@ void main() {
     expect(appButton('designActionBarSave').width, isNull);
     expect(
       appButton('designActionBarSave').variant,
-      AppButtonVariant.success,
-    );
-    expect(
-      appButton('designActionBarUpdate').variant,
       AppButtonVariant.primary,
     );
     expect(
+      appButton('designActionBarUpdate').variant,
+      AppButtonVariant.success,
+    );
+    expect(
       appButton('designActionBarUndo').variant,
-      AppButtonVariant.neutral,
+      AppButtonVariant.warning,
     );
     expect(
       appButton('designActionBarDelete').variant,
@@ -228,11 +228,11 @@ void main() {
     );
     expect(
       updateButton.style?.backgroundColor?.resolve(<WidgetState>{}),
-      AppColors.blue,
+      AppColors.green,
     );
     expect(
       undoButton.style?.backgroundColor?.resolve(<WidgetState>{}),
-      AppColors.grey,
+      AppColors.orange,
     );
 
     await tester.tap(find.byKey(const Key('designActionBarDelete')));
