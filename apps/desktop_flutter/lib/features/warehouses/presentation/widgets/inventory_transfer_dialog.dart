@@ -338,7 +338,7 @@ class _InventoryTransferDialogState
         label: 'تحديث السجل',
         icon: Icons.refresh_rounded,
         variant: AppButtonVariant.success,
-        width: 160,
+        minWidth: 160,
         onPressed: () {
           _historySearchController.clear();
           setState(() => _historyQuery = '');
@@ -565,7 +565,7 @@ class _ViewSelector extends StatelessWidget {
           label: 'نقل جديد',
           icon: Icons.compare_arrows_rounded,
           variant: AppButtonVariant.navigation,
-          width: 180,
+          minWidth: 180,
           backgroundColor:
               view == _InventoryTransferView.create ? selectedTint : null,
           foregroundColor: view == _InventoryTransferView.create
@@ -579,7 +579,7 @@ class _ViewSelector extends StatelessWidget {
           label: 'سجل النقل المخزني',
           icon: Icons.history_rounded,
           variant: AppButtonVariant.navigation,
-          width: 210,
+          minWidth: 210,
           backgroundColor:
               view == _InventoryTransferView.history ? selectedTint : null,
           foregroundColor: view == _InventoryTransferView.history

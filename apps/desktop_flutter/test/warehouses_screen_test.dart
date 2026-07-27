@@ -267,6 +267,16 @@ void main() {
       find.byKey(const Key('inventoryTransferHistoryTab')),
       findsOneWidget,
     );
+    final createTab = tester.widget<AppButton>(
+      find.byKey(const Key('inventoryTransferCreateTab')),
+    );
+    expect(createTab.width, isNull);
+    expect(createTab.minWidth, 180);
+    final historyTab = tester.widget<AppButton>(
+      find.byKey(const Key('inventoryTransferHistoryTab')),
+    );
+    expect(historyTab.width, isNull);
+    expect(historyTab.minWidth, 210);
 
     final source = tester.widget<AppDropdownField<String>>(
       find.byKey(const Key('inventoryTransferFromDropdown')),
@@ -317,6 +327,8 @@ void main() {
       find.byKey(const Key('inventoryTransferHistoryRefreshButton')),
     );
     expect(refreshButton.variant, AppButtonVariant.success);
+    expect(refreshButton.width, isNull);
+    expect(refreshButton.minWidth, 160);
     await tester.tap(
       find.byKey(const Key('inventoryTransferHistoryRefreshButton')),
     );
