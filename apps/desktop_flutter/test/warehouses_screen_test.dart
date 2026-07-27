@@ -221,7 +221,23 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.byKey(const Key('inventoryTransferItemsTable')),
+      find.byKey(const Key('inventoryTransferProductField')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('inventoryTransferQuantityField')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('inventoryTransferAvailableQuantity')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('inventoryTransferSourceStockTable')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('inventoryTransferDestinationStockTable')),
       findsOneWidget,
     );
     expect(
@@ -241,25 +257,16 @@ void main() {
     final destination = tester.widget<AppDropdownField<String>>(
       find.byKey(const Key('inventoryTransferToDropdown')),
     );
-    expect(
-      destination.options.map((option) => option.value),
-      isNot(contains('warehouse-001')),
-    );
+    expect(destination.value, 'warehouse-002');
+    expect(destination.options, hasLength(4));
 
-    final itemsTable = tester.widget<AppDataTable>(
-      find.byKey(const Key('inventoryTransferItemsTable')),
+    final sourceStockTable = tester.widget<AppDataTable>(
+      find.byKey(const Key('inventoryTransferSourceStockTable')),
     );
-    expect(itemsTable.accentColor, AppModuleColors.warehouses);
+    expect(sourceStockTable.accentColor, AppModuleColors.warehouses);
     expect(
-      itemsTable.columns.map((column) => column.label),
-      [
-        'ت',
-        'رمز المادة',
-        'اسم المادة',
-        'الرصيد المتوفر',
-        'الكمية',
-        'الإجراء',
-      ],
+      sourceStockTable.columns.map((column) => column.label),
+      ['رمز المادة', 'اسم المادة', 'الكمية'],
     );
     expect(
       tester
@@ -267,7 +274,7 @@ void main() {
             find.byKey(const Key('inventoryTransferExecuteButton')),
           )
           .onPressed,
-      isNull,
+      isNotNull,
     );
 
     await tester.tap(
@@ -283,6 +290,11 @@ void main() {
       find.byKey(const Key('inventoryTransferHistoryTable')),
     );
     expect(historyTable.accentColor, AppModuleColors.warehouses);
+    expect(historyTable.rowHeight, 56);
+    expect(historyTable.showColumnDividers, isFalse);
+    expect(historyTable.showShadow, isTrue);
+    expect(historyTable.alternatingRowColor, isNull);
+    expect(historyTable.verticalScrollController, isNotNull);
     expect(
       historyTable.columns.map((column) => column.label),
       ['رقم النقل', 'التاريخ', 'من مخزن', 'إلى مخزن', 'المواد'],
