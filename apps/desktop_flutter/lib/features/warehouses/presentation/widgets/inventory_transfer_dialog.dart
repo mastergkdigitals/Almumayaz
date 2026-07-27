@@ -257,6 +257,8 @@ class _InventoryTransferDialogState
       centerHeader: true,
       showHeaderCloseButton: true,
       width: AppDialogSizes.extraLarge,
+      bodyScrollable: false,
+      maxHeightFactor: 0.96,
       onClose: _close,
       actionsKey: const Key('inventoryTransferDialogActions'),
       actions: _view == _InventoryTransferView.create
@@ -330,82 +332,82 @@ class _InventoryTransferDialogState
   Widget _buildCreateView() {
     final sourceItem = _selectedSourceItem;
 
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AppDialogSection(
-            key: const Key('inventoryTransferDetails'),
-            title: 'تفاصيل النقل',
-            icon: Icons.warehouse_rounded,
-            accentColor: AppModuleColors.warehouses,
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(child: _buildSourceField()),
-                    const SizedBox(width: AppSpacing.lg),
-                    Expanded(child: _buildDestinationField()),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: AppDropdownField<String>(
-                        key: const Key('inventoryTransferProductDropdown'),
-                        fieldKey:
-                            const Key('inventoryTransferProductField'),
-                        label: 'المادة',
-                        icon: Icons.inventory_2_rounded,
-                        accentColor: AppModuleColors.warehouses,
-                        useIntrinsicHeight: true,
-                        value: _selectedProductCode,
-                        options: [
-                          for (final item in _sourceItems)
-                            AppDropdownOption(
-                              value: item.productCode,
-                              label:
-                                  '${item.productName} — ${AppFormatters.quantity(item.quantity)}',
-                            ),
-                        ],
-                        onChanged: (value) {
-                          if (value != null) _selectProduct(value);
-                        },
-                      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AppDialogSection(
+          key: const Key('inventoryTransferDetails'),
+          title: 'تفاصيل النقل',
+          icon: Icons.warehouse_rounded,
+          accentColor: AppModuleColors.warehouses,
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(child: _buildSourceField()),
+                  const SizedBox(width: AppSpacing.lg),
+                  Expanded(child: _buildDestinationField()),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: AppDropdownField<String>(
+                      key: const Key('inventoryTransferProductDropdown'),
+                      fieldKey:
+                          const Key('inventoryTransferProductField'),
+                      label: 'المادة',
+                      icon: Icons.inventory_2_rounded,
+                      accentColor: AppModuleColors.warehouses,
+                      useIntrinsicHeight: true,
+                      value: _selectedProductCode,
+                      options: [
+                        for (final item in _sourceItems)
+                          AppDropdownOption(
+                            value: item.productCode,
+                            label:
+                                '${item.productName} — ${AppFormatters.quantity(item.quantity)}',
+                          ),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) _selectProduct(value);
+                      },
                     ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: AppTextField(
-                        fieldKey:
-                            const Key('inventoryTransferQuantityField'),
-                        controller: _quantityController,
-                        label: 'كمية النقل',
-                        icon: Icons.numbers_rounded,
-                        accentColor: AppModuleColors.warehouses,
-                        textDirection: TextDirection.rtl,
-                        textAlign: TextAlign.right,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: const [
-                          AppIntegerInputFormatter(),
-                        ],
-                      ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: AppTextField(
+                      fieldKey:
+                          const Key('inventoryTransferQuantityField'),
+                      controller: _quantityController,
+                      label: 'كمية النقل',
+                      icon: Icons.numbers_rounded,
+                      accentColor: AppModuleColors.warehouses,
+                      textDirection: TextDirection.rtl,
+                      textAlign: TextAlign.right,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: const [
+                        AppIntegerInputFormatter(),
+                      ],
                     ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: _AvailableQuantity(
-                        quantity: sourceItem?.quantity ?? 0,
-                      ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: _AvailableQuantity(
+                      quantity: sourceItem?.quantity ?? 0,
                     ),
-                  ],
-                ),
-              ],
-            ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Expanded(
                 child: _WarehouseStockPanel(
@@ -421,12 +423,13 @@ class _InventoryTransferDialogState
               const Padding(
                 padding: EdgeInsets.symmetric(
                   horizontal: AppSpacing.md,
-                  vertical: 88,
                 ),
-                child: Icon(
-                  Icons.arrow_forward_rounded,
-                  color: AppModuleColors.warehouses,
-                  size: AppIconSizes.xl,
+                child: Center(
+                  child: Icon(
+                    Icons.arrow_forward_rounded,
+                    color: AppModuleColors.warehouses,
+                    size: AppIconSizes.xl,
+                  ),
                 ),
               ),
               Expanded(
@@ -440,8 +443,8 @@ class _InventoryTransferDialogState
               ),
             ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -588,33 +591,39 @@ class _WarehouseStockPanel extends StatelessWidget {
       title: 'مواد $title',
       icon: Icons.inventory_rounded,
       accentColor: AppModuleColors.warehouses,
-      child: AppDataTable(
-        key: tableKey,
-        height: 180,
-        headerHeight: 44,
-        rowHeight: 44,
-        minimumColumnWidth: 112,
-        accentColor: AppModuleColors.warehouses,
-        columns: const [
-          AppTableColumn(label: 'رمز المادة'),
-          AppTableColumn(label: 'اسم المادة', flex: 1.6),
-          AppTableColumn(label: 'الكمية', numeric: true),
-        ],
-        rows: [
-          for (final item in items)
-            AppTableRow(
-              rowKey: Key('transferStock-$title-${item.productCode}'),
-              selected: item.productCode == selectedProductCode,
-              onTap: onSelected == null
-                  ? null
-                  : () => onSelected!(item.productCode),
-              cells: [
-                Text(item.productCode),
-                Text(item.productName),
-                Text(AppFormatters.quantity(item.quantity)),
-              ],
-            ),
-        ],
+      expandChild: true,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return AppDataTable(
+            key: tableKey,
+            height: constraints.maxHeight,
+            headerHeight: 44,
+            rowHeight: 44,
+            minimumColumnWidth: 112,
+            accentColor: AppModuleColors.warehouses,
+            columns: const [
+              AppTableColumn(label: 'رمز المادة'),
+              AppTableColumn(label: 'اسم المادة', flex: 1.6),
+              AppTableColumn(label: 'الكمية', numeric: true),
+            ],
+            rows: [
+              for (final item in items)
+                AppTableRow(
+                  rowKey:
+                      Key('transferStock-$title-${item.productCode}'),
+                  selected: item.productCode == selectedProductCode,
+                  onTap: onSelected == null
+                      ? null
+                      : () => onSelected!(item.productCode),
+                  cells: [
+                    Text(item.productCode),
+                    Text(item.productName),
+                    Text(AppFormatters.quantity(item.quantity)),
+                  ],
+                ),
+            ],
+          );
+        },
       ),
     );
   }

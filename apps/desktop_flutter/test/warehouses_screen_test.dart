@@ -203,6 +203,8 @@ void main() {
   testWidgets('opens the Warehouse Transfer dialog with old structure',
       (tester) async {
     await _openWarehouses(tester);
+    await tester.binding.setSurfaceSize(const Size(1280, 720));
+    await tester.pumpAndSettle();
     await tester.tap(
       find.byKey(const Key('warehouseRow_warehouse-001')),
     );
@@ -215,6 +217,18 @@ void main() {
     expect(
       find.byKey(const Key('inventoryTransferDialog')),
       findsOneWidget,
+    );
+    final transferDialog = tester.widget<AppModuleDialog>(
+      find.byKey(const Key('inventoryTransferDialog')),
+    );
+    expect(transferDialog.bodyScrollable, isFalse);
+    expect(transferDialog.maxHeightFactor, 0.96);
+    expect(
+      find.ancestor(
+        of: find.byKey(const Key('inventoryTransferCreateTab')),
+        matching: find.byType(SingleChildScrollView),
+      ),
+      findsNothing,
     );
     expect(
       find.byKey(const Key('inventoryTransferDetails')),
@@ -285,6 +299,13 @@ void main() {
     expect(
       find.byKey(const Key('inventoryTransferHistorySearchField')),
       findsOneWidget,
+    );
+    expect(
+      find.ancestor(
+        of: find.byKey(const Key('inventoryTransferHistorySearchField')),
+        matching: find.byType(SingleChildScrollView),
+      ),
+      findsNothing,
     );
     final historyTable = tester.widget<AppDataTable>(
       find.byKey(const Key('inventoryTransferHistoryTable')),

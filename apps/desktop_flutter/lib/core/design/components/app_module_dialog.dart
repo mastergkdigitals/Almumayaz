@@ -19,7 +19,9 @@ class AppModuleDialog extends StatelessWidget {
     this.actions = const [],
     this.actionsKey,
     this.width = AppDialogSizes.large,
-  });
+    this.bodyScrollable = true,
+    this.maxHeightFactor = AppDialogSizes.maxHeightFactor,
+  }) : assert(maxHeightFactor > 0 && maxHeightFactor <= 1);
 
   final String title;
   final String? subtitle;
@@ -33,6 +35,8 @@ class AppModuleDialog extends StatelessWidget {
   final List<Widget> actions;
   final Key? actionsKey;
   final double width;
+  final bool bodyScrollable;
+  final double maxHeightFactor;
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +57,7 @@ class AppModuleDialog extends StatelessWidget {
         child: ConstrainedBox(
           constraints: BoxConstraints(
             maxWidth: width,
-            maxHeight: viewport.height * AppDialogSizes.maxHeightFactor,
+            maxHeight: viewport.height * maxHeightFactor,
           ),
           child: DecoratedBox(
             decoration: BoxDecoration(
@@ -77,10 +81,15 @@ class AppModuleDialog extends StatelessWidget {
                   ),
                   const Divider(height: 1, color: AppColors.border),
                   Flexible(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(AppSpacing.lg),
-                      child: child,
-                    ),
+                    child: bodyScrollable
+                        ? SingleChildScrollView(
+                            padding: const EdgeInsets.all(AppSpacing.lg),
+                            child: child,
+                          )
+                        : Padding(
+                            padding: const EdgeInsets.all(AppSpacing.lg),
+                            child: child,
+                          ),
                   ),
                   if (actions.isNotEmpty) ...[
                     const Divider(height: 1, color: AppColors.border),
