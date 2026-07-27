@@ -13,6 +13,14 @@ const purchaseWarehouseNames = <String>[
 const _purchaseTextColor = Color(0xFF111827);
 const _purchaseAddColor = Color(0xFF16A34A);
 const _purchaseDeleteColor = Color(0xFFDC2626);
+const _purchaseHeaderHeight = 46.0;
+const _purchaseRowHeight = 54.0;
+const _purchaseSummaryHeight = 46.0;
+const _purchaseCellHeight = 38.0;
+const _purchaseOuterRadius = 18.0;
+const _purchaseCellRadius = 3.0;
+const _purchaseEdgeInset = 6.0;
+const _purchaseWidthSafetyBuffer = 8.0;
 
 final _purchaseSelectedTint = Color.lerp(
   AppModulePalettes.purchases.light,
@@ -24,6 +32,60 @@ final _purchaseHoverTint = Color.lerp(
   Colors.white,
   0.78,
 )!;
+final _purchaseHeaderColor = Color.lerp(
+  AppModulePalettes.purchases.light,
+  Colors.white,
+  0.82,
+)!;
+final _purchaseSummaryColor = Color.lerp(
+  _purchaseHeaderColor,
+  Colors.white,
+  0.48,
+)!;
+final _purchaseCellColor = Color.lerp(
+  _purchaseHeaderColor,
+  Colors.white,
+  0.82,
+)!;
+final _purchasePanelBorder = Color.lerp(
+  AppModulePalettes.purchases.middle,
+  Colors.white,
+  0.62,
+)!;
+final _purchaseOuterBorder = Color.lerp(
+  _purchasePanelBorder,
+  AppModulePalettes.purchases.middle,
+  0.22,
+)!;
+final _purchaseCellBorder = Color.lerp(
+  const Color(0xFFE5E7EB),
+  _purchasePanelBorder,
+  0.45,
+)!;
+
+const _purchaseColumns = <_PurchaseGridColumn>[
+  _PurchaseGridColumn('ت', 54),
+  _PurchaseGridColumn('رمز المادة', 126),
+  _PurchaseGridColumn('اسم المادة', 190),
+  _PurchaseGridColumn('المخزن', 138),
+  _PurchaseGridColumn('الكمية', 104),
+  _PurchaseGridColumn('الحاوية', 104),
+  _PurchaseGridColumn('سعر الشراء', 126),
+  _PurchaseGridColumn('الخصم', 104),
+  _PurchaseGridColumn('السعر بعد الخصم', 146),
+  _PurchaseGridColumn('الإجمالي', 116),
+  _PurchaseGridColumn('الكلفة', 104),
+  _PurchaseGridColumn('إجمالي الكلفة', 132),
+  _PurchaseGridColumn('سعر البيع', 116),
+  _PurchaseGridColumn('', 82),
+];
+
+class _PurchaseGridColumn {
+  const _PurchaseGridColumn(this.label, this.width);
+
+  final String label;
+  final double width;
+}
 
 class PurchaseItemSeed {
   const PurchaseItemSeed({
@@ -237,10 +299,12 @@ class PurchaseItemsTable extends StatefulWidget {
 
 class _PurchaseItemsTableState extends State<PurchaseItemsTable> {
   final _verticalScrollController = ScrollController();
+  final _horizontalScrollController = ScrollController();
 
   @override
   void dispose() {
     _verticalScrollController.dispose();
+    _horizontalScrollController.dispose();
     super.dispose();
   }
 
@@ -272,171 +336,442 @@ class _PurchaseItemsTableState extends State<PurchaseItemsTable> {
             final tableHeight =
                 constraints.hasBoundedHeight ? constraints.maxHeight : 308.0;
 
-            return AppInvoiceItemsTable.purchase(
+            return _PurchaseInvoiceGrid(
               tableKey: Key('${widget.keyPrefix}TableSurface'),
               height: tableHeight,
+              keyPrefix: widget.keyPrefix,
               verticalScrollController: _verticalScrollController,
-              rows: [
-                for (var index = 0;
-                    index < widget.controller.rows.length;
-                    index++)
-                  _row(
-                    widget.controller.rows[index],
-                    index,
-                    index == widget.controller.rows.length - 1,
-                  ),
-              ],
-              summaryCells: _summaryCells(),
+              horizontalScrollController: _horizontalScrollController,
+              rows: widget.controller.rows,
+              quantityTotal: widget.controller.quantityTotal,
+              discountTotal: widget.controller.discountTotal,
+              subtotal: widget.controller.subtotal,
+              totalCost: widget.controller.totalCost,
+              money: _money,
+              onChanged: widget.controller.rowChanged,
+              onAddRow: _addRow,
+              onDeleteRow: widget.controller.removeRow,
             );
           },
         );
       },
     );
   }
+}
 
-  AppTableRow _row(
-    PurchaseItemRow row,
-    int index,
-    bool isLastRow,
-  ) {
-    final keyPrefix = widget.keyPrefix;
+class _PurchaseInvoiceGrid extends StatelessWidget {
+  const _PurchaseInvoiceGrid({
+    required this.tableKey,
+    required this.height,
+    required this.keyPrefix,
+    required this.verticalScrollController,
+    required this.horizontalScrollController,
+    required this.rows,
+    required this.quantityTotal,
+    required this.discountTotal,
+    required this.subtotal,
+    required this.totalCost,
+    required this.money,
+    required this.onChanged,
+    required this.onAddRow,
+    required this.onDeleteRow,
+  });
 
-    return AppTableRow(
-      rowKey: Key('${keyPrefix}Row-${row.id}'),
-      cells: [
-        Text(
-          '${index + 1}',
-          key: Key('${keyPrefix}Index-${row.id}'),
-          textDirection: TextDirection.ltr,
-        ),
-        _PurchasePlainField(
-          fieldKey: Key('${keyPrefix}Code-${row.id}'),
-          controller: row.code,
-          onChanged: widget.controller.rowChanged,
-        ),
-        _PurchasePlainField(
-          fieldKey: Key('${keyPrefix}Name-${row.id}'),
-          controller: row.name,
-          onChanged: widget.controller.rowChanged,
-        ),
-        _PurchaseWarehouseDropdown(
-          fieldKey: Key('${keyPrefix}Warehouse-${row.id}'),
-          value: row.warehouse,
-          onChanged: (value) {
-            row.warehouse = value;
-            widget.controller.rowChanged();
-          },
-        ),
-        _PurchasePlainField(
-          fieldKey: Key('${keyPrefix}Quantity-${row.id}'),
-          controller: row.quantity,
-          numeric: true,
-          wholeNumber: true,
-          onChanged: widget.controller.rowChanged,
-        ),
-        _PurchasePlainField(
-          fieldKey: Key('${keyPrefix}Container-${row.id}'),
-          controller: row.container,
-          numeric: true,
-          wholeNumber: true,
-          onChanged: widget.controller.rowChanged,
-        ),
-        _PurchasePlainField(
-          fieldKey: Key('${keyPrefix}PurchasePrice-${row.id}'),
-          controller: row.purchasePrice,
-          numeric: true,
-          onChanged: widget.controller.rowChanged,
-        ),
-        _PurchasePlainField(
-          fieldKey: Key('${keyPrefix}Discount-${row.id}'),
-          controller: row.discount,
-          numeric: true,
-          onChanged: widget.controller.rowChanged,
-        ),
-        _PurchaseValue(
-          valueKey: Key('${keyPrefix}PriceAfterDiscount-${row.id}'),
-          value: _money(row.priceAfterDiscount),
-        ),
-        _PurchaseValue(
-          valueKey: Key('${keyPrefix}Total-${row.id}'),
-          value: _money(row.lineTotal),
-        ),
-        _PurchaseValue(
-          valueKey: Key('${keyPrefix}Cost-${row.id}'),
-          value: _money(row.unitCost),
-        ),
-        _PurchaseValue(
-          valueKey: Key('${keyPrefix}TotalCost-${row.id}'),
-          value: _money(row.totalCost),
-        ),
-        _PurchasePlainField(
-          fieldKey: Key('${keyPrefix}SalePrice-${row.id}'),
-          controller: row.salePrice,
-          numeric: true,
-          onChanged: widget.controller.rowChanged,
-        ),
-        AppTableActionButton(
-          key: Key(
-            isLastRow
-                ? '${keyPrefix}Add-${row.id}'
-                : '${keyPrefix}Delete-${row.id}',
-          ),
-          tooltipKey: Key(
-            isLastRow
-                ? '${keyPrefix}AddTooltip-${row.id}'
-                : '${keyPrefix}DeleteTooltip-${row.id}',
-          ),
-          icon: isLastRow ? Icons.add_rounded : Icons.close_rounded,
-          tooltip: isLastRow ? 'إضافة سطر' : 'حذف السطر',
-          variant:
-              isLastRow ? AppButtonVariant.success : AppButtonVariant.danger,
-          backgroundColor:
-              isLastRow ? _purchaseAddColor : _purchaseDeleteColor,
-          foregroundColor: Colors.white,
-          size: 32,
-          iconSize: 19,
-          borderRadius: 9,
-          onPressed:
-              isLastRow ? _addRow : () => widget.controller.removeRow(index),
-        ),
-      ],
+  final Key tableKey;
+  final double height;
+  final String keyPrefix;
+  final ScrollController verticalScrollController;
+  final ScrollController horizontalScrollController;
+  final List<PurchaseItemRow> rows;
+  final double quantityTotal;
+  final double discountTotal;
+  final double subtotal;
+  final double totalCost;
+  final String Function(double value) money;
+  final VoidCallback onChanged;
+  final VoidCallback onAddRow;
+  final ValueChanged<int> onDeleteRow;
+
+  @override
+  Widget build(BuildContext context) {
+    final contentWidth = _purchaseColumns.fold<double>(
+      0,
+      (sum, column) => sum + column.width,
     );
-  }
+    final safeContentWidth =
+        contentWidth +
+        (_purchaseEdgeInset * 2) +
+        _purchaseWidthSafetyBuffer;
+    final minimumHeight =
+        _purchaseHeaderHeight +
+        _purchaseRowHeight +
+        _purchaseSummaryHeight;
+    final tableHeight = height < minimumHeight ? minimumHeight : height;
 
-  List<Widget> _summaryCells() {
-    return [
-      const SizedBox.shrink(),
-      const SizedBox.shrink(),
-      const Text('المجموع'),
-      const SizedBox.shrink(),
-      Text(
-        AppFormatters.quantity(widget.controller.quantityTotal.round()),
-        key: Key('${widget.keyPrefix}QuantityTotal'),
-      ),
-      const SizedBox.shrink(),
-      const SizedBox.shrink(),
-      Text(
-        _money(widget.controller.discountTotal),
-        key: Key('${widget.keyPrefix}DiscountTotal'),
-      ),
-      const SizedBox.shrink(),
-      Text(
-        _money(widget.controller.subtotal),
-        key: Key('${widget.keyPrefix}Subtotal'),
-      ),
-      const SizedBox.shrink(),
-      Text(
-        _money(widget.controller.totalCost),
-        key: Key('${widget.keyPrefix}TotalCost'),
-      ),
-      const SizedBox.shrink(),
-      const SizedBox.shrink(),
-    ];
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.hasBoundedWidth
+            ? constraints.maxWidth
+            : safeContentWidth;
+        final tableWidth = availableWidth > safeContentWidth
+            ? availableWidth
+            : safeContentWidth;
+        final occupiedWidth =
+            contentWidth + (_purchaseEdgeInset * 2);
+        final trailingWidth =
+            tableWidth > occupiedWidth ? tableWidth - occupiedWidth : 0.0;
+
+        final table = SizedBox(
+          width: tableWidth,
+          height: tableHeight,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _PurchaseGridHeaderRow(
+                keyPrefix: keyPrefix,
+                columns: _purchaseColumns,
+                trailingWidth: trailingWidth,
+              ),
+              Expanded(
+                child: ColoredBox(
+                  color: AppColors.surface,
+                  child: Scrollbar(
+                    controller: verticalScrollController,
+                    child: ListView.builder(
+                      controller: verticalScrollController,
+                      padding: EdgeInsets.zero,
+                      itemCount: rows.length,
+                      itemExtent: _purchaseRowHeight,
+                      itemBuilder: (context, index) {
+                        final row = rows[index];
+                        return _PurchaseGridBodyRow(
+                          key: Key('${keyPrefix}Row-${row.id}'),
+                          keyPrefix: keyPrefix,
+                          columns: _purchaseColumns,
+                          trailingWidth: trailingWidth,
+                          row: row,
+                          rowNumber: index + 1,
+                          isLastRow: index == rows.length - 1,
+                          money: money,
+                          onChanged: onChanged,
+                          onAddRow: onAddRow,
+                          onDeleteRow: () => onDeleteRow(index),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              _PurchaseGridSummaryRow(
+                keyPrefix: keyPrefix,
+                columns: _purchaseColumns,
+                trailingWidth: trailingWidth,
+                quantityTotal: quantityTotal,
+                discountTotal: discountTotal,
+                subtotal: subtotal,
+                totalCost: totalCost,
+                money: money,
+              ),
+            ],
+          ),
+        );
+
+        return Container(
+          key: tableKey,
+          height: tableHeight,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(_purchaseOuterRadius),
+          ),
+          foregroundDecoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(_purchaseOuterRadius),
+            border: Border.all(
+              color: _purchaseOuterBorder,
+              width: 1.4,
+            ),
+          ),
+          child: Scrollbar(
+            controller: horizontalScrollController,
+            scrollbarOrientation: ScrollbarOrientation.bottom,
+            child: SingleChildScrollView(
+              key: Key('${keyPrefix}HorizontalScroll'),
+              controller: horizontalScrollController,
+              scrollDirection: Axis.horizontal,
+              child: table,
+            ),
+          ),
+        );
+      },
+    );
   }
 }
 
-class _PurchasePlainField extends StatelessWidget {
-  const _PurchasePlainField({
+class _PurchaseGridHeaderRow extends StatelessWidget {
+  const _PurchaseGridHeaderRow({
+    required this.keyPrefix,
+    required this.columns,
+    required this.trailingWidth,
+  });
+
+  final String keyPrefix;
+  final List<_PurchaseGridColumn> columns;
+  final double trailingWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: Key('${keyPrefix}TableHeader'),
+      height: _purchaseHeaderHeight,
+      decoration: BoxDecoration(
+        color: _purchaseHeaderColor,
+        border: Border(
+          bottom: BorderSide(color: _purchasePanelBorder),
+        ),
+      ),
+      child: Directionality(
+        textDirection: TextDirection.rtl,
+        child: Row(
+          children: [
+            const SizedBox(width: _purchaseEdgeInset),
+            for (final column in columns)
+              SizedBox(
+                width: column.width,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Center(
+                    child: Text(
+                      column.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: _purchaseTextColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            if (trailingWidth > 0) SizedBox(width: trailingWidth),
+            const SizedBox(width: _purchaseEdgeInset),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PurchaseGridBodyRow extends StatelessWidget {
+  const _PurchaseGridBodyRow({
+    required this.keyPrefix,
+    required this.columns,
+    required this.trailingWidth,
+    required this.row,
+    required this.rowNumber,
+    required this.isLastRow,
+    required this.money,
+    required this.onChanged,
+    required this.onAddRow,
+    required this.onDeleteRow,
+    super.key,
+  });
+
+  final String keyPrefix;
+  final List<_PurchaseGridColumn> columns;
+  final double trailingWidth;
+  final PurchaseItemRow row;
+  final int rowNumber;
+  final bool isLastRow;
+  final String Function(double value) money;
+  final VoidCallback onChanged;
+  final VoidCallback onAddRow;
+  final VoidCallback onDeleteRow;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: _purchaseRowHeight,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border(
+          bottom: BorderSide(color: _purchasePanelBorder),
+        ),
+      ),
+      child: Directionality(
+        textDirection: TextDirection.rtl,
+        child: Row(
+          children: [
+            const SizedBox(width: _purchaseEdgeInset),
+            _PurchaseGridValueCell(
+              width: columns[0].width,
+              frameKey: Key('${keyPrefix}IndexCell-${row.id}'),
+              valueKey: Key('${keyPrefix}Index-${row.id}'),
+              value: '$rowNumber',
+            ),
+            _PurchaseGridEditorCell(
+              width: columns[1].width,
+              frameKey: Key('${keyPrefix}CodeCell-${row.id}'),
+              fieldKey: Key('${keyPrefix}Code-${row.id}'),
+              controller: row.code,
+              onChanged: onChanged,
+            ),
+            _PurchaseGridEditorCell(
+              width: columns[2].width,
+              frameKey: Key('${keyPrefix}NameCell-${row.id}'),
+              fieldKey: Key('${keyPrefix}Name-${row.id}'),
+              controller: row.name,
+              onChanged: onChanged,
+            ),
+            _PurchaseGridCellFrame(
+              width: columns[3].width,
+              frameKey: Key('${keyPrefix}WarehouseCell-${row.id}'),
+              child: _PurchaseWarehouseDropdown(
+                fieldKey: Key('${keyPrefix}Warehouse-${row.id}'),
+                value: row.warehouse,
+                onChanged: (value) {
+                  row.warehouse = value;
+                  onChanged();
+                },
+              ),
+            ),
+            _PurchaseGridEditorCell(
+              width: columns[4].width,
+              frameKey: Key('${keyPrefix}QuantityCell-${row.id}'),
+              fieldKey: Key('${keyPrefix}Quantity-${row.id}'),
+              controller: row.quantity,
+              numeric: true,
+              wholeNumber: true,
+              onChanged: onChanged,
+            ),
+            _PurchaseGridEditorCell(
+              width: columns[5].width,
+              frameKey: Key('${keyPrefix}ContainerCell-${row.id}'),
+              fieldKey: Key('${keyPrefix}Container-${row.id}'),
+              controller: row.container,
+              numeric: true,
+              wholeNumber: true,
+              onChanged: onChanged,
+            ),
+            _PurchaseGridEditorCell(
+              width: columns[6].width,
+              frameKey: Key('${keyPrefix}PurchasePriceCell-${row.id}'),
+              fieldKey: Key('${keyPrefix}PurchasePrice-${row.id}'),
+              controller: row.purchasePrice,
+              numeric: true,
+              onChanged: onChanged,
+            ),
+            _PurchaseGridEditorCell(
+              width: columns[7].width,
+              frameKey: Key('${keyPrefix}DiscountCell-${row.id}'),
+              fieldKey: Key('${keyPrefix}Discount-${row.id}'),
+              controller: row.discount,
+              numeric: true,
+              onChanged: onChanged,
+            ),
+            _PurchaseGridValueCell(
+              width: columns[8].width,
+              frameKey: Key(
+                '${keyPrefix}PriceAfterDiscountCell-${row.id}',
+              ),
+              valueKey: Key(
+                '${keyPrefix}PriceAfterDiscount-${row.id}',
+              ),
+              value: money(row.priceAfterDiscount),
+            ),
+            _PurchaseGridValueCell(
+              width: columns[9].width,
+              frameKey: Key('${keyPrefix}TotalCell-${row.id}'),
+              valueKey: Key('${keyPrefix}Total-${row.id}'),
+              value: money(row.lineTotal),
+            ),
+            _PurchaseGridValueCell(
+              width: columns[10].width,
+              frameKey: Key('${keyPrefix}CostCell-${row.id}'),
+              valueKey: Key('${keyPrefix}Cost-${row.id}'),
+              value: money(row.unitCost),
+            ),
+            _PurchaseGridValueCell(
+              width: columns[11].width,
+              frameKey: Key('${keyPrefix}TotalCostCell-${row.id}'),
+              valueKey: Key('${keyPrefix}TotalCost-${row.id}'),
+              value: money(row.totalCost),
+            ),
+            _PurchaseGridEditorCell(
+              width: columns[12].width,
+              frameKey: Key('${keyPrefix}SalePriceCell-${row.id}'),
+              fieldKey: Key('${keyPrefix}SalePrice-${row.id}'),
+              controller: row.salePrice,
+              numeric: true,
+              onChanged: onChanged,
+            ),
+            _PurchaseGridActionCell(
+              width: columns[13].width,
+              actionKey: Key(
+                isLastRow
+                    ? '${keyPrefix}Add-${row.id}'
+                    : '${keyPrefix}Delete-${row.id}',
+              ),
+              tooltipKey: Key(
+                isLastRow
+                    ? '${keyPrefix}AddTooltip-${row.id}'
+                    : '${keyPrefix}DeleteTooltip-${row.id}',
+              ),
+              isAddAction: isLastRow,
+              onPressed: isLastRow ? onAddRow : onDeleteRow,
+            ),
+            if (trailingWidth > 0) SizedBox(width: trailingWidth),
+            const SizedBox(width: _purchaseEdgeInset),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PurchaseGridCellFrame extends StatelessWidget {
+  const _PurchaseGridCellFrame({
+    required this.width,
+    required this.frameKey,
+    required this.child,
+  });
+
+  final double width;
+  final Key frameKey;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 5),
+        child: Container(
+          key: frameKey,
+          height: _purchaseCellHeight,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: _purchaseCellColor,
+            borderRadius: BorderRadius.circular(_purchaseCellRadius),
+          ),
+          foregroundDecoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(_purchaseCellRadius),
+            border: Border.all(
+              color: _purchaseCellBorder,
+            ),
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+class _PurchaseGridEditorCell extends StatefulWidget {
+  const _PurchaseGridEditorCell({
+    required this.width,
+    required this.frameKey,
     required this.fieldKey,
     required this.controller,
     required this.onChanged,
@@ -444,6 +779,8 @@ class _PurchasePlainField extends StatelessWidget {
     this.wholeNumber = false,
   });
 
+  final double width;
+  final Key frameKey;
   final Key fieldKey;
   final TextEditingController controller;
   final VoidCallback onChanged;
@@ -451,28 +788,55 @@ class _PurchasePlainField extends StatelessWidget {
   final bool wholeNumber;
 
   @override
+  State<_PurchaseGridEditorCell> createState() =>
+      _PurchaseGridEditorCellState();
+}
+
+class _PurchaseGridEditorCellState
+    extends State<_PurchaseGridEditorCell> {
+  late final FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode = FocusNode(debugLabel: 'purchaseInvoiceCell');
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final inputFormatters = numeric
+    final inputFormatters = widget.numeric
         ? <TextInputFormatter>[
-            if (wholeNumber)
+            if (widget.wholeNumber)
               const AppIntegerInputFormatter()
             else
               const AppMoneyInputFormatter(),
           ]
         : null;
 
-    return SizedBox(
-      height: AppInvoiceItemsTable.cellHeight,
+    return _PurchaseGridCellFrame(
+      width: widget.width,
+      frameKey: widget.frameKey,
       child: TextField(
-        key: fieldKey,
-        controller: controller,
-        keyboardType: numeric
-            ? TextInputType.numberWithOptions(decimal: !wholeNumber)
+        key: widget.fieldKey,
+        controller: widget.controller,
+        focusNode: _focusNode,
+        keyboardType: widget.numeric
+            ? TextInputType.numberWithOptions(
+                decimal: !widget.wholeNumber,
+              )
             : TextInputType.text,
         inputFormatters: inputFormatters,
         maxLines: 1,
-        textAlign: numeric ? TextAlign.center : TextAlign.right,
-        textDirection: numeric ? TextDirection.ltr : TextDirection.rtl,
+        textInputAction: TextInputAction.next,
+        textAlign: widget.numeric ? TextAlign.center : TextAlign.right,
+        textDirection:
+            widget.numeric ? TextDirection.ltr : TextDirection.rtl,
         cursorColor: AppColors.cursor,
         style: const TextStyle(
           color: _purchaseTextColor,
@@ -480,6 +844,9 @@ class _PurchasePlainField extends StatelessWidget {
           fontWeight: FontWeight.w700,
         ),
         decoration: const InputDecoration(
+          filled: false,
+          fillColor: Colors.transparent,
+          hoverColor: Colors.transparent,
           border: InputBorder.none,
           enabledBorder: InputBorder.none,
           focusedBorder: InputBorder.none,
@@ -492,30 +859,201 @@ class _PurchasePlainField extends StatelessWidget {
             vertical: 7,
           ),
         ),
-        onChanged: (_) => onChanged(),
+        onChanged: (_) => widget.onChanged(),
+        onSubmitted: (_) => FocusScope.of(context).nextFocus(),
       ),
     );
   }
 }
 
-class _PurchaseValue extends StatelessWidget {
-  const _PurchaseValue({
+class _PurchaseGridValueCell extends StatelessWidget {
+  const _PurchaseGridValueCell({
+    required this.width,
+    required this.frameKey,
     required this.valueKey,
     required this.value,
   });
 
+  final double width;
+  final Key frameKey;
   final Key valueKey;
   final String value;
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      value,
-      key: valueKey,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      textAlign: TextAlign.center,
-      textDirection: TextDirection.ltr,
+    return _PurchaseGridCellFrame(
+      width: width,
+      frameKey: frameKey,
+      child: Center(
+        child: Text(
+          value,
+          key: valueKey,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          textDirection: TextDirection.ltr,
+          style: const TextStyle(
+            color: _purchaseTextColor,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PurchaseGridActionCell extends StatelessWidget {
+  const _PurchaseGridActionCell({
+    required this.width,
+    required this.actionKey,
+    required this.tooltipKey,
+    required this.isAddAction,
+    required this.onPressed,
+  });
+
+  final double width;
+  final Key actionKey;
+  final Key tooltipKey;
+  final bool isAddAction;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 7),
+        child: Center(
+          child: AppTableActionButton(
+            key: actionKey,
+            tooltipKey: tooltipKey,
+            icon:
+                isAddAction ? Icons.add_rounded : Icons.close_rounded,
+            tooltip: isAddAction ? 'إضافة سطر' : 'حذف السطر',
+            variant: isAddAction
+                ? AppButtonVariant.success
+                : AppButtonVariant.danger,
+            backgroundColor:
+                isAddAction ? _purchaseAddColor : _purchaseDeleteColor,
+            foregroundColor: Colors.white,
+            size: 32,
+            iconSize: 19,
+            borderRadius: 9,
+            onPressed: onPressed,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PurchaseGridSummaryRow extends StatelessWidget {
+  const _PurchaseGridSummaryRow({
+    required this.keyPrefix,
+    required this.columns,
+    required this.trailingWidth,
+    required this.quantityTotal,
+    required this.discountTotal,
+    required this.subtotal,
+    required this.totalCost,
+    required this.money,
+  });
+
+  final String keyPrefix;
+  final List<_PurchaseGridColumn> columns;
+  final double trailingWidth;
+  final double quantityTotal;
+  final double discountTotal;
+  final double subtotal;
+  final double totalCost;
+  final String Function(double value) money;
+
+  @override
+  Widget build(BuildContext context) {
+    final values = <Widget>[
+      const SizedBox.shrink(),
+      const SizedBox.shrink(),
+      const Text(
+        'المجموع',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+        textDirection: TextDirection.rtl,
+      ),
+      const SizedBox.shrink(),
+      Text(
+        AppFormatters.quantity(quantityTotal.round()),
+        key: Key('${keyPrefix}QuantityTotal'),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+        textDirection: TextDirection.ltr,
+      ),
+      const SizedBox.shrink(),
+      const SizedBox.shrink(),
+      Text(
+        money(discountTotal),
+        key: Key('${keyPrefix}DiscountTotal'),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+        textDirection: TextDirection.ltr,
+      ),
+      const SizedBox.shrink(),
+      Text(
+        money(subtotal),
+        key: Key('${keyPrefix}Subtotal'),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+        textDirection: TextDirection.ltr,
+      ),
+      const SizedBox.shrink(),
+      Text(
+        money(totalCost),
+        key: Key('${keyPrefix}TotalCost'),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+        textDirection: TextDirection.ltr,
+      ),
+      const SizedBox.shrink(),
+      const SizedBox.shrink(),
+    ];
+
+    return Container(
+      key: Key('${keyPrefix}TableSummary'),
+      height: _purchaseSummaryHeight,
+      color: _purchaseSummaryColor,
+      child: Directionality(
+        textDirection: TextDirection.rtl,
+        child: Row(
+          children: [
+            const SizedBox(width: _purchaseEdgeInset),
+            for (var index = 0; index < columns.length; index++)
+              SizedBox(
+                width: columns[index].width,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Center(
+                    child: DefaultTextStyle(
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: _purchaseTextColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                      child: values[index],
+                    ),
+                  ),
+                ),
+              ),
+            if (trailingWidth > 0) SizedBox(width: trailingWidth),
+            const SizedBox(width: _purchaseEdgeInset),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -655,7 +1193,7 @@ class _PurchaseWarehouseDropdownState
   Widget build(BuildContext context) {
     return SizedBox(
       key: widget.fieldKey,
-      height: AppInvoiceItemsTable.cellHeight,
+      height: _purchaseCellHeight,
       child: CompositedTransformTarget(
         key: _anchorKey,
         link: _layerLink,
