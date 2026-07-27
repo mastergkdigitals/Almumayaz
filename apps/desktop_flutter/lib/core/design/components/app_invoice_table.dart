@@ -99,6 +99,7 @@ class AppInvoiceItemsTable extends StatelessWidget {
           ? AppModulePalettes.purchases
           : AppModulePalettes.sales,
       expandColumns: !isPurchase,
+      shrinkColumnsToFit: isPurchase,
       legacyPurchase: isPurchase,
     );
   }
@@ -140,6 +141,7 @@ class _InvoiceGrid extends StatefulWidget {
     required this.isLoading,
     required this.palette,
     required this.expandColumns,
+    required this.shrinkColumnsToFit,
     required this.legacyPurchase,
     super.key,
   });
@@ -152,6 +154,7 @@ class _InvoiceGrid extends StatefulWidget {
   final bool isLoading;
   final AppModulePalette palette;
   final bool expandColumns;
+  final bool shrinkColumnsToFit;
   final bool legacyPurchase;
 
   @override
@@ -227,10 +230,23 @@ class _InvoiceGridState extends State<_InvoiceGrid> {
         final availableWidth = constraints.hasBoundedWidth
             ? constraints.maxWidth
             : safeContentWidth;
-        final tableWidth = math.max(availableWidth, safeContentWidth);
-        final columns = widget.expandColumns
-            ? _expandedColumns(widget.columns, tableWidth)
-            : widget.columns;
+        final canShrinkColumns =
+            widget.shrinkColumnsToFit &&
+            availableWidth >
+                (AppInvoiceItemsTable.edgeInset * 2) +
+                    AppInvoiceItemsTable.widthSafetyBuffer &&
+            availableWidth < safeContentWidth;
+        final tableWidth = canShrinkColumns
+            ? availableWidth
+            : math.max(availableWidth, safeContentWidth);
+        final List<AppInvoiceTableColumn> columns;
+        if (canShrinkColumns) {
+          columns = _shrunkColumns(widget.columns, tableWidth);
+        } else if (widget.expandColumns) {
+          columns = _expandedColumns(widget.columns, tableWidth);
+        } else {
+          columns = widget.columns;
+        }
         final occupiedWidth = columns.fold<double>(
               0,
               (sum, column) => sum + column.width,
@@ -398,6 +414,30 @@ class _InvoiceGridState extends State<_InvoiceGrid> {
         column.withWidth(
           column.width + (extraWidth * (column.grow / totalGrow)),
         ),
+    ];
+  }
+
+  List<AppInvoiceTableColumn> _shrunkColumns(
+    List<AppInvoiceTableColumn> columns,
+    double tableWidth,
+  ) {
+    final baseContentWidth = columns.fold<double>(
+      0,
+      (sum, column) => sum + column.width,
+    );
+    final targetContentWidth =
+        tableWidth -
+        (AppInvoiceItemsTable.edgeInset * 2) -
+        AppInvoiceItemsTable.widthSafetyBuffer;
+
+    if (targetContentWidth <= 0 || targetContentWidth >= baseContentWidth) {
+      return columns;
+    }
+
+    final widthScale = targetContentWidth / baseContentWidth;
+    return [
+      for (final column in columns)
+        column.withWidth(column.width * widthScale),
     ];
   }
 }

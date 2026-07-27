@@ -24,13 +24,6 @@ final _purchaseHoverTint = Color.lerp(
   Colors.white,
   0.78,
 )!;
-final _purchaseTableNaturalWidth =
-    AppInvoiceItemsTable.purchaseColumns.fold<double>(
-      0,
-      (sum, column) => sum + column.width,
-    ) +
-    (AppInvoiceItemsTable.edgeInset * 2) +
-    AppInvoiceItemsTable.widthSafetyBuffer;
 
 class PurchaseItemSeed {
   const PurchaseItemSeed({
@@ -278,20 +271,10 @@ class _PurchaseItemsTableState extends State<PurchaseItemsTable> {
           builder: (context, constraints) {
             final tableHeight =
                 constraints.hasBoundedHeight ? constraints.maxHeight : 308.0;
-            final availableWidth = constraints.hasBoundedWidth
-                ? constraints.maxWidth
-                : _purchaseTableNaturalWidth;
-            // Preserve the old grid proportions while fitting its full
-            // 14-column width inside the new app's fixed desktop viewport.
-            final tableScale = availableWidth > 0 &&
-                    availableWidth < _purchaseTableNaturalWidth
-                ? availableWidth / _purchaseTableNaturalWidth
-                : 1.0;
-            final unscaledHeight = tableHeight / tableScale;
 
-            final table = AppInvoiceItemsTable.purchase(
+            return AppInvoiceItemsTable.purchase(
               tableKey: Key('${widget.keyPrefix}TableSurface'),
-              height: unscaledHeight,
+              height: tableHeight,
               verticalScrollController: _verticalScrollController,
               rows: [
                 for (var index = 0;
@@ -304,19 +287,6 @@ class _PurchaseItemsTableState extends State<PurchaseItemsTable> {
                   ),
               ],
               summaryCells: _summaryCells(),
-            );
-
-            if (tableScale == 1) return table;
-
-            return FittedBox(
-              key: Key('${widget.keyPrefix}TableFit'),
-              fit: BoxFit.contain,
-              alignment: Alignment.topRight,
-              child: SizedBox(
-                width: _purchaseTableNaturalWidth,
-                height: unscaledHeight,
-                child: table,
-              ),
             );
           },
         );

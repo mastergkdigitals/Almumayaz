@@ -11,7 +11,7 @@ void main() {
     expect(find.byKey(const Key('purchaseScreen')), findsOneWidget);
     expect(find.byKey(const Key('purchaseTintBackground')), findsOneWidget);
     expect(find.byKey(const Key('purchaseItemsTable')), findsOneWidget);
-    expect(find.byKey(const Key('purchaseTableFit')), findsOneWidget);
+    expect(find.byKey(const Key('purchaseTableFit')), findsNothing);
     expect(find.byKey(const Key('purchaseTableSurface')), findsOneWidget);
     expect(find.byKey(const Key('purchaseCode-r1')), findsOneWidget);
     expect(find.byKey(const Key('purchaseName-r1')), findsOneWidget);
@@ -32,6 +32,16 @@ void main() {
         tester.getRect(find.byKey(const Key('purchaseAdd-r1')));
     expect(addButtonRect.left, greaterThanOrEqualTo(tableRect.left - 0.5));
     expect(addButtonRect.right, lessThanOrEqualTo(tableRect.right + 0.5));
+    await tester.tap(find.byKey(const Key('purchaseCode-r1')));
+    await tester.pump();
+    final codeRect =
+        tester.getRect(find.byKey(const Key('purchaseCode-r1')));
+    final nameRect =
+        tester.getRect(find.byKey(const Key('purchaseName-r1')));
+    final warehouseRect =
+        tester.getRect(find.byKey(const Key('purchaseWarehouse-r1')));
+    expect(codeRect.overlaps(nameRect), isFalse);
+    expect(nameRect.overlaps(warehouseRect), isFalse);
     expect(
       find.descendant(
         of: find.byKey(const Key('purchaseScreen')),
