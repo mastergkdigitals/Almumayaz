@@ -105,6 +105,13 @@ void main() {
       );
       expect(table.accentColor, AppModuleColors.warehouses);
       expect(table.alternatingRowColor, isNull);
+      expect(
+        table.selectedRowColor,
+        Color.alphaBlend(
+          AppModuleColors.warehouses.withAlpha(32),
+          AppColors.surface,
+        ),
+      );
       expect(table.rows, hasLength(6));
       expect(
         table.columns.map((column) => column.label),

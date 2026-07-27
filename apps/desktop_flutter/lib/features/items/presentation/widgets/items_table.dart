@@ -86,6 +86,11 @@ class _ItemsTableState extends State<ItemsTable> {
 
   @override
   Widget build(BuildContext context) {
+    final selectedTint = Color.alphaBlend(
+      AppModuleColors.warehouses.withAlpha(32),
+      AppColors.surface,
+    );
+
     return AppDataTable(
       key: const Key('itemsTable'),
       height: widget.height,
@@ -94,6 +99,7 @@ class _ItemsTableState extends State<ItemsTable> {
       minimumColumnWidth: 170,
       accentColor: AppModuleColors.warehouses,
       alternatingRowColor: null,
+      selectedRowColor: selectedTint,
       columns: const [
         AppTableColumn(label: 'رمز المادة', flex: 0.8),
         AppTableColumn(label: 'اسم المادة', flex: 1.5),
