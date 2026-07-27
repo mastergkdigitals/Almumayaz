@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../core/design/app_design_system.dart';
+import '../../items/presentation/items_screen.dart';
 import '../domain/warehouse.dart';
 import 'warehouses_controller.dart';
 import 'widgets/warehouse_form.dart';
@@ -242,8 +243,12 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
     AppToast.showDanger(context, 'تم حذف المخزن مؤقتاً');
   }
 
-  void _openProducts() {
-    AppToast.showInfo(context, 'سيتم ربط شاشة المواد لاحقاً');
+  Future<void> _openProducts() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => const ItemsScreen(),
+      ),
+    );
   }
 
   void _openGroupsTypes() {
