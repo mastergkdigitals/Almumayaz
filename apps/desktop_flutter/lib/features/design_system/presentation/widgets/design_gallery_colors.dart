@@ -103,6 +103,16 @@ const _colorFamilies = <_ColorFamily>[
     ],
   ),
   _ColorFamily(
+    name: 'الجوزي',
+    shades: [
+      _ColorShade('#E8D7C3', Color(0xFFE8D7C3)),
+      _ColorShade('#C49A6C', Color(0xFFC49A6C)),
+      _ColorShade('#966338', Color(0xFF966338)),
+      _ColorShade('#6F451F', Color(0xFF6F451F)),
+      _ColorShade('#3B250F', Color(0xFF3B250F)),
+    ],
+  ),
+  _ColorFamily(
     name: 'الأرجواني',
     shades: [
       _ColorShade('#E1BEE7', Color(0xFFE1BEE7)),
