@@ -11,6 +11,7 @@ void main() {
     expect(find.byKey(const Key('purchaseScreen')), findsOneWidget);
     expect(find.byKey(const Key('purchaseTintBackground')), findsOneWidget);
     expect(find.byKey(const Key('purchaseItemsTable')), findsOneWidget);
+    expect(find.byKey(const Key('purchaseTableFit')), findsOneWidget);
     expect(find.byKey(const Key('purchaseTableSurface')), findsOneWidget);
     expect(find.byKey(const Key('purchaseCode-r1')), findsOneWidget);
     expect(find.byKey(const Key('purchaseName-r1')), findsOneWidget);
@@ -24,6 +25,13 @@ void main() {
     expect(find.byKey(const Key('purchaseQuantityTotal')), findsOneWidget);
     expect(find.byKey(const Key('purchaseSubtotal')), findsOneWidget);
     expect(find.byKey(const Key('purchaseTotalCost')), findsOneWidget);
+
+    final tableRect =
+        tester.getRect(find.byKey(const Key('purchaseTableSurface')));
+    final addButtonRect =
+        tester.getRect(find.byKey(const Key('purchaseAdd-r1')));
+    expect(addButtonRect.left, greaterThanOrEqualTo(tableRect.left - 0.5));
+    expect(addButtonRect.right, lessThanOrEqualTo(tableRect.right + 0.5));
     expect(
       find.descendant(
         of: find.byKey(const Key('purchaseScreen')),

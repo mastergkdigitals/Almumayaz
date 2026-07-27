@@ -25,6 +25,13 @@ void main() {
     expect(find.byKey(const Key('salesDiscountTotal')), findsOneWidget);
     expect(find.byKey(const Key('salesTotal')), findsOneWidget);
 
+    final tableRect =
+        tester.getRect(find.byKey(const Key('salesTableSurface')));
+    final addButtonRect =
+        tester.getRect(find.byKey(const Key('salesAdd-r1')));
+    expect(addButtonRect.left, greaterThanOrEqualTo(tableRect.left - 0.5));
+    expect(addButtonRect.right, lessThanOrEqualTo(tableRect.right + 0.5));
+
     final expectedTint = Color.alphaBlend(
       AppModuleColors.sales.withAlpha(12),
       AppColors.surface,
