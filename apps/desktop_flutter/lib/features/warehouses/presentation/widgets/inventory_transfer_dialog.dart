@@ -317,7 +317,7 @@ class _InventoryTransferDialogState
         key: const Key('inventoryTransferExecuteButton'),
         label: 'تنفيذ النقل',
         icon: Icons.swap_horiz_rounded,
-        width: 176,
+        width: 200,
         backgroundColor: AppModuleColors.warehouses,
         onPressed: _canExecute ? _executeTransfer : null,
       ),
@@ -565,7 +565,7 @@ class _ViewSelector extends StatelessWidget {
           label: 'نقل جديد',
           icon: Icons.compare_arrows_rounded,
           variant: AppButtonVariant.navigation,
-          minWidth: 210,
+          minWidth: 180,
           backgroundColor:
               view == _InventoryTransferView.create ? selectedTint : null,
           foregroundColor: view == _InventoryTransferView.create

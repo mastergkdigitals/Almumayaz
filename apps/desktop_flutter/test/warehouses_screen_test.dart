@@ -271,7 +271,7 @@ void main() {
       find.byKey(const Key('inventoryTransferCreateTab')),
     );
     expect(createTab.width, isNull);
-    expect(createTab.minWidth, 210);
+    expect(createTab.minWidth, 180);
     final historyTab = tester.widget<AppButton>(
       find.byKey(const Key('inventoryTransferHistoryTab')),
     );
@@ -297,14 +297,11 @@ void main() {
       sourceStockTable.columns.map((column) => column.label),
       ['رمز المادة', 'اسم المادة', 'الكمية'],
     );
-    expect(
-      tester
-          .widget<AppButton>(
-            find.byKey(const Key('inventoryTransferExecuteButton')),
-          )
-          .onPressed,
-      isNotNull,
+    final executeButton = tester.widget<AppButton>(
+      find.byKey(const Key('inventoryTransferExecuteButton')),
     );
+    expect(executeButton.width, 200);
+    expect(executeButton.onPressed, isNotNull);
 
     await tester.tap(
       find.byKey(const Key('inventoryTransferHistoryTab')),
