@@ -103,6 +103,10 @@ void main() {
       find.byKey(const Key('warehouseInventoryTable')),
       findsOneWidget,
     );
+    expect(
+      find.byKey(const Key('warehouseGroupsTypesButton')),
+      findsNothing,
+    );
 
     final scaffold = tester.widget<Scaffold>(
       find.descendant(
@@ -322,6 +326,13 @@ void main() {
         find.byKey(const Key('appToast')),
       ).backgroundColor,
       AppColors.green,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('inventoryTransferToastHost')),
+        matching: find.byKey(const Key('appToast')),
+      ),
+      findsOneWidget,
     );
     expect(
       find.ancestor(

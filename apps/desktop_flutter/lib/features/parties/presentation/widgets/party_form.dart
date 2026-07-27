@@ -238,7 +238,7 @@ class _PartyFormState extends State<PartyForm> {
 
   @override
   Widget build(BuildContext context) {
-    const accentColor = AppModuleColors.parties;
+    const accentColor = AppColors.blue;
 
     return KeyedSubtree(
       key: const Key('partyForm'),

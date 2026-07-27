@@ -177,33 +177,84 @@ class AppStatePanel extends StatelessWidget {
 abstract final class AppToast {
   static const duration = Duration(seconds: 2);
 
-  static void showSuccess(BuildContext context, String message) {
-    _show(context, message, AppColors.green, Icons.check_circle_rounded);
+  static void showSuccess(
+    BuildContext context,
+    String message, {
+    ScaffoldMessengerState? messenger,
+  }) {
+    _show(
+      context,
+      message,
+      AppColors.green,
+      Icons.check_circle_rounded,
+      messenger: messenger,
+    );
   }
 
-  static void showInfo(BuildContext context, String message) {
-    _show(context, message, AppColors.blue, Icons.info_rounded);
+  static void showInfo(
+    BuildContext context,
+    String message, {
+    ScaffoldMessengerState? messenger,
+  }) {
+    _show(
+      context,
+      message,
+      AppColors.blue,
+      Icons.info_rounded,
+      messenger: messenger,
+    );
   }
 
-  static void showWarning(BuildContext context, String message) {
-    _show(context, message, AppColors.orange, Icons.warning_rounded);
+  static void showWarning(
+    BuildContext context,
+    String message, {
+    ScaffoldMessengerState? messenger,
+  }) {
+    _show(
+      context,
+      message,
+      AppColors.orange,
+      Icons.warning_rounded,
+      messenger: messenger,
+    );
   }
 
-  static void showDanger(BuildContext context, String message) {
-    _show(context, message, AppColors.red, Icons.delete_rounded);
+  static void showDanger(
+    BuildContext context,
+    String message, {
+    ScaffoldMessengerState? messenger,
+  }) {
+    _show(
+      context,
+      message,
+      AppColors.red,
+      Icons.delete_rounded,
+      messenger: messenger,
+    );
   }
 
-  static void showError(BuildContext context, String message) {
-    _show(context, message, AppColors.red, Icons.error_rounded);
+  static void showError(
+    BuildContext context,
+    String message, {
+    ScaffoldMessengerState? messenger,
+  }) {
+    _show(
+      context,
+      message,
+      AppColors.red,
+      Icons.error_rounded,
+      messenger: messenger,
+    );
   }
 
   static void _show(
     BuildContext context,
     String message,
     Color color,
-    IconData icon,
-  ) {
-    ScaffoldMessenger.of(context)
+    IconData icon, {
+    ScaffoldMessengerState? messenger,
+  }) {
+    (messenger ?? ScaffoldMessenger.of(context))
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(

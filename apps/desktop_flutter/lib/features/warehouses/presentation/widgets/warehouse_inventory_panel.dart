@@ -12,7 +12,6 @@ class WarehouseInventoryPanel extends StatelessWidget {
     required this.searchController,
     required this.onSearchChanged,
     required this.onOpenProducts,
-    required this.onOpenGroupsTypes,
     required this.onOpenTransfer,
     required this.height,
     super.key,
@@ -25,7 +24,6 @@ class WarehouseInventoryPanel extends StatelessWidget {
   final TextEditingController searchController;
   final ValueChanged<String> onSearchChanged;
   final VoidCallback onOpenProducts;
-  final VoidCallback onOpenGroupsTypes;
   final VoidCallback? onOpenTransfer;
   final double height;
 
@@ -74,13 +72,6 @@ class WarehouseInventoryPanel extends StatelessWidget {
                   label: 'المواد',
                   icon: Icons.inventory_2_outlined,
                   onPressed: onOpenProducts,
-                ),
-                _InventoryActionButton(
-                  key: const Key('warehouseGroupsTypesButton'),
-                  label: 'المجموعات والأنواع',
-                  icon: Icons.category_outlined,
-                  minWidth: 158,
-                  onPressed: onOpenGroupsTypes,
                 ),
                 _InventoryActionButton(
                   key: const Key('warehouseTransferButton'),

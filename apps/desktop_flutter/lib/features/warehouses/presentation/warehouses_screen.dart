@@ -252,13 +252,6 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
     );
   }
 
-  void _openGroupsTypes() {
-    AppToast.showInfo(
-      context,
-      'سيتم ربط شاشة المجموعات والأنواع لاحقاً',
-    );
-  }
-
   Future<void> _openTransfer() async {
     final selected = _warehousesController.selectedWarehouse;
     if (selected == null) return;
@@ -440,7 +433,6 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
                                 setState(() => _inventoryQuery = value);
                               },
                               onOpenProducts: _openProducts,
-                              onOpenGroupsTypes: _openGroupsTypes,
                               onOpenTransfer:
                                   selected == null ? null : _openTransfer,
                               height: inventoryHeight,

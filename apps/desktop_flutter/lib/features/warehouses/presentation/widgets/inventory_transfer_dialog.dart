@@ -58,6 +58,7 @@ class InventoryTransferDialog extends StatefulWidget {
 
 class _InventoryTransferDialogState
     extends State<InventoryTransferDialog> {
+  final _dialogMessengerKey = GlobalKey<ScaffoldMessengerState>();
   final _quantityController = TextEditingController(text: '1');
   final _historySearchController = TextEditingController();
 
@@ -214,13 +215,18 @@ class _InventoryTransferDialogState
         sourceItem == null ||
         quantity == null ||
         quantity <= 0) {
-      AppToast.showWarning(context, 'تحقق من بيانات النقل');
+      AppToast.showWarning(
+        context,
+        'تحقق من بيانات النقل',
+        messenger: _dialogMessengerKey.currentState,
+      );
       return;
     }
     if (quantity > sourceItem.quantity) {
       AppToast.showWarning(
         context,
         'لا يمكن تنفيذ النقل لعدم كفاية الرصيد المخزني',
+        messenger: _dialogMessengerKey.currentState,
       );
       return;
     }
@@ -233,7 +239,11 @@ class _InventoryTransferDialogState
       },
     );
     if (!transferred) {
-      AppToast.showDanger(context, 'تعذر تنفيذ النقل المخزني');
+      AppToast.showDanger(
+        context,
+        'تعذر تنفيذ النقل المخزني',
+        messenger: _dialogMessengerKey.currentState,
+      );
       return;
     }
     Navigator.of(context).pop(true);
@@ -248,40 +258,47 @@ class _InventoryTransferDialogState
 
   @override
   Widget build(BuildContext context) {
-    return AppModuleDialog(
-      key: const Key('inventoryTransferDialog'),
-      title: 'النقل المخزني',
-      subtitle: 'اختر المادة والكمية وانقلها بين مخزنين',
-      icon: _view == _InventoryTransferView.create
-          ? Icons.compare_arrows_rounded
-          : Icons.history_rounded,
-      accentColor: AppModuleColors.warehouses,
-      centerHeader: true,
-      showHeaderCloseButton: true,
-      width: AppDialogSizes.extraLarge,
-      bodyScrollable: false,
-      maxHeightFactor: 0.96,
-      onClose: _close,
-      actionsKey: const Key('inventoryTransferDialogActions'),
-      actions: _view == _InventoryTransferView.create
-          ? _createActions()
-          : _historyActions(),
-      child: SizedBox(
-        height: 540,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _ViewSelector(
-              view: _view,
-              onChanged: _selectView,
+    return ScaffoldMessenger(
+      key: _dialogMessengerKey,
+      child: Scaffold(
+        key: const Key('inventoryTransferToastHost'),
+        backgroundColor: Colors.transparent,
+        body: AppModuleDialog(
+          key: const Key('inventoryTransferDialog'),
+          title: 'النقل المخزني',
+          subtitle: 'اختر المادة والكمية وانقلها بين مخزنين',
+          icon: _view == _InventoryTransferView.create
+              ? Icons.compare_arrows_rounded
+              : Icons.history_rounded,
+          accentColor: AppModuleColors.warehouses,
+          centerHeader: true,
+          showHeaderCloseButton: true,
+          width: AppDialogSizes.extraLarge,
+          bodyScrollable: false,
+          maxHeightFactor: 0.96,
+          onClose: _close,
+          actionsKey: const Key('inventoryTransferDialogActions'),
+          actions: _view == _InventoryTransferView.create
+              ? _createActions()
+              : _historyActions(),
+          child: SizedBox(
+            height: 540,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _ViewSelector(
+                  view: _view,
+                  onChanged: _selectView,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Expanded(
+                  child: _view == _InventoryTransferView.create
+                      ? _buildCreateView()
+                      : _buildHistoryView(),
+                ),
+              ],
             ),
-            const SizedBox(height: AppSpacing.md),
-            Expanded(
-              child: _view == _InventoryTransferView.create
-                  ? _buildCreateView()
-                  : _buildHistoryView(),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -325,7 +342,11 @@ class _InventoryTransferDialogState
         onPressed: () {
           _historySearchController.clear();
           setState(() => _historyQuery = '');
-          AppToast.showSuccess(context, 'تم تحديث السجل المؤقت');
+          AppToast.showSuccess(
+            context,
+            'تم تحديث السجل المؤقت',
+            messenger: _dialogMessengerKey.currentState,
+          );
         },
       ),
     ];

@@ -208,8 +208,27 @@ void main() {
     );
     final focusedNameBorder =
         nameDecoration.focusedBorder as OutlineInputBorder;
-    expect(focusedNameBorder.borderSide.color, AppModuleColors.parties);
+    expect(focusedNameBorder.borderSide.color, AppColors.blue);
     expect(focusedNameBorder.borderSide.width, 1.6);
+    expect(
+      tester
+          .widget<Icon>(
+            find.descendant(
+              of: find.byKey(const Key('partyNameField')),
+              matching: find.byIcon(Icons.person_rounded),
+            ),
+          )
+          .color,
+      AppColors.blue,
+    );
+    expect(
+      tester
+          .widget<AppTableActionButton>(
+            find.byKey(const Key('partyStatement_party-001')),
+          )
+          .foregroundColor,
+      AppColors.blue,
+    );
 
     final namePosition =
         tester.getTopLeft(find.byKey(const Key('partyNameField')));
