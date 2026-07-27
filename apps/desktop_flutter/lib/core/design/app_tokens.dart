@@ -17,6 +17,10 @@ abstract final class AppColors {
   static const danger = Color(0xFFB42318);
   static const info = Color(0xFF1D4ED8);
   static const disabled = Color(0xFF94A3B8);
+  static const legacyRed = Color(0xFFDC2626);
+  static const legacyBlue = Color(0xFF2563EB);
+  static const legacyGrey = Color(0xFF64748B);
+  static const legacyOrange = Color(0xFFF97316);
 
   static const headerBackground = Colors.white;
   static const headerBorder = Color(0xFFE4E0D7);

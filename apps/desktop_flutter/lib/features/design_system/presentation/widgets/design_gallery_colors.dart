@@ -39,6 +39,26 @@ class DesignGalleryColorsSection extends StatelessWidget {
             value: '#B42318',
             color: AppColors.danger,
           ),
+          _ColorSample(
+            name: 'الأحمر (القديم)',
+            value: '#DC2626',
+            color: AppColors.legacyRed,
+          ),
+          _ColorSample(
+            name: 'الأزرق (القديم)',
+            value: '#2563EB',
+            color: AppColors.legacyBlue,
+          ),
+          _ColorSample(
+            name: 'الرمادي (القديم)',
+            value: '#64748B',
+            color: AppColors.legacyGrey,
+          ),
+          _ColorSample(
+            name: 'البرتقالي (القديم)',
+            value: '#F97316',
+            color: AppColors.legacyOrange,
+          ),
         ],
       ),
     );

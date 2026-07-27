@@ -5,41 +5,74 @@ import 'package:flutter_test/flutter_test.dart';
 import 'design_system_test_harness.dart';
 
 void main() {
-  testWidgets('shows unduplicated black secondary button variants',
+  testWidgets('shows the exact old Parties navigation and action buttons',
       (tester) async {
     await pumpDesignSystemGallery(tester);
 
     expect(find.text('الأزرار'), findsOneWidget);
-    expect(find.text('حفظ'), findsOneWidget);
-    expect(find.text('حذف'), findsOneWidget);
-    expect(find.text('الأول'), findsOneWidget);
-    expect(find.byKey(const Key('designNavigationFirst')), findsNothing);
+    expect(find.text('أزرار التنقل'), findsOneWidget);
+    expect(find.text('أزرار الإجراءات'), findsOneWidget);
+    expect(find.byKey(const Key('designSecondaryButton')), findsNothing);
+    expect(find.byKey(const Key('designGhostButton')), findsNothing);
 
-    final secondaryButton = tester.widget<OutlinedButton>(
-      find.descendant(
-        of: find.byKey(const Key('designSecondaryButton')),
-        matching: find.byType(OutlinedButton),
-      ),
-    );
-    final ghostButton = tester.widget<TextButton>(
-      find.descendant(
-        of: find.byKey(const Key('designGhostButton')),
-        matching: find.byType(TextButton),
-      ),
-    );
+    const navigation = <String, IconData>{
+      'designNavigationFirst': Icons.first_page_rounded,
+      'designNavigationPrevious': Icons.chevron_left_rounded,
+      'designNavigationNext': Icons.chevron_right_rounded,
+      'designNavigationLast': Icons.last_page_rounded,
+    };
+    for (final entry in navigation.entries) {
+      final button = find.byKey(Key(entry.key));
+      expect(tester.getSize(button), const Size(104, 52));
+      expect(
+        tester.widget<Icon>(
+          find.descendant(of: button, matching: find.byType(Icon)),
+        ).icon,
+        entry.value,
+      );
+      final decoration = tester
+          .widget<AnimatedContainer>(
+            find.descendant(
+              of: button,
+              matching: find.byType(AnimatedContainer),
+            ),
+          )
+          .decoration! as BoxDecoration;
+      expect(decoration.color, Colors.white);
+      expect((decoration.border! as Border).top.color,
+          const Color(0xFFD1D5DB));
+      expect(decoration.boxShadow, isEmpty);
+    }
 
-    expect(
-      secondaryButton.style?.foregroundColor?.resolve(<WidgetState>{}),
-      AppColors.navigation,
-    );
-    expect(
-      ghostButton.style?.foregroundColor?.resolve(<WidgetState>{}),
-      AppColors.navigation,
-    );
-    expect(
-      secondaryButton.style?.mouseCursor?.resolve(<WidgetState>{}),
-      SystemMouseCursors.click,
-    );
+    const actions = <String, (IconData, Color)>{
+      'designActionSave': (Icons.add_rounded, Color(0xFF16A34A)),
+      'designActionUndo': (Icons.close_rounded, AppColors.legacyGrey),
+      'designActionUpdate': (Icons.save_rounded, AppColors.legacyBlue),
+      'designActionDelete': (Icons.delete_rounded, AppColors.legacyRed),
+    };
+    for (final entry in actions.entries) {
+      final button = find.byKey(Key(entry.key));
+      expect(tester.getSize(button), const Size(108, 52));
+      final icon = tester.widget<Icon>(
+        find.descendant(of: button, matching: find.byType(Icon)),
+      );
+      expect(icon.icon, entry.value.$1);
+      expect(icon.size, 20);
+      final decoration = tester
+          .widget<AnimatedContainer>(
+            find.descendant(
+              of: button,
+              matching: find.byType(AnimatedContainer),
+            ),
+          )
+          .decoration! as BoxDecoration;
+      expect(decoration.color, entry.value.$2);
+      final text = tester.widget<Text>(
+        find.descendant(of: button, matching: find.byType(Text)),
+      );
+      expect(text.style?.fontSize, 16);
+      expect(text.style?.fontWeight, FontWeight.w800);
+    }
   });
 
   testWidgets('changes the theme preview icon and tooltip', (tester) async {
