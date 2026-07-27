@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 
 abstract final class AppColors {
-  static const primary = Color(0xFF1D4ED8);
-  static const primaryDark = Color(0xFF102A56);
+  static const blue = Color(0xFF2563EB);
+  static const green = Color(0xFF16A34A);
+  static const orange = Color(0xFFF97316);
+  static const grey = Color(0xFF64748B);
+  static const red = Color(0xFFDC2626);
+
+  static const primary = blue;
+  static const primaryDark = Color(0xFF1E3A8A);
   static const accent = Color(0xFFC89B3C);
   static const background = Color(0xFFF5F9FF);
   static const surface = Colors.white;
@@ -11,23 +17,19 @@ abstract final class AppColors {
   static const cursor = Colors.black;
   static const border = Color(0xFFD6E3F0);
   static const textPrimary = Color(0xFF142033);
-  static const textSecondary = Color(0xFF5F7085);
-  static const success = Color(0xFF0F7A4D);
-  static const warning = Color(0xFFB75C00);
-  static const danger = Color(0xFFB42318);
-  static const info = Color(0xFF1D4ED8);
-  static const disabled = Color(0xFF94A3B8);
-  static const legacyRed = Color(0xFFDC2626);
-  static const legacyBlue = Color(0xFF2563EB);
-  static const legacyGrey = Color(0xFF64748B);
-  static const legacyOrange = Color(0xFFF97316);
+  static const textSecondary = grey;
+  static const success = green;
+  static const warning = orange;
+  static const danger = red;
+  static const info = blue;
+  static const disabled = grey;
 
   static const headerBackground = Colors.white;
   static const headerBorder = Color(0xFFE4E0D7);
-  static const infoSurface = Color(0xFFE8F1FF);
-  static const successSurface = Color(0xFFE8F7EF);
-  static const warningSurface = Color(0xFFFFF3E5);
-  static const dangerSurface = Color(0xFFFDECEC);
+  static const infoSurface = Color(0xFFDBEAFE);
+  static const successSurface = Color(0xFFDCFCE7);
+  static const warningSurface = Color(0xFFFFEDD5);
+  static const dangerSurface = Color(0xFFFEE2E2);
   static const neutralSurface = Color(0xFFF1F5F9);
   static const disabledSurface = Color(0xFFF8FAFC);
   static const controlHoverSurface = Color(0xFFF3F7FC);

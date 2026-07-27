@@ -45,10 +45,10 @@ void main() {
     }
 
     const actions = <String, (IconData, Color)>{
-      'designActionSave': (Icons.add_rounded, Color(0xFF16A34A)),
-      'designActionUndo': (Icons.close_rounded, AppColors.legacyGrey),
-      'designActionUpdate': (Icons.save_rounded, AppColors.legacyBlue),
-      'designActionDelete': (Icons.delete_rounded, AppColors.legacyRed),
+      'designActionSave': (Icons.add_rounded, AppColors.green),
+      'designActionUndo': (Icons.close_rounded, AppColors.grey),
+      'designActionUpdate': (Icons.save_rounded, AppColors.blue),
+      'designActionDelete': (Icons.delete_rounded, AppColors.red),
     };
     for (final entry in actions.entries) {
       final button = find.byKey(Key(entry.key));
@@ -163,6 +163,22 @@ void main() {
     expect(appButton('designActionBarFirst').width, isNull);
     expect(appButton('designActionBarSave').minWidth, 108);
     expect(appButton('designActionBarSave').width, isNull);
+    expect(
+      appButton('designActionBarSave').variant,
+      AppButtonVariant.success,
+    );
+    expect(
+      appButton('designActionBarUpdate').variant,
+      AppButtonVariant.primary,
+    );
+    expect(
+      appButton('designActionBarUndo').variant,
+      AppButtonVariant.neutral,
+    );
+    expect(
+      appButton('designActionBarDelete').variant,
+      AppButtonVariant.danger,
+    );
     expect(appButton('designActionBarSave').onPressed, isNotNull);
     expect(appButton('designActionBarUpdate').onPressed, isNull);
     expect(appButton('designActionBarUndo').onPressed, isNull);
@@ -212,11 +228,11 @@ void main() {
     );
     expect(
       updateButton.style?.backgroundColor?.resolve(<WidgetState>{}),
-      AppColors.success,
+      AppColors.blue,
     );
     expect(
       undoButton.style?.backgroundColor?.resolve(<WidgetState>{}),
-      AppColors.warning,
+      AppColors.grey,
     );
 
     await tester.tap(find.byKey(const Key('designActionBarDelete')));
@@ -237,7 +253,7 @@ void main() {
     );
     expect(
       confirmButton.style?.backgroundColor?.resolve(<WidgetState>{}),
-      AppColors.danger,
+      AppColors.red,
     );
 
     await tester.tap(cancel);

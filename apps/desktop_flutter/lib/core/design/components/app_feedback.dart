@@ -17,11 +17,11 @@ class AppStatusBadge extends StatelessWidget {
   final AppStatusTone tone;
 
   Color get _foreground => switch (tone) {
-        AppStatusTone.success => AppColors.success,
-        AppStatusTone.warning => AppColors.warning,
-        AppStatusTone.danger => AppColors.danger,
-        AppStatusTone.info => AppColors.info,
-        AppStatusTone.neutral => AppColors.textSecondary,
+        AppStatusTone.success => AppColors.green,
+        AppStatusTone.warning => AppColors.orange,
+        AppStatusTone.danger => AppColors.red,
+        AppStatusTone.info => AppColors.blue,
+        AppStatusTone.neutral => AppColors.grey,
       };
 
   Color get _background => switch (tone) {
@@ -63,7 +63,7 @@ class AppInfoBanner extends StatelessWidget {
     required this.message,
     super.key,
     this.icon = Icons.info_rounded,
-    this.foregroundColor = AppColors.info,
+    this.foregroundColor = AppColors.blue,
     this.backgroundColor = AppColors.infoSurface,
     this.textAlign = TextAlign.start,
   });
@@ -131,9 +131,9 @@ class AppStatePanel extends StatelessWidget {
       };
 
   Color get _color => switch (type) {
-        AppStateType.empty => AppColors.textSecondary,
-        AppStateType.error => AppColors.danger,
-        AppStateType.loading => AppColors.primary,
+        AppStateType.empty => AppColors.grey,
+        AppStateType.error => AppColors.red,
+        AppStateType.loading => AppColors.blue,
       };
 
   @override
@@ -178,23 +178,23 @@ abstract final class AppToast {
   static const duration = Duration(seconds: 2);
 
   static void showSuccess(BuildContext context, String message) {
-    _show(context, message, AppColors.success, Icons.check_circle_rounded);
+    _show(context, message, AppColors.green, Icons.check_circle_rounded);
   }
 
   static void showInfo(BuildContext context, String message) {
-    _show(context, message, AppColors.info, Icons.info_rounded);
+    _show(context, message, AppColors.blue, Icons.info_rounded);
   }
 
   static void showWarning(BuildContext context, String message) {
-    _show(context, message, AppColors.warning, Icons.warning_rounded);
+    _show(context, message, AppColors.orange, Icons.warning_rounded);
   }
 
   static void showDanger(BuildContext context, String message) {
-    _show(context, message, AppColors.danger, Icons.delete_rounded);
+    _show(context, message, AppColors.red, Icons.delete_rounded);
   }
 
   static void showError(BuildContext context, String message) {
-    _show(context, message, AppColors.danger, Icons.error_rounded);
+    _show(context, message, AppColors.red, Icons.error_rounded);
   }
 
   static void _show(

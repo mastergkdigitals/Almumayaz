@@ -31,11 +31,18 @@ void main() {
     );
   });
 
-  test('keeps the old app reference colors available', () {
-    expect(AppColors.legacyRed, const Color(0xFFDC2626));
-    expect(AppColors.legacyBlue, const Color(0xFF2563EB));
-    expect(AppColors.legacyGrey, const Color(0xFF64748B));
-    expect(AppColors.legacyOrange, const Color(0xFFF97316));
+  test('uses the approved system colors', () {
+    expect(AppColors.blue, const Color(0xFF2563EB));
+    expect(AppColors.green, const Color(0xFF16A34A));
+    expect(AppColors.orange, const Color(0xFFF97316));
+    expect(AppColors.grey, const Color(0xFF64748B));
+    expect(AppColors.red, const Color(0xFFDC2626));
+
+    expect(AppColors.primary, AppColors.blue);
+    expect(AppColors.success, AppColors.green);
+    expect(AppColors.warning, AppColors.orange);
+    expect(AppColors.danger, AppColors.red);
+    expect(AppColors.info, AppColors.blue);
   });
 
   testWidgets('handles the global keyboard shortcuts', (tester) async {

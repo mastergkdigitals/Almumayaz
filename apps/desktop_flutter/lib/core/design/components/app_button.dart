@@ -7,6 +7,7 @@ enum AppButtonVariant {
   primary,
   success,
   warning,
+  neutral,
   secondary,
   navigation,
   danger,
@@ -187,7 +188,7 @@ class _AppButtonState extends State<AppButton> {
           style: withoutShadow(
             ElevatedButton.styleFrom(
               backgroundColor:
-                  widget.backgroundColor ?? AppColors.primary,
+                  widget.backgroundColor ?? AppColors.blue,
               foregroundColor:
                   widget.foregroundColor ?? AppColors.onStrong,
             ),
@@ -199,7 +200,7 @@ class _AppButtonState extends State<AppButton> {
           style: withoutShadow(
             ElevatedButton.styleFrom(
               backgroundColor:
-                  widget.backgroundColor ?? AppColors.success,
+                  widget.backgroundColor ?? AppColors.green,
               foregroundColor:
                   widget.foregroundColor ?? AppColors.onStrong,
             ),
@@ -211,7 +212,19 @@ class _AppButtonState extends State<AppButton> {
           style: withoutShadow(
             ElevatedButton.styleFrom(
               backgroundColor:
-                  widget.backgroundColor ?? AppColors.warning,
+                  widget.backgroundColor ?? AppColors.orange,
+              foregroundColor:
+                  widget.foregroundColor ?? AppColors.onStrong,
+            ),
+          ),
+          child: content,
+        ),
+      AppButtonVariant.neutral => ElevatedButton(
+          onPressed: effectiveOnPressed,
+          style: withoutShadow(
+            ElevatedButton.styleFrom(
+              backgroundColor:
+                  widget.backgroundColor ?? AppColors.grey,
               foregroundColor:
                   widget.foregroundColor ?? AppColors.onStrong,
             ),
@@ -267,7 +280,7 @@ class _AppButtonState extends State<AppButton> {
           style: withoutShadow(
             ElevatedButton.styleFrom(
               backgroundColor:
-                  widget.backgroundColor ?? AppColors.danger,
+                  widget.backgroundColor ?? AppColors.red,
               foregroundColor:
                   widget.foregroundColor ?? AppColors.onStrong,
             ),

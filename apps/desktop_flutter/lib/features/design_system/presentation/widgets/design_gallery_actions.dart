@@ -143,28 +143,28 @@ class _DesignGalleryActionsGroupState
                     key: const Key('designActionSave'),
                     label: 'حفظ',
                     icon: Icons.add_rounded,
-                    color: Color(0xFF16A34A),
+                    color: AppColors.green,
                     onPressed: _previewAction,
                   ),
                   _OldPartyButton.filled(
                     key: const Key('designActionUndo'),
                     label: 'تراجع',
                     icon: Icons.close_rounded,
-                    color: AppColors.legacyGrey,
+                    color: AppColors.grey,
                     onPressed: _previewAction,
                   ),
                   _OldPartyButton.filled(
                     key: const Key('designActionUpdate'),
                     label: 'تحديث',
                     icon: Icons.save_rounded,
-                    color: AppColors.legacyBlue,
+                    color: AppColors.blue,
                     onPressed: _previewAction,
                   ),
                   _OldPartyButton.filled(
                     key: const Key('designActionDelete'),
                     label: 'حذف',
                     icon: Icons.delete_rounded,
-                    color: AppColors.legacyRed,
+                    color: AppColors.red,
                     onPressed: _previewAction,
                   ),
                 ],
@@ -508,7 +508,7 @@ class _OldPartyButtonState extends State<_OldPartyButton> {
   Color _focusRingColor(BuildContext context) {
     return Theme.of(context).brightness == Brightness.dark
         ? const Color(0xFF60A5FA)
-        : AppColors.legacyBlue;
+        : AppColors.blue;
   }
 }
 
