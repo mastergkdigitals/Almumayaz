@@ -52,6 +52,10 @@ void main() {
     expect(find.byKey(const Key('partiesScreen')), findsOneWidget);
     expect(find.text('الأطراف'), findsWidgets);
     expect(find.byKey(const Key('partyForm')), findsOneWidget);
+    expect(
+      tester.widget(find.byKey(const Key('partyForm'))),
+      isA<KeyedSubtree>(),
+    );
     expect(find.byKey(const Key('partiesActionBar')), findsOneWidget);
     expect(find.byKey(const Key('partiesTable')), findsOneWidget);
     expect(find.byKey(const Key('appScreenBackButton')), findsOneWidget);
@@ -178,6 +182,65 @@ void main() {
         isFalse,
       );
     }
+
+    final readOnlyDecoration = tester
+        .widget<TextFormField>(
+          find.byKey(const Key('partyNumberField')),
+        )
+        .decoration;
+    expect(readOnlyDecoration?.fillColor, AppColors.neutralSurface);
+    expect(
+      (readOnlyDecoration?.disabledBorder as OutlineInputBorder)
+          .borderSide
+          .color,
+      AppColors.border,
+    );
+
+    final nameDecoration = tester
+        .widget<TextFormField>(
+          find.byKey(const Key('partyNameField')),
+        )
+        .decoration;
+    expect(nameDecoration?.fillColor, AppColors.surface);
+    expect(
+      (nameDecoration?.enabledBorder as OutlineInputBorder)
+          .borderSide
+          .color,
+      AppColors.border,
+    );
+    final focusedNameBorder =
+        nameDecoration?.focusedBorder as OutlineInputBorder;
+    expect(focusedNameBorder.borderSide.color, AppModuleColors.parties);
+    expect(focusedNameBorder.borderSide.width, 1.6);
+
+    final namePosition =
+        tester.getTopLeft(find.byKey(const Key('partyNameField')));
+    final typePosition =
+        tester.getTopLeft(find.byKey(const Key('partyTypeField')));
+    final workplacePosition =
+        tester.getTopLeft(find.byKey(const Key('partyWorkplaceField')));
+    final branchPosition =
+        tester.getTopLeft(find.byKey(const Key('partyBranchField')));
+    final phonePosition =
+        tester.getTopLeft(find.byKey(const Key('partyPhoneField')));
+    final alternatePhonePosition = tester.getTopLeft(
+      find.byKey(const Key('partyAlternatePhoneField')),
+    );
+    final cityPosition =
+        tester.getTopLeft(find.byKey(const Key('partyCityField')));
+    final addressPosition =
+        tester.getTopLeft(find.byKey(const Key('partyAddressField')));
+    final notesPosition =
+        tester.getTopLeft(find.byKey(const Key('partyNotesField')));
+
+    expect(typePosition.dy, namePosition.dy);
+    expect(branchPosition.dy, workplacePosition.dy);
+    expect(alternatePhonePosition.dy, phonePosition.dy);
+    expect(addressPosition.dy, cityPosition.dy);
+    expect(workplacePosition.dy, greaterThan(namePosition.dy));
+    expect(phonePosition.dy, greaterThan(workplacePosition.dy));
+    expect(cityPosition.dy, greaterThan(phonePosition.dy));
+    expect(notesPosition.dy, greaterThan(cityPosition.dy));
 
     final notesInput = tester.widget<EditableText>(
       find.descendant(

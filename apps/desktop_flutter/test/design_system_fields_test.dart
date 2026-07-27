@@ -46,6 +46,16 @@ void main() {
 
     expect(readOnly.readOnly, isTrue);
     expect(readOnlyField.enabled, isFalse);
+    expect(
+      readOnlyField.decoration?.fillColor,
+      AppColors.neutralSurface,
+    );
+    expect(
+      (readOnlyField.decoration?.disabledBorder as OutlineInputBorder)
+          .borderSide
+          .color,
+      AppColors.border,
+    );
     expect(disabled.enabled, isFalse);
     expect(phone.textDirection, TextDirection.rtl);
     expect(phone.textAlign, TextAlign.right);

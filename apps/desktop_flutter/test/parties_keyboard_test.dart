@@ -5,6 +5,27 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets('shows the required style when Enter submits an empty name',
+      (tester) async {
+    await _openParties(tester);
+
+    final name = find.byKey(const Key('partyNameField'));
+    await tester.tap(name);
+    await tester.testTextInput.receiveAction(TextInputAction.next);
+    await tester.pump();
+
+    expect(find.text('هذا الحقل مطلوب'), findsOneWidget);
+    expect(_hasTextFocus(tester, name), isTrue);
+    expect(
+      tester.widget<TextFormField>(name).decoration?.errorText,
+      'هذا الحقل مطلوب',
+    );
+
+    await tester.enterText(name, 'طرف اختبار');
+    await tester.pump();
+    expect(find.text('هذا الحقل مطلوب'), findsNothing);
+  });
+
   testWidgets('moves Enter through the party fields in the approved order',
       (tester) async {
     await _openParties(tester);

@@ -113,18 +113,17 @@ class AppTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themedBorder = accentColor == null
-        ? null
-        : OutlineInputBorder(
-            borderRadius: BorderRadius.circular(AppRadii.md),
-            borderSide: BorderSide(color: accentColor!),
-          );
-    final themedFocusedBorder = accentColor == null
-        ? null
-        : OutlineInputBorder(
-            borderRadius: BorderRadius.circular(AppRadii.md),
-            borderSide: BorderSide(color: accentColor!, width: 1.6),
-          );
+    final restingBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      borderSide: const BorderSide(color: AppColors.border),
+    );
+    final focusedBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      borderSide: BorderSide(
+        color: accentColor ?? AppColors.primary,
+        width: 1.6,
+      ),
+    );
 
     return TextFormField(
       key: fieldKey,
@@ -160,8 +159,12 @@ class AppTextField extends StatelessWidget {
         floatingLabelStyle: accentColor == null
             ? null
             : AppTypography.fieldText.copyWith(color: accentColor),
-        enabledBorder: themedBorder,
-        focusedBorder: themedFocusedBorder,
+        fillColor: readOnly
+            ? AppColors.neutralSurface
+            : AppColors.surface,
+        enabledBorder: restingBorder,
+        disabledBorder: restingBorder,
+        focusedBorder: focusedBorder,
       ),
     );
   }
