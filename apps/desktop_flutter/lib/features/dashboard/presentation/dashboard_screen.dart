@@ -5,6 +5,7 @@ import '../../auth/presentation/login_screen.dart';
 import '../../cashbox/presentation/cashbox_screen.dart';
 import '../../parties/presentation/parties_screen.dart';
 import '../../purchases/presentation/purchase_screen.dart';
+import '../../warehouses/presentation/warehouses_screen.dart';
 import 'dashboard_card.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -94,6 +95,15 @@ class DashboardScreen extends StatelessWidget {
       Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => const CashboxScreen(),
+        ),
+      );
+      return;
+    }
+
+    if (item.id == 'warehouses') {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => const WarehousesScreen(),
         ),
       );
       return;
