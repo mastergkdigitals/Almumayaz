@@ -36,6 +36,8 @@ void main() {
     );
     expect(codeField.decoration?.filled, isFalse);
     expect(codeField.decoration?.fillColor, Colors.transparent);
+    expect(codeField.textAlignVertical, TextAlignVertical.center);
+    expect(codeField.style?.height, kTextHeightNone);
     final codeCell = tester.widget<Container>(
       find.byKey(const Key('salesCodeCell-r1')),
     );
@@ -66,6 +68,24 @@ void main() {
     final focusedBorder = focusedDecoration.border! as Border;
     expect(focusedBorder.top.color, AppModuleColors.sales);
     expect(focusedBorder.top.width, 1.5);
+
+    await tester.tap(find.byKey(const Key('salesWarehouse-r1')));
+    await tester.pump();
+    final warehouseMenu = tester.widget<DecoratedBox>(
+      find.byKey(const Key('salesWarehouseMenu')),
+    );
+    final warehouseMenuDecoration =
+        warehouseMenu.decoration as BoxDecoration;
+    expect(
+      warehouseMenuDecoration.borderRadius,
+      BorderRadius.circular(AppRadii.md),
+    );
+    expect(
+      (warehouseMenuDecoration.border! as Border).top.color,
+      AppColors.border,
+    );
+    await tester.tap(find.byKey(const Key('salesWarehouse-r1')));
+    await tester.pump();
 
     final expectedTint = Color.alphaBlend(
       AppModuleColors.sales.withAlpha(12),

@@ -22,16 +22,11 @@ const _salesCellRadius = 3.0;
 const _salesEdgeInset = 6.0;
 const _salesWidthSafetyBuffer = 8.0;
 
-final _salesSelectedTint = Color.lerp(
-  AppModulePalettes.sales.light,
-  Colors.white,
-  0.58,
-)!;
-final _salesHoverTint = Color.lerp(
-  AppModulePalettes.sales.light,
-  Colors.white,
-  0.78,
-)!;
+final _salesSelectedTint = Color.alphaBlend(
+  AppModuleColors.sales.withAlpha(22),
+  AppColors.surface,
+);
+const _salesHoverTint = AppColors.controlHoverSurface;
 final _salesHeaderColor = Color.lerp(
   AppModulePalettes.sales.light,
   Colors.white,
@@ -589,6 +584,7 @@ class _SalesGridBodyRow extends StatelessWidget {
             _SalesGridCellFrame(
               width: columns[3].width,
               frameKey: Key('${keyPrefix}WarehouseCell-${row.id}'),
+              decorate: false,
               child: _SalesWarehouseDropdown(
                 fieldKey: Key('${keyPrefix}Warehouse-${row.id}'),
                 value: row.warehouse,
@@ -669,12 +665,14 @@ class _SalesGridCellFrame extends StatelessWidget {
     required this.frameKey,
     required this.child,
     this.focused = false,
+    this.decorate = true,
   });
 
   final double width;
   final Key frameKey;
   final Widget child;
   final bool focused;
+  final bool decorate;
 
   @override
   Widget build(BuildContext context) {
@@ -685,19 +683,24 @@ class _SalesGridCellFrame extends StatelessWidget {
         child: Container(
           key: frameKey,
           height: _salesCellHeight,
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            color: _salesCellColor,
-            borderRadius: BorderRadius.circular(_salesCellRadius),
-          ),
-          foregroundDecoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(_salesCellRadius),
-            border: Border.all(
-              color:
-                  focused ? AppModuleColors.sales : _salesCellBorder,
-              width: focused ? 1.5 : 1,
-            ),
-          ),
+          clipBehavior: decorate ? Clip.antiAlias : Clip.none,
+          decoration: decorate
+              ? BoxDecoration(
+                  color: _salesCellColor,
+                  borderRadius: BorderRadius.circular(_salesCellRadius),
+                )
+              : null,
+          foregroundDecoration: decorate
+              ? BoxDecoration(
+                  borderRadius: BorderRadius.circular(_salesCellRadius),
+                  border: Border.all(
+                    color: focused
+                        ? AppModuleColors.sales
+                        : _salesCellBorder,
+                    width: focused ? 1.5 : 1,
+                  ),
+                )
+              : null,
           child: child,
         ),
       ),
@@ -779,6 +782,7 @@ class _SalesGridEditorCellState extends State<_SalesGridEditorCell> {
         maxLines: 1,
         textInputAction: TextInputAction.next,
         textAlign: widget.numeric ? TextAlign.center : TextAlign.right,
+        textAlignVertical: TextAlignVertical.center,
         textDirection:
             widget.numeric ? TextDirection.ltr : TextDirection.rtl,
         cursorColor: AppColors.cursor,
@@ -786,6 +790,7 @@ class _SalesGridEditorCellState extends State<_SalesGridEditorCell> {
           color: _salesTextColor,
           fontSize: 18,
           fontWeight: FontWeight.w700,
+          height: kTextHeightNone,
         ),
         decoration: const InputDecoration(
           filled: false,
@@ -798,10 +803,7 @@ class _SalesGridEditorCellState extends State<_SalesGridEditorCell> {
           errorBorder: InputBorder.none,
           focusedErrorBorder: InputBorder.none,
           isCollapsed: true,
-          contentPadding: EdgeInsets.symmetric(
-            horizontal: 6,
-            vertical: 7,
-          ),
+          contentPadding: EdgeInsets.symmetric(horizontal: 6),
         ),
         onChanged: (_) => widget.onChanged(),
         onSubmitted: (_) => FocusScope.of(context).nextFocus(),
@@ -1009,6 +1011,7 @@ class _SalesWarehouseDropdownState extends State<_SalesWarehouseDropdown> {
   final _layerLink = LayerLink();
   final _anchorKey = GlobalKey();
   OverlayEntry? _overlayEntry;
+  bool _hovered = false;
 
   bool get _isOpen => _overlayEntry != null;
 
@@ -1121,29 +1124,59 @@ class _SalesWarehouseDropdownState extends State<_SalesWarehouseDropdown> {
 
   @override
   Widget build(BuildContext context) {
+    final borderColor = _isOpen
+        ? AppModuleColors.sales
+        : _hovered
+            ? AppColors.controlHoverBorder
+            : AppColors.border;
+    final backgroundColor = _isOpen
+        ? Color.alphaBlend(
+            AppModuleColors.sales.withAlpha(14),
+            AppColors.surface,
+          )
+        : _hovered
+            ? Color.alphaBlend(
+                AppModuleColors.sales.withAlpha(8),
+                AppColors.surface,
+              )
+            : AppColors.surface;
+
     return SizedBox(
       key: widget.fieldKey,
       height: _salesCellHeight,
       child: CompositedTransformTarget(
         key: _anchorKey,
         link: _layerLink,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: _toggleMenu,
-          child: MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6),
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          onEnter: (_) => setState(() => _hovered = true),
+          onExit: (_) => setState(() => _hovered = false),
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _toggleMenu,
+            child: AnimatedContainer(
+              duration: AppDurations.fast,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              decoration: BoxDecoration(
+                color: backgroundColor,
+                borderRadius: BorderRadius.circular(AppRadii.md),
+                border: Border.all(
+                  color: borderColor,
+                  width: _isOpen ? 1.6 : 1,
+                ),
+              ),
               child: Directionality(
                 textDirection: TextDirection.rtl,
                 child: Row(
                   children: [
-                    Icon(
-                      _isOpen
-                          ? Icons.expand_less_rounded
-                          : Icons.expand_more_rounded,
-                      color: AppModuleColors.sales,
-                      size: 18,
+                    AnimatedRotation(
+                      turns: _isOpen ? 0.5 : 0,
+                      duration: AppDurations.fast,
+                      child: const Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: AppModuleColors.sales,
+                        size: AppIconSizes.md,
+                      ),
                     ),
                     Expanded(
                       child: Text(
@@ -1154,11 +1187,12 @@ class _SalesWarehouseDropdownState extends State<_SalesWarehouseDropdown> {
                         style: const TextStyle(
                           color: _salesTextColor,
                           fontSize: 18,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w600,
+                          height: kTextHeightNone,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 18),
+                    const SizedBox(width: AppIconSizes.md),
                   ],
                 ),
               ),
@@ -1190,20 +1224,21 @@ class _SalesWarehouseMenu extends StatelessWidget {
       child: ConstrainedBox(
         constraints: BoxConstraints.tightFor(width: width),
         child: DecoratedBox(
+          key: const Key('salesWarehouseMenu'),
           decoration: BoxDecoration(
             color: AppColors.surface,
-            border: Border.all(color: AppModuleColors.sales),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
+            border: Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(AppRadii.md),
+            boxShadow: const [
               BoxShadow(
-                color: Colors.black.withAlpha(36),
-                blurRadius: 18,
-                offset: const Offset(0, 8),
+                color: AppColors.menuShadow,
+                blurRadius: 12,
+                offset: Offset(0, 4),
               ),
             ],
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(15),
+            borderRadius: BorderRadius.circular(AppRadii.md - 1),
             child: Padding(
               padding: const EdgeInsets.all(4),
               child: ConstrainedBox(
@@ -1254,7 +1289,7 @@ class _SalesWarehouseMenuItemState
   @override
   Widget build(BuildContext context) {
     final foreground =
-        widget.selected ? AppModulePalettes.sales.dark : _salesTextColor;
+        widget.selected ? AppModuleColors.sales : _salesTextColor;
     final background = widget.selected
         ? _salesSelectedTint
         : _hovered
@@ -1273,25 +1308,42 @@ class _SalesWarehouseMenuItemState
         behavior: HitTestBehavior.opaque,
         onTap: () => widget.onSelected(widget.value),
         child: Container(
-          height: 44,
+          height: 42,
           width: double.infinity,
           alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
           decoration: BoxDecoration(
             color: background,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(AppRadii.sm),
           ),
-          child: Text(
-            widget.value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: foreground,
-              fontSize: 18,
-              fontWeight:
-                  widget.selected ? FontWeight.w800 : FontWeight.w700,
-            ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Center(
+                child: Text(
+                  widget.value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: foreground,
+                    fontSize: 18,
+                    fontWeight: widget.selected
+                        ? FontWeight.w700
+                        : FontWeight.w600,
+                  ),
+                ),
+              ),
+              if (widget.selected)
+                const Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Icon(
+                    Icons.check_rounded,
+                    size: AppIconSizes.sm,
+                    color: AppModuleColors.sales,
+                  ),
+                ),
+            ],
           ),
         ),
       ),

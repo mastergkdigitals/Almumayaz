@@ -22,16 +22,11 @@ const _purchaseCellRadius = 3.0;
 const _purchaseEdgeInset = 6.0;
 const _purchaseWidthSafetyBuffer = 8.0;
 
-final _purchaseSelectedTint = Color.lerp(
-  AppModulePalettes.purchases.light,
-  Colors.white,
-  0.58,
-)!;
-final _purchaseHoverTint = Color.lerp(
-  AppModulePalettes.purchases.light,
-  Colors.white,
-  0.78,
-)!;
+final _purchaseSelectedTint = Color.alphaBlend(
+  AppModuleColors.purchases.withAlpha(22),
+  AppColors.surface,
+);
+const _purchaseHoverTint = AppColors.controlHoverSurface;
 final _purchaseHeaderColor = Color.lerp(
   AppModulePalettes.purchases.light,
   Colors.white,
@@ -627,6 +622,7 @@ class _PurchaseGridBodyRow extends StatelessWidget {
             _PurchaseGridCellFrame(
               width: columns[3].width,
               frameKey: Key('${keyPrefix}WarehouseCell-${row.id}'),
+              decorate: false,
               child: _PurchaseWarehouseDropdown(
                 fieldKey: Key('${keyPrefix}Warehouse-${row.id}'),
                 value: row.warehouse,
@@ -735,11 +731,13 @@ class _PurchaseGridCellFrame extends StatelessWidget {
     required this.width,
     required this.frameKey,
     required this.child,
+    this.decorate = true,
   });
 
   final double width;
   final Key frameKey;
   final Widget child;
+  final bool decorate;
 
   @override
   Widget build(BuildContext context) {
@@ -750,17 +748,19 @@ class _PurchaseGridCellFrame extends StatelessWidget {
         child: Container(
           key: frameKey,
           height: _purchaseCellHeight,
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            color: _purchaseCellColor,
-            borderRadius: BorderRadius.circular(_purchaseCellRadius),
-          ),
-          foregroundDecoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(_purchaseCellRadius),
-            border: Border.all(
-              color: _purchaseCellBorder,
-            ),
-          ),
+          clipBehavior: decorate ? Clip.antiAlias : Clip.none,
+          decoration: decorate
+              ? BoxDecoration(
+                  color: _purchaseCellColor,
+                  borderRadius: BorderRadius.circular(_purchaseCellRadius),
+                )
+              : null,
+          foregroundDecoration: decorate
+              ? BoxDecoration(
+                  borderRadius: BorderRadius.circular(_purchaseCellRadius),
+                  border: Border.all(color: _purchaseCellBorder),
+                )
+              : null,
           child: child,
         ),
       ),
@@ -835,6 +835,7 @@ class _PurchaseGridEditorCellState
         maxLines: 1,
         textInputAction: TextInputAction.next,
         textAlign: widget.numeric ? TextAlign.center : TextAlign.right,
+        textAlignVertical: TextAlignVertical.center,
         textDirection:
             widget.numeric ? TextDirection.ltr : TextDirection.rtl,
         cursorColor: AppColors.cursor,
@@ -842,6 +843,7 @@ class _PurchaseGridEditorCellState
           color: _purchaseTextColor,
           fontSize: 18,
           fontWeight: FontWeight.w700,
+          height: kTextHeightNone,
         ),
         decoration: const InputDecoration(
           filled: false,
@@ -854,10 +856,7 @@ class _PurchaseGridEditorCellState
           errorBorder: InputBorder.none,
           focusedErrorBorder: InputBorder.none,
           isCollapsed: true,
-          contentPadding: EdgeInsets.symmetric(
-            horizontal: 6,
-            vertical: 7,
-          ),
+          contentPadding: EdgeInsets.symmetric(horizontal: 6),
         ),
         onChanged: (_) => widget.onChanged(),
         onSubmitted: (_) => FocusScope.of(context).nextFocus(),
@@ -1079,6 +1078,7 @@ class _PurchaseWarehouseDropdownState
   final _layerLink = LayerLink();
   final _anchorKey = GlobalKey();
   OverlayEntry? _overlayEntry;
+  bool _hovered = false;
 
   bool get _isOpen => _overlayEntry != null;
 
@@ -1191,29 +1191,59 @@ class _PurchaseWarehouseDropdownState
 
   @override
   Widget build(BuildContext context) {
+    final borderColor = _isOpen
+        ? AppModuleColors.purchases
+        : _hovered
+            ? AppColors.controlHoverBorder
+            : AppColors.border;
+    final backgroundColor = _isOpen
+        ? Color.alphaBlend(
+            AppModuleColors.purchases.withAlpha(14),
+            AppColors.surface,
+          )
+        : _hovered
+            ? Color.alphaBlend(
+                AppModuleColors.purchases.withAlpha(8),
+                AppColors.surface,
+              )
+            : AppColors.surface;
+
     return SizedBox(
       key: widget.fieldKey,
       height: _purchaseCellHeight,
       child: CompositedTransformTarget(
         key: _anchorKey,
         link: _layerLink,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: _toggleMenu,
-          child: MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6),
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          onEnter: (_) => setState(() => _hovered = true),
+          onExit: (_) => setState(() => _hovered = false),
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _toggleMenu,
+            child: AnimatedContainer(
+              duration: AppDurations.fast,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              decoration: BoxDecoration(
+                color: backgroundColor,
+                borderRadius: BorderRadius.circular(AppRadii.md),
+                border: Border.all(
+                  color: borderColor,
+                  width: _isOpen ? 1.6 : 1,
+                ),
+              ),
               child: Directionality(
                 textDirection: TextDirection.rtl,
                 child: Row(
                   children: [
-                    Icon(
-                      _isOpen
-                          ? Icons.expand_less_rounded
-                          : Icons.expand_more_rounded,
-                      color: AppModuleColors.purchases,
-                      size: 18,
+                    AnimatedRotation(
+                      turns: _isOpen ? 0.5 : 0,
+                      duration: AppDurations.fast,
+                      child: const Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: AppModuleColors.purchases,
+                        size: AppIconSizes.md,
+                      ),
                     ),
                     Expanded(
                       child: Text(
@@ -1224,11 +1254,12 @@ class _PurchaseWarehouseDropdownState
                         style: const TextStyle(
                           color: _purchaseTextColor,
                           fontSize: 18,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w600,
+                          height: kTextHeightNone,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 18),
+                    const SizedBox(width: AppIconSizes.md),
                   ],
                 ),
               ),
@@ -1260,20 +1291,21 @@ class _PurchaseWarehouseMenu extends StatelessWidget {
       child: ConstrainedBox(
         constraints: BoxConstraints.tightFor(width: width),
         child: DecoratedBox(
+          key: const Key('purchaseWarehouseMenu'),
           decoration: BoxDecoration(
             color: AppColors.surface,
-            border: Border.all(color: AppModuleColors.purchases),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
+            border: Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(AppRadii.md),
+            boxShadow: const [
               BoxShadow(
-                color: Colors.black.withAlpha(36),
-                blurRadius: 18,
-                offset: const Offset(0, 8),
+                color: AppColors.menuShadow,
+                blurRadius: 12,
+                offset: Offset(0, 4),
               ),
             ],
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(15),
+            borderRadius: BorderRadius.circular(AppRadii.md - 1),
             child: Padding(
               padding: const EdgeInsets.all(4),
               child: ConstrainedBox(
@@ -1323,9 +1355,8 @@ class _PurchaseWarehouseMenuItemState
 
   @override
   Widget build(BuildContext context) {
-    final foreground = widget.selected
-        ? AppModulePalettes.purchases.dark
-        : _purchaseTextColor;
+    final foreground =
+        widget.selected ? AppModuleColors.purchases : _purchaseTextColor;
     final background = widget.selected
         ? _purchaseSelectedTint
         : _hovered
@@ -1344,25 +1375,42 @@ class _PurchaseWarehouseMenuItemState
         behavior: HitTestBehavior.opaque,
         onTap: () => widget.onSelected(widget.value),
         child: Container(
-          height: 44,
+          height: 42,
           width: double.infinity,
           alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
           decoration: BoxDecoration(
             color: background,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(AppRadii.sm),
           ),
-          child: Text(
-            widget.value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: foreground,
-              fontSize: 18,
-              fontWeight:
-                  widget.selected ? FontWeight.w800 : FontWeight.w700,
-            ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Center(
+                child: Text(
+                  widget.value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: foreground,
+                    fontSize: 18,
+                    fontWeight: widget.selected
+                        ? FontWeight.w700
+                        : FontWeight.w600,
+                  ),
+                ),
+              ),
+              if (widget.selected)
+                const Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Icon(
+                    Icons.check_rounded,
+                    size: AppIconSizes.sm,
+                    color: AppModuleColors.purchases,
+                  ),
+                ),
+            ],
           ),
         ),
       ),
