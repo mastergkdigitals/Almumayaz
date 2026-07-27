@@ -36,7 +36,11 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.byKey(const Key('settingsFieldTableRow')),
+      find.byKey(const Key('settingsFieldTableRow-r1')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('settingsFieldTableRows')),
       findsOneWidget,
     );
     expect(
@@ -44,37 +48,37 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.byKey(const Key('settingsTemplateCodeField')),
+      find.byKey(const Key('settingsTemplateCodeField-r1')),
       findsOneWidget,
     );
     expect(
-      find.byKey(const Key('settingsTemplateNameField')),
+      find.byKey(const Key('settingsTemplateNameField-r1')),
       findsOneWidget,
     );
     expect(
-      find.byKey(const Key('settingsTemplateWarehouseDropdown')),
+      find.byKey(const Key('settingsTemplateWarehouseDropdown-r1')),
       findsOneWidget,
     );
     expect(
-      find.byKey(const Key('settingsTemplateQuantityField')),
+      find.byKey(const Key('settingsTemplateQuantityField-r1')),
       findsOneWidget,
     );
     expect(
-      find.byKey(const Key('settingsTemplateSalePriceField')),
+      find.byKey(const Key('settingsTemplateSalePriceField-r1')),
       findsOneWidget,
     );
     expect(
-      find.byKey(const Key('settingsTemplateDiscountField')),
+      find.byKey(const Key('settingsTemplateDiscountField-r1')),
       findsOneWidget,
     );
     expect(
       find.byKey(
-        const Key('settingsTemplatePriceAfterDiscountField'),
+        const Key('settingsTemplatePriceAfterDiscountField-r1'),
       ),
       findsOneWidget,
     );
     expect(
-      find.byKey(const Key('settingsTemplateTotalField')),
+      find.byKey(const Key('settingsTemplateTotalField-r1')),
       findsOneWidget,
     );
     expect(
@@ -102,7 +106,7 @@ void main() {
 
     final codeTextField = tester.widget<TextField>(
       find.descendant(
-        of: find.byKey(const Key('settingsTemplateCodeField')),
+        of: find.byKey(const Key('settingsTemplateCodeField-r1')),
         matching: find.byType(TextField),
       ),
     );
@@ -117,7 +121,7 @@ void main() {
     final readOnlyTextField = tester.widget<TextField>(
       find.descendant(
         of: find.byKey(
-          const Key('settingsTemplatePriceAfterDiscountField'),
+          const Key('settingsTemplatePriceAfterDiscountField-r1'),
         ),
         matching: find.byType(TextField),
       ),
@@ -132,7 +136,7 @@ void main() {
     final warehouseDropdown = tester.widget<AppDropdownField<String>>(
       find.ancestor(
         of: find.byKey(
-          const Key('settingsTemplateWarehouseDropdown'),
+          const Key('settingsTemplateWarehouseDropdown-r1'),
         ),
         matching: find.byType(AppDropdownField<String>),
       ),
@@ -144,6 +148,63 @@ void main() {
     expect(warehouseDropdown.accentColor, AppModuleColors.sales);
     expect(warehouseDropdown.showLabel, isFalse);
     expect(warehouseDropdown.borderRadius, AppRadii.sm);
+
+    final codeFieldRect = tester.getRect(
+      find.byKey(const Key('settingsTemplateCodeField-r1')),
+    );
+    final warehouseDropdownRect = tester.getRect(
+      find.byKey(
+        const Key('settingsTemplateWarehouseDropdown-r1'),
+      ),
+    );
+    expect(codeFieldRect.height, AppControlHeights.large);
+    expect(warehouseDropdownRect.height, codeFieldRect.height);
+
+    await tester.tap(find.byKey(const Key('settingsTemplateAddButton')));
+    await tester.pump();
+
+    expect(
+      find.byKey(const Key('settingsFieldTableRow-r1')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('settingsFieldTableRow-r2')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('settingsTemplateCodeField-r2')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('settingsTemplateWarehouseDropdown-r2')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('settingsTemplateDeleteButton-r1')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('settingsTemplateAddButton')),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(const Key('settingsTemplateDeleteButton-r1')),
+    );
+    await tester.pump();
+
+    expect(
+      find.byKey(const Key('settingsFieldTableRow-r1')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const Key('settingsFieldTableRow-r2')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('settingsTemplateAddButton')),
+      findsOneWidget,
+    );
 
     await tester.tap(find.byKey(const Key('appScreenBackButton')));
     await tester.pumpAndSettle();
