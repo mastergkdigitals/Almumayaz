@@ -232,6 +232,7 @@ void main() {
 
     final name = find.byKey(const Key('partyNameField'));
     await tester.tap(name);
+    await tester.enterText(name, 'طرف اختبار');
     await tester.testTextInput.receiveAction(TextInputAction.next);
     await tester.pump();
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
@@ -244,6 +245,8 @@ void main() {
     expect(find.byType(MenuItemButton), findsNothing);
     expect(find.byKey(const Key('partiesScreen')), findsOneWidget);
 
+    await tester.tap(find.byKey(const Key('partiesUndoButton')));
+    await tester.pump();
     await tester.tap(find.byKey(const Key('partyRow_party-003')));
     await tester.pump();
     await tester.tap(find.byKey(const Key('partiesDeleteButton')));

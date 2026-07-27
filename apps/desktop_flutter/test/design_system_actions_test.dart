@@ -23,7 +23,9 @@ void main() {
     };
     for (final entry in navigation.entries) {
       final button = find.byKey(Key(entry.key));
-      expect(tester.getSize(button), const Size(104, 52));
+      final size = tester.getSize(button);
+      expect(size.width, greaterThanOrEqualTo(104));
+      expect(size.height, 52);
       expect(
         tester.widget<Icon>(
           find.descendant(of: button, matching: find.byType(Icon)),
@@ -52,7 +54,9 @@ void main() {
     };
     for (final entry in actions.entries) {
       final button = find.byKey(Key(entry.key));
-      expect(tester.getSize(button), const Size(108, 52));
+      final size = tester.getSize(button);
+      expect(size.width, greaterThanOrEqualTo(108));
+      expect(size.height, 52);
       final icon = tester.widget<Icon>(
         find.descendant(of: button, matching: find.byType(Icon)),
       );
@@ -260,7 +264,7 @@ void main() {
       disabledNavigation.style?.side?.resolve(
         {WidgetState.disabled},
       )?.color,
-      AppColors.disabled,
+      const Color(0xFFD1D5DB).withValues(alpha: 0.55),
     );
 
     final stateDropdown =

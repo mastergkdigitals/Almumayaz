@@ -217,10 +217,14 @@ class WarehousesController extends ChangeNotifier {
   static Map<String, List<WarehouseInventoryItem>> _freezeInventory(
     Map<String, List<WarehouseInventoryItem>> source,
   ) {
-    return Map.unmodifiable({
+    final frozenInventory = <String, List<WarehouseInventoryItem>>{
       for (final entry in source.entries)
-        entry.key: List.unmodifiable(entry.value),
-    });
+        entry.key:
+            List<WarehouseInventoryItem>.unmodifiable(entry.value),
+    };
+    return Map<String, List<WarehouseInventoryItem>>.unmodifiable(
+      frozenInventory,
+    );
   }
 }
 

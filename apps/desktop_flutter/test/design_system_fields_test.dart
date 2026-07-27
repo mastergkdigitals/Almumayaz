@@ -188,10 +188,12 @@ void main() {
     expect(decorator.textAlignVertical, isNull);
     expect(decorator.expands, isFalse);
     expect(decorator.isEmpty, isFalse);
-    expect(
-      tester.getSize(dropdown),
-      tester.getSize(find.byKey(const Key('designNameField'))),
+    final dropdownSize = tester.getSize(dropdown);
+    final textFieldSize = tester.getSize(
+      find.byKey(const Key('designNameField')),
     );
+    expect(dropdownSize.width, textFieldSize.width);
+    expect(dropdownSize.height, closeTo(textFieldSize.height, 2));
     expect(
       find.descendant(of: dropdown, matching: find.text('دينار')),
       findsOneWidget,

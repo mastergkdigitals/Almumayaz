@@ -9,7 +9,13 @@ void main() {
 
     expect(find.byKey(const Key('purchaseScreen')), findsOneWidget);
     expect(find.byKey(const Key('purchaseTintBackground')), findsOneWidget);
-    expect(find.text('المشتريات'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('purchaseScreen')),
+        matching: find.text('المشتريات'),
+      ),
+      findsOneWidget,
+    );
 
     for (final removedKey in const [
       'purchaseHeaderPanel',
