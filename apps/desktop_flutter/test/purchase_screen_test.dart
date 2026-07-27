@@ -4,11 +4,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('keeps only the purchase tint background', (tester) async {
+  testWidgets('places the old purchase table directly on its tinted page',
+      (tester) async {
     await _openPurchaseScreen(tester);
 
     expect(find.byKey(const Key('purchaseScreen')), findsOneWidget);
     expect(find.byKey(const Key('purchaseTintBackground')), findsOneWidget);
+    expect(find.byKey(const Key('purchaseItemsTable')), findsOneWidget);
+    expect(find.byKey(const Key('purchaseTableSurface')), findsOneWidget);
+    expect(find.byKey(const Key('purchaseCode-r1')), findsOneWidget);
+    expect(find.byKey(const Key('purchaseName-r1')), findsOneWidget);
+    expect(find.byKey(const Key('purchaseWarehouse-r1')), findsOneWidget);
+    expect(find.byKey(const Key('purchaseQuantity-r1')), findsOneWidget);
+    expect(find.byKey(const Key('purchaseContainer-r1')), findsOneWidget);
+    expect(find.byKey(const Key('purchasePurchasePrice-r1')), findsOneWidget);
+    expect(find.byKey(const Key('purchaseDiscount-r1')), findsOneWidget);
+    expect(find.byKey(const Key('purchaseSalePrice-r1')), findsOneWidget);
+    expect(find.byKey(const Key('purchaseAdd-r1')), findsOneWidget);
+    expect(find.byKey(const Key('purchaseQuantityTotal')), findsOneWidget);
+    expect(find.byKey(const Key('purchaseSubtotal')), findsOneWidget);
+    expect(find.byKey(const Key('purchaseTotalCost')), findsOneWidget);
     expect(
       find.descendant(
         of: find.byKey(const Key('purchaseScreen')),
@@ -22,7 +37,6 @@ void main() {
       'purchaseTablePanel',
       'purchaseTotalsPanel',
       'purchaseActionBar',
-      'purchaseItemsTable',
     ]) {
       expect(find.byKey(Key(removedKey)), findsNothing);
     }

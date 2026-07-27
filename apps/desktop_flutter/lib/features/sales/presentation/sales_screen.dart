@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/design/app_design_system.dart';
-import 'widgets/purchase_items_table.dart';
+import 'widgets/sales_items_table.dart';
 
-class PurchaseScreen extends StatefulWidget {
-  const PurchaseScreen({super.key});
+class SalesScreen extends StatefulWidget {
+  const SalesScreen({super.key});
 
   @override
-  State<PurchaseScreen> createState() => _PurchaseScreenState();
+  State<SalesScreen> createState() => _SalesScreenState();
 }
 
-class _PurchaseScreenState extends State<PurchaseScreen> {
-  late final PurchaseItemsController _itemsController;
+class _SalesScreenState extends State<SalesScreen> {
+  late final SalesItemsController _itemsController;
 
   @override
   void initState() {
     super.initState();
-    _itemsController = PurchaseItemsController();
+    _itemsController = SalesItemsController();
   }
 
   @override
@@ -28,18 +28,18 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScreenShell(
-      key: const Key('purchaseScreen'),
-      title: 'المشتريات',
+      key: const Key('salesScreen'),
+      title: 'المبيعات',
       backgroundColor: Color.alphaBlend(
-        AppModuleColors.purchases.withAlpha(12),
+        AppModuleColors.sales.withAlpha(12),
         AppColors.surface,
       ),
       onBack: () => Navigator.of(context).pop(),
       body: Padding(
-        key: Key('purchaseTintBackground'),
+        key: const Key('salesTintBackground'),
         padding: const EdgeInsets.all(AppSpacing.lg),
-        child: PurchaseItemsTable(
-          key: const Key('purchaseItemsTable'),
+        child: SalesItemsTable(
+          key: const Key('salesItemsTable'),
           controller: _itemsController,
         ),
       ),
