@@ -17,7 +17,7 @@ void main() {
     expect(find.text('هذا الحقل مطلوب'), findsOneWidget);
     expect(_hasTextFocus(tester, name), isTrue);
     expect(
-      tester.widget<TextFormField>(name).decoration?.errorText,
+      _fieldDecoration(tester, name).errorText,
       'هذا الحقل مطلوب',
     );
 
@@ -296,6 +296,14 @@ bool _hasTextFocus(WidgetTester tester, Finder field) {
       )
       .focusNode
       .hasFocus;
+}
+
+InputDecoration _fieldDecoration(WidgetTester tester, Finder field) {
+  return tester
+      .widget<InputDecorator>(
+        find.descendant(of: field, matching: find.byType(InputDecorator)),
+      )
+      .decoration;
 }
 
 String _text(WidgetTester tester, Finder field) {

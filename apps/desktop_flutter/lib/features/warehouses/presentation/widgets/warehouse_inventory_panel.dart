@@ -145,7 +145,7 @@ class WarehouseInventoryPanel extends StatelessWidget {
               message: warehouse == null
                   ? 'سيظهر مخزون المخزن المحدد هنا.'
                   : materialCount == 0
-                      ? warehouse.name
+                      ? warehouseName!
                       : 'غيّر كلمات البحث.',
             ),
           ),

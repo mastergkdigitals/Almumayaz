@@ -73,9 +73,13 @@ void main() {
       'cashboxPreviousBalanceUsdField',
       'cashboxRemainingBalanceUsdField',
     ]) {
-      final field = tester.widget<TextFormField>(find.byKey(Key(fieldKey)));
+      final fieldFinder = find.byKey(Key(fieldKey));
+      final field = tester.widget<TextFormField>(fieldFinder);
       expect(field.enabled, isFalse);
-      expect(field.decoration?.fillColor, AppColors.neutralSurface);
+      expect(
+        _fieldDecoration(tester, fieldFinder).fillColor,
+        AppColors.neutralSurface,
+      );
     }
 
     expect(find.byKey(const Key('cashboxDateField')), findsOneWidget);
@@ -94,8 +98,20 @@ void main() {
       find.byKey(const Key('cashboxDateField')),
     );
     expect(dateField.enabled, isTrue);
-    expect(dateField.readOnly, isTrue);
-    expect(dateField.decoration?.fillColor, AppColors.surface);
+    expect(
+      _editableText(
+        tester,
+        find.byKey(const Key('cashboxDateField')),
+      ).readOnly,
+      isTrue,
+    );
+    expect(
+      _fieldDecoration(
+        tester,
+        find.byKey(const Key('cashboxDateField')),
+      ).fillColor,
+      AppColors.surface,
+    );
 
     _expectSameRow(tester, [
       'cashboxBalanceIqdField',
@@ -138,13 +154,12 @@ void main() {
     expect(typeDropdown.useIntrinsicHeight, isTrue);
     expect(typeDropdown.accentColor, AppModuleColors.cashbox);
 
-    final searchDecoration = tester
-        .widget<TextFormField>(
-          find.byKey(const Key('cashboxSearchField')),
-        )
-        .decoration;
+    final searchDecoration = _fieldDecoration(
+      tester,
+      find.byKey(const Key('cashboxSearchField')),
+    );
     expect(
-      (searchDecoration?.focusedBorder as OutlineInputBorder)
+      (searchDecoration.focusedBorder as OutlineInputBorder)
           .borderSide
           .color,
       AppModuleColors.cashbox,
@@ -296,12 +311,21 @@ Future<void> _openCashbox(WidgetTester tester) async {
 }
 
 bool _hasTextFocus(WidgetTester tester, Finder finder) {
+  return _editableText(tester, finder).focusNode.hasFocus;
+}
+
+EditableText _editableText(WidgetTester tester, Finder field) {
+  return tester.widget<EditableText>(
+    find.descendant(of: field, matching: find.byType(EditableText)),
+  );
+}
+
+InputDecoration _fieldDecoration(WidgetTester tester, Finder field) {
   return tester
-      .widget<EditableText>(
-        find.descendant(of: finder, matching: find.byType(EditableText)),
+      .widget<InputDecorator>(
+        find.descendant(of: field, matching: find.byType(InputDecorator)),
       )
-      .focusNode
-      .hasFocus;
+      .decoration;
 }
 
 void _expectSameRow(WidgetTester tester, List<String> fieldKeys) {

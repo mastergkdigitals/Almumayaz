@@ -183,33 +183,31 @@ void main() {
       );
     }
 
-    final readOnlyDecoration = tester
-        .widget<TextFormField>(
-          find.byKey(const Key('partyNumberField')),
-        )
-        .decoration;
-    expect(readOnlyDecoration?.fillColor, AppColors.neutralSurface);
+    final readOnlyDecoration = _fieldDecoration(
+      tester,
+      find.byKey(const Key('partyNumberField')),
+    );
+    expect(readOnlyDecoration.fillColor, AppColors.neutralSurface);
     expect(
-      (readOnlyDecoration?.disabledBorder as OutlineInputBorder)
+      (readOnlyDecoration.disabledBorder as OutlineInputBorder)
           .borderSide
           .color,
       AppColors.border,
     );
 
-    final nameDecoration = tester
-        .widget<TextFormField>(
-          find.byKey(const Key('partyNameField')),
-        )
-        .decoration;
-    expect(nameDecoration?.fillColor, AppColors.surface);
+    final nameDecoration = _fieldDecoration(
+      tester,
+      find.byKey(const Key('partyNameField')),
+    );
+    expect(nameDecoration.fillColor, AppColors.surface);
     expect(
-      (nameDecoration?.enabledBorder as OutlineInputBorder)
+      (nameDecoration.enabledBorder as OutlineInputBorder)
           .borderSide
           .color,
       AppColors.border,
     );
     final focusedNameBorder =
-        nameDecoration?.focusedBorder as OutlineInputBorder;
+        nameDecoration.focusedBorder as OutlineInputBorder;
     expect(focusedNameBorder.borderSide.color, AppModuleColors.parties);
     expect(focusedNameBorder.borderSide.width, 1.6);
 
@@ -495,4 +493,12 @@ String _fieldText(WidgetTester tester, Finder field) {
       )
       .controller
       .text;
+}
+
+InputDecoration _fieldDecoration(WidgetTester tester, Finder field) {
+  return tester
+      .widget<InputDecorator>(
+        find.descendant(of: field, matching: find.byType(InputDecorator)),
+      )
+      .decoration;
 }

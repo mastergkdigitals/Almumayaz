@@ -28,6 +28,10 @@ void main() {
     final readOnlyField = tester.widget<TextFormField>(
       find.byKey(const Key('designReadOnlyField')),
     );
+    final readOnlyDecoration = _fieldDecoration(
+      tester,
+      find.byKey(const Key('designReadOnlyField')),
+    );
     final disabled = tester.widget<TextFormField>(
       find.byKey(const Key('designDisabledField')),
     );
@@ -47,11 +51,11 @@ void main() {
     expect(readOnly.readOnly, isTrue);
     expect(readOnlyField.enabled, isFalse);
     expect(
-      readOnlyField.decoration?.fillColor,
+      readOnlyDecoration.fillColor,
       AppColors.neutralSurface,
     );
     expect(
-      (readOnlyField.decoration?.disabledBorder as OutlineInputBorder)
+      (readOnlyDecoration.disabledBorder as OutlineInputBorder)
           .borderSide
           .color,
       AppColors.border,
@@ -322,13 +326,15 @@ void main() {
       expect(find.byKey(Key(key)), findsOneWidget);
     }
 
-    final oldField = tester.widget<TextFormField>(
-      find.byKey(const Key('designOldPurchaseInvoiceField')),
+    final oldFieldFinder = find.byKey(
+      const Key('designOldPurchaseInvoiceField'),
     );
-    expect(oldField.style?.fontSize, 20);
-    expect(oldField.style?.fontWeight, FontWeight.w700);
+    final oldField = _editableText(tester, oldFieldFinder);
+    final oldFieldDecoration = _fieldDecoration(tester, oldFieldFinder);
+    expect(oldField.style.fontSize, 20);
+    expect(oldField.style.fontWeight, FontWeight.w700);
     expect(
-      oldField.decoration?.labelStyle,
+      oldFieldDecoration.labelStyle,
       const TextStyle(
         color: Color(0xFF64748B),
         fontSize: 18,
@@ -336,7 +342,7 @@ void main() {
       ),
     );
     final oldBorder =
-        oldField.decoration?.enabledBorder! as OutlineInputBorder;
+        oldFieldDecoration.enabledBorder! as OutlineInputBorder;
     expect(oldBorder.borderRadius, BorderRadius.circular(14));
     expect(oldBorder.borderSide.color, const Color(0xFFE5E7EB));
 
@@ -399,4 +405,18 @@ void main() {
       AppDropdownVisualStyle.standard,
     );
   });
+}
+
+EditableText _editableText(WidgetTester tester, Finder field) {
+  return tester.widget<EditableText>(
+    find.descendant(of: field, matching: find.byType(EditableText)),
+  );
+}
+
+InputDecoration _fieldDecoration(WidgetTester tester, Finder field) {
+  return tester
+      .widget<InputDecorator>(
+        find.descendant(of: field, matching: find.byType(InputDecorator)),
+      )
+      .decoration;
 }

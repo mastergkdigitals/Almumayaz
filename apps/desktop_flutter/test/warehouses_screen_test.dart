@@ -69,18 +69,26 @@ void main() {
       find.byKey(const Key('warehouseNumberField')),
     );
     expect(numberField.enabled, isFalse);
-    expect(numberField.decoration?.fillColor, AppColors.neutralSurface);
+    expect(
+      _fieldDecoration(
+        tester,
+        find.byKey(const Key('warehouseNumberField')),
+      ).fillColor,
+      AppColors.neutralSurface,
+    );
 
     for (final fieldKey in [
       'warehouseNameField',
       'warehouseLocationField',
       'warehouseNotesField',
     ]) {
-      final field = tester.widget<TextFormField>(find.byKey(Key(fieldKey)));
+      final fieldFinder = find.byKey(Key(fieldKey));
+      final field = tester.widget<TextFormField>(fieldFinder);
+      final decoration = _fieldDecoration(tester, fieldFinder);
       expect(field.enabled, isTrue);
-      expect(field.decoration?.fillColor, AppColors.surface);
+      expect(decoration.fillColor, AppColors.surface);
       expect(
-        (field.decoration?.focusedBorder as OutlineInputBorder)
+        (decoration.focusedBorder as OutlineInputBorder)
             .borderSide
             .color,
         AppModuleColors.warehouses,
@@ -148,4 +156,12 @@ Future<void> _openWarehouses(WidgetTester tester) async {
   await tester.pumpAndSettle();
   await tester.tap(find.byKey(const Key('dashboardCard_warehouses')));
   await tester.pumpAndSettle();
+}
+
+InputDecoration _fieldDecoration(WidgetTester tester, Finder field) {
+  return tester
+      .widget<InputDecorator>(
+        find.descendant(of: field, matching: find.byType(InputDecorator)),
+      )
+      .decoration;
 }
