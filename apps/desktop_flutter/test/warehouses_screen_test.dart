@@ -271,7 +271,7 @@ void main() {
       find.byKey(const Key('inventoryTransferCreateTab')),
     );
     expect(createTab.width, isNull);
-    expect(createTab.minWidth, 180);
+    expect(createTab.minWidth, 210);
     final historyTab = tester.widget<AppButton>(
       find.byKey(const Key('inventoryTransferHistoryTab')),
     );

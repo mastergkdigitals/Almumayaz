@@ -565,7 +565,7 @@ class _ViewSelector extends StatelessWidget {
           label: 'نقل جديد',
           icon: Icons.compare_arrows_rounded,
           variant: AppButtonVariant.navigation,
-          minWidth: 180,
+          minWidth: 210,
           backgroundColor:
               view == _InventoryTransferView.create ? selectedTint : null,
           foregroundColor: view == _InventoryTransferView.create
