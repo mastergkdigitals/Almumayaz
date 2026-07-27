@@ -3,45 +3,89 @@ import 'package:flutter/material.dart';
 import '../app_tokens.dart';
 import 'app_button.dart';
 
-class AppTooltip extends StatelessWidget {
+class AppTooltip extends StatefulWidget {
   const AppTooltip({
     required this.message,
     required this.child,
     super.key,
     this.tooltipKey,
-    this.verticalOffset = AppSpacing.xl,
   });
 
   final String message;
   final Widget child;
   final Key? tooltipKey;
-  final double verticalOffset;
+
+  @override
+  State<AppTooltip> createState() => _AppTooltipState();
+}
+
+class _AppTooltipState extends State<AppTooltip> {
+  static const _targetGap = 6.0;
+  static const _fallbackTargetHeight = 42.0;
+
+  final _targetKey = GlobalKey();
+  Size _targetSize = Size.zero;
+  bool _measureScheduled = false;
+
+  void _scheduleTargetMeasure() {
+    if (_measureScheduled) return;
+
+    _measureScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _measureScheduled = false;
+      if (!mounted) return;
+
+      final renderObject = _targetKey.currentContext?.findRenderObject();
+      if (renderObject is! RenderBox || !renderObject.hasSize) return;
+
+      final nextSize = renderObject.size;
+      if (nextSize != _targetSize) {
+        setState(() => _targetSize = nextSize);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    _scheduleTargetMeasure();
+
+    final textDirection =
+        Directionality.maybeOf(context) ?? TextDirection.rtl;
+    final targetHeight = _targetSize.height > 0
+        ? _targetSize.height
+        : _fallbackTargetHeight;
+
     return Tooltip(
-      key: tooltipKey,
-      message: message,
+      key: widget.tooltipKey,
+      message: widget.message,
       preferBelow: true,
-      verticalOffset: verticalOffset,
-      waitDuration: AppDurations.normal,
-      showDuration: const Duration(seconds: 2),
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.sm,
-      ),
+      verticalOffset: (targetHeight / 2) + _targetGap,
       decoration: BoxDecoration(
         color: AppTooltipColors.background,
         borderRadius: BorderRadius.circular(AppRadii.md),
         border: Border.all(color: AppTooltipColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 14,
+            offset: const Offset(0, 7),
+          ),
+        ],
       ),
       textStyle: const TextStyle(
         color: AppTooltipColors.text,
-        fontSize: 14,
-        fontWeight: FontWeight.w700,
+        fontSize: 13,
+        fontWeight: FontWeight.w900,
+        height: 1.2,
       ),
-      textAlign: TextAlign.center,
-      child: child,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      child: KeyedSubtree(
+        key: _targetKey,
+        child: Directionality(
+          textDirection: textDirection,
+          child: widget.child,
+        ),
+      ),
     );
   }
 }
@@ -79,7 +123,6 @@ class AppTooltipIconButton extends StatelessWidget {
     return AppTooltip(
       tooltipKey: tooltipKey,
       message: tooltip,
-      verticalOffset: size / 2 + AppSpacing.sm,
       child: Semantics(
         button: true,
         enabled: onPressed != null,

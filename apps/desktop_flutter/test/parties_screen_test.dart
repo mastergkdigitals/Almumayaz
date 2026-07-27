@@ -135,6 +135,35 @@ void main() {
       isNull,
     );
 
+    final partiesFirstButton = tester.widget<AppButton>(
+      find.byKey(const Key('partiesFirstButton')),
+    );
+    expect(partiesFirstButton.variant, AppButtonVariant.navigation);
+    expect(
+      partiesFirstButton.padding,
+      const EdgeInsets.symmetric(horizontal: 14),
+    );
+    expect(partiesFirstButton.iconSize, 20);
+    expect(partiesFirstButton.textStyle?.fontSize, 16);
+    expect(partiesFirstButton.textStyle?.fontWeight, FontWeight.w800);
+    final partiesFirstOutlinedButton = tester.widget<OutlinedButton>(
+      find.descendant(
+        of: find.byKey(const Key('partiesFirstButton')),
+        matching: find.byType(OutlinedButton),
+      ),
+    );
+    expect(
+      partiesFirstOutlinedButton.style?.side
+          ?.resolve(<WidgetState>{WidgetState.hovered})
+          ?.color,
+      const Color(0xFF111827),
+    );
+    expect(
+      partiesFirstOutlinedButton.style?.backgroundColor
+          ?.resolve(<WidgetState>{WidgetState.pressed}),
+      const Color(0xFFF8FAFC),
+    );
+
     for (final fieldKey in [
       'partyNumberField',
       'partyDateField',

@@ -176,9 +176,9 @@ abstract final class AppDurations {
 }
 
 abstract final class AppTooltipColors {
-  static const background = Color(0xFFFFF4C2);
-  static const border = Color(0xFFD8A900);
-  static const text = Color(0xFF332400);
+  static const background = Color(0xFFFEF3C7);
+  static const border = Color(0xFFF59E0B);
+  static const text = Color(0xFF111827);
 }
 
 abstract final class AppBreakpoints {

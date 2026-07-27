@@ -270,4 +270,85 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
   });
+
+  testWidgets('compares old and current purchase fields in matching rows',
+      (tester) async {
+    await pumpDesignSystemGallery(tester);
+
+    final oldRow =
+        find.byKey(const Key('designOldPurchaseFieldsRow'));
+    final currentRow =
+        find.byKey(const Key('designCurrentPurchaseFieldsRow'));
+    await reveal(tester, currentRow);
+
+    expect(
+      find.text('مقارنة حقول وقوائم المشتريات'),
+      findsOneWidget,
+    );
+    expect(oldRow, findsOneWidget);
+    expect(currentRow, findsOneWidget);
+    expect(tester.widget<Row>(oldRow).children, hasLength(9));
+    expect(tester.widget<Row>(currentRow).children, hasLength(9));
+    expect(tester.getSize(oldRow).width, tester.getSize(currentRow).width);
+
+    final oldField = tester.widget<TextFormField>(
+      find.byKey(const Key('designOldPurchaseInvoiceField')),
+    );
+    expect(oldField.style?.fontSize, 20);
+    expect(oldField.style?.fontWeight, FontWeight.w700);
+    expect(
+      oldField.decoration?.labelStyle,
+      const TextStyle(
+        color: Color(0xFF64748B),
+        fontSize: 18,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+    final oldBorder =
+        oldField.decoration?.enabledBorder! as OutlineInputBorder;
+    expect(oldBorder.borderRadius, BorderRadius.circular(14));
+    expect(oldBorder.borderSide.color, const Color(0xFFE5E7EB));
+
+    AppDropdownField<String> dropdown(String key) {
+      return tester.widget<AppDropdownField<String>>(
+        find.ancestor(
+          of: find.byKey(Key(key)),
+          matching: find.byType(AppDropdownField<String>),
+        ),
+      );
+    }
+
+    expect(
+      dropdown('designOldPurchaseWarehouseDropdown').visualStyle,
+      AppDropdownVisualStyle.oldPurchase,
+    );
+    expect(
+      dropdown('designOldPurchaseWarehouseDropdown').contentPadding,
+      const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+    );
+    expect(
+      dropdown('designOldPurchaseWarehouseDropdown').textAlign,
+      TextAlign.center,
+    );
+    expect(
+      dropdown('designOldPurchaseTypeDropdown').visualStyle,
+      AppDropdownVisualStyle.oldPurchase,
+    );
+    expect(
+      dropdown('designOldPaymentTypeDropdown').visualStyle,
+      AppDropdownVisualStyle.oldPurchase,
+    );
+    expect(
+      dropdown('designCurrentPurchaseWarehouseDropdown').visualStyle,
+      AppDropdownVisualStyle.standard,
+    );
+    expect(
+      dropdown('designCurrentPurchaseTypeDropdown').visualStyle,
+      AppDropdownVisualStyle.standard,
+    );
+    expect(
+      dropdown('designCurrentPaymentTypeDropdown').visualStyle,
+      AppDropdownVisualStyle.standard,
+    );
+  });
 }

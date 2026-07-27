@@ -64,9 +64,13 @@ class AppButton extends StatefulWidget {
 }
 
 class _AppButtonState extends State<AppButton> {
-  static const _hoverScale = 1.03;
-  static const _pressedScale = 0.96;
-  static const _pressDuration = Duration(milliseconds: 70);
+  static const _defaultHoverScale = 1.03;
+  static const _defaultPressedScale = 0.96;
+  static const _defaultPressDuration = Duration(milliseconds: 70);
+  static const _navigationHoverScale = 1.04;
+  static const _navigationPressedScale = 0.94;
+  static const _navigationAnimationDuration =
+      Duration(milliseconds: 130);
 
   bool _isHovered = false;
   bool _isPressed = false;
@@ -182,6 +186,68 @@ class _AppButtonState extends State<AppButton> {
       );
     }
 
+    ButtonStyle navigationStyle() {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      final foreground = widget.foregroundColor ??
+          (isDark
+              ? const Color(0xFFF9FAFB)
+              : const Color(0xFF111827));
+      final border =
+          isDark ? const Color(0xFF334155) : const Color(0xFFD1D5DB);
+      final background = widget.backgroundColor ??
+          (isDark ? const Color(0xFF111827) : AppColors.surface);
+      final pressedBackground =
+          isDark ? const Color(0xFF1F2937) : const Color(0xFFF8FAFC);
+      final outline =
+          isDark ? const Color(0xFFE5E7EB) : const Color(0xFF111827);
+      final focusRing =
+          isDark ? const Color(0xFF60A5FA) : AppColors.blue;
+      final radius = widget.borderRadius ?? 14;
+
+      return withoutShadow(
+        OutlinedButton.styleFrom(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(radius),
+          ),
+        ),
+      ).copyWith(
+        animationDuration: const Duration(milliseconds: 160),
+        backgroundColor: WidgetStateProperty.resolveWith<Color>(
+          (states) {
+            if (states.contains(WidgetState.disabled)) {
+              return background.withValues(alpha: isDark ? 0.40 : 0.55);
+            }
+            if (states.contains(WidgetState.pressed)) {
+              return pressedBackground;
+            }
+            return background;
+          },
+        ),
+        foregroundColor: WidgetStateProperty.resolveWith<Color>(
+          (states) => states.contains(WidgetState.disabled)
+              ? foreground.withValues(alpha: 0.38)
+              : foreground,
+        ),
+        side: WidgetStateProperty.resolveWith<BorderSide>(
+          (states) {
+            if (states.contains(WidgetState.disabled)) {
+              return BorderSide(
+                color: border.withValues(alpha: 0.55),
+              );
+            }
+            if (states.contains(WidgetState.focused)) {
+              return BorderSide(color: focusRing);
+            }
+            if (states.contains(WidgetState.pressed) ||
+                states.contains(WidgetState.hovered)) {
+              return BorderSide(color: outline);
+            }
+            return BorderSide(color: border);
+          },
+        ),
+      );
+    }
+
     final button = switch (widget.variant) {
       AppButtonVariant.primary => ElevatedButton(
           onPressed: effectiveOnPressed,
@@ -255,24 +321,7 @@ class _AppButtonState extends State<AppButton> {
         ),
       AppButtonVariant.navigation => OutlinedButton(
           onPressed: effectiveOnPressed,
-          style: withoutShadow(
-            OutlinedButton.styleFrom(
-              foregroundColor:
-                  widget.foregroundColor ?? AppColors.navigation,
-              disabledForegroundColor: AppColors.disabled,
-              backgroundColor:
-                  widget.backgroundColor ?? AppColors.surface,
-              disabledBackgroundColor: AppColors.disabledSurface,
-            ).copyWith(
-              side: WidgetStateProperty.resolveWith<BorderSide?>(
-                (states) => BorderSide(
-                  color: states.contains(WidgetState.disabled)
-                      ? AppColors.disabled
-                      : (widget.foregroundColor ?? AppColors.navigation),
-                ),
-              ),
-            ),
-          ),
+          style: navigationStyle(),
           child: content,
         ),
       AppButtonVariant.danger => ElevatedButton(
@@ -300,12 +349,20 @@ class _AppButtonState extends State<AppButton> {
         ),
     };
 
+    final usesNavigationInteraction =
+        widget.variant == AppButtonVariant.navigation;
+    final hoverScale = usesNavigationInteraction
+        ? _navigationHoverScale
+        : _defaultHoverScale;
+    final pressedScale = usesNavigationInteraction
+        ? _navigationPressedScale
+        : _defaultPressedScale;
     final scale = !_isInteractive
         ? 1.0
         : _isPressed
-            ? _pressedScale
+            ? pressedScale
             : _isHovered
-                ? _hoverScale
+                ? hoverScale
                 : 1.0;
 
     return MouseRegion(
@@ -324,7 +381,11 @@ class _AppButtonState extends State<AppButton> {
         onPointerCancel: (_) => _setPressed(false),
         child: AnimatedScale(
           scale: scale,
-          duration: _isPressed ? _pressDuration : AppDurations.fast,
+          duration: usesNavigationInteraction
+              ? _navigationAnimationDuration
+              : _isPressed
+                  ? _defaultPressDuration
+                  : AppDurations.fast,
           curve: Curves.easeOutCubic,
           child: SizedBox(
             width: widget.width,
@@ -351,13 +412,13 @@ class AppRecordNavigation extends StatelessWidget {
     this.variant = AppButtonVariant.navigation,
     this.buttonWidth = 104,
     this.buttonHeight = 52,
-    this.buttonPadding = const EdgeInsets.symmetric(horizontal: 6),
-    this.iconSize = 18,
-    this.iconSpacing = AppSpacing.xs,
+    this.buttonPadding = const EdgeInsets.symmetric(horizontal: 14),
+    this.iconSize = AppIconSizes.md,
+    this.iconSpacing = AppSpacing.sm,
     this.spacing = AppSpacing.sm,
     this.textStyle = const TextStyle(
       fontSize: 16,
-      fontWeight: FontWeight.w700,
+      fontWeight: FontWeight.w800,
     ),
   });
 
@@ -417,7 +478,6 @@ class AppRecordNavigation extends StatelessWidget {
             key: nextButtonKey,
             label: 'التالي',
             icon: Icons.chevron_right_rounded,
-            iconPosition: AppButtonIconPosition.afterLabel,
             variant: variant,
             minWidth: buttonWidth,
             height: buttonHeight,
@@ -431,7 +491,6 @@ class AppRecordNavigation extends StatelessWidget {
             key: lastButtonKey,
             label: 'الأخير',
             icon: Icons.last_page_rounded,
-            iconPosition: AppButtonIconPosition.afterLabel,
             variant: variant,
             minWidth: buttonWidth,
             height: buttonHeight,

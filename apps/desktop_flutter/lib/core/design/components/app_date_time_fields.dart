@@ -94,7 +94,6 @@ class _AppDateFieldState extends State<AppDateField> {
       suffixIcon: widget.showPickerButton
           ? AppTooltip(
               message: 'اختيار التاريخ',
-              verticalOffset: AppControlHeights.large / 2 + AppSpacing.sm,
               child: AppFieldIconButton(
                 icon: Icons.edit_calendar_rounded,
                 color: widget.accentColor ?? AppColors.primary,
@@ -195,7 +194,6 @@ class _AppDateRangeFieldState extends State<AppDateRangeField> {
       onTap: _pickRange,
       suffixIcon: AppTooltip(
         message: 'اختيار نطاق التاريخ',
-        verticalOffset: AppControlHeights.large / 2 + AppSpacing.sm,
         child: AppFieldIconButton(
           icon: Icons.calendar_view_week_rounded,
           color: widget.accentColor ?? AppColors.primary,

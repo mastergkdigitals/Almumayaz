@@ -89,6 +89,36 @@ void main() {
         );
 
     expect(tooltip().message, 'داكن');
+    expect(tooltip().verticalOffset, 32);
+    expect(
+      tooltip().padding,
+      const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+    );
+    expect(
+      tooltip().textStyle,
+      const TextStyle(
+        color: AppTooltipColors.text,
+        fontSize: 13,
+        fontWeight: FontWeight.w900,
+        height: 1.2,
+      ),
+    );
+    final tooltipDecoration = tooltip().decoration! as BoxDecoration;
+    expect(tooltipDecoration.color, AppTooltipColors.background);
+    expect(
+      (tooltipDecoration.border! as Border).top.color,
+      AppTooltipColors.border,
+    );
+    expect(
+      tooltipDecoration.borderRadius,
+      BorderRadius.circular(12),
+    );
+    expect(tooltipDecoration.boxShadow, hasLength(1));
+    expect(tooltipDecoration.boxShadow!.single.blurRadius, 14);
+    expect(
+      tooltipDecoration.boxShadow!.single.offset,
+      const Offset(0, 7),
+    );
     expect(
       tester.widget<Icon>(
         find.descendant(of: themeButton, matching: find.byType(Icon)),
@@ -126,6 +156,42 @@ void main() {
     expect(screenIcon.icon, Icons.arrow_back_rounded);
     expect(referenceIcon.icon, screenIcon.icon);
     expect(tester.getSize(screenBack), tester.getSize(referenceBack));
+
+    final button = tester.widget<OutlinedButton>(
+      find.descendant(
+        of: referenceBack,
+        matching: find.byType(OutlinedButton),
+      ),
+    );
+    expect(
+      button.style?.backgroundColor?.resolve(<WidgetState>{}),
+      Colors.white,
+    );
+    expect(
+      button.style?.backgroundColor?.resolve(
+        <WidgetState>{WidgetState.pressed},
+      ),
+      const Color(0xFFF8FAFC),
+    );
+    expect(
+      button.style?.side?.resolve(<WidgetState>{})?.color,
+      const Color(0xFFD1D5DB),
+    );
+    expect(
+      button.style?.side?.resolve(
+        <WidgetState>{WidgetState.hovered},
+      )?.color,
+      const Color(0xFF111827),
+    );
+    expect(
+      button.style?.side?.resolve(
+        <WidgetState>{WidgetState.pressed},
+      )?.color,
+      const Color(0xFF111827),
+    );
+    final shape = button.style?.shape?.resolve(<WidgetState>{})
+        as RoundedRectangleBorder;
+    expect(shape.borderRadius, BorderRadius.circular(14));
   });
 
   testWidgets('uses real action states and consistent colors',
