@@ -45,12 +45,8 @@ void main() {
     );
     expect(scaffold.backgroundColor, expectedTint);
 
-    final backButton = tester.widget<AppHeaderIconButton>(
-      find.byKey(const Key('appScreenBackButton')),
-    );
-    backButton.onPressed!.call();
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.byKey(const Key('appScreenBackButton')));
+    await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('purchaseScreen')), findsNothing);
     expect(find.byKey(const Key('dashboardCard_purchases')), findsOneWidget);

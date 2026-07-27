@@ -132,7 +132,10 @@ void main() {
     );
     expect(
       tester.widget<AppButton>(
-        find.byKey(const Key('warehouseTransferButton')),
+        find.descendant(
+          of: find.byKey(const Key('warehouseTransferButton')),
+          matching: find.byType(AppButton),
+        ),
       ).onPressed,
       isNotNull,
     );

@@ -208,7 +208,7 @@ void main() {
     expect(selectedValue.style?.fontWeight, FontWeight.w700);
 
     final menuAnchor = tester.widget<MenuAnchor>(
-      find.descendant(
+      find.ancestor(
         of: dropdown,
         matching: find.byType(MenuAnchor),
       ),
