@@ -90,6 +90,7 @@ void main() {
     );
     expect(cancelButton.width, 144);
     expect(confirmButton.width, 144);
+    expect(confirmButton.variant, AppButtonVariant.warning);
 
     await tester.tap(find.byKey(const Key('appDatePickerCancel')));
     await tester.pump();

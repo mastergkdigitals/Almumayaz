@@ -476,6 +476,10 @@ class _CashboxScreenState extends State<CashboxScreen> {
           key: const Key('cashboxScreen'),
           title: 'الصندوق',
           subtitle: 'إدارة سندات القبض والصرف وحركات الصندوق',
+          backgroundColor: Color.alphaBlend(
+            AppModuleColors.cashbox.withAlpha(12),
+            AppColors.surface,
+          ),
           onBack: _attemptBack,
           onSearch: _searchFocusNode.requestFocus,
           onSave: hasSelectedVoucher

@@ -90,10 +90,6 @@ class _CashboxTableState extends State<CashboxTable> {
       AppModuleColors.cashbox.withAlpha(32),
       AppColors.surface,
     );
-    final alternateTint = Color.alphaBlend(
-      AppModuleColors.cashbox.withAlpha(12),
-      AppColors.surface,
-    );
 
     return AppDataTable(
       key: const Key('cashboxTable'),
@@ -103,7 +99,6 @@ class _CashboxTableState extends State<CashboxTable> {
       minimumColumnWidth: 135,
       accentColor: AppModuleColors.cashbox,
       selectedRowColor: selectedTint,
-      alternatingRowColor: alternateTint,
       columns: const [
         AppTableColumn(label: 'رقم السند', flex: 2),
         AppTableColumn(label: 'التاريخ', flex: 3),

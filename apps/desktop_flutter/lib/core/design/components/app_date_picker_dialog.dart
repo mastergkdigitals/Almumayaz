@@ -334,6 +334,7 @@ class _AppDatePickerBodyState extends State<_AppDatePickerBody> {
                         key: const Key('appDatePickerConfirm'),
                         label: 'موافق',
                         icon: Icons.check_rounded,
+                        variant: AppButtonVariant.warning,
                         width: 144,
                         onPressed: _canConfirm ? _confirm : null,
                       ),

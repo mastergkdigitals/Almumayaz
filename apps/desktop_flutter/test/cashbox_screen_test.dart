@@ -41,6 +41,19 @@ void main() {
     expect(find.byKey(const Key('cashboxTable')), findsOneWidget);
     expect(find.text('إدارة سندات القبض والصرف وحركات الصندوق'),
         findsOneWidget);
+    final cashboxScaffold = tester.widget<Scaffold>(
+      find.descendant(
+        of: find.byKey(const Key('cashboxScreen')),
+        matching: find.byType(Scaffold),
+      ),
+    );
+    expect(
+      cashboxScaffold.backgroundColor,
+      Color.alphaBlend(
+        AppModuleColors.cashbox.withAlpha(12),
+        AppColors.surface,
+      ),
+    );
 
     for (final fieldKey in [
       'cashboxBalanceIqdField',
@@ -162,6 +175,7 @@ void main() {
       ],
     );
     expect(table.rows, hasLength(6));
+    expect(table.alternatingRowColor, isNull);
 
     expect(
       tester.widget<AppButton>(
