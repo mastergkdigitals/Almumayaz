@@ -43,6 +43,16 @@ const _colorFamilies = <_ColorFamily>[
     ],
   ),
   _ColorFamily(
+    name: 'البرتقالي',
+    shades: [
+      _ColorShade('#FFE0B2', Color(0xFFFFE0B2)),
+      _ColorShade('#FFB74D', Color(0xFFFFB74D)),
+      _ColorShade('#FF9800', Color(0xFFFF9800)),
+      _ColorShade('#F57C00', Color(0xFFF57C00)),
+      _ColorShade('#E65100', Color(0xFFE65100)),
+    ],
+  ),
+  _ColorFamily(
     name: 'الرمادي',
     shades: [
       _ColorShade('#F5F5F5', Color(0xFFF5F5F5)),
