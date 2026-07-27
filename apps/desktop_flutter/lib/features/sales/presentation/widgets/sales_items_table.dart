@@ -13,6 +13,14 @@ const salesWarehouseNames = <String>[
 const _salesTextColor = Color(0xFF111827);
 const _salesAddColor = Color(0xFF16A34A);
 const _salesDeleteColor = Color(0xFFDC2626);
+const _salesHeaderHeight = 46.0;
+const _salesRowHeight = 54.0;
+const _salesSummaryHeight = 46.0;
+const _salesCellHeight = 38.0;
+const _salesOuterRadius = 18.0;
+const _salesCellRadius = 3.0;
+const _salesEdgeInset = 6.0;
+const _salesWidthSafetyBuffer = 8.0;
 
 final _salesSelectedTint = Color.lerp(
   AppModulePalettes.sales.light,
@@ -24,6 +32,65 @@ final _salesHoverTint = Color.lerp(
   Colors.white,
   0.78,
 )!;
+final _salesHeaderColor = Color.lerp(
+  AppModulePalettes.sales.light,
+  Colors.white,
+  0.82,
+)!;
+final _salesSummaryColor = Color.lerp(
+  _salesHeaderColor,
+  Colors.white,
+  0.48,
+)!;
+final _salesCellColor = Color.lerp(
+  _salesHeaderColor,
+  Colors.white,
+  0.82,
+)!;
+final _salesPanelBorder = Color.lerp(
+  AppModulePalettes.sales.middle,
+  Colors.white,
+  0.62,
+)!;
+final _salesOuterBorder = Color.lerp(
+  _salesPanelBorder,
+  AppModulePalettes.sales.middle,
+  0.22,
+)!;
+final _salesCellBorder = Color.lerp(
+  const Color(0xFFE5E7EB),
+  _salesPanelBorder,
+  0.45,
+)!;
+
+const _salesColumns = <_SalesGridColumn>[
+  _SalesGridColumn('ت', 54),
+  _SalesGridColumn('رمز المادة', 126, grow: 0.75),
+  _SalesGridColumn('اسم المادة', 190, grow: 3),
+  _SalesGridColumn('المخزن', 138, grow: 1.35),
+  _SalesGridColumn('الكمية', 104, grow: 0.70),
+  _SalesGridColumn('سعر البيع', 126, grow: 0.90),
+  _SalesGridColumn('الخصم', 104, grow: 0.70),
+  _SalesGridColumn('السعر بعد الخصم', 146, grow: 1.45),
+  _SalesGridColumn('الإجمالي', 116, grow: 1.55),
+  _SalesGridColumn('', 82),
+];
+
+class _SalesGridColumn {
+  const _SalesGridColumn(
+    this.label,
+    this.width, {
+    this.grow = 0,
+  });
+
+  final String label;
+  final double width;
+  final double grow;
+
+  _SalesGridColumn withWidth(double value) {
+    return _SalesGridColumn(label, value, grow: grow);
+  }
+}
 
 class SalesItemSeed {
   const SalesItemSeed({
@@ -168,10 +235,12 @@ class SalesItemsTable extends StatefulWidget {
 
 class _SalesItemsTableState extends State<SalesItemsTable> {
   final _verticalScrollController = ScrollController();
+  final _horizontalScrollController = ScrollController();
 
   @override
   void dispose() {
     _verticalScrollController.dispose();
+    _horizontalScrollController.dispose();
     super.dispose();
   }
 
@@ -203,142 +272,443 @@ class _SalesItemsTableState extends State<SalesItemsTable> {
             final tableHeight =
                 constraints.hasBoundedHeight ? constraints.maxHeight : 308.0;
 
-            return AppInvoiceItemsTable.sale(
+            return _SalesInvoiceGrid(
               tableKey: Key('${widget.keyPrefix}TableSurface'),
               height: tableHeight,
+              keyPrefix: widget.keyPrefix,
               verticalScrollController: _verticalScrollController,
-              rows: [
-                for (var index = 0;
-                    index < widget.controller.rows.length;
-                    index++)
-                  _row(
-                    widget.controller.rows[index],
-                    index,
-                    index == widget.controller.rows.length - 1,
-                  ),
-              ],
-              summaryCells: _summaryCells(),
+              horizontalScrollController: _horizontalScrollController,
+              rows: widget.controller.rows,
+              quantityTotal: widget.controller.quantityTotal,
+              discountTotal: widget.controller.discountTotal,
+              total: widget.controller.total,
+              money: _money,
+              onChanged: widget.controller.rowChanged,
+              onAddRow: _addRow,
+              onDeleteRow: widget.controller.removeRow,
             );
           },
         );
       },
     );
   }
+}
 
-  AppTableRow _row(
-    SalesItemRow row,
-    int index,
-    bool isLastRow,
-  ) {
-    final keyPrefix = widget.keyPrefix;
+class _SalesInvoiceGrid extends StatelessWidget {
+  const _SalesInvoiceGrid({
+    required this.tableKey,
+    required this.height,
+    required this.keyPrefix,
+    required this.verticalScrollController,
+    required this.horizontalScrollController,
+    required this.rows,
+    required this.quantityTotal,
+    required this.discountTotal,
+    required this.total,
+    required this.money,
+    required this.onChanged,
+    required this.onAddRow,
+    required this.onDeleteRow,
+  });
 
-    return AppTableRow(
-      rowKey: Key('${keyPrefix}Row-${row.id}'),
-      cells: [
-        Text(
-          '${index + 1}',
-          key: Key('${keyPrefix}Index-${row.id}'),
-          textDirection: TextDirection.ltr,
-        ),
-        _SalesPlainField(
-          fieldKey: Key('${keyPrefix}Code-${row.id}'),
-          controller: row.code,
-          onChanged: widget.controller.rowChanged,
-        ),
-        _SalesPlainField(
-          fieldKey: Key('${keyPrefix}Name-${row.id}'),
-          controller: row.name,
-          onChanged: widget.controller.rowChanged,
-        ),
-        _SalesWarehouseDropdown(
-          fieldKey: Key('${keyPrefix}Warehouse-${row.id}'),
-          value: row.warehouse,
-          onChanged: (value) {
-            row.warehouse = value;
-            widget.controller.rowChanged();
-          },
-        ),
-        _SalesPlainField(
-          fieldKey: Key('${keyPrefix}Quantity-${row.id}'),
-          controller: row.quantity,
-          numeric: true,
-          wholeNumber: true,
-          onChanged: widget.controller.rowChanged,
-        ),
-        _SalesPlainField(
-          fieldKey: Key('${keyPrefix}SalePrice-${row.id}'),
-          controller: row.salePrice,
-          numeric: true,
-          onChanged: widget.controller.rowChanged,
-        ),
-        _SalesPlainField(
-          fieldKey: Key('${keyPrefix}Discount-${row.id}'),
-          controller: row.discount,
-          numeric: true,
-          onChanged: widget.controller.rowChanged,
-        ),
-        _SalesValue(
-          valueKey: Key('${keyPrefix}PriceAfterDiscount-${row.id}'),
-          value: _money(row.priceAfterDiscount),
-        ),
-        _SalesValue(
-          valueKey: Key('${keyPrefix}Total-${row.id}'),
-          value: _money(row.lineTotal),
-        ),
-        AppTableActionButton(
-          key: Key(
-            isLastRow
-                ? '${keyPrefix}Add-${row.id}'
-                : '${keyPrefix}Delete-${row.id}',
-          ),
-          tooltipKey: Key(
-            isLastRow
-                ? '${keyPrefix}AddTooltip-${row.id}'
-                : '${keyPrefix}DeleteTooltip-${row.id}',
-          ),
-          icon: isLastRow ? Icons.add_rounded : Icons.close_rounded,
-          tooltip: isLastRow ? 'إضافة سطر' : 'حذف السطر',
-          variant:
-              isLastRow ? AppButtonVariant.success : AppButtonVariant.danger,
-          backgroundColor: isLastRow ? _salesAddColor : _salesDeleteColor,
-          foregroundColor: Colors.white,
-          size: 32,
-          iconSize: 19,
-          borderRadius: 9,
-          onPressed:
-              isLastRow ? _addRow : () => widget.controller.removeRow(index),
-        ),
-      ],
+  final Key tableKey;
+  final double height;
+  final String keyPrefix;
+  final ScrollController verticalScrollController;
+  final ScrollController horizontalScrollController;
+  final List<SalesItemRow> rows;
+  final double quantityTotal;
+  final double discountTotal;
+  final double total;
+  final String Function(double value) money;
+  final VoidCallback onChanged;
+  final VoidCallback onAddRow;
+  final ValueChanged<int> onDeleteRow;
+
+  @override
+  Widget build(BuildContext context) {
+    final baseContentWidth = _salesColumns.fold<double>(
+      0,
+      (sum, column) => sum + column.width,
     );
-  }
+    final safeContentWidth =
+        baseContentWidth +
+        (_salesEdgeInset * 2) +
+        _salesWidthSafetyBuffer;
+    final minimumHeight =
+        _salesHeaderHeight + _salesRowHeight + _salesSummaryHeight;
+    final tableHeight = height < minimumHeight ? minimumHeight : height;
 
-  List<Widget> _summaryCells() {
-    return [
-      const SizedBox.shrink(),
-      const SizedBox.shrink(),
-      const Text('المجموع'),
-      const SizedBox.shrink(),
-      Text(
-        AppFormatters.quantity(widget.controller.quantityTotal.round()),
-        key: Key('${widget.keyPrefix}QuantityTotal'),
-      ),
-      const SizedBox.shrink(),
-      Text(
-        _money(widget.controller.discountTotal),
-        key: Key('${widget.keyPrefix}DiscountTotal'),
-      ),
-      const SizedBox.shrink(),
-      Text(
-        _money(widget.controller.total),
-        key: Key('${widget.keyPrefix}Total'),
-      ),
-      const SizedBox.shrink(),
-    ];
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.hasBoundedWidth
+            ? constraints.maxWidth
+            : safeContentWidth;
+        final tableWidth =
+            availableWidth > safeContentWidth
+                ? availableWidth
+                : safeContentWidth;
+        final columns = _expandedSalesColumns(
+          _salesColumns,
+          tableWidth,
+        );
+        final occupiedWidth = columns.fold<double>(
+              0,
+              (sum, column) => sum + column.width,
+            ) +
+            (_salesEdgeInset * 2);
+        final trailingWidth =
+            tableWidth > occupiedWidth ? tableWidth - occupiedWidth : 0.0;
+
+        final table = SizedBox(
+          width: tableWidth,
+          height: tableHeight,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _SalesGridHeaderRow(
+                keyPrefix: keyPrefix,
+                columns: columns,
+                trailingWidth: trailingWidth,
+              ),
+              Expanded(
+                child: ColoredBox(
+                  color: AppColors.surface,
+                  child: Scrollbar(
+                    controller: verticalScrollController,
+                    child: ListView.builder(
+                      controller: verticalScrollController,
+                      padding: EdgeInsets.zero,
+                      itemCount: rows.length,
+                      itemExtent: _salesRowHeight,
+                      itemBuilder: (context, index) {
+                        final row = rows[index];
+                        return _SalesGridBodyRow(
+                          key: Key('${keyPrefix}Row-${row.id}'),
+                          keyPrefix: keyPrefix,
+                          columns: columns,
+                          trailingWidth: trailingWidth,
+                          row: row,
+                          rowNumber: index + 1,
+                          isLastRow: index == rows.length - 1,
+                          money: money,
+                          onChanged: onChanged,
+                          onAddRow: onAddRow,
+                          onDeleteRow: () => onDeleteRow(index),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              _SalesGridSummaryRow(
+                keyPrefix: keyPrefix,
+                columns: columns,
+                trailingWidth: trailingWidth,
+                quantityTotal: quantityTotal,
+                discountTotal: discountTotal,
+                total: total,
+                money: money,
+              ),
+            ],
+          ),
+        );
+
+        return Container(
+          key: tableKey,
+          height: tableHeight,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(_salesOuterRadius),
+          ),
+          foregroundDecoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(_salesOuterRadius),
+            border: Border.all(
+              color: _salesOuterBorder,
+              width: 1.4,
+            ),
+          ),
+          child: Scrollbar(
+            controller: horizontalScrollController,
+            scrollbarOrientation: ScrollbarOrientation.bottom,
+            child: SingleChildScrollView(
+              controller: horizontalScrollController,
+              scrollDirection: Axis.horizontal,
+              child: table,
+            ),
+          ),
+        );
+      },
+    );
   }
 }
 
-class _SalesPlainField extends StatelessWidget {
-  const _SalesPlainField({
+List<_SalesGridColumn> _expandedSalesColumns(
+  List<_SalesGridColumn> columns,
+  double tableWidth,
+) {
+  final baseContentWidth = columns.fold<double>(
+    0,
+    (sum, column) => sum + column.width,
+  );
+  final targetContentWidth = tableWidth - (_salesEdgeInset * 2);
+  final extraWidth = targetContentWidth - baseContentWidth;
+  final totalGrow = columns.fold<double>(
+    0,
+    (sum, column) => sum + column.grow,
+  );
+
+  if (extraWidth <= 0 || totalGrow <= 0) return columns;
+
+  return [
+    for (final column in columns)
+      column.withWidth(
+        column.width + (extraWidth * (column.grow / totalGrow)),
+      ),
+  ];
+}
+
+class _SalesGridHeaderRow extends StatelessWidget {
+  const _SalesGridHeaderRow({
+    required this.keyPrefix,
+    required this.columns,
+    required this.trailingWidth,
+  });
+
+  final String keyPrefix;
+  final List<_SalesGridColumn> columns;
+  final double trailingWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: Key('${keyPrefix}TableHeader'),
+      height: _salesHeaderHeight,
+      decoration: BoxDecoration(
+        color: _salesHeaderColor,
+        border: Border(
+          bottom: BorderSide(color: _salesPanelBorder),
+        ),
+      ),
+      child: Directionality(
+        textDirection: TextDirection.rtl,
+        child: Row(
+          children: [
+            const SizedBox(width: _salesEdgeInset),
+            for (final column in columns)
+              SizedBox(
+                width: column.width,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Center(
+                    child: Text(
+                      column.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: _salesTextColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            if (trailingWidth > 0) SizedBox(width: trailingWidth),
+            const SizedBox(width: _salesEdgeInset),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SalesGridBodyRow extends StatelessWidget {
+  const _SalesGridBodyRow({
+    required this.keyPrefix,
+    required this.columns,
+    required this.trailingWidth,
+    required this.row,
+    required this.rowNumber,
+    required this.isLastRow,
+    required this.money,
+    required this.onChanged,
+    required this.onAddRow,
+    required this.onDeleteRow,
+    super.key,
+  });
+
+  final String keyPrefix;
+  final List<_SalesGridColumn> columns;
+  final double trailingWidth;
+  final SalesItemRow row;
+  final int rowNumber;
+  final bool isLastRow;
+  final String Function(double value) money;
+  final VoidCallback onChanged;
+  final VoidCallback onAddRow;
+  final VoidCallback onDeleteRow;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: _salesRowHeight,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border(
+          bottom: BorderSide(color: _salesPanelBorder),
+        ),
+      ),
+      child: Directionality(
+        textDirection: TextDirection.rtl,
+        child: Row(
+          children: [
+            const SizedBox(width: _salesEdgeInset),
+            _SalesGridValueCell(
+              width: columns[0].width,
+              frameKey: Key('${keyPrefix}IndexCell-${row.id}'),
+              valueKey: Key('${keyPrefix}Index-${row.id}'),
+              value: '$rowNumber',
+            ),
+            _SalesGridEditorCell(
+              width: columns[1].width,
+              frameKey: Key('${keyPrefix}CodeCell-${row.id}'),
+              fieldKey: Key('${keyPrefix}Code-${row.id}'),
+              controller: row.code,
+              onChanged: onChanged,
+            ),
+            _SalesGridEditorCell(
+              width: columns[2].width,
+              frameKey: Key('${keyPrefix}NameCell-${row.id}'),
+              fieldKey: Key('${keyPrefix}Name-${row.id}'),
+              controller: row.name,
+              onChanged: onChanged,
+            ),
+            _SalesGridCellFrame(
+              width: columns[3].width,
+              frameKey: Key('${keyPrefix}WarehouseCell-${row.id}'),
+              child: _SalesWarehouseDropdown(
+                fieldKey: Key('${keyPrefix}Warehouse-${row.id}'),
+                value: row.warehouse,
+                onChanged: (value) {
+                  row.warehouse = value;
+                  onChanged();
+                },
+              ),
+            ),
+            _SalesGridEditorCell(
+              width: columns[4].width,
+              frameKey: Key('${keyPrefix}QuantityCell-${row.id}'),
+              fieldKey: Key('${keyPrefix}Quantity-${row.id}'),
+              controller: row.quantity,
+              numeric: true,
+              wholeNumber: true,
+              onChanged: onChanged,
+            ),
+            _SalesGridEditorCell(
+              width: columns[5].width,
+              frameKey: Key('${keyPrefix}SalePriceCell-${row.id}'),
+              fieldKey: Key('${keyPrefix}SalePrice-${row.id}'),
+              controller: row.salePrice,
+              numeric: true,
+              onChanged: onChanged,
+            ),
+            _SalesGridEditorCell(
+              width: columns[6].width,
+              frameKey: Key('${keyPrefix}DiscountCell-${row.id}'),
+              fieldKey: Key('${keyPrefix}Discount-${row.id}'),
+              controller: row.discount,
+              numeric: true,
+              onChanged: onChanged,
+            ),
+            _SalesGridValueCell(
+              width: columns[7].width,
+              frameKey: Key(
+                '${keyPrefix}PriceAfterDiscountCell-${row.id}',
+              ),
+              valueKey: Key(
+                '${keyPrefix}PriceAfterDiscount-${row.id}',
+              ),
+              value: money(row.priceAfterDiscount),
+            ),
+            _SalesGridValueCell(
+              width: columns[8].width,
+              frameKey: Key('${keyPrefix}TotalCell-${row.id}'),
+              valueKey: Key('${keyPrefix}Total-${row.id}'),
+              value: money(row.lineTotal),
+            ),
+            _SalesGridActionCell(
+              width: columns[9].width,
+              actionKey: Key(
+                isLastRow
+                    ? '${keyPrefix}Add-${row.id}'
+                    : '${keyPrefix}Delete-${row.id}',
+              ),
+              tooltipKey: Key(
+                isLastRow
+                    ? '${keyPrefix}AddTooltip-${row.id}'
+                    : '${keyPrefix}DeleteTooltip-${row.id}',
+              ),
+              isAddAction: isLastRow,
+              onPressed: isLastRow ? onAddRow : onDeleteRow,
+            ),
+            if (trailingWidth > 0) SizedBox(width: trailingWidth),
+            const SizedBox(width: _salesEdgeInset),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SalesGridCellFrame extends StatelessWidget {
+  const _SalesGridCellFrame({
+    required this.width,
+    required this.frameKey,
+    required this.child,
+    this.focused = false,
+  });
+
+  final double width;
+  final Key frameKey;
+  final Widget child;
+  final bool focused;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 5),
+        child: Container(
+          key: frameKey,
+          height: _salesCellHeight,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: _salesCellColor,
+            borderRadius: BorderRadius.circular(_salesCellRadius),
+          ),
+          foregroundDecoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(_salesCellRadius),
+            border: Border.all(
+              color:
+                  focused ? AppModuleColors.sales : _salesCellBorder,
+              width: focused ? 1.5 : 1,
+            ),
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+class _SalesGridEditorCell extends StatefulWidget {
+  const _SalesGridEditorCell({
+    required this.width,
+    required this.frameKey,
     required this.fieldKey,
     required this.controller,
     required this.onChanged,
@@ -346,6 +716,8 @@ class _SalesPlainField extends StatelessWidget {
     this.wholeNumber = false,
   });
 
+  final double width;
+  final Key frameKey;
   final Key fieldKey;
   final TextEditingController controller;
   final VoidCallback onChanged;
@@ -353,28 +725,62 @@ class _SalesPlainField extends StatelessWidget {
   final bool wholeNumber;
 
   @override
+  State<_SalesGridEditorCell> createState() =>
+      _SalesGridEditorCellState();
+}
+
+class _SalesGridEditorCellState extends State<_SalesGridEditorCell> {
+  late final FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode = FocusNode(debugLabel: 'salesInvoiceCell')
+      ..addListener(_handleFocusChanged);
+  }
+
+  @override
+  void dispose() {
+    _focusNode
+      ..removeListener(_handleFocusChanged)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _handleFocusChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final inputFormatters = numeric
+    final inputFormatters = widget.numeric
         ? <TextInputFormatter>[
-            if (wholeNumber)
+            if (widget.wholeNumber)
               const AppIntegerInputFormatter()
             else
               const AppMoneyInputFormatter(),
           ]
         : null;
 
-    return SizedBox(
-      height: AppInvoiceItemsTable.cellHeight,
+    return _SalesGridCellFrame(
+      width: widget.width,
+      frameKey: widget.frameKey,
+      focused: _focusNode.hasFocus,
       child: TextField(
-        key: fieldKey,
-        controller: controller,
-        keyboardType: numeric
-            ? TextInputType.numberWithOptions(decimal: !wholeNumber)
+        key: widget.fieldKey,
+        controller: widget.controller,
+        focusNode: _focusNode,
+        keyboardType: widget.numeric
+            ? TextInputType.numberWithOptions(
+                decimal: !widget.wholeNumber,
+              )
             : TextInputType.text,
         inputFormatters: inputFormatters,
         maxLines: 1,
-        textAlign: numeric ? TextAlign.center : TextAlign.right,
-        textDirection: numeric ? TextDirection.ltr : TextDirection.rtl,
+        textInputAction: TextInputAction.next,
+        textAlign: widget.numeric ? TextAlign.center : TextAlign.right,
+        textDirection:
+            widget.numeric ? TextDirection.ltr : TextDirection.rtl,
         cursorColor: AppColors.cursor,
         style: const TextStyle(
           color: _salesTextColor,
@@ -382,6 +788,9 @@ class _SalesPlainField extends StatelessWidget {
           fontWeight: FontWeight.w700,
         ),
         decoration: const InputDecoration(
+          filled: false,
+          fillColor: Colors.transparent,
+          hoverColor: Colors.transparent,
           border: InputBorder.none,
           enabledBorder: InputBorder.none,
           focusedBorder: InputBorder.none,
@@ -394,30 +803,188 @@ class _SalesPlainField extends StatelessWidget {
             vertical: 7,
           ),
         ),
-        onChanged: (_) => onChanged(),
+        onChanged: (_) => widget.onChanged(),
+        onSubmitted: (_) => FocusScope.of(context).nextFocus(),
       ),
     );
   }
 }
 
-class _SalesValue extends StatelessWidget {
-  const _SalesValue({
+class _SalesGridValueCell extends StatelessWidget {
+  const _SalesGridValueCell({
+    required this.width,
+    required this.frameKey,
     required this.valueKey,
     required this.value,
   });
 
+  final double width;
+  final Key frameKey;
   final Key valueKey;
   final String value;
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      value,
-      key: valueKey,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      textAlign: TextAlign.center,
-      textDirection: TextDirection.ltr,
+    return _SalesGridCellFrame(
+      width: width,
+      frameKey: frameKey,
+      child: Center(
+        child: Text(
+          value,
+          key: valueKey,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          textDirection: TextDirection.ltr,
+          style: const TextStyle(
+            color: _salesTextColor,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SalesGridActionCell extends StatelessWidget {
+  const _SalesGridActionCell({
+    required this.width,
+    required this.actionKey,
+    required this.tooltipKey,
+    required this.isAddAction,
+    required this.onPressed,
+  });
+
+  final double width;
+  final Key actionKey;
+  final Key tooltipKey;
+  final bool isAddAction;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 7),
+        child: Center(
+          child: AppTableActionButton(
+            key: actionKey,
+            tooltipKey: tooltipKey,
+            icon:
+                isAddAction ? Icons.add_rounded : Icons.close_rounded,
+            tooltip: isAddAction ? 'إضافة سطر' : 'حذف السطر',
+            variant: isAddAction
+                ? AppButtonVariant.success
+                : AppButtonVariant.danger,
+            backgroundColor:
+                isAddAction ? _salesAddColor : _salesDeleteColor,
+            foregroundColor: Colors.white,
+            size: 32,
+            iconSize: 19,
+            borderRadius: 9,
+            onPressed: onPressed,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SalesGridSummaryRow extends StatelessWidget {
+  const _SalesGridSummaryRow({
+    required this.keyPrefix,
+    required this.columns,
+    required this.trailingWidth,
+    required this.quantityTotal,
+    required this.discountTotal,
+    required this.total,
+    required this.money,
+  });
+
+  final String keyPrefix;
+  final List<_SalesGridColumn> columns;
+  final double trailingWidth;
+  final double quantityTotal;
+  final double discountTotal;
+  final double total;
+  final String Function(double value) money;
+
+  @override
+  Widget build(BuildContext context) {
+    final values = <Widget>[
+      const SizedBox.shrink(),
+      const SizedBox.shrink(),
+      const Text(
+        'المجموع',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+        textDirection: TextDirection.rtl,
+      ),
+      const SizedBox.shrink(),
+      Text(
+        AppFormatters.quantity(quantityTotal.round()),
+        key: Key('${keyPrefix}QuantityTotal'),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+        textDirection: TextDirection.ltr,
+      ),
+      const SizedBox.shrink(),
+      Text(
+        money(discountTotal),
+        key: Key('${keyPrefix}DiscountTotal'),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+        textDirection: TextDirection.ltr,
+      ),
+      const SizedBox.shrink(),
+      Text(
+        money(total),
+        key: Key('${keyPrefix}Total'),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+        textDirection: TextDirection.ltr,
+      ),
+      const SizedBox.shrink(),
+    ];
+
+    return Container(
+      key: Key('${keyPrefix}TableSummary'),
+      height: _salesSummaryHeight,
+      color: _salesSummaryColor,
+      child: Directionality(
+        textDirection: TextDirection.rtl,
+        child: Row(
+          children: [
+            const SizedBox(width: _salesEdgeInset),
+            for (var index = 0; index < columns.length; index++)
+              SizedBox(
+                width: columns[index].width,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Center(
+                    child: DefaultTextStyle(
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: _salesTextColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                      child: values[index],
+                    ),
+                  ),
+                ),
+              ),
+            if (trailingWidth > 0) SizedBox(width: trailingWidth),
+            const SizedBox(width: _salesEdgeInset),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -556,7 +1123,7 @@ class _SalesWarehouseDropdownState extends State<_SalesWarehouseDropdown> {
   Widget build(BuildContext context) {
     return SizedBox(
       key: widget.fieldKey,
-      height: AppInvoiceItemsTable.cellHeight,
+      height: _salesCellHeight,
       child: CompositedTransformTarget(
         key: _anchorKey,
         link: _layerLink,

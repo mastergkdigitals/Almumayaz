@@ -4,44 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('places the old purchase table directly on its tinted page',
-      (tester) async {
+  testWidgets('keeps only the purchase tint background', (tester) async {
     await _openPurchaseScreen(tester);
 
     expect(find.byKey(const Key('purchaseScreen')), findsOneWidget);
     expect(find.byKey(const Key('purchaseTintBackground')), findsOneWidget);
-    expect(find.byKey(const Key('purchaseItemsTable')), findsOneWidget);
+    expect(find.byKey(const Key('purchaseItemsTable')), findsNothing);
     expect(find.byKey(const Key('purchaseTableFit')), findsNothing);
-    expect(find.byKey(const Key('purchaseTableSurface')), findsOneWidget);
-    expect(find.byKey(const Key('purchaseCode-r1')), findsOneWidget);
-    expect(find.byKey(const Key('purchaseName-r1')), findsOneWidget);
-    expect(find.byKey(const Key('purchaseWarehouse-r1')), findsOneWidget);
-    expect(find.byKey(const Key('purchaseQuantity-r1')), findsOneWidget);
-    expect(find.byKey(const Key('purchaseContainer-r1')), findsOneWidget);
-    expect(find.byKey(const Key('purchasePurchasePrice-r1')), findsOneWidget);
-    expect(find.byKey(const Key('purchaseDiscount-r1')), findsOneWidget);
-    expect(find.byKey(const Key('purchaseSalePrice-r1')), findsOneWidget);
-    expect(find.byKey(const Key('purchaseAdd-r1')), findsOneWidget);
-    expect(find.byKey(const Key('purchaseQuantityTotal')), findsOneWidget);
-    expect(find.byKey(const Key('purchaseSubtotal')), findsOneWidget);
-    expect(find.byKey(const Key('purchaseTotalCost')), findsOneWidget);
-
-    final tableRect =
-        tester.getRect(find.byKey(const Key('purchaseTableSurface')));
-    final addButtonRect =
-        tester.getRect(find.byKey(const Key('purchaseAdd-r1')));
-    expect(addButtonRect.left, greaterThanOrEqualTo(tableRect.left - 0.5));
-    expect(addButtonRect.right, lessThanOrEqualTo(tableRect.right + 0.5));
-    await tester.tap(find.byKey(const Key('purchaseCode-r1')));
-    await tester.pump();
-    final codeRect =
-        tester.getRect(find.byKey(const Key('purchaseCode-r1')));
-    final nameRect =
-        tester.getRect(find.byKey(const Key('purchaseName-r1')));
-    final warehouseRect =
-        tester.getRect(find.byKey(const Key('purchaseWarehouse-r1')));
-    expect(codeRect.overlaps(nameRect), isFalse);
-    expect(nameRect.overlaps(warehouseRect), isFalse);
+    expect(find.byKey(const Key('purchaseTableSurface')), findsNothing);
+    expect(find.byKey(const Key('purchaseCode-r1')), findsNothing);
     expect(
       find.descendant(
         of: find.byKey(const Key('purchaseScreen')),
@@ -76,6 +47,10 @@ void main() {
       ),
     );
     expect(scaffold.backgroundColor, expectedTint);
+    final tintBackground = tester.widget<ColoredBox>(
+      find.byKey(const Key('purchaseTintBackground')),
+    );
+    expect(tintBackground.color, expectedTint);
 
     await tester.tap(find.byKey(const Key('appScreenBackButton')));
     await tester.pumpAndSettle();

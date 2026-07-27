@@ -1,47 +1,26 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/design/app_design_system.dart';
-import 'widgets/purchase_items_table.dart';
 
-class PurchaseScreen extends StatefulWidget {
+class PurchaseScreen extends StatelessWidget {
   const PurchaseScreen({super.key});
 
   @override
-  State<PurchaseScreen> createState() => _PurchaseScreenState();
-}
-
-class _PurchaseScreenState extends State<PurchaseScreen> {
-  late final PurchaseItemsController _itemsController;
-
-  @override
-  void initState() {
-    super.initState();
-    _itemsController = PurchaseItemsController();
-  }
-
-  @override
-  void dispose() {
-    _itemsController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final tint = Color.alphaBlend(
+      AppModuleColors.purchases.withAlpha(12),
+      AppColors.surface,
+    );
+
     return AppScreenShell(
       key: const Key('purchaseScreen'),
       title: 'المشتريات',
-      backgroundColor: Color.alphaBlend(
-        AppModuleColors.purchases.withAlpha(12),
-        AppColors.surface,
-      ),
+      backgroundColor: tint,
       onBack: () => Navigator.of(context).pop(),
-      body: Padding(
-        key: Key('purchaseTintBackground'),
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: PurchaseItemsTable(
-          key: const Key('purchaseItemsTable'),
-          controller: _itemsController,
-        ),
+      body: ColoredBox(
+        key: const Key('purchaseTintBackground'),
+        color: tint,
+        child: const SizedBox.expand(),
       ),
     );
   }

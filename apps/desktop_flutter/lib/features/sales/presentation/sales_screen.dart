@@ -27,20 +27,25 @@ class _SalesScreenState extends State<SalesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final tint = Color.alphaBlend(
+      AppModuleColors.sales.withAlpha(12),
+      AppColors.surface,
+    );
+
     return AppScreenShell(
       key: const Key('salesScreen'),
       title: 'المبيعات',
-      backgroundColor: Color.alphaBlend(
-        AppModuleColors.sales.withAlpha(12),
-        AppColors.surface,
-      ),
+      backgroundColor: tint,
       onBack: () => Navigator.of(context).pop(),
-      body: Padding(
+      body: ColoredBox(
         key: const Key('salesTintBackground'),
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: SalesItemsTable(
-          key: const Key('salesItemsTable'),
-          controller: _itemsController,
+        color: tint,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: SalesItemsTable(
+            key: const Key('salesItemsTable'),
+            controller: _itemsController,
+          ),
         ),
       ),
     );
