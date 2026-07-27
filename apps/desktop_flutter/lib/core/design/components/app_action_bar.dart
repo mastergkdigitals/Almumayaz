@@ -32,6 +32,7 @@ class AppActionBar extends StatelessWidget {
     this.searchHint,
     this.onSearchChanged,
     this.onSearchSubmitted,
+    this.accentColor,
     this.compactWidth = 1180,
     this.navigationButtonWidth = 104,
     this.buttonWidth = 108,
@@ -71,6 +72,7 @@ class AppActionBar extends StatelessWidget {
   final String? searchHint;
   final ValueChanged<String>? onSearchChanged;
   final ValueChanged<String>? onSearchSubmitted;
+  final Color? accentColor;
   final double compactWidth;
   final double navigationButtonWidth;
   final double buttonWidth;
@@ -100,6 +102,7 @@ class AppActionBar extends StatelessWidget {
       focusNode: searchFocusNode,
       label: searchLabel,
       hint: searchHint,
+      accentColor: accentColor,
       onChanged: onSearchChanged,
       onSubmitted: onSearchSubmitted,
     );

@@ -53,6 +53,7 @@ class AppDataTable extends StatefulWidget {
     this.showShadow = true,
     this.borderRadius = AppRadii.lg,
     this.alternatingRowColor,
+    this.selectedRowColor,
   });
 
   final List<AppTableColumn> columns;
@@ -72,6 +73,7 @@ class AppDataTable extends StatefulWidget {
   final bool showShadow;
   final double borderRadius;
   final Color? alternatingRowColor;
+  final Color? selectedRowColor;
 
   @override
   State<AppDataTable> createState() => _AppDataTableState();
@@ -200,6 +202,7 @@ class _AppDataTableState extends State<AppDataTable> {
             backgroundColor: index.isOdd
                 ? widget.alternatingRowColor
                 : null,
+            selectedColor: widget.selectedRowColor,
           );
         },
       ),
@@ -301,6 +304,7 @@ class _TableBodyRow extends StatelessWidget {
     required this.horizontalPadding,
     required this.showColumnDividers,
     required this.backgroundColor,
+    required this.selectedColor,
   });
 
   final List<AppTableColumn> columns;
@@ -311,13 +315,14 @@ class _TableBodyRow extends StatelessWidget {
   final double horizontalPadding;
   final bool showColumnDividers;
   final Color? backgroundColor;
+  final Color? selectedColor;
 
   @override
   Widget build(BuildContext context) {
     return Material(
       key: row.rowKey,
       color: row.selected
-          ? AppColors.infoSurface
+          ? selectedColor ?? AppColors.infoSurface
           : backgroundColor ?? AppColors.surface,
       child: InkWell(
         onTap: row.onTap,

@@ -159,7 +159,7 @@ class AppTextField extends StatelessWidget {
         floatingLabelStyle: accentColor == null
             ? null
             : AppTypography.fieldText.copyWith(color: accentColor),
-        fillColor: readOnly
+        fillColor: readOnly && !enabled
             ? AppColors.neutralSurface
             : AppColors.surface,
         enabledBorder: restingBorder,
