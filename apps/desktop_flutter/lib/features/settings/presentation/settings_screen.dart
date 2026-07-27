@@ -173,6 +173,9 @@ class _SettingsFieldTableTemplate extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(AppRadii.lg),
+          ),
+          foregroundDecoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadii.lg),
             border: Border.all(
               color: _settingsTableBorderColor,
               width: 1.4,
@@ -313,6 +316,8 @@ class _SettingsTableFieldRow extends StatelessWidget {
                 accentColor: AppModuleColors.sales,
                 textAlign: TextAlign.center,
                 textDirection: TextDirection.ltr,
+                showLabel: false,
+                borderRadius: AppRadii.sm,
               ),
             ),
             _SettingsTableCell(
@@ -323,6 +328,8 @@ class _SettingsTableFieldRow extends StatelessWidget {
                 label: 'رمز المادة',
                 accentColor: AppModuleColors.sales,
                 textInputAction: TextInputAction.next,
+                showLabel: false,
+                borderRadius: AppRadii.sm,
               ),
             ),
             _SettingsTableCell(
@@ -333,6 +340,8 @@ class _SettingsTableFieldRow extends StatelessWidget {
                 label: 'اسم المادة',
                 accentColor: AppModuleColors.sales,
                 textInputAction: TextInputAction.next,
+                showLabel: false,
+                borderRadius: AppRadii.sm,
               ),
             ),
             _SettingsTableCell(
@@ -346,6 +355,8 @@ class _SettingsTableFieldRow extends StatelessWidget {
                 value: warehouse,
                 options: _settingsWarehouseOptions,
                 onChanged: onWarehouseChanged,
+                showLabel: false,
+                borderRadius: AppRadii.sm,
               ),
             ),
             _SettingsTableCell(
@@ -360,6 +371,8 @@ class _SettingsTableFieldRow extends StatelessWidget {
                 keyboardType: TextInputType.number,
                 inputFormatters: const [AppIntegerInputFormatter()],
                 textInputAction: TextInputAction.next,
+                showLabel: false,
+                borderRadius: AppRadii.sm,
               ),
             ),
             _SettingsTableCell(
@@ -375,6 +388,8 @@ class _SettingsTableFieldRow extends StatelessWidget {
                     const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: const [AppMoneyInputFormatter()],
                 textInputAction: TextInputAction.next,
+                showLabel: false,
+                borderRadius: AppRadii.sm,
               ),
             ),
             _SettingsTableCell(
@@ -390,6 +405,8 @@ class _SettingsTableFieldRow extends StatelessWidget {
                     const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: const [AppMoneyInputFormatter()],
                 textInputAction: TextInputAction.next,
+                showLabel: false,
+                borderRadius: AppRadii.sm,
               ),
             ),
             _SettingsTableCell(
@@ -402,6 +419,8 @@ class _SettingsTableFieldRow extends StatelessWidget {
                 accentColor: AppModuleColors.sales,
                 textAlign: TextAlign.center,
                 textDirection: TextDirection.ltr,
+                showLabel: false,
+                borderRadius: AppRadii.sm,
               ),
             ),
             _SettingsTableCell(
@@ -413,6 +432,8 @@ class _SettingsTableFieldRow extends StatelessWidget {
                 accentColor: AppModuleColors.sales,
                 textAlign: TextAlign.center,
                 textDirection: TextDirection.ltr,
+                showLabel: false,
+                borderRadius: AppRadii.sm,
               ),
             ),
             SizedBox(
@@ -429,7 +450,7 @@ class _SettingsTableFieldRow extends StatelessWidget {
                   foregroundColor: Colors.white,
                   size: 40,
                   iconSize: AppIconSizes.md,
-                  borderRadius: AppRadii.md,
+                  borderRadius: AppRadii.sm,
                   onPressed: () {},
                 ),
               ),

@@ -82,6 +82,24 @@ void main() {
       findsOneWidget,
     );
 
+    final table = tester.widget<Container>(
+      find.byKey(const Key('settingsFieldTableTemplate')),
+    );
+    final tableDecoration = table.decoration! as BoxDecoration;
+    final tableForeground =
+        table.foregroundDecoration! as BoxDecoration;
+    expect(table.clipBehavior, Clip.antiAlias);
+    expect(tableDecoration.border, isNull);
+    expect(
+      tableDecoration.borderRadius,
+      BorderRadius.circular(AppRadii.lg),
+    );
+    expect(tableForeground.border, isA<Border>());
+    expect(
+      tableForeground.borderRadius,
+      BorderRadius.circular(AppRadii.lg),
+    );
+
     final codeTextField = tester.widget<TextField>(
       find.descendant(
         of: find.byKey(const Key('settingsTemplateCodeField')),
@@ -90,9 +108,10 @@ void main() {
     );
     final enabledBorder =
         codeTextField.decoration!.enabledBorder! as OutlineInputBorder;
+    expect(codeTextField.decoration?.labelText, isNull);
     expect(
       enabledBorder.borderRadius,
-      BorderRadius.circular(AppRadii.md),
+      BorderRadius.circular(AppRadii.sm),
     );
 
     final readOnlyTextField = tester.widget<TextField>(
@@ -104,6 +123,7 @@ void main() {
       ),
     );
     expect(readOnlyTextField.enabled, isFalse);
+    expect(readOnlyTextField.decoration?.labelText, isNull);
     expect(
       readOnlyTextField.decoration?.fillColor,
       AppColors.neutralSurface,
@@ -122,6 +142,8 @@ void main() {
       AppDropdownVisualStyle.standard,
     );
     expect(warehouseDropdown.accentColor, AppModuleColors.sales);
+    expect(warehouseDropdown.showLabel, isFalse);
+    expect(warehouseDropdown.borderRadius, AppRadii.sm);
 
     await tester.tap(find.byKey(const Key('appScreenBackButton')));
     await tester.pumpAndSettle();

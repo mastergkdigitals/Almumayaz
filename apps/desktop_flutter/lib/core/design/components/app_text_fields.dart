@@ -81,6 +81,8 @@ class AppTextField extends StatelessWidget {
     this.maxLength,
     this.onTap,
     this.onEditingComplete,
+    this.showLabel = true,
+    this.borderRadius,
   });
 
   final TextEditingController controller;
@@ -110,15 +112,18 @@ class AppTextField extends StatelessWidget {
   final int? maxLength;
   final VoidCallback? onTap;
   final VoidCallback? onEditingComplete;
+  final bool showLabel;
+  final double? borderRadius;
 
   @override
   Widget build(BuildContext context) {
+    final fieldRadius = borderRadius ?? AppRadii.md;
     final restingBorder = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(AppRadii.md),
+      borderRadius: BorderRadius.circular(fieldRadius),
       borderSide: const BorderSide(color: AppColors.border),
     );
     final focusedBorder = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(AppRadii.md),
+      borderRadius: BorderRadius.circular(fieldRadius),
       borderSide: BorderSide(
         color: accentColor ?? AppColors.primary,
         width: 1.6,
@@ -149,14 +154,14 @@ class AppTextField extends StatelessWidget {
       onFieldSubmitted: onSubmitted,
       onChanged: onChanged,
       decoration: InputDecoration(
-        labelText: label,
+        labelText: showLabel ? label : null,
         hintText: hint,
         helperText: helperText,
         errorText: errorText,
         prefixIcon:
             icon == null ? null : Icon(icon, color: accentColor),
         suffixIcon: suffixIcon,
-        floatingLabelStyle: accentColor == null
+        floatingLabelStyle: !showLabel || accentColor == null
             ? null
             : AppTypography.fieldText.copyWith(color: accentColor),
         fillColor: readOnly && !enabled
@@ -288,6 +293,8 @@ class AppReadOnlyField extends StatelessWidget {
     this.accentColor,
     this.textDirection,
     this.textAlign = TextAlign.start,
+    this.showLabel = true,
+    this.borderRadius,
   });
 
   final TextEditingController controller;
@@ -298,6 +305,8 @@ class AppReadOnlyField extends StatelessWidget {
   final Color? accentColor;
   final TextDirection? textDirection;
   final TextAlign textAlign;
+  final bool showLabel;
+  final double? borderRadius;
 
   @override
   Widget build(BuildContext context) {
@@ -312,6 +321,8 @@ class AppReadOnlyField extends StatelessWidget {
       textAlign: textAlign,
       readOnly: true,
       enabled: false,
+      showLabel: showLabel,
+      borderRadius: borderRadius,
     );
   }
 }

@@ -50,6 +50,8 @@ class AppDropdownField<T> extends StatefulWidget {
     this.contentPadding,
     this.visualStyle = AppDropdownVisualStyle.standard,
     this.enabled = true,
+    this.showLabel = true,
+    this.borderRadius,
   });
 
   final String label;
@@ -69,6 +71,8 @@ class AppDropdownField<T> extends StatefulWidget {
   final EdgeInsetsGeometry? contentPadding;
   final AppDropdownVisualStyle visualStyle;
   final bool enabled;
+  final bool showLabel;
+  final double? borderRadius;
 
   @override
   State<AppDropdownField<T>> createState() => _AppDropdownFieldState<T>();
@@ -278,8 +282,8 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
         : usesOldPurchaseStyle
             ? accentColor.withAlpha(107)
             : AppColors.disabled;
-    final fieldRadius =
-        usesOldPurchaseStyle ? _oldPurchaseFieldRadius : AppRadii.md;
+    final fieldRadius = widget.borderRadius ??
+        (usesOldPurchaseStyle ? _oldPurchaseFieldRadius : AppRadii.md);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -513,8 +517,11 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
                         isFocused: _isOpen || _focusNode.hasFocus,
                         decoration: InputDecoration(
                           enabled: widget.enabled,
-                          labelText: widget.label,
-                          hintText: 'اختر ${widget.label}',
+                          labelText:
+                              widget.showLabel ? widget.label : null,
+                          hintText: widget.showLabel
+                              ? 'اختر ${widget.label}'
+                              : null,
                           labelStyle: usesOldPurchaseStyle
                               ? const TextStyle(
                                   color: _oldPurchaseSecondaryTextColor,
