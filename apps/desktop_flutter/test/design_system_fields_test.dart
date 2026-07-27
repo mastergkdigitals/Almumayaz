@@ -287,9 +287,30 @@ void main() {
     );
     expect(oldRow, findsOneWidget);
     expect(currentRow, findsOneWidget);
-    expect(tester.widget<Row>(oldRow).children, hasLength(9));
-    expect(tester.widget<Row>(currentRow).children, hasLength(9));
+    expect(tester.widget<Row>(oldRow).children, hasLength(15));
+    expect(tester.widget<Row>(currentRow).children, hasLength(15));
     expect(tester.getSize(oldRow).width, tester.getSize(currentRow).width);
+
+    for (final key in const [
+      'designOldPurchaseInvoiceField',
+      'designOldPurchaseDateField',
+      'designOldPurchaseTimeField',
+      'designOldPurchaseWarehouseDropdown',
+      'designOldPurchaseTypeDropdown',
+      'designOldPaymentTypeDropdown',
+      'designOldPurchaseCurrencyDropdown',
+      'designOldPurchaseExchangeRateField',
+      'designCurrentPurchaseInvoiceField',
+      'designCurrentPurchaseDateField',
+      'designCurrentPurchaseTimeField',
+      'designCurrentPurchaseWarehouseDropdown',
+      'designCurrentPurchaseTypeDropdown',
+      'designCurrentPaymentTypeDropdown',
+      'designCurrentPurchaseCurrencyDropdown',
+      'designCurrentPurchaseExchangeRateField',
+    ]) {
+      expect(find.byKey(Key(key)), findsOneWidget);
+    }
 
     final oldField = tester.widget<TextFormField>(
       find.byKey(const Key('designOldPurchaseInvoiceField')),
@@ -308,6 +329,15 @@ void main() {
         oldField.decoration?.enabledBorder! as OutlineInputBorder;
     expect(oldBorder.borderRadius, BorderRadius.circular(14));
     expect(oldBorder.borderSide.color, const Color(0xFFE5E7EB));
+
+    final oldTime = tester.widget<InputDecorator>(
+      find.byKey(const Key('designOldPurchaseTimeField')),
+    );
+    expect(oldTime.decoration.fillColor, const Color(0xFFF1F5F9));
+    final oldTimeBorder =
+        oldTime.decoration.enabledBorder! as OutlineInputBorder;
+    expect(oldTimeBorder.borderRadius, BorderRadius.circular(16));
+    expect(oldTimeBorder.borderSide.color, const Color(0xFFDDE3EA));
 
     AppDropdownField<String> dropdown(String key) {
       return tester.widget<AppDropdownField<String>>(
@@ -339,6 +369,10 @@ void main() {
       AppDropdownVisualStyle.oldPurchase,
     );
     expect(
+      dropdown('designOldPurchaseCurrencyDropdown').visualStyle,
+      AppDropdownVisualStyle.oldPurchase,
+    );
+    expect(
       dropdown('designCurrentPurchaseWarehouseDropdown').visualStyle,
       AppDropdownVisualStyle.standard,
     );
@@ -348,6 +382,10 @@ void main() {
     );
     expect(
       dropdown('designCurrentPaymentTypeDropdown').visualStyle,
+      AppDropdownVisualStyle.standard,
+    );
+    expect(
+      dropdown('designCurrentPurchaseCurrencyDropdown').visualStyle,
       AppDropdownVisualStyle.standard,
     );
   });
