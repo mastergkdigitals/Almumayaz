@@ -200,6 +200,84 @@ class WarehousesController extends ChangeNotifier {
     return selected;
   }
 
+  bool transferInventory({
+    required String fromWarehouseId,
+    required String toWarehouseId,
+    required Map<String, int> quantitiesByProductCode,
+  }) {
+    final hasSource = _state.warehouses.any(
+      (warehouse) => warehouse.id == fromWarehouseId,
+    );
+    final hasDestination = _state.warehouses.any(
+      (warehouse) => warehouse.id == toWarehouseId,
+    );
+    if (fromWarehouseId == toWarehouseId ||
+        !hasSource ||
+        !hasDestination ||
+        quantitiesByProductCode.isEmpty) {
+      return false;
+    }
+
+    final sourceItems = [...inventoryFor(fromWarehouseId)];
+    final destinationItems = [...inventoryFor(toWarehouseId)];
+
+    for (final entry in quantitiesByProductCode.entries) {
+      final sourceIndex = sourceItems.indexWhere(
+        (item) => item.productCode == entry.key,
+      );
+      if (sourceIndex < 0 ||
+          entry.value <= 0 ||
+          sourceItems[sourceIndex].quantity < entry.value) {
+        return false;
+      }
+    }
+
+    for (final entry in quantitiesByProductCode.entries) {
+      final sourceIndex = sourceItems.indexWhere(
+        (item) => item.productCode == entry.key,
+      );
+      final sourceItem = sourceItems[sourceIndex];
+      sourceItems[sourceIndex] = WarehouseInventoryItem(
+        id: sourceItem.id,
+        productCode: sourceItem.productCode,
+        productName: sourceItem.productName,
+        quantity: sourceItem.quantity - entry.value,
+      );
+
+      final destinationIndex = destinationItems.indexWhere(
+        (item) => item.productCode == entry.key,
+      );
+      if (destinationIndex < 0) {
+        destinationItems.add(
+          WarehouseInventoryItem(
+            id: 'transfer-$toWarehouseId-${sourceItem.productCode}',
+            productCode: sourceItem.productCode,
+            productName: sourceItem.productName,
+            quantity: entry.value,
+          ),
+        );
+      } else {
+        final destinationItem = destinationItems[destinationIndex];
+        destinationItems[destinationIndex] = WarehouseInventoryItem(
+          id: destinationItem.id,
+          productCode: destinationItem.productCode,
+          productName: destinationItem.productName,
+          quantity: destinationItem.quantity + entry.value,
+        );
+      }
+    }
+
+    _state = _state.copyWith(
+      inventoryByWarehouse: _freezeInventory({
+        ..._state.inventoryByWarehouse,
+        fromWarehouseId: sourceItems,
+        toWarehouseId: destinationItems,
+      }),
+    );
+    notifyListeners();
+    return true;
+  }
+
   void _selectAt(int index) {
     final warehouses = visibleWarehouses;
     if (warehouses.isEmpty || index < 0 || index >= warehouses.length) {

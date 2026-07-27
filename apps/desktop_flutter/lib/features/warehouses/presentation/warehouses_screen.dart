@@ -6,6 +6,7 @@ import '../../../core/design/app_design_system.dart';
 import '../../items/presentation/items_screen.dart';
 import '../domain/warehouse.dart';
 import 'warehouses_controller.dart';
+import 'widgets/inventory_transfer_dialog.dart';
 import 'widgets/warehouse_form.dart';
 import 'widgets/warehouse_inventory_panel.dart';
 import 'widgets/warehouses_table.dart';
@@ -258,8 +259,29 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
     );
   }
 
-  void _openTransfer() {
-    AppToast.showInfo(context, 'سيتم ربط النقل المخزني لاحقاً');
+  Future<void> _openTransfer() async {
+    final selected = _warehousesController.selectedWarehouse;
+    if (selected == null) return;
+
+    final transferred = await InventoryTransferDialog.show(
+      context,
+      warehouses: _warehousesController.state.warehouses,
+      inventoryFor: _warehousesController.inventoryFor,
+      initialFromWarehouseId: selected.id,
+      onTransfer: ({
+        required String fromWarehouseId,
+        required String toWarehouseId,
+        required Map<String, int> quantitiesByProductCode,
+      }) {
+        return _warehousesController.transferInventory(
+          fromWarehouseId: fromWarehouseId,
+          toWarehouseId: toWarehouseId,
+          quantitiesByProductCode: quantitiesByProductCode,
+        );
+      },
+    );
+    if (!mounted || !transferred) return;
+    AppToast.showSuccess(context, 'تم تنفيذ النقل المخزني مؤقتاً');
   }
 
   List<WarehouseInventoryItem> _visibleInventory() {

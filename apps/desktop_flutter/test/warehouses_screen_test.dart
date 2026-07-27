@@ -34,6 +34,59 @@ void main() {
     expect(controller.selectedWarehouse, isNull);
   });
 
+  test('moves whole item quantities between temporary warehouses', () {
+    final controller = WarehousesController();
+    addTearDown(controller.dispose);
+
+    final transferred = controller.transferInventory(
+      fromWarehouseId: 'warehouse-001',
+      toWarehouseId: 'warehouse-002',
+      quantitiesByProductCode: {
+        'P-1001': 3,
+        'P-1002': 4,
+      },
+    );
+
+    expect(transferred, isTrue);
+    expect(
+      controller
+          .inventoryFor('warehouse-001')
+          .firstWhere((item) => item.productCode == 'P-1001')
+          .quantity,
+      15,
+    );
+    expect(
+      controller
+          .inventoryFor('warehouse-002')
+          .firstWhere((item) => item.productCode == 'P-1001')
+          .quantity,
+      10,
+    );
+    expect(
+      controller
+          .inventoryFor('warehouse-002')
+          .firstWhere((item) => item.productCode == 'P-1002')
+          .quantity,
+      4,
+    );
+
+    expect(
+      controller.transferInventory(
+        fromWarehouseId: 'warehouse-001',
+        toWarehouseId: 'warehouse-002',
+        quantitiesByProductCode: {'P-1001': 999},
+      ),
+      isFalse,
+    );
+    expect(
+      controller
+          .inventoryFor('warehouse-001')
+          .firstWhere((item) => item.productCode == 'P-1001')
+          .quantity,
+      15,
+    );
+  });
+
   testWidgets('opens Warehouses with old structure and shared controls',
       (tester) async {
     await _openWarehouses(tester);
@@ -118,7 +171,7 @@ void main() {
     await tester.tap(
       find.byKey(const Key('warehouseRow_warehouse-001')),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('مخزون المخزن الرئيسي'), findsOneWidget);
     expect(inventoryTable.rows, isEmpty);
@@ -144,6 +197,95 @@ void main() {
         find.byKey(const Key('warehousesDeleteButton')),
       ).onPressed,
       isNull,
+    );
+  });
+
+  testWidgets('opens the Warehouse Transfer dialog with old structure',
+      (tester) async {
+    await _openWarehouses(tester);
+    await tester.tap(
+      find.byKey(const Key('warehouseRow_warehouse-001')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('warehouseTransferButton')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('inventoryTransferDialog')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('inventoryTransferDetails')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('inventoryTransferItemsTable')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('inventoryTransferCreateTab')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('inventoryTransferHistoryTab')),
+      findsOneWidget,
+    );
+
+    final source = tester.widget<AppDropdownField<String>>(
+      find.byKey(const Key('inventoryTransferFromDropdown')),
+    );
+    expect(source.value, 'warehouse-001');
+
+    final destination = tester.widget<AppDropdownField<String>>(
+      find.byKey(const Key('inventoryTransferToDropdown')),
+    );
+    expect(
+      destination.options.map((option) => option.value),
+      isNot(contains('warehouse-001')),
+    );
+
+    final itemsTable = tester.widget<AppDataTable>(
+      find.byKey(const Key('inventoryTransferItemsTable')),
+    );
+    expect(itemsTable.accentColor, AppModuleColors.warehouses);
+    expect(
+      itemsTable.columns.map((column) => column.label),
+      [
+        'ت',
+        'رمز المادة',
+        'اسم المادة',
+        'الرصيد المتوفر',
+        'الكمية',
+        'الإجراء',
+      ],
+    );
+    expect(
+      tester
+          .widget<AppButton>(
+            find.byKey(const Key('inventoryTransferExecuteButton')),
+          )
+          .onPressed,
+      isNull,
+    );
+
+    await tester.tap(
+      find.byKey(const Key('inventoryTransferHistoryTab')),
+    );
+    await tester.pump();
+
+    expect(
+      find.byKey(const Key('inventoryTransferHistorySearchField')),
+      findsOneWidget,
+    );
+    final historyTable = tester.widget<AppDataTable>(
+      find.byKey(const Key('inventoryTransferHistoryTable')),
+    );
+    expect(historyTable.accentColor, AppModuleColors.warehouses);
+    expect(
+      historyTable.columns.map((column) => column.label),
+      ['رقم النقل', 'التاريخ', 'من مخزن', 'إلى مخزن', 'المواد'],
     );
   });
 }
