@@ -23,6 +23,26 @@ const _colorFamilies = <_ColorFamily>[
     ],
   ),
   _ColorFamily(
+    name: 'الأزرق الداكن',
+    shades: [
+      _ColorShade('#DBEAFE', Color(0xFFDBEAFE)),
+      _ColorShade('#60A5FA', Color(0xFF60A5FA)),
+      _ColorShade('#2563EB', Color(0xFF2563EB)),
+      _ColorShade('#1E40AF', Color(0xFF1E40AF)),
+      _ColorShade('#172554', Color(0xFF172554)),
+    ],
+  ),
+  _ColorFamily(
+    name: 'الأزرق الفاتح',
+    shades: [
+      _ColorShade('#E0F2FE', Color(0xFFE0F2FE)),
+      _ColorShade('#7DD3FC', Color(0xFF7DD3FC)),
+      _ColorShade('#38BDF8', Color(0xFF38BDF8)),
+      _ColorShade('#0284C7', Color(0xFF0284C7)),
+      _ColorShade('#075985', Color(0xFF075985)),
+    ],
+  ),
+  _ColorFamily(
     name: 'الأخضر',
     shades: [
       _ColorShade('#C8E6C9', Color(0xFFC8E6C9)),
