@@ -223,6 +223,7 @@ void main() {
     );
     expect(transferDialog.bodyScrollable, isFalse);
     expect(transferDialog.maxHeightFactor, 0.96);
+    expect(transferDialog.icon, Icons.compare_arrows_rounded);
     expect(
       find.ancestor(
         of: find.byKey(const Key('inventoryTransferCreateTab')),
@@ -299,6 +300,28 @@ void main() {
     expect(
       find.byKey(const Key('inventoryTransferHistorySearchField')),
       findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<AppModuleDialog>(
+            find.byKey(const Key('inventoryTransferDialog')),
+          )
+          .icon,
+      Icons.history_rounded,
+    );
+    final refreshButton = tester.widget<AppButton>(
+      find.byKey(const Key('inventoryTransferHistoryRefreshButton')),
+    );
+    expect(refreshButton.variant, AppButtonVariant.success);
+    await tester.tap(
+      find.byKey(const Key('inventoryTransferHistoryRefreshButton')),
+    );
+    await tester.pump();
+    expect(
+      tester.widget<SnackBar>(
+        find.byKey(const Key('appToast')),
+      ).backgroundColor,
+      AppColors.green,
     );
     expect(
       find.ancestor(

@@ -211,7 +211,7 @@ class _PartiesScreenState extends State<PartiesScreen> {
     final party = _newPartyFromForm();
     _partiesController.add(party);
     _loadParty(party);
-    AppToast.showSuccess(context, 'تم حفظ الطرف مؤقتاً');
+    AppToast.showInfo(context, 'تم حفظ الطرف مؤقتاً');
   }
 
   void _update() {

@@ -252,7 +252,9 @@ class _InventoryTransferDialogState
       key: const Key('inventoryTransferDialog'),
       title: 'النقل المخزني',
       subtitle: 'اختر المادة والكمية وانقلها بين مخزنين',
-      icon: Icons.compare_arrows_rounded,
+      icon: _view == _InventoryTransferView.create
+          ? Icons.compare_arrows_rounded
+          : Icons.history_rounded,
       accentColor: AppModuleColors.warehouses,
       centerHeader: true,
       showHeaderCloseButton: true,
@@ -318,12 +320,12 @@ class _InventoryTransferDialogState
         key: const Key('inventoryTransferHistoryRefreshButton'),
         label: 'تحديث السجل',
         icon: Icons.refresh_rounded,
-        variant: AppButtonVariant.navigation,
+        variant: AppButtonVariant.success,
         width: 160,
         onPressed: () {
           _historySearchController.clear();
           setState(() => _historyQuery = '');
-          AppToast.showInfo(context, 'تم تحديث السجل المؤقت');
+          AppToast.showSuccess(context, 'تم تحديث السجل المؤقت');
         },
       ),
     ];

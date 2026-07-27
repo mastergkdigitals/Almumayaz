@@ -192,7 +192,7 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
     final warehouse = _newWarehouseFromForm();
     _warehousesController.add(warehouse);
     _loadWarehouse(warehouse);
-    AppToast.showSuccess(context, 'تم حفظ المخزن مؤقتاً');
+    AppToast.showInfo(context, 'تم حفظ المخزن مؤقتاً');
   }
 
   void _update() {
@@ -281,7 +281,7 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
       },
     );
     if (!mounted || !transferred) return;
-    AppToast.showSuccess(context, 'تم تنفيذ النقل المخزني مؤقتاً');
+    AppToast.showInfo(context, 'تم تنفيذ النقل المخزني مؤقتاً');
   }
 
   List<WarehouseInventoryItem> _visibleInventory() {

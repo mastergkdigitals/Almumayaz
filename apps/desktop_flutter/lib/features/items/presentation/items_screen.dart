@@ -269,7 +269,7 @@ class _ItemsScreenState extends State<ItemsScreen> {
     final item = _newItemFromForm();
     _itemsController.add(item);
     _loadItem(item);
-    AppToast.showSuccess(context, 'تم حفظ المادة مؤقتاً');
+    AppToast.showInfo(context, 'تم حفظ المادة مؤقتاً');
   }
 
   void _update() {

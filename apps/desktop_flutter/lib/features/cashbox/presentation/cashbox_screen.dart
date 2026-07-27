@@ -405,7 +405,7 @@ class _CashboxScreenState extends State<CashboxScreen> {
     );
     _cashboxController.add(voucher);
     _loadVoucher(voucher);
-    AppToast.showSuccess(context, 'تم حفظ سند الصندوق مؤقتاً');
+    AppToast.showInfo(context, 'تم حفظ سند الصندوق مؤقتاً');
   }
 
   void _update() {
