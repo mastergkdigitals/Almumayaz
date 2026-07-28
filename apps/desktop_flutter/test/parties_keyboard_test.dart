@@ -301,12 +301,3 @@ InputDecoration _fieldDecoration(WidgetTester tester, Finder field) {
       )
       .decoration;
 }
-
-String _text(WidgetTester tester, Finder field) {
-  return tester
-      .widget<EditableText>(
-        find.descendant(of: field, matching: find.byType(EditableText)),
-      )
-      .controller
-      .text;
-}

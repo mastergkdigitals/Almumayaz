@@ -69,15 +69,6 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
     _hasUnsavedChanges = false;
   }
 
-  void _newWarehouse() {
-    unawaited(_newWarehouseAfterConfirmation());
-  }
-
-  Future<void> _newWarehouseAfterConfirmation() async {
-    if (!await _confirmDiscardChanges() || !mounted) return;
-    _resetToNewWarehouse();
-  }
-
   void _resetToNewWarehouse() {
     _warehousesController.select(null);
     setState(_setNewForm);

@@ -76,15 +76,6 @@ class _ItemsScreenState extends State<ItemsScreen> {
     _hasUnsavedChanges = false;
   }
 
-  void _newItem() {
-    unawaited(_newItemAfterConfirmation());
-  }
-
-  Future<void> _newItemAfterConfirmation() async {
-    if (!await _confirmDiscardChanges() || !mounted) return;
-    _resetToNewItem();
-  }
-
   void _resetToNewItem() {
     _itemsController.select(null);
     setState(_setNewForm);
