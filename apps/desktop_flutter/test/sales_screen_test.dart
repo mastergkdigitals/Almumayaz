@@ -56,8 +56,15 @@ void main() {
           matching: find.byType(AppDropdownField<String>),
         ),
       );
-      expect(dropdown.useIntrinsicHeight, isTrue);
+      expect(dropdown.useIntrinsicHeight, isFalse);
       expect(dropdown.accentColor, AppModuleColors.sales);
+    }
+
+    for (final key in firstRowKeys) {
+      expect(
+        tester.getSize(find.byKey(Key(key))).height,
+        AppControlHeights.large,
+      );
     }
 
     expect(find.byKey(const Key('salesItemsTable')), findsOneWidget);
