@@ -167,6 +167,22 @@ void main() {
     ]) {
       expect(find.byKey(Key(key)), findsOneWidget);
     }
+    for (final key in const [
+      'salesFirstButton',
+      'salesPreviousButton',
+      'salesSaveButton',
+      'salesUpdateButton',
+      'salesUndoButton',
+    ]) {
+      expect(_actionButton(tester, key).onPressed, isNull);
+    }
+    for (final key in const [
+      'salesNextButton',
+      'salesLastButton',
+      'salesDeleteButton',
+    ]) {
+      expect(_actionButton(tester, key).onPressed, isNotNull);
+    }
 
     final expectedTint = Color.alphaBlend(
       AppModuleColors.sales.withAlpha(12),
@@ -177,6 +193,7 @@ void main() {
     );
     expect(shell.subtitle, isNull);
     expect(shell.backgroundColor, expectedTint);
+    expect(shell.onSave, isNull);
 
     final tintBackground = tester.widget<ColoredBox>(
       find.byKey(const Key('salesTintBackground')),
@@ -188,6 +205,181 @@ void main() {
 
     expect(find.byKey(const Key('salesScreen')), findsNothing);
     expect(find.byKey(const Key('dashboardCard_sales')), findsOneWidget);
+  });
+
+  testWidgets('navigates demo invoices and reaches a new Sales form',
+      (tester) async {
+    await _openSalesScreen(tester);
+
+    await tester.tap(find.byKey(const Key('salesNextButton')));
+    await tester.pumpAndSettle();
+    expect(_fieldValue(tester, 'salesInvoiceNumberField'), '102');
+    expect(_fieldValue(tester, 'salesCustomerNameField'), 'أحمد كريم');
+    expect(
+      tester
+          .widget<AppHeaderIconButton>(
+            find.byKey(const Key('salesInstallmentsButton')),
+          )
+          .onPressed,
+      isNotNull,
+    );
+
+    await tester.tap(find.byKey(const Key('salesNextButton')));
+    await tester.pumpAndSettle();
+    expect(_fieldValue(tester, 'salesInvoiceNumberField'), '101');
+    expect(
+      _fieldValue(tester, 'salesCustomerNameField'),
+      'شركة النخيل للتجارة',
+    );
+
+    await tester.tap(find.byKey(const Key('salesLastButton')));
+    await tester.pumpAndSettle();
+    expect(_fieldValue(tester, 'salesInvoiceNumberField'), '104');
+    expect(_fieldValue(tester, 'salesCustomerNameField'), isEmpty);
+    expect(_actionButton(tester, 'salesSaveButton').onPressed, isNotNull);
+    expect(_actionButton(tester, 'salesUpdateButton').onPressed, isNull);
+    expect(_actionButton(tester, 'salesDeleteButton').onPressed, isNull);
+    expect(_actionButton(tester, 'salesFirstButton').onPressed, isNotNull);
+    expect(
+      _actionButton(tester, 'salesPreviousButton').onPressed,
+      isNotNull,
+    );
+    expect(_actionButton(tester, 'salesNextButton').onPressed, isNull);
+    expect(_actionButton(tester, 'salesLastButton').onPressed, isNull);
+
+    await tester.tap(find.byKey(const Key('salesFirstButton')));
+    await tester.pumpAndSettle();
+    expect(_fieldValue(tester, 'salesInvoiceNumberField'), '103');
+    expect(_fieldValue(tester, 'salesCustomerNameField'), 'أسواق دجلة');
+  });
+
+  testWidgets('enables Sales actions for form and table edits',
+      (tester) async {
+    await _openSalesScreen(tester);
+
+    await tester.enterText(
+      find.byKey(const Key('salesNotesField')),
+      'ملاحظة معدلة',
+    );
+    await tester.pump();
+    expect(_actionButton(tester, 'salesUpdateButton').onPressed, isNotNull);
+    expect(_actionButton(tester, 'salesUndoButton').onPressed, isNotNull);
+    expect(
+      tester
+          .widget<AppScreenShell>(
+            find.byKey(const Key('salesScreen')),
+          )
+          .onSave,
+      isNotNull,
+    );
+
+    await tester.tap(find.byKey(const Key('salesUndoButton')));
+    await tester.pump();
+    expect(
+      _fieldValue(tester, 'salesNotesField'),
+      'تسليم الطلب إلى فرع الكرادة',
+    );
+    expect(_actionButton(tester, 'salesUpdateButton').onPressed, isNull);
+    expect(_actionButton(tester, 'salesUndoButton').onPressed, isNull);
+
+    final itemNameField = find.byKey(
+      const Key('appSalesInvoiceTemplateNameField-r4'),
+    );
+    await tester.enterText(itemNameField, 'دفتر ملاحظات معدل');
+    await tester.pump();
+    expect(_actionButton(tester, 'salesUpdateButton').onPressed, isNotNull);
+    expect(_actionButton(tester, 'salesUndoButton').onPressed, isNotNull);
+  });
+
+  testWidgets('guards Sales edits before navigation', (tester) async {
+    await _openSalesScreen(tester);
+
+    await tester.enterText(
+      find.byKey(const Key('salesCustomerNameField')),
+      'زبون معدل',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('salesNextButton')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('appConfirmDialog')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('appDialogCancelButton')));
+    await tester.pumpAndSettle();
+    expect(_fieldValue(tester, 'salesInvoiceNumberField'), '103');
+    expect(_fieldValue(tester, 'salesCustomerNameField'), 'زبون معدل');
+
+    await tester.tap(find.byKey(const Key('salesNextButton')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('appDialogConfirmButton')));
+    await tester.pumpAndSettle();
+    expect(_fieldValue(tester, 'salesInvoiceNumberField'), '102');
+    expect(_fieldValue(tester, 'salesCustomerNameField'), 'أحمد كريم');
+  });
+
+  testWidgets('shows matching Sales action toasts', (tester) async {
+    await _openSalesScreen(tester);
+
+    await tester.enterText(
+      find.byKey(const Key('salesNotesField')),
+      'ملاحظة محدثة',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('salesUpdateButton')));
+    await tester.pump();
+    _expectToast(
+      tester,
+      color: AppColors.green,
+      message: 'تم تحديث قائمة البيع مؤقتاً',
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('salesNotesField')),
+      'تعديل غير محفوظ',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('salesUndoButton')));
+    await tester.pump();
+    _expectToast(
+      tester,
+      color: AppColors.orange,
+      message: 'تم التراجع عن التغييرات',
+    );
+    expect(_fieldValue(tester, 'salesNotesField'), 'ملاحظة محدثة');
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('salesLastButton')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('salesLastButton')));
+    await tester.pumpAndSettle();
+    expect(_fieldValue(tester, 'salesInvoiceNumberField'), '104');
+
+    await tester.enterText(
+      find.byKey(const Key('salesCustomerNameField')),
+      'زبون تجريبي',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('salesSaveButton')));
+    await tester.pump();
+    _expectToast(
+      tester,
+      color: AppColors.blue,
+      message: 'تم حفظ قائمة البيع مؤقتاً',
+    );
+    expect(_actionButton(tester, 'salesDeleteButton').onPressed, isNotNull);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('salesDeleteButton')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('appConfirmDialog')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('appDialogConfirmButton')));
+    await tester.pump();
+    _expectToast(
+      tester,
+      color: AppColors.red,
+      message: 'تم حذف قائمة البيع مؤقتاً',
+    );
+    expect(_actionButton(tester, 'salesDeleteButton').onPressed, isNull);
   });
 
   testWidgets('updates installments availability and total currency labels',
@@ -437,6 +629,28 @@ void main() {
       findsOneWidget,
     );
   });
+}
+
+AppButton _actionButton(WidgetTester tester, String key) {
+  return tester.widget<AppButton>(find.byKey(Key(key)));
+}
+
+void _expectToast(
+  WidgetTester tester, {
+  required Color color,
+  required String message,
+}) {
+  final toast = tester.widget<SnackBar>(
+    find.byKey(const Key('appToast')),
+  );
+  expect(toast.backgroundColor, color);
+  expect(
+    find.descendant(
+      of: find.byKey(const Key('appToast')),
+      matching: find.text(message),
+    ),
+    findsOneWidget,
+  );
 }
 
 String _fieldValue(WidgetTester tester, String key) {
