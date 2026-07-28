@@ -348,7 +348,6 @@ class _ManagementDialogState extends State<_ManagementDialog> {
             label: _spec.primaryTitle,
             icon: Icons.link_rounded,
             accentColor: _spec.accentColor,
-            useIntrinsicHeight: true,
             value: _selectedParentId,
             options: [
               for (final entry in _primaryEntries)
