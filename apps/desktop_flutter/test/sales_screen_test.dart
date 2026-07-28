@@ -148,11 +148,14 @@ void main() {
     );
     _expectRightToLeftOrder(tester, invoiceButtons.keys.toList());
 
-    expect(_fieldValue(tester, 'salesInvoiceNumberField'), '103');
-    expect(_fieldValue(tester, 'salesCustomerNameField'), 'أسواق دجلة');
+    expect(_fieldValue(tester, 'salesInvoiceNumberField'), '101');
+    expect(
+      _fieldValue(tester, 'salesCustomerNameField'),
+      'شركة النخيل للتجارة',
+    );
     expect(
       _fieldValue(tester, 'appSalesInvoiceTemplateNameField-r1'),
-      'دفتر ملاحظات',
+      'ورق طباعة',
     );
 
     for (final key in const [
@@ -226,11 +229,8 @@ void main() {
 
     await tester.tap(find.byKey(const Key('salesNextButton')));
     await tester.pumpAndSettle();
-    expect(_fieldValue(tester, 'salesInvoiceNumberField'), '101');
-    expect(
-      _fieldValue(tester, 'salesCustomerNameField'),
-      'شركة النخيل للتجارة',
-    );
+    expect(_fieldValue(tester, 'salesInvoiceNumberField'), '103');
+    expect(_fieldValue(tester, 'salesCustomerNameField'), 'أسواق دجلة');
 
     await tester.tap(find.byKey(const Key('salesLastButton')));
     await tester.pumpAndSettle();
@@ -249,8 +249,11 @@ void main() {
 
     await tester.tap(find.byKey(const Key('salesFirstButton')));
     await tester.pumpAndSettle();
-    expect(_fieldValue(tester, 'salesInvoiceNumberField'), '103');
-    expect(_fieldValue(tester, 'salesCustomerNameField'), 'أسواق دجلة');
+    expect(_fieldValue(tester, 'salesInvoiceNumberField'), '101');
+    expect(
+      _fieldValue(tester, 'salesCustomerNameField'),
+      'شركة النخيل للتجارة',
+    );
   });
 
   testWidgets('enables Sales actions for form and table edits',
@@ -277,7 +280,7 @@ void main() {
     await tester.pump();
     expect(
       _fieldValue(tester, 'salesNotesField'),
-      'تسليم الطلب إلى فرع الكرادة',
+      'تضاف إلى حساب الزبون',
     );
     expect(_actionButton(tester, 'salesUpdateButton').onPressed, isNull);
     expect(_actionButton(tester, 'salesUndoButton').onPressed, isNull);
@@ -285,7 +288,7 @@ void main() {
     final itemNameField = find.byKey(
       const Key('appSalesInvoiceTemplateNameField-r4'),
     );
-    await tester.enterText(itemNameField, 'دفتر ملاحظات معدل');
+    await tester.enterText(itemNameField, 'ورق طباعة معدل');
     await tester.pump();
     expect(_actionButton(tester, 'salesUpdateButton').onPressed, isNotNull);
     expect(_actionButton(tester, 'salesUndoButton').onPressed, isNotNull);
@@ -305,7 +308,7 @@ void main() {
     expect(find.byKey(const Key('appConfirmDialog')), findsOneWidget);
     await tester.tap(find.byKey(const Key('appDialogCancelButton')));
     await tester.pumpAndSettle();
-    expect(_fieldValue(tester, 'salesInvoiceNumberField'), '103');
+    expect(_fieldValue(tester, 'salesInvoiceNumberField'), '101');
     expect(_fieldValue(tester, 'salesCustomerNameField'), 'زبون معدل');
 
     await tester.tap(find.byKey(const Key('salesNextButton')));
