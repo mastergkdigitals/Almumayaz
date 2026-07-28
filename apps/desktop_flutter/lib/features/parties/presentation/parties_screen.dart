@@ -260,9 +260,24 @@ class _PartiesScreenState extends State<PartiesScreen> {
   }
 
   void _showStatement(Party party) {
-    AppToast.showInfo(
+    unawaited(_showStatementAfterOptions(party));
+  }
+
+  Future<void> _showStatementAfterOptions(Party party) async {
+    final options = await AppStatementOptionsDialog.show(
       context,
-      'سيتم ربط كشف حساب ${party.name} مع الخدمات لاحقاً',
+      partyName: party.name,
+      firstTransactionDate: party.createdAt,
+      accentColor: AppModuleColors.parties,
+    );
+    if (!mounted || options == null) return;
+
+    await AppStatementReportDialog.show(
+      context,
+      partyName: party.name,
+      options: options,
+      entries: const <AppStatementReportEntry>[],
+      accentColor: AppModuleColors.parties,
     );
   }
 
