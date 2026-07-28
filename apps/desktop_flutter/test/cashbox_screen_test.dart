@@ -151,7 +151,7 @@ void main() {
         tester.widget<AppDropdownField<CashboxVoucherType>>(
       find.byType(AppDropdownField<CashboxVoucherType>),
     );
-    expect(typeDropdown.useIntrinsicHeight, isTrue);
+    expect(typeDropdown.useIntrinsicHeight, isFalse);
     expect(typeDropdown.accentColor, AppModuleColors.cashbox);
 
     final searchDecoration = _fieldDecoration(
@@ -329,11 +329,20 @@ InputDecoration _fieldDecoration(WidgetTester tester, Finder field) {
 }
 
 void _expectSameRow(WidgetTester tester, List<String> fieldKeys) {
-  final firstY = tester.getTopLeft(find.byKey(Key(fieldKeys.first))).dy;
+  final firstField = find.byKey(Key(fieldKeys.first));
+  final firstY = tester.getTopLeft(firstField).dy;
+  final firstHeight = tester.getSize(firstField).height;
+  expect(firstHeight, AppControlHeights.large);
+
   for (final fieldKey in fieldKeys.skip(1)) {
+    final field = find.byKey(Key(fieldKey));
     expect(
-      tester.getTopLeft(find.byKey(Key(fieldKey))).dy,
+      tester.getTopLeft(field).dy,
       closeTo(firstY, 0.1),
+    );
+    expect(
+      tester.getSize(field).height,
+      closeTo(firstHeight, 0.1),
     );
   }
 }
