@@ -235,6 +235,7 @@ class ItemFormState extends State<ItemForm> {
                     accentColor: accentColor,
                     focusNode: _groupFocusNode,
                     keyHoldGuard: _keyHoldGuard,
+                    useIntrinsicHeight: true,
                     value: widget.groupId,
                     options: [
                       for (final group in widget.groups)
@@ -257,6 +258,7 @@ class ItemFormState extends State<ItemForm> {
                     accentColor: accentColor,
                     focusNode: _typeFocusNode,
                     keyHoldGuard: _keyHoldGuard,
+                    useIntrinsicHeight: true,
                     value: widget.typeId,
                     options: [
                       for (final type in widget.types)

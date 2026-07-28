@@ -215,6 +215,7 @@ class CashboxForm extends StatelessWidget {
               label: 'النوع',
               icon: Icons.swap_vert_rounded,
               accentColor: accentColor,
+              useIntrinsicHeight: true,
               value: voucherType,
               options: [
                 for (final type in CashboxVoucherType.values)
@@ -259,6 +260,7 @@ class CashboxForm extends StatelessWidget {
               label: 'الحساب الرئيسي',
               icon: Icons.account_tree_rounded,
               accentColor: accentColor,
+              useIntrinsicHeight: true,
               value: mainAccountId,
               options: [
                 for (final account in mainAccounts)
@@ -276,6 +278,7 @@ class CashboxForm extends StatelessWidget {
               label: 'الحساب الفرعي',
               icon: Icons.subdirectory_arrow_left_rounded,
               accentColor: accentColor,
+              useIntrinsicHeight: true,
               enabled: subaccounts.isNotEmpty,
               value: subaccountId,
               options: [

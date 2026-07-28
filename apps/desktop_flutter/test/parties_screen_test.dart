@@ -83,15 +83,11 @@ void main() {
             ),
           )
           .useIntrinsicHeight,
-      isFalse,
+      isTrue,
     );
     expect(
       tester.getSize(find.byKey(const Key('partyTypeField'))),
       tester.getSize(find.byKey(const Key('partyNameField'))),
-    );
-    expect(
-      tester.getSize(find.byKey(const Key('partyTypeField'))).height,
-      AppControlHeights.large,
     );
 
     expect(

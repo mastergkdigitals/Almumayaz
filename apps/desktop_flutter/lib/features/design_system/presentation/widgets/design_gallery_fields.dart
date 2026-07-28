@@ -349,6 +349,7 @@ class _ModuleFieldsPreview extends StatelessWidget {
                   label: 'العملة',
                   icon: Icons.currency_exchange_rounded,
                   accentColor: data.accentColor,
+                  useIntrinsicHeight: true,
                   value: data.currency,
                   options: _currencyOptions,
                   onChanged: onCurrencyChanged,

@@ -308,6 +308,7 @@ class _QuickCreateDialogState extends State<_QuickCreateDialog> {
                 label: 'نوع الطرف',
                 icon: Icons.groups_rounded,
                 accentColor: _spec.accentColor,
+                useIntrinsicHeight: true,
                 value: _partyType,
                 options: const [
                   AppDropdownOption(value: 'customer', label: 'زبون'),
@@ -427,6 +428,7 @@ class _QuickCreateDialogState extends State<_QuickCreateDialog> {
           label: 'جهة العمل',
           icon: Icons.business_center_rounded,
           accentColor: _spec.accentColor,
+          useIntrinsicHeight: true,
           value: _workplace,
           options: const [
             AppDropdownOption(value: 'company', label: 'شركة النور'),
@@ -454,6 +456,7 @@ class _QuickCreateDialogState extends State<_QuickCreateDialog> {
           label: 'المجموعة',
           icon: Icons.category_rounded,
           accentColor: _spec.accentColor,
+          useIntrinsicHeight: true,
           value: _itemGroup,
           options: const [
             AppDropdownOption(value: 'stationery', label: 'قرطاسية'),
@@ -503,6 +506,7 @@ class _QuickCreateDialogState extends State<_QuickCreateDialog> {
           label: 'الحساب الرئيسي',
           icon: Icons.account_balance_wallet_rounded,
           accentColor: _spec.accentColor,
+          useIntrinsicHeight: true,
           value: _cashboxMain,
           options: const [
             AppDropdownOption(value: 'expenses', label: 'المصاريف'),

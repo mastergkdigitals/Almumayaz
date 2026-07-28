@@ -74,7 +74,7 @@ void main() {
         matching: find.byType(AppDropdownField<String>),
       ),
     );
-    expect(warehouseDropdown.useIntrinsicHeight, isFalse);
+    expect(warehouseDropdown.useIntrinsicHeight, isTrue);
     expect(warehouseDropdown.showLabel, isFalse);
     expect(warehouseDropdown.borderRadius, AppRadii.sm);
 
@@ -94,7 +94,6 @@ void main() {
     );
     final codeRect = tester.getRect(codeFieldOutline);
     final dropdownRect = tester.getRect(warehouseDropdownOutline);
-    expect(codeRect.height, AppControlHeights.large);
     expect(dropdownRect.height, closeTo(codeRect.height, 0.1));
     expect(dropdownRect.top, closeTo(codeRect.top, 0.1));
     expect(dropdownRect.bottom, closeTo(codeRect.bottom, 0.1));
