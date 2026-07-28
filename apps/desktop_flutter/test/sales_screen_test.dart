@@ -4,88 +4,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('builds the clipped sales grid directly on its tinted page',
-      (tester) async {
+  testWidgets('keeps only the sales tint background', (tester) async {
     await _openSalesScreen(tester);
 
     expect(find.byKey(const Key('salesScreen')), findsOneWidget);
     expect(find.byKey(const Key('salesTintBackground')), findsOneWidget);
-    expect(find.byKey(const Key('salesItemsTable')), findsOneWidget);
-    expect(find.byKey(const Key('salesTableSurface')), findsOneWidget);
-    expect(find.byKey(const Key('salesTableHeader')), findsOneWidget);
-    expect(find.byKey(const Key('salesTableSummary')), findsOneWidget);
-    expect(find.byKey(const Key('appInvoiceTableHeader')), findsNothing);
-    expect(find.byKey(const Key('salesCode-r1')), findsOneWidget);
-    expect(find.byKey(const Key('salesName-r1')), findsOneWidget);
-    expect(find.byKey(const Key('salesWarehouse-r1')), findsOneWidget);
-    expect(find.byKey(const Key('salesQuantity-r1')), findsOneWidget);
-    expect(find.byKey(const Key('salesSalePrice-r1')), findsOneWidget);
-    expect(find.byKey(const Key('salesDiscount-r1')), findsOneWidget);
-    expect(find.byKey(const Key('salesPriceAfterDiscount-r1')), findsOneWidget);
-    expect(find.byKey(const Key('salesTotal-r1')), findsOneWidget);
-    expect(find.byKey(const Key('salesAdd-r1')), findsOneWidget);
-    expect(find.byKey(const Key('salesQuantityTotal')), findsOneWidget);
-    expect(find.byKey(const Key('salesDiscountTotal')), findsOneWidget);
-    expect(find.byKey(const Key('salesTotal')), findsOneWidget);
-    expect(find.byKey(const Key('salesCodeCell-r1')), findsOneWidget);
-    expect(find.byKey(const Key('salesNameCell-r1')), findsOneWidget);
-    expect(find.byKey(const Key('salesWarehouseCell-r1')), findsOneWidget);
-
-    final codeField = tester.widget<TextField>(
-      find.byKey(const Key('salesCode-r1')),
-    );
-    expect(codeField.decoration?.filled, isFalse);
-    expect(codeField.decoration?.fillColor, Colors.transparent);
-    expect(codeField.textAlignVertical, TextAlignVertical.center);
-    expect(codeField.style?.height, kTextHeightNone);
-    final codeCell = tester.widget<Container>(
-      find.byKey(const Key('salesCodeCell-r1')),
-    );
-    expect(codeCell.clipBehavior, Clip.antiAlias);
-    expect(codeCell.foregroundDecoration, isA<BoxDecoration>());
-
-    final tableRect =
-        tester.getRect(find.byKey(const Key('salesTableSurface')));
-    final addButtonRect =
-        tester.getRect(find.byKey(const Key('salesAdd-r1')));
-    expect(addButtonRect.left, greaterThanOrEqualTo(tableRect.left - 0.5));
-    expect(addButtonRect.right, lessThanOrEqualTo(tableRect.right + 0.5));
-    await tester.tap(find.byKey(const Key('salesCode-r1')));
-    await tester.pump();
-    final codeRect =
-        tester.getRect(find.byKey(const Key('salesCodeCell-r1')));
-    final nameRect =
-        tester.getRect(find.byKey(const Key('salesNameCell-r1')));
-    final warehouseRect =
-        tester.getRect(find.byKey(const Key('salesWarehouseCell-r1')));
-    expect(codeRect.overlaps(nameRect), isFalse);
-    expect(nameRect.overlaps(warehouseRect), isFalse);
-    final focusedCell = tester.widget<Container>(
-      find.byKey(const Key('salesCodeCell-r1')),
-    );
-    final focusedDecoration =
-        focusedCell.foregroundDecoration! as BoxDecoration;
-    final focusedBorder = focusedDecoration.border! as Border;
-    expect(focusedBorder.top.color, AppModuleColors.sales);
-    expect(focusedBorder.top.width, 1.5);
-
-    await tester.tap(find.byKey(const Key('salesWarehouse-r1')));
-    await tester.pump();
-    final warehouseMenu = tester.widget<DecoratedBox>(
-      find.byKey(const Key('salesWarehouseMenu')),
-    );
-    final warehouseMenuDecoration =
-        warehouseMenu.decoration as BoxDecoration;
+    expect(find.byKey(const Key('salesItemsTable')), findsNothing);
+    expect(find.byKey(const Key('salesTableSurface')), findsNothing);
+    expect(find.byKey(const Key('salesTableHeader')), findsNothing);
+    expect(find.byKey(const Key('salesTableSummary')), findsNothing);
     expect(
-      warehouseMenuDecoration.borderRadius,
-      BorderRadius.circular(AppRadii.md),
+      find.descendant(
+        of: find.byKey(const Key('salesTintBackground')),
+        matching: find.byType(TextField),
+      ),
+      findsNothing,
     );
-    expect(
-      (warehouseMenuDecoration.border! as Border).top.color,
-      AppColors.border,
-    );
-    await tester.tap(find.byKey(const Key('salesWarehouse-r1')));
-    await tester.pump();
 
     final expectedTint = Color.alphaBlend(
       AppModuleColors.sales.withAlpha(12),
@@ -104,10 +38,12 @@ void main() {
       ),
     );
     expect(scaffold.backgroundColor, expectedTint);
+
     final tintBackground = tester.widget<ColoredBox>(
       find.byKey(const Key('salesTintBackground')),
     );
     expect(tintBackground.color, expectedTint);
+    expect(tintBackground.child, isNull);
 
     await tester.tap(find.byKey(const Key('appScreenBackButton')));
     await tester.pumpAndSettle();
