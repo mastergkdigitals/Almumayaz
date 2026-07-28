@@ -287,7 +287,6 @@ class _DesignGalleryActionsGroupState
                     fieldKey: const Key('designActionBarStateDropdown'),
                     label: 'حالة النموذج',
                     icon: Icons.fact_check_rounded,
-                    useIntrinsicHeight: true,
                     value: _actionBarState,
                     options: [
                       for (final state in _ActionBarPreviewState.values)
