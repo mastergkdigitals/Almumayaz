@@ -75,7 +75,7 @@ class _AppTooltipState extends State<AppTooltip> {
       textStyle: const TextStyle(
         color: AppTooltipColors.text,
         fontSize: 13,
-        fontWeight: FontWeight.w900,
+        fontWeight: FontWeight.w800,
         height: 1.2,
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
