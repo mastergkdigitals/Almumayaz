@@ -58,6 +58,40 @@ void main() {
       );
       expect(dropdown.useIntrinsicHeight, isTrue);
       expect(dropdown.accentColor, AppModuleColors.sales);
+      expect(dropdown.textDirection, TextDirection.rtl);
+      expect(dropdown.menuTextDirection, TextDirection.rtl);
+    }
+
+    final saleTypeDropdown = tester.widget<AppDropdownField<String>>(
+      find.ancestor(
+        of: find.byKey(const Key('salesTypeField')),
+        matching: find.byType(AppDropdownField<String>),
+      ),
+    );
+    expect(
+      saleTypeDropdown.options.map((option) => option.label),
+      containsAllInOrder(['نقدي', 'آجل', 'أقساط']),
+    );
+
+    for (final key in [
+      'salesInvoiceNumberField',
+      'salesDateField',
+      'salesTimeField',
+      'salesExchangeRateField',
+      ...secondRowKeys,
+      ...totalsRowKeys,
+    ]) {
+      final textField = tester.widget<TextField>(
+        find.descendant(
+          of: find.byKey(Key(key)),
+          matching: find.byType(TextField),
+        ),
+      );
+      expect(
+        textField.textDirection,
+        TextDirection.rtl,
+        reason: '$key must remain RTL outside the invoice table.',
+      );
     }
 
     expect(find.byKey(const Key('salesItemsTable')), findsOneWidget);
@@ -75,8 +109,32 @@ void main() {
     );
 
     expect(find.byKey(const Key('salesActionBar')), findsOneWidget);
+    expect(find.byKey(const Key('salesSearchField')), findsNothing);
+
+    const invoiceButtons = <String, (IconData, String)>{
+      'salesSearchButton': (Icons.search_rounded, 'بحث'),
+      'salesPrintButton': (Icons.print_rounded, 'طباعة'),
+      'salesInstallmentsButton': (
+        Icons.table_chart_rounded,
+        'جدول الأقساط',
+      ),
+      'salesStatementButton': (
+        Icons.receipt_long_rounded,
+        'كشف الحساب',
+      ),
+    };
+    for (final entry in invoiceButtons.entries) {
+      final finder = find.byKey(Key(entry.key));
+      expect(finder, findsOneWidget);
+
+      final button = tester.widget<AppHeaderIconButton>(finder);
+      expect(button.icon, entry.value.$1);
+      expect(button.tooltip, entry.value.$2);
+      expect(tester.getSize(finder), const Size.square(52));
+    }
+    _expectRightToLeftOrder(tester, invoiceButtons.keys.toList());
+
     for (final key in const [
-      'salesSearchField',
       'salesFirstButton',
       'salesPreviousButton',
       'salesNextButton',
