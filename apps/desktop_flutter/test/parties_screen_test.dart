@@ -227,7 +227,7 @@ void main() {
             find.byKey(const Key('partyStatement_party-001')),
           )
           .foregroundColor,
-      AppColors.blue,
+      Colors.black,
     );
 
     final namePosition =
