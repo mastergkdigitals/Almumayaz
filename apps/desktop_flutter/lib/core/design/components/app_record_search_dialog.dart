@@ -31,6 +31,7 @@ abstract final class AppRecordSearchDialog {
     required Color accentColor,
     required List<AppSearchRecord<T>> records,
     String subtitle = 'اكتب للبحث ثم اختر السجل المطلوب',
+    String searchLabel = 'بحث',
     String emptyTitle = 'لا توجد سجلات محفوظة',
     String noResultsTitle = 'لا توجد نتائج مطابقة',
     Key dialogKey = const Key('appRecordSearchDialog'),
@@ -48,6 +49,7 @@ abstract final class AppRecordSearchDialog {
           resultKeyPrefix: resultKeyPrefix,
           title: title,
           subtitle: subtitle,
+          searchLabel: searchLabel,
           hint: hint,
           accentColor: accentColor,
           records: records,
@@ -66,6 +68,7 @@ class _AppRecordSearchDialog<T extends Object> extends StatefulWidget {
     required this.resultKeyPrefix,
     required this.title,
     required this.subtitle,
+    required this.searchLabel,
     required this.hint,
     required this.accentColor,
     required this.records,
@@ -78,6 +81,7 @@ class _AppRecordSearchDialog<T extends Object> extends StatefulWidget {
   final String resultKeyPrefix;
   final String title;
   final String subtitle;
+  final String searchLabel;
   final String hint;
   final Color accentColor;
   final List<AppSearchRecord<T>> records;
@@ -157,7 +161,7 @@ class _AppRecordSearchDialogState<T extends Object>
               fieldKey: widget.searchFieldKey,
               controller: _searchController,
               focusNode: _searchFocusNode,
-              label: 'بحث',
+              label: widget.searchLabel,
               hint: widget.hint,
               accentColor: widget.accentColor,
               onChanged: (_) => setState(() {}),
