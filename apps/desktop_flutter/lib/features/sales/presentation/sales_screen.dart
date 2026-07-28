@@ -190,7 +190,7 @@ final _demoSalesInvoices = <_DemoSalesInvoice>[
     summaryDiscount: '1,000',
     summaryTotal: '177,000',
   ),
-];
+].reversed.toList(growable: false);
 
 class _DemoSalesInvoice {
   const _DemoSalesInvoice({
