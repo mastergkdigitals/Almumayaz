@@ -170,7 +170,6 @@ class _StatementDialogBodyState extends State<_StatementDialogBody> {
             label: 'العملة',
             icon: Icons.currency_exchange_rounded,
             accentColor: widget.accentColor,
-            useIntrinsicHeight: true,
             value: _currencyCode,
             options: const [
               AppDropdownOption(value: 'IQD', label: 'دينار'),
