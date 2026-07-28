@@ -303,18 +303,16 @@ class _DesignGalleryActionsGroupState
             spacing: AppSpacing.md,
             runSpacing: AppSpacing.md,
             children: [
-              AppButton(
+              AppRegularButton(
                 key: const Key('designDeleteDialogButton'),
                 label: 'تأكيد الحذف',
                 icon: Icons.delete_rounded,
-                variant: AppButtonVariant.danger,
                 onPressed: _showDeleteConfirmation,
               ),
-              AppButton(
+              AppRegularButton(
                 key: const Key('designUnsavedDialogButton'),
                 label: 'تغييرات غير محفوظة',
                 icon: Icons.warning_amber_rounded,
-                variant: AppButtonVariant.warning,
                 onPressed: _showUnsavedChangesConfirmation,
               ),
             ],

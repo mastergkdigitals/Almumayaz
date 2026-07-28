@@ -65,11 +65,10 @@ class AboutScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: AppSpacing.xxl),
-                  AppButton(
+                  AppRegularButton(
                     key: const Key('openDesignSystemGallery'),
                     label: 'دليل نظام التصميم',
                     icon: Icons.design_services_rounded,
-                    variant: AppButtonVariant.secondary,
                     onPressed: () => Navigator.of(context).push(
                       MaterialPageRoute<void>(
                         builder: (_) => const DesignSystemGalleryScreen(),

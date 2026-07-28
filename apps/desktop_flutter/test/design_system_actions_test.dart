@@ -82,6 +82,89 @@ void main() {
     }
   });
 
+  testWidgets('matches regular gallery buttons to navigation buttons',
+      (tester) async {
+    await pumpDesignSystemGallery(tester);
+
+    const regularButtonKeys = [
+      'designDeleteDialogButton',
+      'designUnsavedDialogButton',
+      'designRecordSearchDialogButton',
+      'designStatementDialogButton',
+      'designTransferDialogButton',
+      'designGroupsTypesDialogButton',
+      'designWorkplacesDialogButton',
+      'designCashboxTabsDialogButton',
+      'designQuickPartyButton',
+      'designQuickItemButton',
+      'designQuickWorkplaceButton',
+      'designQuickWorkplaceBranchButton',
+      'designQuickItemGroupButton',
+      'designQuickItemTypeButton',
+      'designQuickCashboxMainButton',
+      'designQuickCashboxSubButton',
+      'designSaveToastButton',
+      'designUpdateToastButton',
+      'designUndoToastButton',
+      'designDeleteToastButton',
+    ];
+
+    final navigation = tester.widget<AppButton>(
+      find.byKey(const Key('designNavigationFirst')),
+    );
+    final navigationControl = tester.widget<OutlinedButton>(
+      find.descendant(
+        of: find.byKey(const Key('designNavigationFirst')),
+        matching: find.byType(OutlinedButton),
+      ),
+    );
+
+    for (final key in regularButtonKeys) {
+      final finder = find.byKey(Key(key));
+      final regularButton = tester.widget<AppRegularButton>(finder);
+      final button = tester.widget<AppButton>(
+        find.descendant(
+          of: finder,
+          matching: find.byType(AppButton),
+        ),
+      );
+      final control = tester.widget<OutlinedButton>(
+        find.descendant(
+          of: finder,
+          matching: find.byType(OutlinedButton),
+        ),
+      );
+
+      expect(regularButton.onPressed, isNotNull);
+      expect(button.variant, navigation.variant);
+      expect(button.minWidth, navigation.minWidth);
+      expect(button.height, navigation.height);
+      expect(button.padding, navigation.padding);
+      expect(button.iconSize, navigation.iconSize);
+      expect(button.iconSpacing, navigation.iconSpacing);
+      expect(button.textStyle, navigation.textStyle);
+
+      for (final states in <Set<WidgetState>>[
+        <WidgetState>{},
+        <WidgetState>{WidgetState.hovered},
+        <WidgetState>{WidgetState.pressed},
+      ]) {
+        expect(
+          control.style?.backgroundColor?.resolve(states),
+          navigationControl.style?.backgroundColor?.resolve(states),
+        );
+        expect(
+          control.style?.foregroundColor?.resolve(states),
+          navigationControl.style?.foregroundColor?.resolve(states),
+        );
+        expect(
+          control.style?.side?.resolve(states),
+          navigationControl.style?.side?.resolve(states),
+        );
+      }
+    }
+  });
+
   testWidgets('changes the theme preview icon and tooltip', (tester) async {
     await pumpDesignSystemGallery(tester);
 

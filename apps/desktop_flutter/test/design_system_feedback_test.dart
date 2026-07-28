@@ -37,7 +37,13 @@ void main() {
     );
 
     for (final entry in toastButtons.entries) {
-      await tester.tap(find.byKey(Key(entry.key)));
+      final button = find.byKey(Key(entry.key));
+      expect(
+        tester.widget<AppRegularButton>(button).onPressed,
+        isNotNull,
+      );
+
+      await tester.tap(button);
       await tester.pump();
 
       final toast = tester.widget<SnackBar>(
@@ -48,6 +54,20 @@ void main() {
       await tester.pump(AppToast.duration);
       await tester.pump(const Duration(milliseconds: 300));
     }
+  });
+
+  testWidgets('uses the regular button for state panel actions',
+      (tester) async {
+    await pumpDesignSystemGallery(tester);
+
+    final errorPanel = find.byType(AppStatePanel).at(1);
+    expect(
+      find.descendant(
+        of: errorPanel,
+        matching: find.byType(AppRegularButton),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('shows non-dismissible messages for two seconds', (tester) async {

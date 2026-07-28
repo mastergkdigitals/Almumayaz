@@ -213,7 +213,22 @@ void main() {
       closeTo(tester.getCenter(aboutHeader).dx, 0.1),
     );
 
-    await tester.tap(find.byKey(const Key('openDesignSystemGallery')));
+    final openDesignSystemGallery =
+        find.byKey(const Key('openDesignSystemGallery'));
+    final designSystemButton = tester.widget<AppButton>(
+      find.descendant(
+        of: openDesignSystemGallery,
+        matching: find.byType(AppButton),
+      ),
+    );
+    expect(designSystemButton.variant, AppButtonVariant.navigation);
+    expect(
+      designSystemButton.minWidth,
+      AppRegularButton.defaultMinWidth,
+    );
+    expect(designSystemButton.height, AppRegularButton.defaultHeight);
+
+    await tester.tap(openDesignSystemGallery);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 

@@ -398,6 +398,55 @@ class _AppButtonState extends State<AppButton> {
   }
 }
 
+class AppRegularButton extends StatelessWidget {
+  const AppRegularButton({
+    required this.label,
+    required this.onPressed,
+    super.key,
+    this.icon,
+    this.iconPosition = AppButtonIconPosition.beforeLabel,
+    this.flipIconHorizontally = false,
+    this.isLoading = false,
+  });
+
+  final String label;
+  final VoidCallback? onPressed;
+  final IconData? icon;
+  final AppButtonIconPosition iconPosition;
+  final bool flipIconHorizontally;
+  final bool isLoading;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppButton(
+      label: label,
+      onPressed: onPressed,
+      icon: icon,
+      iconPosition: iconPosition,
+      flipIconHorizontally: flipIconHorizontally,
+      iconSize: defaultIconSize,
+      iconSpacing: defaultIconSpacing,
+      padding: defaultPadding,
+      variant: AppButtonVariant.navigation,
+      textStyle: defaultTextStyle,
+      isLoading: isLoading,
+      minWidth: defaultMinWidth,
+      height: defaultHeight,
+    );
+  }
+
+  static const double defaultMinWidth = 104;
+  static const double defaultHeight = 52;
+  static const EdgeInsetsGeometry defaultPadding =
+      EdgeInsets.symmetric(horizontal: 14);
+  static const double defaultIconSize = AppIconSizes.md;
+  static const double defaultIconSpacing = AppSpacing.sm;
+  static const TextStyle defaultTextStyle = TextStyle(
+    fontSize: 16,
+    fontWeight: FontWeight.w800,
+  );
+}
+
 class AppRecordNavigation extends StatelessWidget {
   const AppRecordNavigation({
     required this.onFirst,
@@ -410,16 +459,13 @@ class AppRecordNavigation extends StatelessWidget {
     this.nextButtonKey,
     this.lastButtonKey,
     this.variant = AppButtonVariant.navigation,
-    this.buttonWidth = 104,
-    this.buttonHeight = 52,
-    this.buttonPadding = const EdgeInsets.symmetric(horizontal: 14),
-    this.iconSize = AppIconSizes.md,
-    this.iconSpacing = AppSpacing.sm,
+    this.buttonWidth = AppRegularButton.defaultMinWidth,
+    this.buttonHeight = AppRegularButton.defaultHeight,
+    this.buttonPadding = AppRegularButton.defaultPadding,
+    this.iconSize = AppRegularButton.defaultIconSize,
+    this.iconSpacing = AppRegularButton.defaultIconSpacing,
     this.spacing = AppSpacing.sm,
-    this.textStyle = const TextStyle(
-      fontSize: 16,
-      fontWeight: FontWeight.w800,
-    ),
+    this.textStyle = AppRegularButton.defaultTextStyle,
   });
 
   final VoidCallback? onFirst;

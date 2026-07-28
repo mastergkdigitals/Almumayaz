@@ -120,11 +120,10 @@ class DesignGalleryQuickCreateSection extends StatelessWidget {
             runSpacing: AppSpacing.md,
             children: [
               for (final spec in _specs)
-                AppButton(
+                AppRegularButton(
                   key: Key('${spec.keyName}Button'),
                   label: spec.buttonLabel,
                   icon: spec.icon,
-                  backgroundColor: spec.accentColor,
                   onPressed: () => _open(context, spec),
                 ),
             ],

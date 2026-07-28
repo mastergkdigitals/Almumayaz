@@ -162,10 +162,9 @@ class AppStatePanel extends StatelessWidget {
           ),
           if (actionLabel != null && onAction != null) ...[
             const SizedBox(height: AppSpacing.md),
-            AppButton(
+            AppRegularButton(
               label: actionLabel!,
               onPressed: onAction,
-              variant: AppButtonVariant.secondary,
             ),
           ],
         ],

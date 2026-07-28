@@ -85,37 +85,33 @@ class DesignGalleryFeedbackGroup extends StatelessWidget {
             spacing: AppSpacing.md,
             runSpacing: AppSpacing.md,
             children: [
-              AppButton(
+              AppRegularButton(
                 key: const Key('designSaveToastButton'),
                 label: 'رسالة الحفظ',
                 icon: Icons.save_rounded,
-                variant: AppButtonVariant.primary,
                 onPressed: () =>
                     AppToast.showInfo(context, 'تم الحفظ بنجاح'),
               ),
-              AppButton(
+              AppRegularButton(
                 key: const Key('designUpdateToastButton'),
                 label: 'رسالة التحديث',
                 icon: Icons.update_rounded,
-                variant: AppButtonVariant.success,
                 onPressed: () =>
                     AppToast.showSuccess(context, 'تم تحديث السجل'),
               ),
-              AppButton(
+              AppRegularButton(
                 key: const Key('designUndoToastButton'),
                 label: 'رسالة التراجع',
                 icon: Icons.undo_rounded,
-                variant: AppButtonVariant.warning,
                 onPressed: () => AppToast.showWarning(
                   context,
                   'تم التراجع عن التغييرات',
                 ),
               ),
-              AppButton(
+              AppRegularButton(
                 key: const Key('designDeleteToastButton'),
                 label: 'رسالة الحذف',
                 icon: Icons.delete_rounded,
-                variant: AppButtonVariant.danger,
                 onPressed: () =>
                     AppToast.showDanger(context, 'تم حذف السجل'),
               ),

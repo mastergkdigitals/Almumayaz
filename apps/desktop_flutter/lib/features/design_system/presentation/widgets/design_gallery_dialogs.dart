@@ -194,52 +194,46 @@ class DesignGalleryBusinessDialogsSection extends StatelessWidget {
             spacing: AppSpacing.md,
             runSpacing: AppSpacing.md,
             children: [
-              AppButton(
+              AppRegularButton(
                 key: const Key('designRecordSearchDialogButton'),
                 label: 'نموذج البحث',
                 icon: Icons.search_rounded,
-                backgroundColor: AppModuleColors.purchases,
                 onPressed: () => _showRecordSearch(context),
               ),
-              AppButton(
+              AppRegularButton(
                 key: const Key('designStatementDialogButton'),
                 label: 'كشف الحساب',
                 icon: Icons.receipt_long_rounded,
-                backgroundColor: AppModuleColors.parties,
                 onPressed: () => _showStatement(context),
               ),
-              AppButton(
+              AppRegularButton(
                 key: const Key('designTransferDialogButton'),
                 label: 'النقل المخزني',
                 icon: Icons.compare_arrows_rounded,
-                variant: AppButtonVariant.secondary,
                 onPressed: () => _showTransfer(context),
               ),
-              AppButton(
+              AppRegularButton(
                 key: const Key('designGroupsTypesDialogButton'),
                 label: 'المجموعات والأنواع',
                 icon: Icons.category_rounded,
-                variant: AppButtonVariant.secondary,
                 onPressed: () => DesignGalleryManagementDialog.show(
                   context,
                   DesignGalleryManagementDialogSpec.groupsAndTypes,
                 ),
               ),
-              AppButton(
+              AppRegularButton(
                 key: const Key('designWorkplacesDialogButton'),
                 label: 'جهات العمل',
                 icon: Icons.business_center_rounded,
-                variant: AppButtonVariant.secondary,
                 onPressed: () => DesignGalleryManagementDialog.show(
                   context,
                   DesignGalleryManagementDialogSpec.workplaces,
                 ),
               ),
-              AppButton(
+              AppRegularButton(
                 key: const Key('designCashboxTabsDialogButton'),
                 label: 'تبويبات الصندوق',
                 icon: Icons.account_balance_wallet_rounded,
-                variant: AppButtonVariant.secondary,
                 onPressed: () => DesignGalleryManagementDialog.show(
                   context,
                   DesignGalleryManagementDialogSpec.cashboxTabs,
