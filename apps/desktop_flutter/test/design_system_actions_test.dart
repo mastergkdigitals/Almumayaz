@@ -103,7 +103,7 @@ void main() {
       const TextStyle(
         color: AppTooltipColors.text,
         fontSize: 13,
-        fontWeight: FontWeight.w900,
+        fontWeight: FontWeight.w800,
         height: 1.2,
       ),
     );
@@ -140,6 +140,45 @@ void main() {
       ).icon,
       Icons.light_mode_rounded,
     );
+  });
+
+  testWidgets('documents the invoice header buttons and tooltips',
+      (tester) async {
+    await pumpDesignSystemGallery(tester);
+
+    expect(find.text('أزرار الفواتير والتلميحات'), findsOneWidget);
+
+    const buttons = <String, (IconData, String)>{
+      'designInvoicePrintButton': (Icons.print_rounded, 'طباعة'),
+      'designInvoicePrintWithoutPriceButton': (
+        Icons.print_disabled_rounded,
+        'طباعة بدون سعر',
+      ),
+      'designInvoiceSearchButton': (Icons.search_rounded, 'بحث'),
+      'designInvoiceInstallmentsButton': (
+        Icons.table_chart_rounded,
+        'جدول الأقساط',
+      ),
+      'designInvoiceStatementButton': (
+        Icons.receipt_long_rounded,
+        'كشف حساب',
+      ),
+    };
+
+    for (final entry in buttons.entries) {
+      final finder = find.byKey(Key(entry.key));
+      await reveal(tester, finder);
+
+      final button = tester.widget<AppHeaderIconButton>(finder);
+      expect(button.icon, entry.value.$1);
+      expect(button.tooltip, entry.value.$2);
+      expect(tester.getSize(finder), const Size.square(52));
+
+      final tooltip = tester.widget<Tooltip>(
+        find.descendant(of: finder, matching: find.byType(Tooltip)),
+      );
+      expect(tooltip.message, entry.value.$2);
+    }
   });
 
   testWidgets('matches the shared screen back button to its reference',
