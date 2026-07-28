@@ -337,7 +337,8 @@ class _DesignGalleryPurchaseFieldComparisonSectionState
       label: label,
       icon: icon,
       accentColor: AppModuleColors.purchases,
-      useIntrinsicHeight: true,
+      useIntrinsicHeight:
+          visualStyle == AppDropdownVisualStyle.oldPurchase,
       contentPadding: visualStyle == AppDropdownVisualStyle.oldPurchase
           ? const EdgeInsets.symmetric(horizontal: 16, vertical: 16)
           : null,
