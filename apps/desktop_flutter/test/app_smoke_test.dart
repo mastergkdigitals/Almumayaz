@@ -1,10 +1,17 @@
 import 'package:erp/app/app.dart';
+import 'package:erp/core/design/app_tokens.dart';
 import 'package:erp/core/design/components/app_screen_shell.dart';
+import 'package:erp/core/responsive/responsive_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('uses the 2000-wide responsive design canvas', () {
+    expect(AppBreakpoints.designWidth, 2000.0);
+    expect(ResponsiveDesktopConfig.designWidth, 2000.0);
+  });
+
   testWidgets('shows Arabic login screen', (tester) async {
     await tester.pumpWidget(const AlmumayazApp());
 
