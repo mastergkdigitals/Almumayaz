@@ -211,7 +211,6 @@ class _DesignGalleryTransferDialogState
                         label: 'من مخزن',
                         icon: Icons.warehouse_rounded,
                         accentColor: AppModuleColors.warehouses,
-                        useIntrinsicHeight: true,
                         value: _fromWarehouse,
                         options: _warehouseOptions,
                         onChanged: (value) {
@@ -226,7 +225,6 @@ class _DesignGalleryTransferDialogState
                         label: 'إلى مخزن',
                         icon: Icons.warehouse_rounded,
                         accentColor: AppModuleColors.warehouses,
-                        useIntrinsicHeight: true,
                         value: _toWarehouse,
                         options: _warehouseOptions,
                         onChanged: (value) {
@@ -246,7 +244,6 @@ class _DesignGalleryTransferDialogState
                         label: 'المادة',
                         icon: Icons.inventory_2_rounded,
                         accentColor: AppModuleColors.warehouses,
-                        useIntrinsicHeight: true,
                         value: _selectedProduct,
                         options: [
                           for (final item in _sourceItems)
