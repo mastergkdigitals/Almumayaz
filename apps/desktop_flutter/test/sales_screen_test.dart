@@ -59,6 +59,7 @@ void main() {
       expect(dropdown.useIntrinsicHeight, isTrue);
       expect(dropdown.accentColor, AppModuleColors.sales);
       expect(dropdown.textDirection, TextDirection.rtl);
+      expect(dropdown.textAlign, TextAlign.right);
       expect(dropdown.menuTextDirection, TextDirection.rtl);
     }
 
@@ -91,6 +92,11 @@ void main() {
         textField.textDirection,
         TextDirection.rtl,
         reason: '$key must remain RTL outside the invoice table.',
+      );
+      expect(
+        textField.textAlign,
+        TextAlign.right,
+        reason: '$key must align its value to the RTL side.',
       );
     }
 
@@ -167,6 +173,27 @@ void main() {
 
     expect(find.byKey(const Key('salesScreen')), findsNothing);
     expect(find.byKey(const Key('dashboardCard_sales')), findsOneWidget);
+  });
+
+  testWidgets('uses the Sales color in the shared date picker',
+      (tester) async {
+    await _openSalesScreen(tester);
+
+    await tester.tap(find.byKey(const Key('salesDateField')));
+    await tester.pump();
+
+    expect(find.byKey(const Key('appDatePickerDialog')), findsOneWidget);
+    expect(
+      tester
+          .widget<AppButton>(
+            find.byKey(const Key('appDatePickerConfirm')),
+          )
+          .backgroundColor,
+      AppModuleColors.sales,
+    );
+
+    await tester.tap(find.byKey(const Key('appDatePickerCancel')));
+    await tester.pump();
   });
 
   testWidgets('opens the sales-colored invoice search dialog',
