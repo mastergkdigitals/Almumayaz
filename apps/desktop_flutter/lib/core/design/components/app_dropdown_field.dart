@@ -52,7 +52,11 @@ class AppDropdownField<T> extends StatefulWidget {
     this.enabled = true,
     this.showLabel = true,
     this.borderRadius,
-  });
+  }) : assert(
+          !useIntrinsicHeight ||
+              visualStyle == AppDropdownVisualStyle.oldPurchase,
+          'Intrinsic dropdown height is reserved for old-app references.',
+        );
 
   final String label;
   final List<AppDropdownOption<T>> options;
@@ -67,6 +71,10 @@ class AppDropdownField<T> extends StatefulWidget {
   final TextDirection? textDirection;
   final TextAlign textAlign;
   final TextDirection? menuTextDirection;
+
+  /// Preserves the variable height of old-app reference dropdowns.
+  ///
+  /// Current application dropdowns use [AppControlHeights.large].
   final bool useIntrinsicHeight;
   final EdgeInsetsGeometry? contentPadding;
   final AppDropdownVisualStyle visualStyle;
@@ -93,6 +101,8 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
 
   bool get _usesOldPurchaseStyle =>
       widget.visualStyle == AppDropdownVisualStyle.oldPurchase;
+  bool get _usesIntrinsicHeight =>
+      _usesOldPurchaseStyle && widget.useIntrinsicHeight;
   FocusNode get _focusNode => widget.focusNode ?? _internalFocusNode;
   AppKeyHoldGuard get _keyHoldGuard =>
       widget.keyHoldGuard ??
@@ -231,7 +241,7 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
       style: textStyle.copyWith(color: valueColor),
     );
 
-    if (!widget.useIntrinsicHeight) {
+    if (!_usesIntrinsicHeight) {
       return value;
     }
 
@@ -499,20 +509,20 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
                     overlayColor:
                         const WidgetStatePropertyAll<Color>(Colors.transparent),
                     child: SizedBox(
-                      height: widget.useIntrinsicHeight
+                      height: _usesIntrinsicHeight
                           ? null
                           : AppControlHeights.large,
                       child: InputDecorator(
-                        baseStyle: widget.useIntrinsicHeight
+                        baseStyle: _usesIntrinsicHeight
                             ? null
                             : AppTypography.fieldText,
-                        textAlign: widget.useIntrinsicHeight
+                        textAlign: _usesIntrinsicHeight
                             ? null
                             : widget.textAlign,
-                        textAlignVertical: widget.useIntrinsicHeight
+                        textAlignVertical: _usesIntrinsicHeight
                             ? null
                             : TextAlignVertical.center,
-                        expands: !widget.useIntrinsicHeight,
+                        expands: !_usesIntrinsicHeight,
                         isEmpty: widget.value == null,
                         isFocused: _isOpen || _focusNode.hasFocus,
                         decoration: InputDecoration(
