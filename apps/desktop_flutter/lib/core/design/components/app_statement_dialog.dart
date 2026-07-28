@@ -26,6 +26,7 @@ abstract final class AppStatementOptionsDialog {
     required String partyName,
     DateTime? firstTransactionDate,
     Color accentColor = AppModuleColors.parties,
+    String partyLabel = 'اسم الطرف',
   }) {
     return showDialog<AppStatementOptions>(
       context: context,
@@ -34,6 +35,7 @@ abstract final class AppStatementOptionsDialog {
         textDirection: TextDirection.rtl,
         child: _StatementDialogBody(
           partyName: partyName,
+          partyLabel: partyLabel,
           firstTransactionDate: firstTransactionDate,
           accentColor: accentColor,
         ),
@@ -45,11 +47,13 @@ abstract final class AppStatementOptionsDialog {
 class _StatementDialogBody extends StatefulWidget {
   const _StatementDialogBody({
     required this.partyName,
+    required this.partyLabel,
     required this.firstTransactionDate,
     required this.accentColor,
   });
 
   final String partyName;
+  final String partyLabel;
   final DateTime? firstTransactionDate;
   final Color accentColor;
 
@@ -130,7 +134,7 @@ class _StatementDialogBodyState extends State<_StatementDialogBody> {
           AppReadOnlyField(
             fieldKey: const Key('appStatementParty'),
             controller: _partyController,
-            label: 'اسم الطرف',
+            label: widget.partyLabel,
             icon: Icons.groups_rounded,
             accentColor: widget.accentColor,
           ),
