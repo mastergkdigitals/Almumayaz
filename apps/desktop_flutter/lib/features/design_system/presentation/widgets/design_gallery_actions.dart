@@ -226,6 +226,55 @@ class _DesignGalleryActionsGroupState
         ),
         const SizedBox(height: AppSpacing.lg),
         DesignGallerySection(
+          title: 'أزرار الفواتير والتلميحات',
+          child: Wrap(
+            textDirection: TextDirection.rtl,
+            alignment: WrapAlignment.start,
+            spacing: AppSpacing.md,
+            runSpacing: AppSpacing.md,
+            children: [
+              AppHeaderIconButton(
+                key: const Key('designInvoicePrintButton'),
+                tooltipKey: const Key('designInvoicePrintTooltip'),
+                icon: Icons.print_rounded,
+                tooltip: 'طباعة',
+                onPressed: () {},
+              ),
+              AppHeaderIconButton(
+                key: const Key('designInvoicePrintWithoutPriceButton'),
+                tooltipKey:
+                    const Key('designInvoicePrintWithoutPriceTooltip'),
+                icon: Icons.print_disabled_rounded,
+                tooltip: 'طباعة بدون سعر',
+                onPressed: () {},
+              ),
+              AppHeaderIconButton(
+                key: const Key('designInvoiceSearchButton'),
+                tooltipKey: const Key('designInvoiceSearchTooltip'),
+                icon: Icons.search_rounded,
+                tooltip: 'بحث',
+                onPressed: () {},
+              ),
+              AppHeaderIconButton(
+                key: const Key('designInvoiceInstallmentsButton'),
+                tooltipKey:
+                    const Key('designInvoiceInstallmentsTooltip'),
+                icon: Icons.table_chart_rounded,
+                tooltip: 'جدول الأقساط',
+                onPressed: () {},
+              ),
+              AppHeaderIconButton(
+                key: const Key('designInvoiceStatementButton'),
+                tooltipKey: const Key('designInvoiceStatementTooltip'),
+                icon: Icons.receipt_long_rounded,
+                tooltip: 'كشف حساب',
+                onPressed: () {},
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        DesignGallerySection(
           title: 'شريط الإجراءات',
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
