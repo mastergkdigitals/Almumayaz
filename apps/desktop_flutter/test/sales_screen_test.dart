@@ -168,6 +168,129 @@ void main() {
     expect(find.byKey(const Key('salesScreen')), findsNothing);
     expect(find.byKey(const Key('dashboardCard_sales')), findsOneWidget);
   });
+
+  testWidgets('opens the sales-colored invoice search dialog',
+      (tester) async {
+    await _openSalesScreen(tester);
+
+    await tester.tap(find.byKey(const Key('salesSearchButton')));
+    await tester.pumpAndSettle();
+
+    final dialog = find.byKey(const Key('salesRecordSearchDialog'));
+    expect(dialog, findsOneWidget);
+    final moduleDialog = tester.widget<AppModuleDialog>(dialog);
+    expect(moduleDialog.title, 'بحث قوائم البيع');
+    expect(moduleDialog.subtitle, 'ابحث عن قائمة بيع محفوظة ثم اخترها');
+    expect(moduleDialog.accentColor, AppModuleColors.sales);
+
+    final searchDecoration = tester
+        .widget<InputDecorator>(
+          find.descendant(
+            of: find.byKey(const Key('salesRecordSearchField')),
+            matching: find.byType(InputDecorator),
+          ),
+        )
+        .decoration;
+    expect(searchDecoration.labelText, 'بحث في قوائم البيع');
+    expect(
+      searchDecoration.hintText,
+      'رقم القائمة أو اسم الزبون أو اسم المادة',
+    );
+    expect(
+      find.descendant(of: dialog, matching: find.text('أسواق دجلة')),
+      findsOneWidget,
+    );
+
+    await tester.enterText(
+      find.byKey(const Key('salesRecordSearchField')),
+      'دجلة',
+    );
+    await tester.pump();
+
+    expect(
+      find.byKey(const Key('salesRecordSearchResult-0')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: dialog, matching: find.text('أحمد كريم')),
+      findsNothing,
+    );
+
+    await tester.tap(
+      find.byKey(const Key('salesRecordSearchResult-0')),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(dialog, findsNothing);
+  });
+
+  testWidgets('opens sales statement options and report', (tester) async {
+    await _openSalesScreen(tester);
+
+    await tester.enterText(
+      find.byKey(const Key('salesCustomerNameField')),
+      'أسواق دجلة',
+    );
+    await tester.tap(find.byKey(const Key('salesStatementButton')));
+    await tester.pumpAndSettle();
+
+    final optionsDialog =
+        find.byKey(const Key('appStatementOptionsDialog'));
+    expect(optionsDialog, findsOneWidget);
+    expect(
+      tester.widget<AppModuleDialog>(optionsDialog).accentColor,
+      AppModuleColors.sales,
+    );
+
+    final partyField = find.byKey(const Key('appStatementParty'));
+    final partyInput = tester.widget<EditableText>(
+      find.descendant(of: partyField, matching: find.byType(EditableText)),
+    );
+    expect(partyInput.controller.text, 'أسواق دجلة');
+    expect(
+      tester
+          .widget<InputDecorator>(
+            find.descendant(
+              of: partyField,
+              matching: find.byType(InputDecorator),
+            ),
+          )
+          .decoration
+          .labelText,
+      'اسم الزبون',
+    );
+    expect(
+      tester
+          .widget<AppButton>(
+            find.byKey(const Key('appStatementConfirm')),
+          )
+          .backgroundColor,
+      AppModuleColors.sales,
+    );
+
+    await tester.tap(find.byKey(const Key('appStatementConfirm')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+
+    final report = find.byKey(const Key('appStatementReportDialog'));
+    expect(report, findsOneWidget);
+    expect(
+      tester.widget<AppModuleDialog>(report).accentColor,
+      AppModuleColors.sales,
+    );
+    expect(
+      tester
+          .widget<AppDataTable>(
+            find.byKey(const Key('appStatementReportTable')),
+          )
+          .accentColor,
+      AppModuleColors.sales,
+    );
+    expect(
+      find.descendant(of: report, matching: find.text('أسواق دجلة')),
+      findsOneWidget,
+    );
+  });
 }
 
 void _expectRightToLeftOrder(
