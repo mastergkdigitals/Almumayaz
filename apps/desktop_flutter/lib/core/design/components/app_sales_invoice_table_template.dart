@@ -116,6 +116,7 @@ class AppSalesInvoiceTableTemplate extends StatefulWidget {
     this.summaryQuantity = '0',
     this.summaryDiscount = '0',
     this.summaryTotal = '0',
+    this.onRowsChanged,
   });
 
   final List<AppSalesInvoiceTableRowData> initialRows;
@@ -123,6 +124,7 @@ class AppSalesInvoiceTableTemplate extends StatefulWidget {
   final String summaryQuantity;
   final String summaryDiscount;
   final String summaryTotal;
+  final ValueChanged<List<AppSalesInvoiceTableRowData>>? onRowsChanged;
 
   @override
   State<AppSalesInvoiceTableTemplate> createState() =>
@@ -180,6 +182,7 @@ class _AppSalesInvoiceTableTemplateState
 
   void _addRow() {
     setState(() => _rows.add(_newRow(_rows.length + 1)));
+    _notifyRowsChanged();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_tableScrollController.hasClients) return;
       _tableScrollController.animateTo(
@@ -200,6 +203,7 @@ class _AppSalesInvoiceTableTemplateState
         _rows[rowIndex].setIndex(rowIndex + 1);
       }
     });
+    _notifyRowsChanged();
     WidgetsBinding.instance.addPostFrameCallback((_) => removed.dispose());
   }
 
@@ -209,6 +213,26 @@ class _AppSalesInvoiceTableTemplateState
   ) {
     if (value == null) return;
     setState(() => row.warehouse = value);
+    _notifyRowsChanged();
+  }
+
+  void _notifyRowsChanged() {
+    widget.onRowsChanged?.call(
+      List<AppSalesInvoiceTableRowData>.unmodifiable(
+        _rows.map(
+          (row) => AppSalesInvoiceTableRowData(
+            code: row.codeController.text,
+            name: row.nameController.text,
+            warehouse: row.warehouse,
+            quantity: row.quantityController.text,
+            salePrice: row.salePriceController.text,
+            discount: row.discountController.text,
+            priceAfterDiscount: row.priceAfterDiscountController.text,
+            total: row.totalController.text,
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -231,6 +255,7 @@ class _AppSalesInvoiceTableTemplateState
       summaryQuantity: widget.summaryQuantity,
       summaryDiscount: widget.summaryDiscount,
       summaryTotal: widget.summaryTotal,
+      onRowChanged: _notifyRowsChanged,
     );
   }
 }
@@ -245,6 +270,7 @@ class _SalesInvoiceFieldTableTemplate extends StatelessWidget {
     required this.summaryQuantity,
     required this.summaryDiscount,
     required this.summaryTotal,
+    required this.onRowChanged,
   });
 
   final List<_SalesInvoiceTemplateRow> rows;
@@ -258,6 +284,7 @@ class _SalesInvoiceFieldTableTemplate extends StatelessWidget {
   final String summaryQuantity;
   final String summaryDiscount;
   final String summaryTotal;
+  final VoidCallback onRowChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -328,6 +355,7 @@ class _SalesInvoiceFieldTableTemplate extends StatelessWidget {
                               onWarehouseChanged: (value) {
                                 onWarehouseChanged(row, value);
                               },
+                              onRowChanged: onRowChanged,
                             );
                           },
                         ),
@@ -404,6 +432,7 @@ class _SalesInvoiceTableFieldRow extends StatelessWidget {
     required this.onAddRow,
     required this.onDeleteRow,
     required this.onWarehouseChanged,
+    required this.onRowChanged,
     super.key,
   });
 
@@ -413,6 +442,7 @@ class _SalesInvoiceTableFieldRow extends StatelessWidget {
   final VoidCallback onAddRow;
   final VoidCallback onDeleteRow;
   final ValueChanged<String?> onWarehouseChanged;
+  final VoidCallback onRowChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -454,6 +484,7 @@ class _SalesInvoiceTableFieldRow extends StatelessWidget {
                 label: 'رمز المادة',
                 accentColor: AppModuleColors.sales,
                 textInputAction: TextInputAction.next,
+                onChanged: (_) => onRowChanged(),
                 showLabel: false,
                 borderRadius: AppRadii.sm,
               ),
@@ -468,6 +499,7 @@ class _SalesInvoiceTableFieldRow extends StatelessWidget {
                 label: 'اسم المادة',
                 accentColor: AppModuleColors.sales,
                 textInputAction: TextInputAction.next,
+                onChanged: (_) => onRowChanged(),
                 showLabel: false,
                 borderRadius: AppRadii.sm,
               ),
@@ -503,6 +535,7 @@ class _SalesInvoiceTableFieldRow extends StatelessWidget {
                 keyboardType: TextInputType.number,
                 inputFormatters: const [AppIntegerInputFormatter()],
                 textInputAction: TextInputAction.next,
+                onChanged: (_) => onRowChanged(),
                 showLabel: false,
                 borderRadius: AppRadii.sm,
               ),
@@ -522,6 +555,7 @@ class _SalesInvoiceTableFieldRow extends StatelessWidget {
                     const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: const [AppMoneyInputFormatter()],
                 textInputAction: TextInputAction.next,
+                onChanged: (_) => onRowChanged(),
                 showLabel: false,
                 borderRadius: AppRadii.sm,
               ),
@@ -541,6 +575,7 @@ class _SalesInvoiceTableFieldRow extends StatelessWidget {
                     const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: const [AppMoneyInputFormatter()],
                 textInputAction: TextInputAction.next,
+                onChanged: (_) => onRowChanged(),
                 showLabel: false,
                 borderRadius: AppRadii.sm,
               ),
