@@ -313,6 +313,7 @@ class _PartiesScreenState extends State<PartiesScreen> {
               children: [
                 PartyForm(
                   controllers: _formControllers,
+                  createdAt: _createdAt,
                   partyType: _partyType,
                   onPartyTypeChanged: (value) {
                     if (value == null) return;

@@ -38,7 +38,6 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
   String _currency = 'IQD';
   bool _allowNegativeStock = false;
   DateTime _date = DateTime(2026, 7, 24);
-  TimeOfDay _time = const TimeOfDay(hour: 9, minute: 30);
 
   @override
   void initState() {
@@ -187,8 +186,7 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
                 child: AppTimeField(
                   fieldKey: const Key('designTimeField'),
                   label: 'الوقت',
-                  value: _time,
-                  onChanged: (value) => setState(() => _time = value),
+                  value: const TimeOfDay(hour: 9, minute: 30),
                 ),
               ),
               SizedBox(

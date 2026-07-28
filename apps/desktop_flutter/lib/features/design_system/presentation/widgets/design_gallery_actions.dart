@@ -93,6 +93,35 @@ class _DesignGalleryActionsGroupState
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Text(
+                'الأزرار العادية',
+                style: AppTypography.sectionTitle,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.sm,
+                children: [
+                  AppRegularButton(
+                    key: const Key('designRegularButton'),
+                    label: 'زر عادي',
+                    icon: Icons.touch_app_rounded,
+                    onPressed: _previewAction,
+                  ),
+                  AppRegularButton(
+                    key: const Key('designRegularTextButton'),
+                    label: 'بدون أيقونة',
+                    onPressed: _previewAction,
+                  ),
+                  const AppRegularButton(
+                    key: Key('designRegularDisabledButton'),
+                    label: 'غير متاح',
+                    icon: Icons.block_rounded,
+                    onPressed: null,
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              const Text(
                 'أزرار التنقل',
                 style: AppTypography.sectionTitle,
               ),

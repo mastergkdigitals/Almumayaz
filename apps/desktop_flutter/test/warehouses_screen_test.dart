@@ -197,6 +197,12 @@ void main() {
       isNotNull,
     );
     expect(
+      tester.widget<AppRegularButton>(
+        find.byKey(const Key('warehouseTransferButton')),
+      ).onPressed,
+      isNotNull,
+    );
+    expect(
       tester.widget<AppButton>(
         find.byKey(const Key('warehousesDeleteButton')),
       ).onPressed,

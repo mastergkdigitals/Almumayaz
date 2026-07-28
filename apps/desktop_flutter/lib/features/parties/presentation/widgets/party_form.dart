@@ -7,7 +7,6 @@ import '../../domain/party.dart';
 class PartyFormControllers {
   final number = TextEditingController();
   final date = TextEditingController();
-  final time = TextEditingController();
   final balanceIqd = TextEditingController();
   final balanceUsd = TextEditingController();
   final name = TextEditingController();
@@ -25,7 +24,6 @@ class PartyFormControllers {
   }) {
     number.text = numberValue.toString();
     date.text = AppFormatters.date(createdAt);
-    time.text = AppFormatters.time(TimeOfDay.fromDateTime(createdAt));
     balanceIqd.text = AppFormatters.iqd(0);
     balanceUsd.text = AppFormatters.usd(0);
     name.clear();
@@ -41,7 +39,6 @@ class PartyFormControllers {
   void load(Party party) {
     number.text = party.number.toString();
     date.text = AppFormatters.date(party.createdAt);
-    time.text = AppFormatters.time(TimeOfDay.fromDateTime(party.createdAt));
     balanceIqd.text = AppFormatters.iqd(party.balanceIqd);
     balanceUsd.text = AppFormatters.usd(party.balanceUsd);
     name.text = party.name;
@@ -57,7 +54,6 @@ class PartyFormControllers {
   void dispose() {
     number.dispose();
     date.dispose();
-    time.dispose();
     balanceIqd.dispose();
     balanceUsd.dispose();
     name.dispose();
@@ -74,6 +70,7 @@ class PartyFormControllers {
 class PartyForm extends StatefulWidget {
   const PartyForm({
     required this.controllers,
+    required this.createdAt,
     required this.partyType,
     required this.onPartyTypeChanged,
     super.key,
@@ -112,6 +109,7 @@ class PartyForm extends StatefulWidget {
   ];
 
   final PartyFormControllers controllers;
+  final DateTime createdAt;
   final PartyType partyType;
   final ValueChanged<PartyType?> onPartyTypeChanged;
 
@@ -276,11 +274,10 @@ class _PartyFormState extends State<PartyForm> {
                             icon: Icons.calendar_month_rounded,
                             accentColor: accentColor,
                           ),
-                          AppReadOnlyField(
+                          AppTimeField(
                             fieldKey: const Key('partyTimeField'),
-                            controller: controllers.time,
                             label: 'الوقت',
-                            icon: Icons.schedule_rounded,
+                            value: TimeOfDay.fromDateTime(widget.createdAt),
                             accentColor: accentColor,
                           ),
                           AppReadOnlyField(

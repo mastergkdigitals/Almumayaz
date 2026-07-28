@@ -182,6 +182,13 @@ void main() {
         isFalse,
       );
     }
+    expect(
+      find.ancestor(
+        of: find.byKey(const Key('partyTimeField')),
+        matching: find.byType(AppTimeField),
+      ),
+      findsOneWidget,
+    );
 
     final readOnlyDecoration = _fieldDecoration(
       tester,

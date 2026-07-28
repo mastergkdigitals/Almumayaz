@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'design_system_test_harness.dart';
+
 void main() {
   test('formats business values consistently', () {
     expect(AppFormatters.date(DateTime(2026, 12, 31)), '2026/12/31');
@@ -43,6 +45,49 @@ void main() {
     expect(AppColors.warning, AppColors.orange);
     expect(AppColors.danger, AppColors.red);
     expect(AppColors.info, AppColors.blue);
+  });
+
+  testWidgets('documents the responsive visual foundations',
+      (tester) async {
+    await pumpDesignSystemGallery(tester);
+
+    expect(find.text('القياسات وأساسيات الواجهة'), findsOneWidget);
+    expect(
+      find.byKey(const Key('designFoundationsSection')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('designFoundationCanvas')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('designFoundationMinimumWindow')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('designFoundationAspectRatio')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('designFoundationRegularButtonHeight')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('designFoundationSpacing')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('designFoundationTypography')),
+      findsOneWidget,
+    );
+
+    expect(find.text('2000 px'), findsOneWidget);
+    expect(find.text('1280 × 720'), findsOneWidget);
+    expect(find.text('16:9'), findsOneWidget);
+    expect(
+      AppRegularButton.defaultHeight,
+      52,
+    );
   });
 
   testWidgets('handles the global keyboard shortcuts', (tester) async {

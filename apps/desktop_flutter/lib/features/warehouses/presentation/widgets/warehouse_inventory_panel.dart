@@ -67,17 +67,16 @@ class WarehouseInventoryPanel extends StatelessWidget {
               spacing: AppSpacing.sm,
               runSpacing: AppSpacing.sm,
               children: [
-                _InventoryActionButton(
+                AppRegularButton(
                   key: const Key('warehouseProductsButton'),
                   label: 'المواد',
                   icon: Icons.inventory_2_outlined,
                   onPressed: onOpenProducts,
                 ),
-                _InventoryActionButton(
+                AppRegularButton(
                   key: const Key('warehouseTransferButton'),
                   label: 'النقل المخزني',
                   icon: Icons.compare_arrows_rounded,
-                  minWidth: 132,
                   onPressed: onOpenTransfer,
                 ),
               ],
@@ -142,38 +141,6 @@ class WarehouseInventoryPanel extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _InventoryActionButton extends StatelessWidget {
-  const _InventoryActionButton({
-    required this.label,
-    required this.icon,
-    required this.onPressed,
-    super.key,
-    this.minWidth = 104,
-  });
-
-  final String label;
-  final IconData icon;
-  final VoidCallback? onPressed;
-  final double minWidth;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppButton(
-      label: label,
-      icon: icon,
-      variant: AppButtonVariant.navigation,
-      minWidth: minWidth,
-      height: 44,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-      textStyle: const TextStyle(
-        fontSize: 14,
-        fontWeight: FontWeight.w700,
-      ),
-      onPressed: onPressed,
     );
   }
 }

@@ -6,6 +6,7 @@ import 'widgets/design_gallery_colors.dart';
 import 'widgets/design_gallery_dialogs.dart';
 import 'widgets/design_gallery_feedback.dart';
 import 'widgets/design_gallery_fields.dart';
+import 'widgets/design_gallery_foundations.dart';
 import 'widgets/design_gallery_formats.dart';
 import 'widgets/design_gallery_keyboard.dart';
 import 'widgets/design_gallery_quick_create.dart';
@@ -27,6 +28,8 @@ class DesignSystemGalleryScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             DesignGalleryColorsSection(),
+            SizedBox(height: AppSpacing.lg),
+            DesignGalleryFoundationsSection(),
             SizedBox(height: AppSpacing.lg),
             DesignGalleryActionsGroup(),
             SizedBox(height: AppSpacing.lg),

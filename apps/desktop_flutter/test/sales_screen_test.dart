@@ -40,6 +40,13 @@ void main() {
     ]) {
       expect(find.byKey(Key(key)), findsOneWidget);
     }
+    expect(
+      find.ancestor(
+        of: find.byKey(const Key('salesTimeField')),
+        matching: find.byType(AppTimeField),
+      ),
+      findsOneWidget,
+    );
 
     _expectRightToLeftOrder(tester, firstRowKeys);
     _expectRightToLeftOrder(tester, secondRowKeys);

@@ -81,6 +81,13 @@ void main() {
         AppColors.neutralSurface,
       );
     }
+    expect(
+      find.ancestor(
+        of: find.byKey(const Key('cashboxTimeField')),
+        matching: find.byType(AppTimeField),
+      ),
+      findsOneWidget,
+    );
 
     expect(find.byKey(const Key('cashboxDateField')), findsOneWidget);
     expect(find.byKey(const Key('cashboxTypeField')), findsOneWidget);

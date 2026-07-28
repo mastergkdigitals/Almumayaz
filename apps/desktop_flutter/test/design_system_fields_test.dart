@@ -19,6 +19,32 @@ void main() {
     expect(find.byKey(const Key('designNotesField')), findsOneWidget);
     expect(find.byKey(const Key('designPhoneField')), findsOneWidget);
 
+    final timeField = find.byKey(const Key('designTimeField'));
+    expect(
+      find.ancestor(
+        of: timeField,
+        matching: find.byType(AppTimeField),
+      ),
+      findsOneWidget,
+    );
+    expect(tester.widget<TextFormField>(timeField).enabled, isFalse);
+    expect(
+      tester
+          .widget<EditableText>(
+            find.descendant(
+              of: timeField,
+              matching: find.byType(EditableText),
+            ),
+          )
+          .readOnly,
+      isTrue,
+    );
+    expect(
+      _fieldDecoration(tester, timeField).fillColor,
+      AppColors.neutralSurface,
+    );
+    expect(tester.widget<TextFormField>(timeField).controller?.text, '09:30 ص');
+
     final readOnly = tester.widget<EditableText>(
       find.descendant(
         of: find.byKey(const Key('designReadOnlyField')),

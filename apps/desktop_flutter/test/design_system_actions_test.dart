@@ -10,6 +10,7 @@ void main() {
     await pumpDesignSystemGallery(tester);
 
     expect(find.text('الأزرار'), findsOneWidget);
+    expect(find.text('الأزرار العادية'), findsOneWidget);
     expect(find.text('أزرار التنقل'), findsOneWidget);
     expect(find.text('أزرار الإجراءات'), findsOneWidget);
     expect(find.byKey(const Key('designSecondaryButton')), findsNothing);
@@ -87,6 +88,8 @@ void main() {
     await pumpDesignSystemGallery(tester);
 
     const regularButtonKeys = [
+      'designRegularButton',
+      'designRegularTextButton',
       'designDeleteDialogButton',
       'designUnsavedDialogButton',
       'designRecordSearchDialogButton',
@@ -163,6 +166,22 @@ void main() {
         );
       }
     }
+
+    final disabled = find.byKey(
+      const Key('designRegularDisabledButton'),
+    );
+    expect(tester.widget<AppRegularButton>(disabled).onPressed, isNull);
+    expect(
+      tester
+          .widget<AppButton>(
+            find.descendant(
+              of: disabled,
+              matching: find.byType(AppButton),
+            ),
+          )
+          .variant,
+      AppButtonVariant.navigation,
+    );
   });
 
   testWidgets('changes the theme preview icon and tooltip', (tester) async {

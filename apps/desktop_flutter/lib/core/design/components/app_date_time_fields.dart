@@ -224,20 +224,12 @@ class AppTimeField extends StatefulWidget {
     required this.value,
     super.key,
     this.fieldKey,
-    this.onChanged,
-    this.enabled = false,
     this.accentColor,
   });
 
   final String label;
   final TimeOfDay? value;
-
-  /// Kept for source compatibility. Time fields are always system-generated.
-  final ValueChanged<TimeOfDay>? onChanged;
   final Key? fieldKey;
-
-  /// Kept for source compatibility. Time fields are always disabled.
-  final bool enabled;
   final Color? accentColor;
 
   @override
