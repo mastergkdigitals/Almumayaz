@@ -120,7 +120,7 @@ class _PartiesTableState extends State<PartiesTable> {
                 key: Key('partyStatement_${party.id}'),
                 icon: Icons.receipt_long_rounded,
                 tooltip: 'كشف الحساب',
-                foregroundColor: AppColors.blue,
+                foregroundColor: Colors.black,
                 onPressed: () => widget.onStatement(party),
               ),
             ],
