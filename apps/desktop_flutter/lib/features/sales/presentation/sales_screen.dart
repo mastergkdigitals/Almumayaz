@@ -20,32 +20,235 @@ const _salesCurrencyOptions = <AppDropdownOption<String>>[
   AppDropdownOption(value: 'USD', label: 'دولار'),
 ];
 
-const _salesSearchRecords = <AppSearchRecord<String>>[
-  AppSearchRecord(
-    value: '103',
-    title: 'قائمة بيع رقم 103',
-    subtitle: 'أسواق دجلة',
-    details: '27/07/2026 • 4 مواد',
-    searchTerms: ['103', 'أسواق دجلة', 'دفتر ملاحظات'],
-    icon: Icons.point_of_sale_rounded,
+final _demoSalesInvoices = <_DemoSalesInvoice>[
+  _DemoSalesInvoice(
+    id: '103',
+    dateTime: DateTime(2026, 7, 27, 10, 25),
+    warehouse: 'الرئيسي',
+    saleType: 'نقدي',
+    currency: 'IQD',
+    exchangeRate: '1,310',
+    customerName: 'أسواق دجلة',
+    notes: 'تسليم الطلب إلى فرع الكرادة',
+    driverName: 'مصطفى علي',
+    invoiceDiscount: '5,000',
+    discountPercentage: '0',
+    received: '250,000',
+    total: '310,000',
+    remaining: '60,000',
+    currentBalance: '120,000',
+    searchDetails: '27/07/2026 • 3 مواد',
+    searchTerms: const [
+      '103',
+      'أسواق دجلة',
+      'دفتر ملاحظات',
+      'قلم أزرق',
+      'حاسبة مكتبية',
+    ],
+    items: const [
+      AppSalesInvoiceTableRowData(
+        code: '1001',
+        name: 'دفتر ملاحظات',
+        warehouse: 'الرئيسي',
+        quantity: '4',
+        salePrice: '35,000',
+        priceAfterDiscount: '35,000',
+        total: '140,000',
+      ),
+      AppSalesInvoiceTableRowData(
+        code: '1002',
+        name: 'قلم أزرق',
+        warehouse: 'الرئيسي',
+        quantity: '10',
+        salePrice: '5,000',
+        priceAfterDiscount: '5,000',
+        total: '50,000',
+      ),
+      AppSalesInvoiceTableRowData(
+        code: '1003',
+        name: 'حاسبة مكتبية',
+        warehouse: 'الكرادة',
+        quantity: '1',
+        salePrice: '130,000',
+        discount: '5,000',
+        priceAfterDiscount: '125,000',
+        total: '125,000',
+      ),
+    ],
+    summaryQuantity: '15',
+    summaryDiscount: '5,000',
+    summaryTotal: '315,000',
   ),
-  AppSearchRecord(
-    value: '102',
-    title: 'قائمة بيع رقم 102',
-    subtitle: 'أحمد كريم',
-    details: '26/07/2026 • مادتان',
-    searchTerms: ['102', 'أحمد كريم', 'قلم أزرق'],
-    icon: Icons.point_of_sale_rounded,
+  _DemoSalesInvoice(
+    id: '102',
+    dateTime: DateTime(2026, 7, 26, 12, 40),
+    warehouse: 'المنصور',
+    saleType: 'أقساط',
+    currency: 'USD',
+    exchangeRate: '1,310',
+    customerName: 'أحمد كريم',
+    notes: 'تسديد القسط الأول عند التسليم',
+    driverName: 'حيدر سالم',
+    invoiceDiscount: '0',
+    discountPercentage: '0',
+    received: '250',
+    total: '1,250',
+    remaining: '1,000',
+    currentBalance: '1,500',
+    searchDetails: '26/07/2026 • مادتان • أقساط',
+    searchTerms: const [
+      '102',
+      'أحمد كريم',
+      'طابعة حرارية',
+      'ماسح باركود',
+      'أقساط',
+      'دولار',
+    ],
+    items: const [
+      AppSalesInvoiceTableRowData(
+        code: '2001',
+        name: 'طابعة حرارية',
+        warehouse: 'المنصور',
+        quantity: '1',
+        salePrice: '900',
+        discount: '50',
+        priceAfterDiscount: '850',
+        total: '850',
+      ),
+      AppSalesInvoiceTableRowData(
+        code: '2002',
+        name: 'ماسح باركود',
+        warehouse: 'المنصور',
+        quantity: '2',
+        salePrice: '200',
+        priceAfterDiscount: '200',
+        total: '400',
+      ),
+    ],
+    summaryQuantity: '3',
+    summaryDiscount: '50',
+    summaryTotal: '1,250',
   ),
-  AppSearchRecord(
-    value: '101',
-    title: 'قائمة بيع رقم 101',
-    subtitle: 'شركة النخيل للتجارة',
-    details: '25/07/2026 • 5 مواد',
-    searchTerms: ['101', 'شركة النخيل', 'ورق طباعة'],
-    icon: Icons.point_of_sale_rounded,
+  _DemoSalesInvoice(
+    id: '101',
+    dateTime: DateTime(2026, 7, 25, 9, 15),
+    warehouse: 'الرصافة',
+    saleType: 'آجل',
+    currency: 'IQD',
+    exchangeRate: '1,310',
+    customerName: 'شركة النخيل للتجارة',
+    notes: 'تضاف إلى حساب الزبون',
+    driverName: 'كرار مهدي',
+    invoiceDiscount: '0',
+    discountPercentage: '0',
+    received: '0',
+    total: '177,000',
+    remaining: '177,000',
+    currentBalance: '625,000',
+    searchDetails: '25/07/2026 • 3 مواد • آجل',
+    searchTerms: const [
+      '101',
+      'شركة النخيل للتجارة',
+      'ورق طباعة',
+      'حبر طابعة',
+      'دباسة',
+      'آجل',
+    ],
+    items: const [
+      AppSalesInvoiceTableRowData(
+        code: '3001',
+        name: 'ورق طباعة',
+        warehouse: 'الرصافة',
+        quantity: '5',
+        salePrice: '12,000',
+        priceAfterDiscount: '12,000',
+        total: '60,000',
+      ),
+      AppSalesInvoiceTableRowData(
+        code: '3002',
+        name: 'حبر طابعة',
+        warehouse: 'الرصافة',
+        quantity: '2',
+        salePrice: '45,000',
+        priceAfterDiscount: '45,000',
+        total: '90,000',
+      ),
+      AppSalesInvoiceTableRowData(
+        code: '3003',
+        name: 'دباسة',
+        warehouse: 'الرئيسي',
+        quantity: '3',
+        salePrice: '10,000',
+        discount: '1,000',
+        priceAfterDiscount: '9,000',
+        total: '27,000',
+      ),
+    ],
+    summaryQuantity: '10',
+    summaryDiscount: '1,000',
+    summaryTotal: '177,000',
   ),
 ];
+
+final _salesSearchRecords = <AppSearchRecord<String>>[
+  for (final invoice in _demoSalesInvoices)
+    AppSearchRecord(
+      value: invoice.id,
+      title: 'قائمة بيع رقم ${invoice.id}',
+      subtitle: invoice.customerName,
+      details: invoice.searchDetails,
+      searchTerms: invoice.searchTerms,
+      icon: Icons.point_of_sale_rounded,
+    ),
+];
+
+class _DemoSalesInvoice {
+  const _DemoSalesInvoice({
+    required this.id,
+    required this.dateTime,
+    required this.warehouse,
+    required this.saleType,
+    required this.currency,
+    required this.exchangeRate,
+    required this.customerName,
+    required this.notes,
+    required this.driverName,
+    required this.invoiceDiscount,
+    required this.discountPercentage,
+    required this.received,
+    required this.total,
+    required this.remaining,
+    required this.currentBalance,
+    required this.searchDetails,
+    required this.searchTerms,
+    required this.items,
+    required this.summaryQuantity,
+    required this.summaryDiscount,
+    required this.summaryTotal,
+  });
+
+  final String id;
+  final DateTime dateTime;
+  final String warehouse;
+  final String saleType;
+  final String currency;
+  final String exchangeRate;
+  final String customerName;
+  final String notes;
+  final String driverName;
+  final String invoiceDiscount;
+  final String discountPercentage;
+  final String received;
+  final String total;
+  final String remaining;
+  final String currentBalance;
+  final String searchDetails;
+  final List<String> searchTerms;
+  final List<AppSalesInvoiceTableRowData> items;
+  final String summaryQuantity;
+  final String summaryDiscount;
+  final String summaryTotal;
+}
 
 class SalesScreen extends StatefulWidget {
   const SalesScreen({super.key});
@@ -68,14 +271,36 @@ class _SalesScreenState extends State<SalesScreen> {
   final _currentBalanceIqdController = TextEditingController(text: '0');
 
   late DateTime _invoiceDateTime;
+  late _DemoSalesInvoice _selectedDemoInvoice;
   var _warehouse = 'الرئيسي';
   var _saleType = 'نقدي';
   var _currency = 'IQD';
+  var _tableDataVersion = 0;
 
   @override
   void initState() {
     super.initState();
-    _invoiceDateTime = DateTime.now();
+    _applyDemoInvoice(_demoSalesInvoices.first);
+  }
+
+  void _applyDemoInvoice(_DemoSalesInvoice invoice) {
+    _selectedDemoInvoice = invoice;
+    _invoiceNumberController.text = invoice.id;
+    _invoiceDateTime = invoice.dateTime;
+    _warehouse = invoice.warehouse;
+    _saleType = invoice.saleType;
+    _currency = invoice.currency;
+    _exchangeRateController.text = invoice.exchangeRate;
+    _customerNameController.text = invoice.customerName;
+    _notesController.text = invoice.notes;
+    _driverNameController.text = invoice.driverName;
+    _invoiceDiscountController.text = invoice.invoiceDiscount;
+    _discountPercentageController.text = invoice.discountPercentage;
+    _receivedController.text = invoice.received;
+    _totalIqdController.text = invoice.total;
+    _remainingIqdController.text = invoice.remaining;
+    _currentBalanceIqdController.text = invoice.currentBalance;
+    _tableDataVersion++;
   }
 
   void _changeDate(DateTime value) {
@@ -107,6 +332,10 @@ class _SalesScreenState extends State<SalesScreen> {
     );
 
     if (!mounted || result == null) return;
+    final invoice = _demoSalesInvoices.firstWhere(
+      (candidate) => candidate.id == result,
+    );
+    setState(() => _applyDemoInvoice(invoice));
     AppToast.showInfo(context, 'تم اختيار قائمة البيع رقم $result');
   }
 
@@ -149,6 +378,7 @@ class _SalesScreenState extends State<SalesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currencyName = _currency == 'USD' ? 'دولار' : 'دينار';
     final tint = Color.alphaBlend(
       AppModuleColors.sales.withAlpha(12),
       AppColors.surface,
@@ -284,9 +514,14 @@ class _SalesScreenState extends State<SalesScreen> {
                 ],
               ),
               const SizedBox(height: AppSpacing.md),
-              const Expanded(
+              Expanded(
                 child: AppSalesInvoiceTableTemplate(
-                  key: Key('salesItemsTable'),
+                  key: const Key('salesItemsTable'),
+                  initialRows: _selectedDemoInvoice.items,
+                  dataVersion: _tableDataVersion,
+                  summaryQuantity: _selectedDemoInvoice.summaryQuantity,
+                  summaryDiscount: _selectedDemoInvoice.summaryDiscount,
+                  summaryTotal: _selectedDemoInvoice.summaryTotal,
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
@@ -324,7 +559,7 @@ class _SalesScreenState extends State<SalesScreen> {
                   AppReadOnlyField(
                     fieldKey: const Key('salesTotalIqdField'),
                     controller: _totalIqdController,
-                    label: 'المجموع دينار',
+                    label: 'المجموع $currencyName',
                     icon: Icons.calculate_rounded,
                     accentColor: AppModuleColors.sales,
                     textDirection: TextDirection.rtl,
@@ -333,7 +568,7 @@ class _SalesScreenState extends State<SalesScreen> {
                   AppReadOnlyField(
                     fieldKey: const Key('salesRemainingIqdField'),
                     controller: _remainingIqdController,
-                    label: 'المتبقي دينار',
+                    label: 'المتبقي $currencyName',
                     icon: Icons.pending_actions_rounded,
                     accentColor: AppModuleColors.sales,
                     textDirection: TextDirection.rtl,
@@ -342,7 +577,7 @@ class _SalesScreenState extends State<SalesScreen> {
                   AppReadOnlyField(
                     fieldKey: const Key('salesCurrentBalanceIqdField'),
                     controller: _currentBalanceIqdController,
-                    label: 'الرصيد الحالي دينار',
+                    label: 'الرصيد الحالي $currencyName',
                     icon: Icons.account_balance_wallet_rounded,
                     accentColor: AppModuleColors.sales,
                     textDirection: TextDirection.rtl,
@@ -355,6 +590,7 @@ class _SalesScreenState extends State<SalesScreen> {
                 key: const Key('salesActionBar'),
                 middle: _SalesInvoiceButtons(
                   onSearch: _showSalesSearch,
+                  onInstallments: _saleType == 'أقساط' ? () {} : null,
                   onStatement: _showSalesStatement,
                 ),
                 firstButtonKey: const Key('salesFirstButton'),
@@ -386,10 +622,12 @@ class _SalesScreenState extends State<SalesScreen> {
 class _SalesInvoiceButtons extends StatelessWidget {
   const _SalesInvoiceButtons({
     required this.onSearch,
+    required this.onInstallments,
     required this.onStatement,
   });
 
   final VoidCallback onSearch;
+  final VoidCallback? onInstallments;
   final VoidCallback onStatement;
 
   @override
@@ -419,7 +657,7 @@ class _SalesInvoiceButtons extends StatelessWidget {
           tooltipKey: const Key('salesInstallmentsTooltip'),
           icon: Icons.table_chart_rounded,
           tooltip: 'جدول الأقساط',
-          onPressed: () {},
+          onPressed: onInstallments,
         ),
         AppHeaderIconButton(
           key: const Key('salesStatementButton'),
