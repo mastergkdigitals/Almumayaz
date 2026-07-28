@@ -12,6 +12,7 @@ const _salesWarehouseOptions = <AppDropdownOption<String>>[
 const _salesTypeOptions = <AppDropdownOption<String>>[
   AppDropdownOption(value: 'نقدي', label: 'نقدي'),
   AppDropdownOption(value: 'آجل', label: 'آجل'),
+  AppDropdownOption(value: 'أقساط', label: 'أقساط'),
 ];
 
 const _salesCurrencyOptions = <AppDropdownOption<String>>[
@@ -38,8 +39,6 @@ class _SalesScreenState extends State<SalesScreen> {
   final _totalIqdController = TextEditingController(text: '0');
   final _remainingIqdController = TextEditingController(text: '0');
   final _currentBalanceIqdController = TextEditingController(text: '0');
-  final _searchController = TextEditingController();
-  final _searchFocusNode = FocusNode();
 
   late DateTime _invoiceDateTime;
   var _warehouse = 'الرئيسي';
@@ -77,8 +76,6 @@ class _SalesScreenState extends State<SalesScreen> {
     _totalIqdController.dispose();
     _remainingIqdController.dispose();
     _currentBalanceIqdController.dispose();
-    _searchController.dispose();
-    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -94,7 +91,7 @@ class _SalesScreenState extends State<SalesScreen> {
       title: 'المبيعات',
       backgroundColor: tint,
       onBack: () => Navigator.of(context).pop(),
-      onSearch: _searchFocusNode.requestFocus,
+      onSearch: () {},
       onSave: () {},
       body: ColoredBox(
         key: const Key('salesTintBackground'),
@@ -111,12 +108,14 @@ class _SalesScreenState extends State<SalesScreen> {
                     label: 'رقم القائمة',
                     icon: Icons.receipt_long_rounded,
                     accentColor: AppModuleColors.sales,
+                    textDirection: TextDirection.rtl,
                   ),
                   AppDateField(
                     fieldKey: const Key('salesDateField'),
                     label: 'التاريخ',
                     value: _invoiceDateTime,
                     accentColor: AppModuleColors.sales,
+                    textDirection: TextDirection.rtl,
                     onChanged: _changeDate,
                   ),
                   AppTimeField(
@@ -131,6 +130,8 @@ class _SalesScreenState extends State<SalesScreen> {
                     icon: Icons.warehouse_rounded,
                     accentColor: AppModuleColors.sales,
                     useIntrinsicHeight: true,
+                    textDirection: TextDirection.rtl,
+                    menuTextDirection: TextDirection.rtl,
                     value: _warehouse,
                     options: _salesWarehouseOptions,
                     onChanged: (value) {
@@ -144,6 +145,8 @@ class _SalesScreenState extends State<SalesScreen> {
                     icon: Icons.point_of_sale_rounded,
                     accentColor: AppModuleColors.sales,
                     useIntrinsicHeight: true,
+                    textDirection: TextDirection.rtl,
+                    menuTextDirection: TextDirection.rtl,
                     value: _saleType,
                     options: _salesTypeOptions,
                     onChanged: (value) {
@@ -157,6 +160,8 @@ class _SalesScreenState extends State<SalesScreen> {
                     icon: Icons.currency_exchange_rounded,
                     accentColor: AppModuleColors.sales,
                     useIntrinsicHeight: true,
+                    textDirection: TextDirection.rtl,
+                    menuTextDirection: TextDirection.rtl,
                     value: _currency,
                     options: _salesCurrencyOptions,
                     onChanged: (value) {
@@ -170,7 +175,7 @@ class _SalesScreenState extends State<SalesScreen> {
                     label: 'سعر الصرف',
                     icon: Icons.currency_exchange_rounded,
                     accentColor: AppModuleColors.sales,
-                    textDirection: TextDirection.ltr,
+                    textDirection: TextDirection.rtl,
                     textAlign: TextAlign.center,
                     keyboardType:
                         const TextInputType.numberWithOptions(decimal: true),
@@ -190,6 +195,7 @@ class _SalesScreenState extends State<SalesScreen> {
                     label: 'اسم الزبون',
                     icon: Icons.person_rounded,
                     accentColor: AppModuleColors.sales,
+                    textDirection: TextDirection.rtl,
                     textInputAction: TextInputAction.next,
                   ),
                   AppTextField(
@@ -198,6 +204,7 @@ class _SalesScreenState extends State<SalesScreen> {
                     label: 'الملاحظات',
                     icon: Icons.notes_rounded,
                     accentColor: AppModuleColors.sales,
+                    textDirection: TextDirection.rtl,
                     textInputAction: TextInputAction.next,
                   ),
                 ],
@@ -217,6 +224,7 @@ class _SalesScreenState extends State<SalesScreen> {
                     label: 'اسم السائق',
                     icon: Icons.local_shipping_rounded,
                     accentColor: AppModuleColors.sales,
+                    textDirection: TextDirection.rtl,
                     textInputAction: TextInputAction.next,
                   ),
                   _SalesMoneyField(
@@ -244,7 +252,7 @@ class _SalesScreenState extends State<SalesScreen> {
                     label: 'المجموع دينار',
                     icon: Icons.calculate_rounded,
                     accentColor: AppModuleColors.sales,
-                    textDirection: TextDirection.ltr,
+                    textDirection: TextDirection.rtl,
                     textAlign: TextAlign.center,
                   ),
                   AppReadOnlyField(
@@ -253,7 +261,7 @@ class _SalesScreenState extends State<SalesScreen> {
                     label: 'المتبقي دينار',
                     icon: Icons.pending_actions_rounded,
                     accentColor: AppModuleColors.sales,
-                    textDirection: TextDirection.ltr,
+                    textDirection: TextDirection.rtl,
                     textAlign: TextAlign.center,
                   ),
                   AppReadOnlyField(
@@ -262,7 +270,7 @@ class _SalesScreenState extends State<SalesScreen> {
                     label: 'الرصيد الحالي دينار',
                     icon: Icons.account_balance_wallet_rounded,
                     accentColor: AppModuleColors.sales,
-                    textDirection: TextDirection.ltr,
+                    textDirection: TextDirection.rtl,
                     textAlign: TextAlign.center,
                   ),
                 ],
@@ -270,11 +278,7 @@ class _SalesScreenState extends State<SalesScreen> {
               const SizedBox(height: AppSpacing.md),
               AppActionBar(
                 key: const Key('salesActionBar'),
-                searchController: _searchController,
-                searchFocusNode: _searchFocusNode,
-                searchFieldKey: const Key('salesSearchField'),
-                searchClearButtonKey:
-                    const Key('salesSearchClearButton'),
+                middle: const _SalesInvoiceButtons(),
                 firstButtonKey: const Key('salesFirstButton'),
                 previousButtonKey: const Key('salesPreviousButton'),
                 nextButtonKey: const Key('salesNextButton'),
@@ -283,7 +287,6 @@ class _SalesScreenState extends State<SalesScreen> {
                 updateButtonKey: const Key('salesUpdateButton'),
                 undoButtonKey: const Key('salesUndoButton'),
                 deleteButtonKey: const Key('salesDeleteButton'),
-                searchHint: 'رقم القائمة أو اسم الزبون',
                 accentColor: AppModuleColors.sales,
                 onFirst: () {},
                 onPrevious: () {},
@@ -298,6 +301,50 @@ class _SalesScreenState extends State<SalesScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _SalesInvoiceButtons extends StatelessWidget {
+  const _SalesInvoiceButtons();
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      textDirection: TextDirection.rtl,
+      alignment: WrapAlignment.center,
+      spacing: AppSpacing.sm,
+      runSpacing: AppSpacing.sm,
+      children: [
+        AppHeaderIconButton(
+          key: const Key('salesSearchButton'),
+          tooltipKey: const Key('salesSearchTooltip'),
+          icon: Icons.search_rounded,
+          tooltip: 'بحث',
+          onPressed: () {},
+        ),
+        AppHeaderIconButton(
+          key: const Key('salesPrintButton'),
+          tooltipKey: const Key('salesPrintTooltip'),
+          icon: Icons.print_rounded,
+          tooltip: 'طباعة',
+          onPressed: () {},
+        ),
+        AppHeaderIconButton(
+          key: const Key('salesInstallmentsButton'),
+          tooltipKey: const Key('salesInstallmentsTooltip'),
+          icon: Icons.table_chart_rounded,
+          tooltip: 'جدول الأقساط',
+          onPressed: () {},
+        ),
+        AppHeaderIconButton(
+          key: const Key('salesStatementButton'),
+          tooltipKey: const Key('salesStatementTooltip'),
+          icon: Icons.receipt_long_rounded,
+          tooltip: 'كشف الحساب',
+          onPressed: () {},
+        ),
+      ],
     );
   }
 }
@@ -347,7 +394,7 @@ class _SalesMoneyField extends StatelessWidget {
       label: label,
       icon: icon,
       accentColor: AppModuleColors.sales,
-      textDirection: TextDirection.ltr,
+      textDirection: TextDirection.rtl,
       textAlign: TextAlign.center,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       inputFormatters: [
