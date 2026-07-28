@@ -20,6 +20,33 @@ const _salesCurrencyOptions = <AppDropdownOption<String>>[
   AppDropdownOption(value: 'USD', label: 'دولار'),
 ];
 
+const _salesSearchRecords = <AppSearchRecord<String>>[
+  AppSearchRecord(
+    value: '103',
+    title: 'قائمة بيع رقم 103',
+    subtitle: 'أسواق دجلة',
+    details: '27/07/2026 • 4 مواد',
+    searchTerms: ['103', 'أسواق دجلة', 'دفتر ملاحظات'],
+    icon: Icons.point_of_sale_rounded,
+  ),
+  AppSearchRecord(
+    value: '102',
+    title: 'قائمة بيع رقم 102',
+    subtitle: 'أحمد كريم',
+    details: '26/07/2026 • مادتان',
+    searchTerms: ['102', 'أحمد كريم', 'قلم أزرق'],
+    icon: Icons.point_of_sale_rounded,
+  ),
+  AppSearchRecord(
+    value: '101',
+    title: 'قائمة بيع رقم 101',
+    subtitle: 'شركة النخيل للتجارة',
+    details: '25/07/2026 • 5 مواد',
+    searchTerms: ['101', 'شركة النخيل', 'ورق طباعة'],
+    icon: Icons.point_of_sale_rounded,
+  ),
+];
+
 class SalesScreen extends StatefulWidget {
   const SalesScreen({super.key});
 
@@ -63,6 +90,47 @@ class _SalesScreenState extends State<SalesScreen> {
     });
   }
 
+  Future<void> _showSalesSearch() async {
+    final result = await AppRecordSearchDialog.show<String>(
+      context,
+      title: 'بحث قوائم البيع',
+      subtitle: 'ابحث عن قائمة بيع محفوظة ثم اخترها',
+      searchLabel: 'بحث في قوائم البيع',
+      hint: 'رقم القائمة أو اسم الزبون أو اسم المادة',
+      accentColor: AppModuleColors.sales,
+      records: _salesSearchRecords,
+      emptyTitle: 'لا توجد قوائم بيع محفوظة',
+      noResultsTitle: 'لا توجد قوائم بيع مطابقة',
+      dialogKey: const Key('salesRecordSearchDialog'),
+      searchFieldKey: const Key('salesRecordSearchField'),
+      resultKeyPrefix: 'salesRecordSearchResult',
+    );
+
+    if (!mounted || result == null) return;
+    AppToast.showInfo(context, 'تم اختيار قائمة البيع رقم $result');
+  }
+
+  Future<void> _showSalesStatement() async {
+    final customerName = _customerNameController.text.trim();
+    final displayName =
+        customerName.isEmpty ? 'زبون غير محدد' : customerName;
+    final options = await AppStatementOptionsDialog.show(
+      context,
+      partyName: displayName,
+      partyLabel: 'اسم الزبون',
+      accentColor: AppModuleColors.sales,
+    );
+    if (!mounted || options == null) return;
+
+    await AppStatementReportDialog.show(
+      context,
+      partyName: displayName,
+      options: options,
+      entries: const <AppStatementReportEntry>[],
+      accentColor: AppModuleColors.sales,
+    );
+  }
+
   @override
   void dispose() {
     _invoiceNumberController.dispose();
@@ -91,7 +159,7 @@ class _SalesScreenState extends State<SalesScreen> {
       title: 'المبيعات',
       backgroundColor: tint,
       onBack: () => Navigator.of(context).pop(),
-      onSearch: () {},
+      onSearch: _showSalesSearch,
       onSave: () {},
       body: ColoredBox(
         key: const Key('salesTintBackground'),
@@ -278,7 +346,10 @@ class _SalesScreenState extends State<SalesScreen> {
               const SizedBox(height: AppSpacing.md),
               AppActionBar(
                 key: const Key('salesActionBar'),
-                middle: const _SalesInvoiceButtons(),
+                middle: _SalesInvoiceButtons(
+                  onSearch: _showSalesSearch,
+                  onStatement: _showSalesStatement,
+                ),
                 firstButtonKey: const Key('salesFirstButton'),
                 previousButtonKey: const Key('salesPreviousButton'),
                 nextButtonKey: const Key('salesNextButton'),
@@ -306,7 +377,13 @@ class _SalesScreenState extends State<SalesScreen> {
 }
 
 class _SalesInvoiceButtons extends StatelessWidget {
-  const _SalesInvoiceButtons();
+  const _SalesInvoiceButtons({
+    required this.onSearch,
+    required this.onStatement,
+  });
+
+  final VoidCallback onSearch;
+  final VoidCallback onStatement;
 
   @override
   Widget build(BuildContext context) {
@@ -321,7 +398,7 @@ class _SalesInvoiceButtons extends StatelessWidget {
           tooltipKey: const Key('salesSearchTooltip'),
           icon: Icons.search_rounded,
           tooltip: 'بحث',
-          onPressed: () {},
+          onPressed: onSearch,
         ),
         AppHeaderIconButton(
           key: const Key('salesPrintButton'),
@@ -342,7 +419,7 @@ class _SalesInvoiceButtons extends StatelessWidget {
           tooltipKey: const Key('salesStatementTooltip'),
           icon: Icons.receipt_long_rounded,
           tooltip: 'كشف الحساب',
-          onPressed: () {},
+          onPressed: onStatement,
         ),
       ],
     );
