@@ -18,6 +18,8 @@ class AppDateField extends StatefulWidget {
     this.enabled = true,
     this.accentColor,
     this.showPickerButton = true,
+    this.textDirection = TextDirection.ltr,
+    this.textAlign = TextAlign.right,
   });
 
   final String label;
@@ -29,6 +31,8 @@ class AppDateField extends StatefulWidget {
   final bool enabled;
   final Color? accentColor;
   final bool showPickerButton;
+  final TextDirection textDirection;
+  final TextAlign textAlign;
 
   @override
   State<AppDateField> createState() => _AppDateFieldState();
@@ -88,8 +92,8 @@ class _AppDateFieldState extends State<AppDateField> {
       accentColor: widget.accentColor,
       enabled: widget.enabled,
       readOnly: true,
-      textDirection: TextDirection.ltr,
-      textAlign: TextAlign.right,
+      textDirection: widget.textDirection,
+      textAlign: widget.textAlign,
       onTap: _pickDate,
       suffixIcon: widget.showPickerButton
           ? AppTooltip(
