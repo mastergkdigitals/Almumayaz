@@ -64,8 +64,35 @@ void main() {
     expect(phone.textDirection, TextDirection.rtl);
     expect(phone.textAlign, TextAlign.right);
     expect(phone.keyboardType, TextInputType.phone);
+
+    for (final key in const [
+      'designNameField',
+      'designSearchField',
+      'designQuantityField',
+      'designMoneyField',
+      'designPhoneField',
+      'designCityField',
+      'designDateField',
+      'designTimeField',
+      'designDisabledField',
+      'designNotesField',
+    ]) {
+      expect(
+        tester.getSize(find.byKey(Key(key))).height,
+        AppControlHeights.large,
+      );
+    }
+
     final errorText = find.text('هذا الحقل مطلوب');
     expect(errorText, findsOneWidget);
+    expect(
+      tester.getSize(find.byKey(const Key('designErrorField'))).height,
+      greaterThan(AppControlHeights.large),
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('designReadOnlyField'))).height,
+      greaterThan(AppControlHeights.large),
+    );
     expect(
       Theme.of(tester.element(errorText))
           .inputDecorationTheme
