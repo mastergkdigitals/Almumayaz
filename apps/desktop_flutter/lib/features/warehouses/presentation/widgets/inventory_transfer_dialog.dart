@@ -370,7 +370,6 @@ class _InventoryTransferDialogState
                       label: 'المادة',
                       icon: Icons.inventory_2_rounded,
                       accentColor: AppModuleColors.warehouses,
-                      useIntrinsicHeight: true,
                       value: _selectedProductCode,
                       options: [
                         for (final item in _sourceItems)
@@ -464,7 +463,6 @@ class _InventoryTransferDialogState
       label: 'من مخزن',
       icon: Icons.warehouse_rounded,
       accentColor: AppModuleColors.warehouses,
-      useIntrinsicHeight: true,
       value: _fromWarehouseId,
       options: [
         for (final warehouse in _warehouses)
@@ -484,7 +482,6 @@ class _InventoryTransferDialogState
       label: 'إلى مخزن',
       icon: Icons.warehouse_rounded,
       accentColor: AppModuleColors.warehouses,
-      useIntrinsicHeight: true,
       value: _toWarehouseId,
       options: [
         for (final warehouse in _warehouses)
