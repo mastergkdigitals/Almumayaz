@@ -146,19 +146,36 @@ void main() {
       AppDropdownVisualStyle.standard,
     );
     expect(warehouseDropdown.accentColor, AppModuleColors.sales);
+    expect(warehouseDropdown.useIntrinsicHeight, isTrue);
     expect(warehouseDropdown.showLabel, isFalse);
     expect(warehouseDropdown.borderRadius, AppRadii.sm);
 
-    final codeFieldRect = tester.getRect(
-      find.byKey(const Key('settingsTemplateCodeField-r1')),
+    final codeFieldOutline = find.descendant(
+      of: find.byKey(const Key('settingsTemplateCodeField-r1')),
+      matching: find.byType(InputDecorator),
     );
-    final warehouseDropdownRect = tester.getRect(
-      find.byKey(
+    final warehouseDropdownOutline = find.descendant(
+      of: find.byKey(
         const Key('settingsTemplateWarehouseDropdown-r1'),
       ),
+      matching: find.byType(InputDecorator),
     );
-    expect(codeFieldRect.height, AppControlHeights.large);
-    expect(warehouseDropdownRect.height, codeFieldRect.height);
+    final codeFieldRect = tester.getRect(codeFieldOutline);
+    final warehouseDropdownRect = tester.getRect(
+      warehouseDropdownOutline,
+    );
+    expect(
+      warehouseDropdownRect.height,
+      closeTo(codeFieldRect.height, 0.1),
+    );
+    expect(
+      warehouseDropdownRect.top,
+      closeTo(codeFieldRect.top, 0.1),
+    );
+    expect(
+      warehouseDropdownRect.bottom,
+      closeTo(codeFieldRect.bottom, 0.1),
+    );
 
     await tester.tap(find.byKey(const Key('settingsTemplateAddButton')));
     await tester.pump();

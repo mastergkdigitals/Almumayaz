@@ -424,6 +424,7 @@ class _SettingsTableFieldRow extends StatelessWidget {
                 value: row.warehouse,
                 options: _settingsWarehouseOptions,
                 onChanged: onWarehouseChanged,
+                useIntrinsicHeight: true,
                 showLabel: false,
                 borderRadius: AppRadii.sm,
               ),
@@ -569,10 +570,7 @@ class _SettingsTableCell extends StatelessWidget {
       width: width,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
-        child: SizedBox(
-          height: AppControlHeights.large,
-          child: child,
-        ),
+        child: child,
       ),
     );
   }
