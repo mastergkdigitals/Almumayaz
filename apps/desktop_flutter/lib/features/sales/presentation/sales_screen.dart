@@ -177,6 +177,7 @@ class _SalesScreenState extends State<SalesScreen> {
                     icon: Icons.receipt_long_rounded,
                     accentColor: AppModuleColors.sales,
                     textDirection: TextDirection.rtl,
+                    textAlign: TextAlign.right,
                   ),
                   AppDateField(
                     fieldKey: const Key('salesDateField'),
@@ -199,6 +200,7 @@ class _SalesScreenState extends State<SalesScreen> {
                     accentColor: AppModuleColors.sales,
                     useIntrinsicHeight: true,
                     textDirection: TextDirection.rtl,
+                    textAlign: TextAlign.right,
                     menuTextDirection: TextDirection.rtl,
                     value: _warehouse,
                     options: _salesWarehouseOptions,
@@ -214,6 +216,7 @@ class _SalesScreenState extends State<SalesScreen> {
                     accentColor: AppModuleColors.sales,
                     useIntrinsicHeight: true,
                     textDirection: TextDirection.rtl,
+                    textAlign: TextAlign.right,
                     menuTextDirection: TextDirection.rtl,
                     value: _saleType,
                     options: _salesTypeOptions,
@@ -229,6 +232,7 @@ class _SalesScreenState extends State<SalesScreen> {
                     accentColor: AppModuleColors.sales,
                     useIntrinsicHeight: true,
                     textDirection: TextDirection.rtl,
+                    textAlign: TextAlign.right,
                     menuTextDirection: TextDirection.rtl,
                     value: _currency,
                     options: _salesCurrencyOptions,
@@ -244,7 +248,7 @@ class _SalesScreenState extends State<SalesScreen> {
                     icon: Icons.currency_exchange_rounded,
                     accentColor: AppModuleColors.sales,
                     textDirection: TextDirection.rtl,
-                    textAlign: TextAlign.center,
+                    textAlign: TextAlign.right,
                     keyboardType:
                         const TextInputType.numberWithOptions(decimal: true),
                     inputFormatters: const [
@@ -264,6 +268,7 @@ class _SalesScreenState extends State<SalesScreen> {
                     icon: Icons.person_rounded,
                     accentColor: AppModuleColors.sales,
                     textDirection: TextDirection.rtl,
+                    textAlign: TextAlign.right,
                     textInputAction: TextInputAction.next,
                   ),
                   AppTextField(
@@ -273,6 +278,7 @@ class _SalesScreenState extends State<SalesScreen> {
                     icon: Icons.notes_rounded,
                     accentColor: AppModuleColors.sales,
                     textDirection: TextDirection.rtl,
+                    textAlign: TextAlign.right,
                     textInputAction: TextInputAction.next,
                   ),
                 ],
@@ -293,6 +299,7 @@ class _SalesScreenState extends State<SalesScreen> {
                     icon: Icons.local_shipping_rounded,
                     accentColor: AppModuleColors.sales,
                     textDirection: TextDirection.rtl,
+                    textAlign: TextAlign.right,
                     textInputAction: TextInputAction.next,
                   ),
                   _SalesMoneyField(
@@ -321,7 +328,7 @@ class _SalesScreenState extends State<SalesScreen> {
                     icon: Icons.calculate_rounded,
                     accentColor: AppModuleColors.sales,
                     textDirection: TextDirection.rtl,
-                    textAlign: TextAlign.center,
+                    textAlign: TextAlign.right,
                   ),
                   AppReadOnlyField(
                     fieldKey: const Key('salesRemainingIqdField'),
@@ -330,7 +337,7 @@ class _SalesScreenState extends State<SalesScreen> {
                     icon: Icons.pending_actions_rounded,
                     accentColor: AppModuleColors.sales,
                     textDirection: TextDirection.rtl,
-                    textAlign: TextAlign.center,
+                    textAlign: TextAlign.right,
                   ),
                   AppReadOnlyField(
                     fieldKey: const Key('salesCurrentBalanceIqdField'),
@@ -339,7 +346,7 @@ class _SalesScreenState extends State<SalesScreen> {
                     icon: Icons.account_balance_wallet_rounded,
                     accentColor: AppModuleColors.sales,
                     textDirection: TextDirection.rtl,
-                    textAlign: TextAlign.center,
+                    textAlign: TextAlign.right,
                   ),
                 ],
               ),
@@ -472,7 +479,7 @@ class _SalesMoneyField extends StatelessWidget {
       icon: icon,
       accentColor: AppModuleColors.sales,
       textDirection: TextDirection.rtl,
-      textAlign: TextAlign.center,
+      textAlign: TextAlign.right,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       inputFormatters: [
         AppMoneyInputFormatter(decimalPlaces: decimalPlaces),
