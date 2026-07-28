@@ -168,8 +168,6 @@ void main() {
     final shell = tester.widget<AppScreenShell>(
       find.byKey(const Key('partiesScreen')),
     );
-    expect(shell.onNew, isNull);
-    expect(shell.onRefresh, isNull);
     expect(shell.onSave, isNotNull);
 
     final search = find.byKey(const Key('partiesSearchField'));
@@ -219,11 +217,6 @@ void main() {
       ),
       findsOneWidget,
     );
-
-    await _sendControlShortcut(tester, LogicalKeyboardKey.keyN);
-    await tester.sendKeyEvent(LogicalKeyboardKey.f5);
-    await tester.pump();
-    expect(_text(tester, name), 'طرف لوحة المفاتيح المحدّث');
   });
 
   testWidgets('closes dropdown then dialog before leaving parties',

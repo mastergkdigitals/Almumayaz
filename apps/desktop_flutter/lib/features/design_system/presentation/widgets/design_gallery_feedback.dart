@@ -6,21 +6,6 @@ import 'design_gallery_section.dart';
 class DesignGalleryFeedbackGroup extends StatelessWidget {
   const DesignGalleryFeedbackGroup({super.key});
 
-  static const _materials = <_SampleMaterial>[
-    _SampleMaterial('P-001', 'دفتر ملاحظات', 100, 'متوفر', AppStatusTone.success),
-    _SampleMaterial('P-002', 'قلم', 0, 'نافد', AppStatusTone.danger),
-    _SampleMaterial('P-003', 'طابعة', 25, 'متوفر', AppStatusTone.success),
-    _SampleMaterial('P-004', 'شاشة', 12, 'متوفر', AppStatusTone.success),
-    _SampleMaterial('P-005', 'لوحة مفاتيح', 8, 'مخزون منخفض', AppStatusTone.warning),
-    _SampleMaterial('P-006', 'فأرة', 50, 'متوفر', AppStatusTone.success),
-    _SampleMaterial('P-007', 'حبر طابعة', 0, 'نافد', AppStatusTone.danger),
-    _SampleMaterial('P-008', 'قرص تخزين', 18, 'متوفر', AppStatusTone.success),
-    _SampleMaterial('P-009', 'ذاكرة', 7, 'مخزون منخفض', AppStatusTone.warning),
-    _SampleMaterial('P-010', 'ماسح ضوئي', 4, 'متوفر', AppStatusTone.success),
-    _SampleMaterial('P-011', 'راوتر', 0, 'نافد', AppStatusTone.danger),
-    _SampleMaterial('P-012', 'كابل شبكة', 120, 'متوفر', AppStatusTone.success),
-  ];
-
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -93,6 +78,51 @@ class DesignGalleryFeedbackGroup extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.lg),
+        DesignGallerySection(
+          title: 'رسائل التنبيه',
+          child: Wrap(
+            textDirection: TextDirection.rtl,
+            spacing: AppSpacing.md,
+            runSpacing: AppSpacing.md,
+            children: [
+              AppButton(
+                key: const Key('designSaveToastButton'),
+                label: 'رسالة الحفظ',
+                icon: Icons.save_rounded,
+                variant: AppButtonVariant.primary,
+                onPressed: () =>
+                    AppToast.showInfo(context, 'تم الحفظ بنجاح'),
+              ),
+              AppButton(
+                key: const Key('designUpdateToastButton'),
+                label: 'رسالة التحديث',
+                icon: Icons.update_rounded,
+                variant: AppButtonVariant.success,
+                onPressed: () =>
+                    AppToast.showSuccess(context, 'تم تحديث السجل'),
+              ),
+              AppButton(
+                key: const Key('designUndoToastButton'),
+                label: 'رسالة التراجع',
+                icon: Icons.undo_rounded,
+                variant: AppButtonVariant.warning,
+                onPressed: () => AppToast.showWarning(
+                  context,
+                  'تم التراجع عن التغييرات',
+                ),
+              ),
+              AppButton(
+                key: const Key('designDeleteToastButton'),
+                label: 'رسالة الحذف',
+                icon: Icons.delete_rounded,
+                variant: AppButtonVariant.danger,
+                onPressed: () =>
+                    AppToast.showDanger(context, 'تم حذف السجل'),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
         const DesignGallerySection(
           title: 'طبقة التحميل',
           child: SizedBox(
@@ -107,58 +137,7 @@ class DesignGalleryFeedbackGroup extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: AppSpacing.lg),
-        DesignGallerySection(
-          title: 'الجدول',
-          child: AppDataTable(
-            key: const Key('designMaterialsTable'),
-            columns: const [
-              AppTableColumn(label: 'رمز المادة'),
-              AppTableColumn(label: 'اسم المادة'),
-              AppTableColumn(label: 'الكمية', numeric: true),
-              AppTableColumn(label: 'الحالة'),
-              AppTableColumn(label: 'الإجراء'),
-            ],
-            rows: [
-              for (final material in _materials)
-                AppTableRow(
-                  cells: [
-                    Text(material.code),
-                    Text(material.name),
-                    Text(material.quantity.toString()),
-                    AppStatusBadge(
-                      label: material.status,
-                      tone: material.tone,
-                    ),
-                    const AppTableActionButton(
-                      icon: Icons.receipt_long_rounded,
-                      tooltip: 'كشف',
-                      onPressed: _handleStatementPressed,
-                    ),
-                  ],
-                ),
-            ],
-          ),
-        ),
       ],
     );
   }
 }
-
-class _SampleMaterial {
-  const _SampleMaterial(
-    this.code,
-    this.name,
-    this.quantity,
-    this.status,
-    this.tone,
-  );
-
-  final String code;
-  final String name;
-  final int quantity;
-  final String status;
-  final AppStatusTone tone;
-}
-
-void _handleStatementPressed() {}

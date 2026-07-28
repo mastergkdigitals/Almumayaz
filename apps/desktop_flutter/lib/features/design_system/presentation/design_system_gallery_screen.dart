@@ -8,7 +8,6 @@ import 'widgets/design_gallery_feedback.dart';
 import 'widgets/design_gallery_fields.dart';
 import 'widgets/design_gallery_formats.dart';
 import 'widgets/design_gallery_keyboard.dart';
-import 'widgets/design_gallery_purchase_field_comparison.dart';
 import 'widgets/design_gallery_quick_create.dart';
 import 'widgets/design_gallery_tables.dart';
 
@@ -32,8 +31,6 @@ class DesignSystemGalleryScreen extends StatelessWidget {
             DesignGalleryActionsGroup(),
             SizedBox(height: AppSpacing.lg),
             DesignGalleryFieldsGroup(),
-            SizedBox(height: AppSpacing.lg),
-            DesignGalleryPurchaseFieldComparisonSection(),
             SizedBox(height: AppSpacing.lg),
             DesignGalleryTablesSection(),
             SizedBox(height: AppSpacing.lg),

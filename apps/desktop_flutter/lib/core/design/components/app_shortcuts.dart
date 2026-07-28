@@ -74,16 +74,12 @@ class AppShortcutScope extends StatelessWidget {
     super.key,
     this.onSearch,
     this.onSave,
-    this.onNew,
-    this.onRefresh,
     this.onEscape,
   });
 
   final Widget child;
   final VoidCallback? onSearch;
   final VoidCallback? onSave;
-  final VoidCallback? onNew;
-  final VoidCallback? onRefresh;
   final VoidCallback? onEscape;
 
   @override
@@ -102,11 +98,6 @@ class AppShortcutScope extends StatelessWidget {
       const SingleActivator(LogicalKeyboardKey.keyS, control: true),
       onSave,
     );
-    addBinding(
-      const SingleActivator(LogicalKeyboardKey.keyN, control: true),
-      onNew,
-    );
-    addBinding(const SingleActivator(LogicalKeyboardKey.f5), onRefresh);
     addBinding(const SingleActivator(LogicalKeyboardKey.escape), onEscape);
 
     if (bindings.isEmpty) return child;

@@ -4,6 +4,100 @@ import '../app_tokens.dart';
 import 'app_button.dart';
 import 'app_fields.dart';
 
+class AppActionButtons extends StatelessWidget {
+  const AppActionButtons({
+    required this.onSave,
+    required this.onUpdate,
+    required this.onUndo,
+    required this.onDelete,
+    super.key,
+    this.saveButtonKey,
+    this.updateButtonKey,
+    this.undoButtonKey,
+    this.deleteButtonKey,
+    this.buttonWidth = 108,
+  });
+
+  static const _actionPadding = EdgeInsets.symmetric(horizontal: 6);
+  static const _buttonTextStyle = TextStyle(
+    fontSize: 16,
+    fontWeight: FontWeight.w700,
+  );
+
+  final VoidCallback? onSave;
+  final VoidCallback? onUpdate;
+  final VoidCallback? onUndo;
+  final VoidCallback? onDelete;
+  final Key? saveButtonKey;
+  final Key? updateButtonKey;
+  final Key? undoButtonKey;
+  final Key? deleteButtonKey;
+  final double buttonWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      textDirection: TextDirection.rtl,
+      spacing: AppSpacing.sm,
+      runSpacing: AppSpacing.sm,
+      children: [
+        AppButton(
+          key: saveButtonKey,
+          label: 'حفظ',
+          icon: Icons.save_rounded,
+          variant: AppButtonVariant.primary,
+          minWidth: buttonWidth,
+          height: 52,
+          padding: _actionPadding,
+          iconSize: 18,
+          iconSpacing: AppSpacing.xs,
+          textStyle: _buttonTextStyle,
+          onPressed: onSave,
+        ),
+        AppButton(
+          key: updateButtonKey,
+          label: 'تحديث',
+          icon: Icons.update_rounded,
+          variant: AppButtonVariant.success,
+          minWidth: buttonWidth,
+          height: 52,
+          padding: _actionPadding,
+          iconSize: 18,
+          iconSpacing: AppSpacing.xs,
+          textStyle: _buttonTextStyle,
+          onPressed: onUpdate,
+        ),
+        AppButton(
+          key: undoButtonKey,
+          label: 'تراجع',
+          icon: Icons.undo_rounded,
+          variant: AppButtonVariant.warning,
+          minWidth: buttonWidth,
+          height: 52,
+          padding: _actionPadding,
+          iconSize: 18,
+          iconSpacing: AppSpacing.xs,
+          textStyle: _buttonTextStyle,
+          onPressed: onUndo,
+        ),
+        AppButton(
+          key: deleteButtonKey,
+          label: 'حذف',
+          icon: Icons.delete_rounded,
+          variant: AppButtonVariant.danger,
+          minWidth: buttonWidth,
+          height: 52,
+          padding: _actionPadding,
+          iconSize: 18,
+          iconSpacing: AppSpacing.xs,
+          textStyle: _buttonTextStyle,
+          onPressed: onDelete,
+        ),
+      ],
+    );
+  }
+}
+
 class AppActionBar extends StatelessWidget {
   const AppActionBar({
     required this.onFirst,
@@ -40,12 +134,6 @@ class AppActionBar extends StatelessWidget {
           searchController != null || middle != null,
           'Provide either searchController or middle.',
         );
-
-  static const _actionPadding = EdgeInsets.symmetric(horizontal: 6);
-  static const _buttonTextStyle = TextStyle(
-    fontSize: 16,
-    fontWeight: FontWeight.w700,
-  );
 
   final TextEditingController? searchController;
   final Widget? middle;
@@ -109,64 +197,16 @@ class AppActionBar extends StatelessWidget {
   }
 
   Widget _actions() {
-    return Wrap(
-      textDirection: TextDirection.rtl,
-      spacing: AppSpacing.sm,
-      runSpacing: AppSpacing.sm,
-      children: [
-        AppButton(
-          key: saveButtonKey,
-          label: 'حفظ',
-          icon: Icons.save_rounded,
-          variant: AppButtonVariant.primary,
-          minWidth: buttonWidth,
-          height: 52,
-          padding: _actionPadding,
-          iconSize: 18,
-          iconSpacing: AppSpacing.xs,
-          textStyle: _buttonTextStyle,
-          onPressed: onSave,
-        ),
-        AppButton(
-          key: updateButtonKey,
-          label: 'تحديث',
-          icon: Icons.update_rounded,
-          variant: AppButtonVariant.success,
-          minWidth: buttonWidth,
-          height: 52,
-          padding: _actionPadding,
-          iconSize: 18,
-          iconSpacing: AppSpacing.xs,
-          textStyle: _buttonTextStyle,
-          onPressed: onUpdate,
-        ),
-        AppButton(
-          key: undoButtonKey,
-          label: 'تراجع',
-          icon: Icons.undo_rounded,
-          variant: AppButtonVariant.warning,
-          minWidth: buttonWidth,
-          height: 52,
-          padding: _actionPadding,
-          iconSize: 18,
-          iconSpacing: AppSpacing.xs,
-          textStyle: _buttonTextStyle,
-          onPressed: onUndo,
-        ),
-        AppButton(
-          key: deleteButtonKey,
-          label: 'حذف',
-          icon: Icons.delete_rounded,
-          variant: AppButtonVariant.danger,
-          minWidth: buttonWidth,
-          height: 52,
-          padding: _actionPadding,
-          iconSize: 18,
-          iconSpacing: AppSpacing.xs,
-          textStyle: _buttonTextStyle,
-          onPressed: onDelete,
-        ),
-      ],
+    return AppActionButtons(
+      saveButtonKey: saveButtonKey,
+      updateButtonKey: updateButtonKey,
+      undoButtonKey: undoButtonKey,
+      deleteButtonKey: deleteButtonKey,
+      buttonWidth: buttonWidth,
+      onSave: onSave,
+      onUpdate: onUpdate,
+      onUndo: onUndo,
+      onDelete: onDelete,
     );
   }
 

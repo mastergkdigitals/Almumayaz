@@ -144,7 +144,6 @@ class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppShortcutScope(
-      onRefresh: () => AppToast.showInfo(context, 'تم تحديث الشاشة'),
       child: Scaffold(
         backgroundColor: AppColors.surface,
         body: Column(

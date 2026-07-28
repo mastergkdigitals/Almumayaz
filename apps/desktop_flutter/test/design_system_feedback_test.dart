@@ -5,38 +5,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'design_system_test_harness.dart';
 
 void main() {
-  testWidgets('keeps the table header fixed while rows scroll', (tester) async {
-    await pumpDesignSystemGallery(tester);
-
-    final table = find.byKey(const Key('designMaterialsTable'));
-    await reveal(tester, table);
-
-    expect(find.text('مواد تجريبية'), findsNothing);
-    final materialCodeHeader = find.descendant(
-      of: table,
-      matching: find.text('رمز المادة'),
-    );
-    expect(materialCodeHeader, findsOneWidget);
-    expect(
-      find.descendant(of: table, matching: find.text('P-001')),
-      findsOneWidget,
-    );
-    expect(find.byTooltip('كشف'), findsWidgets);
-
-    final headerY = tester.getTopLeft(materialCodeHeader).dy;
-    final rows = find.descendant(of: table, matching: find.byType(ListView));
-    expect(rows, findsOneWidget);
-
-    await tester.drag(rows, const Offset(0, -500));
-    await tester.pump();
-
-    expect(find.text('P-012'), findsOneWidget);
-    expect(
-      tester.getTopLeft(materialCodeHeader).dy,
-      closeTo(headerY, 0.1),
-    );
-  });
-
   testWidgets('blocks interaction while the loading overlay is visible',
       (tester) async {
     await pumpDesignSystemGallery(tester);
@@ -50,6 +18,38 @@ void main() {
     expect(find.text('جاري حفظ البيانات'), findsOneWidget);
   });
 
+  testWidgets('documents save update undo and delete toast colors',
+      (tester) async {
+    await pumpDesignSystemGallery(tester);
+
+    expect(find.text('رسائل التنبيه'), findsOneWidget);
+
+    const toastButtons = <String, Color>{
+      'designSaveToastButton': AppColors.blue,
+      'designUpdateToastButton': AppColors.green,
+      'designUndoToastButton': AppColors.orange,
+      'designDeleteToastButton': AppColors.red,
+    };
+
+    await reveal(
+      tester,
+      find.byKey(const Key('designSaveToastButton')),
+    );
+
+    for (final entry in toastButtons.entries) {
+      await tester.tap(find.byKey(Key(entry.key)));
+      await tester.pump();
+
+      final toast = tester.widget<SnackBar>(
+        find.byKey(const Key('appToast')),
+      );
+      expect(toast.backgroundColor, entry.value);
+
+      await tester.pump(AppToast.duration);
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+  });
+
   testWidgets('shows non-dismissible messages for two seconds', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -58,7 +58,8 @@ void main() {
           builder: (context) => Scaffold(
             body: AppButton(
               label: 'حفظ',
-              onPressed: () => AppToast.showSuccess(context, 'تم الحفظ بنجاح'),
+              onPressed: () =>
+                  AppToast.showInfo(context, 'تم الحفظ بنجاح'),
             ),
           ),
         ),

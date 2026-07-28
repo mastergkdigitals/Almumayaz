@@ -5,17 +5,53 @@ import 'package:flutter_test/flutter_test.dart';
 import 'design_system_test_harness.dart';
 
 void main() {
-  testWidgets('shows the shared sales table reference', (tester) async {
+  testWidgets('keeps the list table header fixed while rows scroll',
+      (tester) async {
     await pumpDesignSystemGallery(tester);
 
-    expect(find.text('قالب جداول التطبيق'), findsOneWidget);
+    expect(find.text('جداول التطبيق'), findsOneWidget);
+    expect(find.text('جداول القوائم والسجلات'), findsOneWidget);
+
+    final table = find.byKey(const Key('designMaterialsTable'));
+    await reveal(tester, table);
+
+    final materialCodeHeader = find.descendant(
+      of: table,
+      matching: find.text('رمز المادة'),
+    );
+    expect(materialCodeHeader, findsOneWidget);
+    expect(
+      find.descendant(of: table, matching: find.text('P-001')),
+      findsOneWidget,
+    );
+    expect(find.byTooltip('كشف'), findsWidgets);
+
+    final headerY = tester.getTopLeft(materialCodeHeader).dy;
+    final rows = find.descendant(of: table, matching: find.byType(ListView));
+    expect(rows, findsOneWidget);
+
+    await tester.drag(rows, const Offset(0, -500));
+    await tester.pump();
+
+    expect(find.text('P-012'), findsOneWidget);
+    expect(
+      tester.getTopLeft(materialCodeHeader).dy,
+      closeTo(headerY, 0.1),
+    );
+  });
+
+  testWidgets('shows sales and purchase tables on one shared foundation',
+      (tester) async {
+    await pumpDesignSystemGallery(tester);
+
+    expect(find.text('جداول إدخال الفواتير'), findsOneWidget);
     expect(find.text('جدول المبيعات'), findsOneWidget);
+    expect(find.text('جدول المشتريات'), findsOneWidget);
 
-    final tableReference =
+    final salesReference =
         find.byKey(const Key('designSalesInvoiceTable'));
-    await reveal(tester, tableReference);
+    await reveal(tester, salesReference);
 
-    expect(tableReference, findsOneWidget);
     expect(
       find.byKey(const Key('appSalesInvoiceTableTemplate')),
       findsOneWidget,
@@ -33,7 +69,15 @@ void main() {
       findsOneWidget,
     );
 
-    const fieldKeys = [
+    final salesFoundation = tester.widget<AppInvoiceFieldTable>(
+      find.descendant(
+        of: salesReference,
+        matching: find.byType(AppInvoiceFieldTable),
+      ),
+    );
+    expect(salesFoundation.accentColor, AppModulePalettes.sales.middle);
+
+    const salesFieldKeys = [
       'appSalesInvoiceTemplateCodeField-r1',
       'appSalesInvoiceTemplateNameField-r1',
       'appSalesInvoiceTemplateWarehouseDropdown-r1',
@@ -43,16 +87,16 @@ void main() {
       'appSalesInvoiceTemplatePriceAfterDiscountField-r1',
       'appSalesInvoiceTemplateTotalField-r1',
     ];
-    for (final key in fieldKeys) {
+    for (final key in salesFieldKeys) {
       expect(find.byKey(Key(key)), findsOneWidget);
     }
 
-    final table = tester.widget<Container>(
+    final salesTable = tester.widget<Container>(
       find.byKey(const Key('appSalesInvoiceTableTemplate')),
     );
-    final decoration = table.decoration! as BoxDecoration;
-    final foreground = table.foregroundDecoration! as BoxDecoration;
-    expect(table.clipBehavior, Clip.antiAlias);
+    final decoration = salesTable.decoration! as BoxDecoration;
+    final foreground = salesTable.foregroundDecoration! as BoxDecoration;
+    expect(salesTable.clipBehavior, Clip.antiAlias);
     expect(decoration.border, isNull);
     expect(
       decoration.borderRadius,
@@ -98,10 +142,10 @@ void main() {
     expect(dropdownRect.top, closeTo(codeRect.top, 0.1));
     expect(dropdownRect.bottom, closeTo(codeRect.bottom, 0.1));
 
-    final addButton =
+    final salesAddButton =
         find.byKey(const Key('appSalesInvoiceTemplateAddButton'));
-    await reveal(tester, addButton);
-    await tester.tap(addButton);
+    await reveal(tester, salesAddButton);
+    await tester.tap(salesAddButton);
     await tester.pump();
 
     expect(
@@ -114,6 +158,88 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(addButton, findsOneWidget);
+
+    final purchaseReference =
+        find.byKey(const Key('designPurchaseInvoiceTable'));
+    await reveal(tester, purchaseReference);
+
+    expect(
+      find.byKey(const Key('appPurchaseInvoiceTableTemplate')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('appPurchaseInvoiceTableHeader')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('appPurchaseInvoiceTableRow-r1')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('appPurchaseInvoiceTableSummary')),
+      findsOneWidget,
+    );
+
+    final purchaseFoundation = tester.widget<AppInvoiceFieldTable>(
+      find.descendant(
+        of: purchaseReference,
+        matching: find.byType(AppInvoiceFieldTable),
+      ),
+    );
+    expect(
+      purchaseFoundation.accentColor,
+      AppModulePalettes.purchases.middle,
+    );
+
+    for (final label in const [
+      'الحاوية',
+      'سعر الشراء',
+      'الكلفة',
+      'إجمالي الكلفة',
+      'سعر البيع',
+    ]) {
+      expect(
+        find.descendant(
+          of: purchaseReference,
+          matching: find.text(label),
+        ),
+        findsOneWidget,
+      );
+    }
+
+    const purchaseFieldKeys = [
+      'appPurchaseInvoiceTemplateCodeField-r1',
+      'appPurchaseInvoiceTemplateNameField-r1',
+      'appPurchaseInvoiceTemplateWarehouseDropdown-r1',
+      'appPurchaseInvoiceTemplateQuantityField-r1',
+      'appPurchaseInvoiceTemplateContainerField-r1',
+      'appPurchaseInvoiceTemplatePurchasePriceField-r1',
+      'appPurchaseInvoiceTemplateDiscountField-r1',
+      'appPurchaseInvoiceTemplatePriceAfterDiscountField-r1',
+      'appPurchaseInvoiceTemplateTotalField-r1',
+      'appPurchaseInvoiceTemplateCostField-r1',
+      'appPurchaseInvoiceTemplateTotalCostField-r1',
+      'appPurchaseInvoiceTemplateSalePriceField-r1',
+    ];
+    for (final key in purchaseFieldKeys) {
+      expect(find.byKey(Key(key)), findsOneWidget);
+    }
+
+    final purchaseAddButton =
+        find.byKey(const Key('appPurchaseInvoiceTemplateAddButton'));
+    await reveal(tester, purchaseAddButton);
+    await tester.tap(purchaseAddButton);
+    await tester.pump();
+
+    expect(
+      find.byKey(const Key('appPurchaseInvoiceTableRow-r2')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(
+        const Key('appPurchaseInvoiceTemplateDeleteButton-r1'),
+      ),
+      findsOneWidget,
+    );
   });
 }

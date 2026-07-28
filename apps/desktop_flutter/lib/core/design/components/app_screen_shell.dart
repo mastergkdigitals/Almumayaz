@@ -13,8 +13,6 @@ class AppScreenShell extends StatelessWidget {
     this.onBack,
     this.onSearch,
     this.onSave,
-    this.onNew,
-    this.onRefresh,
     this.actions = const [],
     this.backgroundColor,
   });
@@ -25,8 +23,6 @@ class AppScreenShell extends StatelessWidget {
   final VoidCallback? onBack;
   final VoidCallback? onSearch;
   final VoidCallback? onSave;
-  final VoidCallback? onNew;
-  final VoidCallback? onRefresh;
   final List<Widget> actions;
   final Color? backgroundColor;
 
@@ -51,8 +47,6 @@ class AppScreenShell extends StatelessWidget {
       onEscape: onBack,
       onSearch: onSearch,
       onSave: onSave,
-      onNew: onNew,
-      onRefresh: onRefresh,
       child: page,
     );
   }

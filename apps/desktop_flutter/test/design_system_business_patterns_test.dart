@@ -327,21 +327,36 @@ void main() {
     await tester.tap(transferButton);
     await tester.pump();
 
-    final transferDialog = find.byKey(const Key('designTransferDialog'));
+    final transferDialog =
+        find.byKey(const Key('inventoryTransferDialog'));
     expect(transferDialog, findsOneWidget);
+    expect(
+      find.byKey(const Key('inventoryTransferCreateTab')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('inventoryTransferHistoryTab')),
+      findsOneWidget,
+    );
     expect(find.text('من مخزن'), findsOneWidget);
     expect(find.text('إلى مخزن'), findsOneWidget);
     expect(find.text('تاريخ النقل'), findsNothing);
     expect(
-      find.byKey(const Key('designTransferSourceStock')),
+      find.byKey(const Key('inventoryTransferSourceStock')),
       findsOneWidget,
     );
     expect(
-      find.byKey(const Key('designTransferDestinationStock')),
+      find.byKey(const Key('inventoryTransferDestinationStock')),
       findsOneWidget,
     );
-    expect(find.byKey(const Key('designTransferProduct')), findsOneWidget);
-    expect(find.byKey(const Key('designTransferQuantity')), findsOneWidget);
+    expect(
+      find.byKey(const Key('inventoryTransferProductField')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('inventoryTransferQuantityField')),
+      findsOneWidget,
+    );
     expect(
       find.descendant(
         of: transferDialog,
@@ -358,12 +373,14 @@ void main() {
     );
     expect(
       tester
-          .getTopLeft(find.byKey(const Key('designTransferProduct')))
+          .getTopLeft(
+            find.byKey(const Key('inventoryTransferProductField')),
+          )
           .dy,
       lessThan(
         tester
             .getTopLeft(
-              find.byKey(const Key('designTransferSourceStock')),
+              find.byKey(const Key('inventoryTransferSourceStock')),
             )
             .dy,
       ),
@@ -371,7 +388,7 @@ void main() {
     expect(
       tester
           .widget<Row>(
-            find.byKey(const Key('designTransferDialogActions')),
+            find.byKey(const Key('inventoryTransferDialogActions')),
           )
           .mainAxisAlignment,
       MainAxisAlignment.center,
@@ -379,49 +396,55 @@ void main() {
     expect(
       tester
           .widget<AppButton>(
-            find.byKey(const Key('designTransferDialogConfirm')),
+            find.byKey(const Key('inventoryTransferExecuteButton')),
           )
           .backgroundColor,
       AppModuleColors.warehouses,
     );
     expect(
       find.descendant(
-        of: find.byKey(const Key('designTransferSourceStock')),
+        of: transferDialog,
+        matching: find.widgetWithText(AppButton, 'إغلاق'),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('inventoryTransferSourceStock')),
         matching: find.text('1,200'),
       ),
       findsOneWidget,
     );
     expect(
       find.descendant(
-        of: find.byKey(const Key('designTransferDestinationStock')),
+        of: find.byKey(const Key('inventoryTransferDestinationStock')),
         matching: find.text('80'),
       ),
       findsOneWidget,
     );
 
     await tester.tap(
-      find.byKey(const Key('designTransferDialogConfirm')),
+      find.byKey(const Key('inventoryTransferHistoryTab')),
     );
     await tester.pump();
 
     expect(
-      find.descendant(
-        of: find.byKey(const Key('designTransferSourceStock')),
-        matching: find.text('1,190'),
-      ),
+      find.byKey(const Key('inventoryTransferHistoryTable')),
       findsOneWidget,
     );
     expect(
       find.descendant(
-        of: find.byKey(const Key('designTransferDestinationStock')),
-        matching: find.text('90'),
+        of: transferDialog,
+        matching: find.byIcon(Icons.history_rounded),
       ),
+      findsWidgets,
+    );
+    expect(
+      find.byKey(const Key('inventoryTransferHistoryRefreshButton')),
       findsOneWidget,
     );
 
-    await tester.tap(
-      find.byKey(const Key('designTransferDialogCancel')),
-    );
+    await tester.tap(find.byKey(const Key('appModuleDialogClose')));
     await tester.pump();
 
     final groupsButton =

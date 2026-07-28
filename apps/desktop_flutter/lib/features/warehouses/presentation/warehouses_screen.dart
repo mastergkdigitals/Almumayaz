@@ -318,7 +318,6 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
                   ? _update
                   : null
               : _save,
-          onNew: _newWarehouse,
           body: Padding(
             padding: const EdgeInsets.all(AppSpacing.lg),
             child: Column(

@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'design_system_test_harness.dart';
 
 void main() {
-  testWidgets('shows the exact old Parties navigation and action buttons',
+  testWidgets('shows the shared navigation and action buttons',
       (tester) async {
     await pumpDesignSystemGallery(tester);
 
@@ -22,60 +22,63 @@ void main() {
       'designNavigationLast': Icons.last_page_rounded,
     };
     for (final entry in navigation.entries) {
-      final button = find.byKey(Key(entry.key));
-      final size = tester.getSize(button);
+      final finder = find.byKey(Key(entry.key));
+      final button = tester.widget<AppButton>(finder);
+      final size = tester.getSize(finder);
       expect(size.width, greaterThanOrEqualTo(104));
       expect(size.height, 52);
-      expect(
-        tester.widget<Icon>(
-          find.descendant(of: button, matching: find.byType(Icon)),
-        ).icon,
-        entry.value,
-      );
-      final decoration = tester
-          .widget<AnimatedContainer>(
-            find.descendant(
-              of: button,
-              matching: find.byType(AnimatedContainer),
-            ),
-          )
-          .decoration! as BoxDecoration;
-      expect(decoration.color, Colors.white);
-      expect((decoration.border! as Border).top.color,
-          const Color(0xFFD1D5DB));
-      expect(decoration.boxShadow, isEmpty);
+      expect(button.icon, entry.value);
+      expect(button.variant, AppButtonVariant.navigation);
+      expect(button.minWidth, 104);
+      expect(button.height, 52);
     }
 
-    const actions = <String, (IconData, Color)>{
-      'designActionSave': (Icons.add_rounded, AppColors.blue),
-      'designActionUndo': (Icons.close_rounded, AppColors.orange),
-      'designActionUpdate': (Icons.save_rounded, AppColors.green),
-      'designActionDelete': (Icons.delete_rounded, AppColors.red),
+    const actions =
+        <String, (IconData, AppButtonVariant, Color)>{
+      'designActionSave': (
+        Icons.save_rounded,
+        AppButtonVariant.primary,
+        AppColors.blue,
+      ),
+      'designActionUpdate': (
+        Icons.update_rounded,
+        AppButtonVariant.success,
+        AppColors.green,
+      ),
+      'designActionUndo': (
+        Icons.undo_rounded,
+        AppButtonVariant.warning,
+        AppColors.orange,
+      ),
+      'designActionDelete': (
+        Icons.delete_rounded,
+        AppButtonVariant.danger,
+        AppColors.red,
+      ),
     };
     for (final entry in actions.entries) {
-      final button = find.byKey(Key(entry.key));
-      final size = tester.getSize(button);
+      final finder = find.byKey(Key(entry.key));
+      final button = tester.widget<AppButton>(finder);
+      final size = tester.getSize(finder);
       expect(size.width, greaterThanOrEqualTo(108));
       expect(size.height, 52);
-      final icon = tester.widget<Icon>(
-        find.descendant(of: button, matching: find.byType(Icon)),
+      expect(button.icon, entry.value.$1);
+      expect(button.variant, entry.value.$2);
+      expect(button.iconSize, 18);
+      expect(button.minWidth, 108);
+      expect(button.textStyle?.fontSize, 16);
+      expect(button.textStyle?.fontWeight, FontWeight.w700);
+
+      final renderedButton = tester.widget<ElevatedButton>(
+        find.descendant(
+          of: finder,
+          matching: find.byType(ElevatedButton),
+        ),
       );
-      expect(icon.icon, entry.value.$1);
-      expect(icon.size, 20);
-      final decoration = tester
-          .widget<AnimatedContainer>(
-            find.descendant(
-              of: button,
-              matching: find.byType(AnimatedContainer),
-            ),
-          )
-          .decoration! as BoxDecoration;
-      expect(decoration.color, entry.value.$2);
-      final text = tester.widget<Text>(
-        find.descendant(of: button, matching: find.byType(Text)),
+      expect(
+        renderedButton.style?.backgroundColor?.resolve(<WidgetState>{}),
+        entry.value.$3,
       );
-      expect(text.style?.fontSize, 16);
-      expect(text.style?.fontWeight, FontWeight.w800);
     }
   });
 

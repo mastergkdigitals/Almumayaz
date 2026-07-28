@@ -132,14 +132,10 @@ void main() {
         matching: find.byType(AppDropdownField<String>),
       ),
     );
-    expect(
-      dropdownWidget.visualStyle,
-      AppDropdownVisualStyle.oldPurchase,
-    );
     expect(dropdownWidget.accentColor, AppModuleColors.purchases);
-    expect(dropdownWidget.textDirection, TextDirection.ltr);
-    expect(dropdownWidget.textAlign, TextAlign.center);
-    expect(dropdownWidget.menuTextDirection, TextDirection.ltr);
+    expect(dropdownWidget.textDirection, isNull);
+    expect(dropdownWidget.textAlign, TextAlign.start);
+    expect(dropdownWidget.menuTextDirection, isNull);
 
     final decorator = tester.widget<InputDecorator>(
       find.descendant(
@@ -148,41 +144,35 @@ void main() {
       ),
     );
     expect(decorator.decoration.labelText, 'العملة');
-    expect(
-      decorator.decoration.contentPadding,
-      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-    );
-    expect(
-      decorator.decoration.labelStyle,
-      const TextStyle(
-        color: Color(0xFF64748B),
-        fontSize: 18,
-        fontWeight: FontWeight.w700,
-      ),
-    );
+    expect(decorator.decoration.contentPadding, isNull);
+    expect(decorator.decoration.labelStyle, isNull);
     final enabledBorder =
         decorator.decoration.enabledBorder! as OutlineInputBorder;
     expect(
       enabledBorder.borderRadius,
-      BorderRadius.circular(14),
+      BorderRadius.circular(AppRadii.md),
     );
-    expect(enabledBorder.borderSide.color, const Color(0xFFE5E7EB));
+    expect(enabledBorder.borderSide.color, AppColors.border);
     final focusedBorder =
         decorator.decoration.focusedBorder! as OutlineInputBorder;
     expect(
       focusedBorder.borderRadius,
-      BorderRadius.circular(14),
+      BorderRadius.circular(AppRadii.md),
     );
     expect(focusedBorder.borderSide.color, AppModuleColors.purchases);
     expect(focusedBorder.borderSide.width, 1.6);
     final prefixIcon = decorator.decoration.prefixIcon! as Icon;
     expect(prefixIcon.icon, Icons.currency_exchange_rounded);
     expect(prefixIcon.color, AppModuleColors.purchases);
-    expect(prefixIcon.size, 20);
-    final suffixIcon = decorator.decoration.suffixIcon! as Icon;
-    expect(suffixIcon.icon, Icons.keyboard_arrow_down_rounded);
-    expect(suffixIcon.color, AppModuleColors.purchases);
-    expect(suffixIcon.size, 20);
+    final suffixIcon = decorator.decoration.suffixIcon!;
+    expect(suffixIcon, isA<AnimatedRotation>());
+    expect(
+      find.descendant(
+        of: dropdown,
+        matching: find.byIcon(Icons.keyboard_arrow_down_rounded),
+      ),
+      findsOneWidget,
+    );
     expect(decorator.baseStyle, isNull);
     expect(decorator.textAlign, isNull);
     expect(decorator.textAlignVertical, isNull);
@@ -201,11 +191,11 @@ void main() {
     final selectedValue = tester.widget<Text>(
       find.descendant(of: dropdown, matching: find.text('دينار')),
     );
-    expect(selectedValue.textDirection, TextDirection.ltr);
-    expect(selectedValue.textAlign, TextAlign.center);
-    expect(selectedValue.style?.color, const Color(0xFF111827));
-    expect(selectedValue.style?.fontSize, 20);
-    expect(selectedValue.style?.fontWeight, FontWeight.w700);
+    expect(selectedValue.textDirection, isNull);
+    expect(selectedValue.textAlign, TextAlign.start);
+    expect(selectedValue.style?.color, AppColors.textPrimary);
+    expect(selectedValue.style?.fontSize, 18);
+    expect(selectedValue.style?.fontWeight, FontWeight.w600);
 
     final menuAnchor = tester.widget<MenuAnchor>(
       find.ancestor(
@@ -216,13 +206,13 @@ void main() {
     final menuStyle = menuAnchor.style!;
     expect(
       menuStyle.shadowColor?.resolve(<WidgetState>{}),
-      Colors.black.withAlpha(36),
+      AppColors.menuShadow,
     );
-    expect(menuStyle.elevation?.resolve(<WidgetState>{}), 8);
+    expect(menuStyle.elevation?.resolve(<WidgetState>{}), 4);
     final menuShape = menuStyle.shape?.resolve(<WidgetState>{})
         as RoundedRectangleBorder;
-    expect(menuShape.borderRadius, BorderRadius.circular(16));
-    expect(menuShape.side.color, AppModuleColors.purchases);
+    expect(menuShape.borderRadius, BorderRadius.circular(AppRadii.md));
+    expect(menuShape.side.color, AppColors.border);
 
     await tester.tap(dropdown);
     await tester.pump();
@@ -237,22 +227,20 @@ void main() {
     expect(dollar, findsOneWidget);
     final label = tester.widget<Text>(dollar);
     expect(label.style?.fontSize, 18);
-    expect(label.style?.fontWeight, FontWeight.w700);
-    expect(label.style?.color, const Color(0xFF111827));
-    expect(label.textDirection, TextDirection.ltr);
+    expect(label.style?.fontWeight, FontWeight.w600);
+    expect(label.style?.color, AppColors.textPrimary);
 
     final selectedOption = find.widgetWithText(MenuItemButton, 'دينار');
     final selectedButton = tester.widget<MenuItemButton>(selectedOption);
     expect(
       selectedButton.style?.minimumSize?.resolve(<WidgetState>{}),
-      const Size(0, 48),
+      const Size(0, 44),
     );
     expect(
       selectedButton.style?.backgroundColor?.resolve(<WidgetState>{}),
-      Color.lerp(
-        AppModulePalettes.purchases.light,
-        Colors.white,
-        0.58,
+      Color.alphaBlend(
+        AppModuleColors.purchases.withAlpha(22),
+        AppColors.surface,
       ),
     );
     final selectedOptionLabel = tester.widget<Text>(
@@ -261,17 +249,17 @@ void main() {
         matching: find.text('دينار'),
       ),
     );
-    expect(selectedOptionLabel.style?.fontWeight, FontWeight.w800);
+    expect(selectedOptionLabel.style?.fontWeight, FontWeight.w700);
     expect(
       selectedOptionLabel.style?.color,
-      AppModulePalettes.purchases.dark,
+      AppModuleColors.purchases,
     );
     expect(
       find.descendant(
         of: selectedOption,
         matching: find.byIcon(Icons.check_rounded),
       ),
-      findsNothing,
+      findsOneWidget,
     );
 
     final dollarButton = tester.widget<MenuItemButton>(dollarOption);
@@ -279,144 +267,13 @@ void main() {
       dollarButton.style?.backgroundColor?.resolve(
         <WidgetState>{WidgetState.hovered},
       ),
-      Color.lerp(
-        AppModulePalettes.purchases.light,
-        Colors.white,
-        0.78,
-      ),
+      AppColors.controlHoverSurface,
     );
 
     await tester.tap(dollarOption);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
   });
-
-  testWidgets('compares old and current purchase fields in matching rows',
-      (tester) async {
-    await pumpDesignSystemGallery(tester);
-
-    final oldRow =
-        find.byKey(const Key('designOldPurchaseFieldsRow'));
-    final currentRow =
-        find.byKey(const Key('designCurrentPurchaseFieldsRow'));
-    await reveal(tester, currentRow);
-
-    expect(
-      find.text('مقارنة حقول وقوائم المشتريات'),
-      findsOneWidget,
-    );
-    expect(oldRow, findsOneWidget);
-    expect(currentRow, findsOneWidget);
-    expect(tester.widget<Row>(oldRow).children, hasLength(15));
-    expect(tester.widget<Row>(currentRow).children, hasLength(15));
-    expect(tester.getSize(oldRow).width, tester.getSize(currentRow).width);
-
-    for (final key in const [
-      'designOldPurchaseInvoiceField',
-      'designOldPurchaseDateField',
-      'designOldPurchaseTimeField',
-      'designOldPurchaseWarehouseDropdown',
-      'designOldPurchaseTypeDropdown',
-      'designOldPaymentTypeDropdown',
-      'designOldPurchaseCurrencyDropdown',
-      'designOldPurchaseExchangeRateField',
-      'designCurrentPurchaseInvoiceField',
-      'designCurrentPurchaseDateField',
-      'designCurrentPurchaseTimeField',
-      'designCurrentPurchaseWarehouseDropdown',
-      'designCurrentPurchaseTypeDropdown',
-      'designCurrentPaymentTypeDropdown',
-      'designCurrentPurchaseCurrencyDropdown',
-      'designCurrentPurchaseExchangeRateField',
-    ]) {
-      expect(find.byKey(Key(key)), findsOneWidget);
-    }
-
-    final oldFieldFinder = find.byKey(
-      const Key('designOldPurchaseInvoiceField'),
-    );
-    final oldField = _editableText(tester, oldFieldFinder);
-    final oldFieldDecoration = _fieldDecoration(tester, oldFieldFinder);
-    expect(oldField.style.fontSize, 20);
-    expect(oldField.style.fontWeight, FontWeight.w700);
-    expect(
-      oldFieldDecoration.labelStyle,
-      const TextStyle(
-        color: Color(0xFF64748B),
-        fontSize: 18,
-        fontWeight: FontWeight.w700,
-      ),
-    );
-    final oldBorder =
-        oldFieldDecoration.enabledBorder! as OutlineInputBorder;
-    expect(oldBorder.borderRadius, BorderRadius.circular(14));
-    expect(oldBorder.borderSide.color, const Color(0xFFE5E7EB));
-
-    final oldTime = tester.widget<InputDecorator>(
-      find.byKey(const Key('designOldPurchaseTimeField')),
-    );
-    expect(oldTime.decoration.fillColor, const Color(0xFFF1F5F9));
-    final oldTimeBorder =
-        oldTime.decoration.enabledBorder! as OutlineInputBorder;
-    expect(oldTimeBorder.borderRadius, BorderRadius.circular(16));
-    expect(oldTimeBorder.borderSide.color, const Color(0xFFDDE3EA));
-
-    AppDropdownField<String> dropdown(String key) {
-      return tester.widget<AppDropdownField<String>>(
-        find.ancestor(
-          of: find.byKey(Key(key)),
-          matching: find.byType(AppDropdownField<String>),
-        ),
-      );
-    }
-
-    expect(
-      dropdown('designOldPurchaseWarehouseDropdown').visualStyle,
-      AppDropdownVisualStyle.oldPurchase,
-    );
-    expect(
-      dropdown('designOldPurchaseWarehouseDropdown').contentPadding,
-      const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-    );
-    expect(
-      dropdown('designOldPurchaseWarehouseDropdown').textAlign,
-      TextAlign.center,
-    );
-    expect(
-      dropdown('designOldPurchaseTypeDropdown').visualStyle,
-      AppDropdownVisualStyle.oldPurchase,
-    );
-    expect(
-      dropdown('designOldPaymentTypeDropdown').visualStyle,
-      AppDropdownVisualStyle.oldPurchase,
-    );
-    expect(
-      dropdown('designOldPurchaseCurrencyDropdown').visualStyle,
-      AppDropdownVisualStyle.oldPurchase,
-    );
-    expect(
-      dropdown('designCurrentPurchaseWarehouseDropdown').visualStyle,
-      AppDropdownVisualStyle.standard,
-    );
-    expect(
-      dropdown('designCurrentPurchaseTypeDropdown').visualStyle,
-      AppDropdownVisualStyle.standard,
-    );
-    expect(
-      dropdown('designCurrentPaymentTypeDropdown').visualStyle,
-      AppDropdownVisualStyle.standard,
-    );
-    expect(
-      dropdown('designCurrentPurchaseCurrencyDropdown').visualStyle,
-      AppDropdownVisualStyle.standard,
-    );
-  });
-}
-
-EditableText _editableText(WidgetTester tester, Finder field) {
-  return tester.widget<EditableText>(
-    find.descendant(of: field, matching: find.byType(EditableText)),
-  );
 }
 
 InputDecoration _fieldDecoration(WidgetTester tester, Finder field) {

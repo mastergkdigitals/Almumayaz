@@ -347,7 +347,6 @@ class _ItemsScreenState extends State<ItemsScreen> {
                   ? _update
                   : null
               : _save,
-          onNew: _newItem,
           body: Padding(
             padding: const EdgeInsets.all(AppSpacing.lg),
             child: Column(

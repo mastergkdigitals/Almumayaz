@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/design/app_design_system.dart';
+import '../../../warehouses/domain/warehouse.dart';
+import '../../../warehouses/presentation/widgets/inventory_transfer_dialog.dart';
 import 'design_gallery_management_dialog.dart';
 import 'design_gallery_section.dart';
-import 'design_gallery_transfer_dialog.dart';
 
 class DesignGalleryBusinessDialogsSection extends StatelessWidget {
   const DesignGalleryBusinessDialogsSection({super.key});
@@ -69,6 +70,55 @@ class DesignGalleryBusinessDialogsSection extends StatelessWidget {
     ),
   ];
 
+  static const _transferWarehouses = [
+    Warehouse(
+      id: 'main',
+      number: 1,
+      name: 'المخزن الرئيسي',
+      location: 'بغداد',
+      notes: '',
+      isMain: true,
+    ),
+    Warehouse(
+      id: 'secondary',
+      number: 2,
+      name: 'المخزن الفرعي',
+      location: 'الكرادة',
+      notes: '',
+    ),
+  ];
+
+  static const _transferInventory = <String, List<WarehouseInventoryItem>>{
+    'main': [
+      WarehouseInventoryItem(
+        id: 'main-p001',
+        productCode: 'P-001',
+        productName: 'دفتر ملاحظات',
+        quantity: 1200,
+      ),
+      WarehouseInventoryItem(
+        id: 'main-p002',
+        productCode: 'P-002',
+        productName: 'قلم أزرق',
+        quantity: 450,
+      ),
+    ],
+    'secondary': [
+      WarehouseInventoryItem(
+        id: 'secondary-p001',
+        productCode: 'P-001',
+        productName: 'دفتر ملاحظات',
+        quantity: 80,
+      ),
+      WarehouseInventoryItem(
+        id: 'secondary-p002',
+        productCode: 'P-002',
+        productName: 'قلم أزرق',
+        quantity: 35,
+      ),
+    ],
+  };
+
   Future<void> _showStatement(BuildContext context) async {
     final options = await AppStatementOptionsDialog.show(
       context,
@@ -99,6 +149,31 @@ class DesignGalleryBusinessDialogsSection extends StatelessWidget {
 
     if (result != null && context.mounted) {
       AppToast.showInfo(context, 'تم اختيار قائمة الشراء رقم $result');
+    }
+  }
+
+  Future<void> _showTransfer(BuildContext context) async {
+    final transferred = await InventoryTransferDialog.show(
+      context,
+      warehouses: _transferWarehouses,
+      inventoryFor: (warehouseId) =>
+          _transferInventory[warehouseId] ?? const [],
+      onTransfer: ({
+        required String fromWarehouseId,
+        required String toWarehouseId,
+        required Map<String, int> quantitiesByProductCode,
+      }) {
+        return fromWarehouseId != toWarehouseId &&
+            quantitiesByProductCode.isNotEmpty;
+      },
+      initialFromWarehouseId: 'main',
+    );
+
+    if (transferred && context.mounted) {
+      AppToast.showInfo(
+        context,
+        'تم تنفيذ النقل المخزني مؤقتاً',
+      );
     }
   }
 
@@ -138,8 +213,7 @@ class DesignGalleryBusinessDialogsSection extends StatelessWidget {
                 label: 'النقل المخزني',
                 icon: Icons.compare_arrows_rounded,
                 variant: AppButtonVariant.secondary,
-                onPressed: () =>
-                    DesignGalleryTransferDialog.show(context),
+                onPressed: () => _showTransfer(context),
               ),
               AppButton(
                 key: const Key('designGroupsTypesDialogButton'),

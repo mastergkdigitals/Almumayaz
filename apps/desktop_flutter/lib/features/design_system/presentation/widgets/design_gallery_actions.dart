@@ -97,36 +97,16 @@ class _DesignGalleryActionsGroupState
                 style: AppTypography.sectionTitle,
               ),
               const SizedBox(height: AppSpacing.md),
-              Wrap(
-                textDirection: TextDirection.rtl,
-                spacing: AppSpacing.sm,
-                runSpacing: AppSpacing.sm,
-                children: [
-                  _OldPartyButton.navigation(
-                    key: const Key('designNavigationFirst'),
-                    label: 'الأول',
-                    icon: Icons.first_page_rounded,
-                    onPressed: _previewAction,
-                  ),
-                  _OldPartyButton.navigation(
-                    key: const Key('designNavigationPrevious'),
-                    label: 'السابق',
-                    icon: Icons.chevron_left_rounded,
-                    onPressed: _previewAction,
-                  ),
-                  _OldPartyButton.navigation(
-                    key: const Key('designNavigationNext'),
-                    label: 'التالي',
-                    icon: Icons.chevron_right_rounded,
-                    onPressed: _previewAction,
-                  ),
-                  _OldPartyButton.navigation(
-                    key: const Key('designNavigationLast'),
-                    label: 'الأخير',
-                    icon: Icons.last_page_rounded,
-                    onPressed: _previewAction,
-                  ),
-                ],
+              AppRecordNavigation(
+                firstButtonKey: const Key('designNavigationFirst'),
+                previousButtonKey:
+                    const Key('designNavigationPrevious'),
+                nextButtonKey: const Key('designNavigationNext'),
+                lastButtonKey: const Key('designNavigationLast'),
+                onFirst: _previewAction,
+                onPrevious: _previewAction,
+                onNext: _previewAction,
+                onLast: _previewAction,
               ),
               const SizedBox(height: AppSpacing.lg),
               const Text(
@@ -134,40 +114,15 @@ class _DesignGalleryActionsGroupState
                 style: AppTypography.sectionTitle,
               ),
               const SizedBox(height: AppSpacing.md),
-              Wrap(
-                textDirection: TextDirection.rtl,
-                spacing: AppSpacing.sm,
-                runSpacing: AppSpacing.sm,
-                children: [
-                  _OldPartyButton.filled(
-                    key: const Key('designActionSave'),
-                    label: 'حفظ',
-                    icon: Icons.add_rounded,
-                    color: AppColors.blue,
-                    onPressed: _previewAction,
-                  ),
-                  _OldPartyButton.filled(
-                    key: const Key('designActionUndo'),
-                    label: 'تراجع',
-                    icon: Icons.close_rounded,
-                    color: AppColors.orange,
-                    onPressed: _previewAction,
-                  ),
-                  _OldPartyButton.filled(
-                    key: const Key('designActionUpdate'),
-                    label: 'تحديث',
-                    icon: Icons.save_rounded,
-                    color: AppColors.green,
-                    onPressed: _previewAction,
-                  ),
-                  _OldPartyButton.filled(
-                    key: const Key('designActionDelete'),
-                    label: 'حذف',
-                    icon: Icons.delete_rounded,
-                    color: AppColors.red,
-                    onPressed: _previewAction,
-                  ),
-                ],
+              const AppActionButtons(
+                saveButtonKey: Key('designActionSave'),
+                updateButtonKey: Key('designActionUpdate'),
+                undoButtonKey: Key('designActionUndo'),
+                deleteButtonKey: Key('designActionDelete'),
+                onSave: _previewAction,
+                onUpdate: _previewAction,
+                onUndo: _previewAction,
+                onDelete: _previewAction,
               ),
             ],
           ),
@@ -371,216 +326,3 @@ class _DesignGalleryActionsGroupState
 }
 
 void _previewAction() {}
-
-enum _OldPartyButtonType { navigation, filled }
-
-class _OldPartyButton extends StatefulWidget {
-  const _OldPartyButton.navigation({
-    required this.label,
-    required this.icon,
-    required this.onPressed,
-    super.key,
-  })  : type = _OldPartyButtonType.navigation,
-        color = null,
-        minWidth = 104,
-        padding = const EdgeInsets.symmetric(horizontal: 14),
-        showShadow = false;
-
-  const _OldPartyButton.filled({
-    required this.label,
-    required this.icon,
-    required Color this.color,
-    required this.onPressed,
-    super.key,
-  })  : type = _OldPartyButtonType.filled,
-        minWidth = 108,
-        padding = const EdgeInsets.symmetric(horizontal: 16),
-        showShadow = true;
-
-  final String label;
-  final IconData icon;
-  final VoidCallback onPressed;
-  final _OldPartyButtonType type;
-  final Color? color;
-  final double minWidth;
-  final EdgeInsetsGeometry padding;
-  final bool showShadow;
-
-  @override
-  State<_OldPartyButton> createState() => _OldPartyButtonState();
-}
-
-class _OldPartyButtonState extends State<_OldPartyButton> {
-  bool _hovered = false;
-  bool _pressed = false;
-  bool _showFocusHighlight = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = _colors(context);
-    final background = _pressed
-        ? colors.pressedBackground
-        : _hovered
-            ? colors.hoverBackground
-            : colors.background;
-    final foreground = _pressed
-        ? colors.pressedForeground
-        : _hovered
-            ? colors.hoverForeground
-            : colors.foreground;
-    final border = _showFocusHighlight
-        ? _focusRingColor(context)
-        : _pressed
-            ? colors.pressedBorder
-            : _hovered
-                ? colors.hoverBorder
-                : colors.border;
-    final scale = _pressed
-        ? 0.94
-        : _hovered
-            ? 1.04
-            : 1.0;
-
-    return Semantics(
-      button: true,
-      enabled: true,
-      label: widget.label,
-      child: FocusableActionDetector(
-        mouseCursor: SystemMouseCursors.click,
-        onShowFocusHighlight: (value) {
-          if (_showFocusHighlight == value) return;
-          setState(() => _showFocusHighlight = value);
-        },
-        onShowHoverHighlight: (value) {
-          if (_hovered == value) return;
-          setState(() {
-            _hovered = value;
-            if (!value) _pressed = false;
-          });
-        },
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: widget.onPressed,
-          onTapDown: (_) => setState(() => _pressed = true),
-          onTapUp: (_) => setState(() => _pressed = false),
-          onTapCancel: () => setState(() => _pressed = false),
-          child: AnimatedScale(
-            scale: scale,
-            duration: const Duration(milliseconds: 130),
-            curve: Curves.easeOutCubic,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 160),
-              curve: Curves.easeOutCubic,
-              height: 52,
-              constraints: BoxConstraints(minWidth: widget.minWidth),
-              padding: widget.padding,
-              decoration: BoxDecoration(
-                color: background,
-                border: Border.all(color: border),
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  if (widget.showShadow && (_hovered || _pressed))
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.08),
-                      blurRadius: _pressed ? 8 : 14,
-                      offset: Offset(0, _pressed ? 3 : 7),
-                    ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(widget.icon, color: foreground, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    widget.label,
-                    style: TextStyle(
-                      color: foreground,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  _OldPartyButtonColors _colors(BuildContext context) {
-    if (widget.type == _OldPartyButtonType.filled) {
-      final color = widget.color!;
-      return _OldPartyButtonColors(
-        background: color,
-        hoverBackground: Color.lerp(color, Colors.white, 0.10)!,
-        pressedBackground: Color.lerp(color, Colors.black, 0.10)!,
-        foreground: Colors.white,
-        hoverForeground: Colors.white,
-        pressedForeground: Colors.white,
-        border: Colors.transparent,
-        hoverBorder: Colors.transparent,
-        pressedBorder: Colors.transparent,
-      );
-    }
-
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final foreground = isDark
-        ? const Color(0xFFF9FAFB)
-        : const Color(0xFF111827);
-    final border = isDark
-        ? const Color(0xFF334155)
-        : const Color(0xFFD1D5DB);
-    final background = isDark ? const Color(0xFF111827) : Colors.white;
-    final pressedBackground = isDark
-        ? const Color(0xFF1F2937)
-        : const Color(0xFFF8FAFC);
-    final outline = isDark
-        ? const Color(0xFFE5E7EB)
-        : const Color(0xFF111827);
-
-    return _OldPartyButtonColors(
-      background: background,
-      hoverBackground: background,
-      pressedBackground: pressedBackground,
-      foreground: foreground,
-      hoverForeground: foreground,
-      pressedForeground: foreground,
-      border: border,
-      hoverBorder: outline,
-      pressedBorder: outline,
-    );
-  }
-
-  Color _focusRingColor(BuildContext context) {
-    return Theme.of(context).brightness == Brightness.dark
-        ? const Color(0xFF60A5FA)
-        : AppColors.blue;
-  }
-}
-
-class _OldPartyButtonColors {
-  const _OldPartyButtonColors({
-    required this.background,
-    required this.hoverBackground,
-    required this.pressedBackground,
-    required this.foreground,
-    required this.hoverForeground,
-    required this.pressedForeground,
-    required this.border,
-    required this.hoverBorder,
-    required this.pressedBorder,
-  });
-
-  final Color background;
-  final Color hoverBackground;
-  final Color pressedBackground;
-  final Color foreground;
-  final Color hoverForeground;
-  final Color pressedForeground;
-  final Color border;
-  final Color hoverBorder;
-  final Color pressedBorder;
-}

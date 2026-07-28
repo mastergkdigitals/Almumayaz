@@ -48,8 +48,6 @@ void main() {
   testWidgets('handles the global keyboard shortcuts', (tester) async {
     var searches = 0;
     var saves = 0;
-    var creates = 0;
-    var refreshes = 0;
     var escapes = 0;
 
     await tester.pumpWidget(
@@ -57,8 +55,6 @@ void main() {
         home: AppShortcutScope(
           onSearch: () => searches++,
           onSave: () => saves++,
-          onNew: () => creates++,
-          onRefresh: () => refreshes++,
           onEscape: () => escapes++,
           child: const Scaffold(body: Text('اختبار')),
         ),
@@ -68,15 +64,11 @@ void main() {
 
     await _sendControlShortcut(tester, LogicalKeyboardKey.keyF);
     await _sendControlShortcut(tester, LogicalKeyboardKey.keyS);
-    await _sendControlShortcut(tester, LogicalKeyboardKey.keyN);
-    await tester.sendKeyEvent(LogicalKeyboardKey.f5);
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pump();
 
     expect(searches, 1);
     expect(saves, 1);
-    expect(creates, 1);
-    expect(refreshes, 1);
     expect(escapes, 1);
   });
 
