@@ -130,7 +130,6 @@ class _SalesScreenState extends State<SalesScreen> {
                     label: 'المخزن',
                     icon: Icons.warehouse_rounded,
                     accentColor: AppModuleColors.sales,
-                    useIntrinsicHeight: true,
                     value: _warehouse,
                     options: _salesWarehouseOptions,
                     onChanged: (value) {
@@ -143,7 +142,6 @@ class _SalesScreenState extends State<SalesScreen> {
                     label: 'نوع البيع',
                     icon: Icons.point_of_sale_rounded,
                     accentColor: AppModuleColors.sales,
-                    useIntrinsicHeight: true,
                     value: _saleType,
                     options: _salesTypeOptions,
                     onChanged: (value) {
@@ -156,7 +154,6 @@ class _SalesScreenState extends State<SalesScreen> {
                     label: 'العملة',
                     icon: Icons.currency_exchange_rounded,
                     accentColor: AppModuleColors.sales,
-                    useIntrinsicHeight: true,
                     value: _currency,
                     options: _salesCurrencyOptions,
                     onChanged: (value) {
