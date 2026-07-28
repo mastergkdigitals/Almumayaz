@@ -138,7 +138,22 @@ void main() {
       expect(button.tooltip, entry.value.$2);
       expect(tester.getSize(finder), const Size.square(52));
     }
+    expect(
+      tester
+          .widget<AppHeaderIconButton>(
+            find.byKey(const Key('salesInstallmentsButton')),
+          )
+          .onPressed,
+      isNull,
+    );
     _expectRightToLeftOrder(tester, invoiceButtons.keys.toList());
+
+    expect(_fieldValue(tester, 'salesInvoiceNumberField'), '103');
+    expect(_fieldValue(tester, 'salesCustomerNameField'), 'أسواق دجلة');
+    expect(
+      _fieldValue(tester, 'appSalesInvoiceTemplateNameField-r1'),
+      'دفتر ملاحظات',
+    );
 
     for (final key in const [
       'salesFirstButton',
@@ -173,6 +188,68 @@ void main() {
 
     expect(find.byKey(const Key('salesScreen')), findsNothing);
     expect(find.byKey(const Key('dashboardCard_sales')), findsOneWidget);
+  });
+
+  testWidgets('updates installments availability and total currency labels',
+      (tester) async {
+    await _openSalesScreen(tester);
+
+    AppHeaderIconButton installmentsButton() {
+      return tester.widget<AppHeaderIconButton>(
+        find.byKey(const Key('salesInstallmentsButton')),
+      );
+    }
+
+    expect(installmentsButton().onPressed, isNull);
+    expect(_fieldLabel(tester, 'salesTotalIqdField'), 'المجموع دينار');
+    expect(
+      _fieldLabel(tester, 'salesRemainingIqdField'),
+      'المتبقي دينار',
+    );
+    expect(
+      _fieldLabel(tester, 'salesCurrentBalanceIqdField'),
+      'الرصيد الحالي دينار',
+    );
+
+    final saleTypeDropdown = tester.widget<AppDropdownField<String>>(
+      find.ancestor(
+        of: find.byKey(const Key('salesTypeField')),
+        matching: find.byType(AppDropdownField<String>),
+      ),
+    );
+    saleTypeDropdown.onChanged('أقساط');
+    await tester.pump();
+    expect(installmentsButton().onPressed, isNotNull);
+
+    final currencyDropdown = tester.widget<AppDropdownField<String>>(
+      find.ancestor(
+        of: find.byKey(const Key('salesCurrencyField')),
+        matching: find.byType(AppDropdownField<String>),
+      ),
+    );
+    currencyDropdown.onChanged('USD');
+    await tester.pump();
+
+    expect(_fieldLabel(tester, 'salesTotalIqdField'), 'المجموع دولار');
+    expect(
+      _fieldLabel(tester, 'salesRemainingIqdField'),
+      'المتبقي دولار',
+    );
+    expect(
+      _fieldLabel(tester, 'salesCurrentBalanceIqdField'),
+      'الرصيد الحالي دولار',
+    );
+
+    tester
+        .widget<AppDropdownField<String>>(
+          find.ancestor(
+            of: find.byKey(const Key('salesTypeField')),
+            matching: find.byType(AppDropdownField<String>),
+          ),
+        )
+        .onChanged('نقدي');
+    await tester.pump();
+    expect(installmentsButton().onPressed, isNull);
   });
 
   testWidgets('uses the Sales color in the shared date picker',
@@ -251,6 +328,48 @@ void main() {
     expect(dialog, findsNothing);
   });
 
+  testWidgets('loads a complete demo invoice from Sales search',
+      (tester) async {
+    await _openSalesScreen(tester);
+
+    await tester.tap(find.byKey(const Key('salesSearchButton')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('salesRecordSearchField')),
+      '102',
+    );
+    await tester.pump();
+    await tester.tap(
+      find.byKey(const Key('salesRecordSearchResult-0')),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+
+    expect(_fieldValue(tester, 'salesInvoiceNumberField'), '102');
+    expect(_fieldValue(tester, 'salesCustomerNameField'), 'أحمد كريم');
+    expect(_fieldValue(tester, 'salesReceivedField'), '250');
+    expect(_fieldLabel(tester, 'salesTotalIqdField'), 'المجموع دولار');
+    expect(
+      tester
+          .widget<AppHeaderIconButton>(
+            find.byKey(const Key('salesInstallmentsButton')),
+          )
+          .onPressed,
+      isNotNull,
+    );
+
+    final tableValues = tester
+        .widgetList<EditableText>(
+          find.descendant(
+            of: find.byKey(const Key('salesItemsTable')),
+            matching: find.byType(EditableText),
+          ),
+        )
+        .map((field) => field.controller.text);
+    expect(tableValues, contains('طابعة حرارية'));
+    expect(tableValues, contains('ماسح باركود'));
+  });
+
   testWidgets('opens sales statement options and report', (tester) async {
     await _openSalesScreen(tester);
 
@@ -318,6 +437,30 @@ void main() {
       findsOneWidget,
     );
   });
+}
+
+String _fieldValue(WidgetTester tester, String key) {
+  return tester
+      .widget<EditableText>(
+        find.descendant(
+          of: find.byKey(Key(key)),
+          matching: find.byType(EditableText),
+        ),
+      )
+      .controller
+      .text;
+}
+
+String? _fieldLabel(WidgetTester tester, String key) {
+  return tester
+      .widget<TextField>(
+        find.descendant(
+          of: find.byKey(Key(key)),
+          matching: find.byType(TextField),
+        ),
+      )
+      .decoration
+      ?.labelText;
 }
 
 void _expectRightToLeftOrder(
