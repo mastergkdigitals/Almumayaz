@@ -130,7 +130,7 @@ class AppTextField extends StatelessWidget {
       ),
     );
 
-    return TextFormField(
+    final field = TextFormField(
       key: fieldKey,
       controller: controller,
       focusNode: focusNode,
@@ -171,6 +171,20 @@ class AppTextField extends StatelessWidget {
         disabledBorder: restingBorder,
         focusedBorder: focusedBorder,
       ),
+    );
+
+    final needsVariableHeight = helperText != null ||
+        errorText != null ||
+        validator != null ||
+        minLines != null ||
+        maxLines != 1 ||
+        maxLength != null;
+
+    if (needsVariableHeight) return field;
+
+    return SizedBox(
+      height: AppControlHeights.large,
+      child: field,
     );
   }
 }
