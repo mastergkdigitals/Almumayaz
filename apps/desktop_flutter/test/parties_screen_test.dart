@@ -463,6 +463,60 @@ void main() {
     expect(_fieldText(tester, name), 'أحمد كريم');
   });
 
+  testWidgets('opens statement options and report from a party row',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(const AlmumayazApp());
+    await _login(tester);
+    await tester.tap(find.byKey(const Key('dashboardCard_parties')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const Key('partyStatement_party-001')),
+    );
+    await tester.pumpAndSettle();
+
+    final optionsDialog =
+        find.byKey(const Key('appStatementOptionsDialog'));
+    expect(optionsDialog, findsOneWidget);
+    expect(
+      tester.widget<AppModuleDialog>(optionsDialog).accentColor,
+      AppModuleColors.parties,
+    );
+    expect(
+      _fieldText(tester, find.byKey(const Key('appStatementParty'))),
+      'شركة النخيل للتجارة',
+    );
+    expect(
+      _fieldDecoration(
+        tester,
+        find.byKey(const Key('appStatementParty')),
+      ).labelText,
+      'اسم الطرف',
+    );
+
+    await tester.tap(find.byKey(const Key('appStatementConfirm')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+
+    final report = find.byKey(const Key('appStatementReportDialog'));
+    expect(report, findsOneWidget);
+    expect(
+      tester.widget<AppModuleDialog>(report).accentColor,
+      AppModuleColors.parties,
+    );
+    expect(
+      find.descendant(
+        of: report,
+        matching: find.text('شركة النخيل للتجارة'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('appStatementReportTable')), findsOneWidget);
+  });
+
   testWidgets('matches the old action-bar navigation boundaries',
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
