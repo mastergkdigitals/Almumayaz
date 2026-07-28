@@ -14,6 +14,28 @@ const _salesInvoiceWarehouseOptions = <AppDropdownOption<String>>[
   AppDropdownOption(value: 'المنصور', label: 'المنصور'),
 ];
 
+class AppSalesInvoiceTableRowData {
+  const AppSalesInvoiceTableRowData({
+    this.code = '',
+    this.name = '',
+    this.warehouse = 'الرئيسي',
+    this.quantity = '0',
+    this.salePrice = '0',
+    this.discount = '0',
+    this.priceAfterDiscount = '0',
+    this.total = '0',
+  });
+
+  final String code;
+  final String name;
+  final String warehouse;
+  final String quantity;
+  final String salePrice;
+  final String discount;
+  final String priceAfterDiscount;
+  final String total;
+}
+
 final _salesInvoiceTableHeaderColor = Color.lerp(
   AppModulePalettes.sales.light,
   Colors.white,
@@ -47,23 +69,28 @@ class _SalesInvoiceTemplateRow {
   _SalesInvoiceTemplateRow({
     required this.id,
     required int index,
-  }) : indexController = TextEditingController(text: '$index');
+    required AppSalesInvoiceTableRowData data,
+  }) : indexController = TextEditingController(text: '$index'),
+        codeController = TextEditingController(text: data.code),
+        nameController = TextEditingController(text: data.name),
+        quantityController = TextEditingController(text: data.quantity),
+        salePriceController = TextEditingController(text: data.salePrice),
+        discountController = TextEditingController(text: data.discount),
+        priceAfterDiscountController =
+            TextEditingController(text: data.priceAfterDiscount),
+        totalController = TextEditingController(text: data.total),
+        warehouse = data.warehouse;
 
   final String id;
   final TextEditingController indexController;
-  final TextEditingController codeController = TextEditingController();
-  final TextEditingController nameController = TextEditingController();
-  final TextEditingController quantityController =
-      TextEditingController(text: '0');
-  final TextEditingController salePriceController =
-      TextEditingController(text: '0');
-  final TextEditingController discountController =
-      TextEditingController(text: '0');
-  final TextEditingController priceAfterDiscountController =
-      TextEditingController(text: '0');
-  final TextEditingController totalController =
-      TextEditingController(text: '0');
-  String warehouse = 'الرئيسي';
+  final TextEditingController codeController;
+  final TextEditingController nameController;
+  final TextEditingController quantityController;
+  final TextEditingController salePriceController;
+  final TextEditingController discountController;
+  final TextEditingController priceAfterDiscountController;
+  final TextEditingController totalController;
+  String warehouse;
 
   void setIndex(int value) {
     indexController.text = '$value';
@@ -82,7 +109,20 @@ class _SalesInvoiceTemplateRow {
 }
 
 class AppSalesInvoiceTableTemplate extends StatefulWidget {
-  const AppSalesInvoiceTableTemplate({super.key});
+  const AppSalesInvoiceTableTemplate({
+    super.key,
+    this.initialRows = const [],
+    this.dataVersion,
+    this.summaryQuantity = '0',
+    this.summaryDiscount = '0',
+    this.summaryTotal = '0',
+  });
+
+  final List<AppSalesInvoiceTableRowData> initialRows;
+  final Object? dataVersion;
+  final String summaryQuantity;
+  final String summaryDiscount;
+  final String summaryTotal;
 
   @override
   State<AppSalesInvoiceTableTemplate> createState() =>
@@ -92,19 +132,49 @@ class AppSalesInvoiceTableTemplate extends StatefulWidget {
 class _AppSalesInvoiceTableTemplateState
     extends State<AppSalesInvoiceTableTemplate> {
   final _tableScrollController = ScrollController();
-  late final List<_SalesInvoiceTemplateRow> _rows;
+  late List<_SalesInvoiceTemplateRow> _rows;
   var _nextRowId = 1;
 
   @override
   void initState() {
     super.initState();
-    _rows = [_newRow(1)];
+    _rows = _createRows(widget.initialRows);
   }
 
-  _SalesInvoiceTemplateRow _newRow(int index) {
+  @override
+  void didUpdateWidget(covariant AppSalesInvoiceTableTemplate oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.dataVersion == widget.dataVersion) return;
+
+    final oldRows = _rows;
+    _rows = _createRows(widget.initialRows);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      for (final row in oldRows) {
+        row.dispose();
+      }
+    });
+  }
+
+  List<_SalesInvoiceTemplateRow> _createRows(
+    List<AppSalesInvoiceTableRowData> rows,
+  ) {
+    if (rows.isEmpty) return [_newRow(1)];
+
+    return [
+      for (var index = 0; index < rows.length; index++)
+        _newRow(index + 1, rows[index]),
+    ];
+  }
+
+  _SalesInvoiceTemplateRow _newRow(
+    int index, [
+    AppSalesInvoiceTableRowData data =
+        const AppSalesInvoiceTableRowData(),
+  ]) {
     return _SalesInvoiceTemplateRow(
       id: 'r${_nextRowId++}',
       index: index,
+      data: data,
     );
   }
 
@@ -158,6 +228,9 @@ class _AppSalesInvoiceTableTemplateState
       onAddRow: _addRow,
       onDeleteRow: _removeRow,
       onWarehouseChanged: _changeWarehouse,
+      summaryQuantity: widget.summaryQuantity,
+      summaryDiscount: widget.summaryDiscount,
+      summaryTotal: widget.summaryTotal,
     );
   }
 }
@@ -169,6 +242,9 @@ class _SalesInvoiceFieldTableTemplate extends StatelessWidget {
     required this.onAddRow,
     required this.onDeleteRow,
     required this.onWarehouseChanged,
+    required this.summaryQuantity,
+    required this.summaryDiscount,
+    required this.summaryTotal,
   });
 
   final List<_SalesInvoiceTemplateRow> rows;
@@ -179,6 +255,9 @@ class _SalesInvoiceFieldTableTemplate extends StatelessWidget {
     _SalesInvoiceTemplateRow row,
     String? value,
   ) onWarehouseChanged;
+  final String summaryQuantity;
+  final String summaryDiscount;
+  final String summaryTotal;
 
   @override
   Widget build(BuildContext context) {
@@ -255,7 +334,12 @@ class _SalesInvoiceFieldTableTemplate extends StatelessWidget {
                       ),
                     ),
                   ),
-                  _SalesInvoiceTableSummary(columns: columns),
+                  _SalesInvoiceTableSummary(
+                    columns: columns,
+                    quantity: summaryQuantity,
+                    discount: summaryDiscount,
+                    total: summaryTotal,
+                  ),
                 ],
               ),
             ),
@@ -553,9 +637,17 @@ class _SalesInvoiceTableCell extends StatelessWidget {
 }
 
 class _SalesInvoiceTableSummary extends StatelessWidget {
-  const _SalesInvoiceTableSummary({required this.columns});
+  const _SalesInvoiceTableSummary({
+    required this.columns,
+    required this.quantity,
+    required this.discount,
+    required this.total,
+  });
 
   final List<_SalesInvoiceTableColumn> columns;
+  final String quantity;
+  final String discount;
+  final String total;
 
   @override
   Widget build(BuildContext context) {
@@ -564,11 +656,11 @@ class _SalesInvoiceTableSummary extends StatelessWidget {
       '',
       'المجموع',
       '',
-      '0',
+      quantity,
       '',
-      '0',
+      discount,
       '',
-      '0',
+      total,
       '',
     ];
 
