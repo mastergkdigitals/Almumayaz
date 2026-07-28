@@ -400,7 +400,6 @@ class _SalesInvoiceTableFieldRow extends StatelessWidget {
                 value: row.warehouse,
                 options: _salesInvoiceWarehouseOptions,
                 onChanged: onWarehouseChanged,
-                useIntrinsicHeight: true,
                 showLabel: false,
                 borderRadius: AppRadii.sm,
               ),
