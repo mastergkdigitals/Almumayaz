@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/design/app_design_system.dart';
@@ -190,18 +192,6 @@ final _demoSalesInvoices = <_DemoSalesInvoice>[
   ),
 ];
 
-final _salesSearchRecords = <AppSearchRecord<String>>[
-  for (final invoice in _demoSalesInvoices)
-    AppSearchRecord(
-      value: invoice.id,
-      title: 'قائمة بيع رقم ${invoice.id}',
-      subtitle: invoice.customerName,
-      details: invoice.searchDetails,
-      searchTerms: invoice.searchTerms,
-      icon: Icons.point_of_sale_rounded,
-    ),
-];
-
 class _DemoSalesInvoice {
   const _DemoSalesInvoice({
     required this.id,
@@ -270,21 +260,71 @@ class _SalesScreenState extends State<SalesScreen> {
   final _remainingIqdController = TextEditingController(text: '0');
   final _currentBalanceIqdController = TextEditingController(text: '0');
 
+  late final List<_DemoSalesInvoice> _salesInvoices;
   late DateTime _invoiceDateTime;
-  late _DemoSalesInvoice _selectedDemoInvoice;
+  _DemoSalesInvoice? _selectedInvoice;
+  List<AppSalesInvoiceTableRowData> _activeItems = const [];
   var _warehouse = 'الرئيسي';
   var _saleType = 'نقدي';
   var _currency = 'IQD';
+  var _summaryQuantity = '0';
+  var _summaryDiscount = '0';
+  var _summaryTotal = '0';
   var _tableDataVersion = 0;
+  late _SalesFormSnapshot _baseline;
+  var _isApplyingFormState = false;
+  var _hasUnsavedChanges = false;
+
+  Iterable<TextEditingController> get _editableControllers => [
+        _exchangeRateController,
+        _customerNameController,
+        _notesController,
+        _driverNameController,
+        _invoiceDiscountController,
+        _discountPercentageController,
+        _receivedController,
+      ];
+
+  int get _selectedInvoiceIndex {
+    final selectedId = _selectedInvoice?.id;
+    if (selectedId == null) return -1;
+    return _salesInvoices.indexWhere((invoice) => invoice.id == selectedId);
+  }
+
+  int get _nextInvoiceNumber {
+    var highestNumber = 0;
+    for (final invoice in _salesInvoices) {
+      final number = int.tryParse(invoice.id) ?? 0;
+      if (number > highestNumber) highestNumber = number;
+    }
+    return highestNumber + 1;
+  }
+
+  List<AppSearchRecord<String>> get _salesSearchRecords => [
+        for (final invoice in _salesInvoices)
+          AppSearchRecord(
+            value: invoice.id,
+            title: 'قائمة بيع رقم ${invoice.id}',
+            subtitle: invoice.customerName,
+            details: invoice.searchDetails,
+            searchTerms: invoice.searchTerms,
+            icon: Icons.point_of_sale_rounded,
+          ),
+      ];
 
   @override
   void initState() {
     super.initState();
-    _applyDemoInvoice(_demoSalesInvoices.first);
+    _salesInvoices = [..._demoSalesInvoices];
+    _loadInvoice(_salesInvoices.first);
+    for (final controller in _editableControllers) {
+      controller.addListener(_refreshUnsavedState);
+    }
   }
 
-  void _applyDemoInvoice(_DemoSalesInvoice invoice) {
-    _selectedDemoInvoice = invoice;
+  void _loadInvoice(_DemoSalesInvoice invoice) {
+    _isApplyingFormState = true;
+    _selectedInvoice = invoice;
     _invoiceNumberController.text = invoice.id;
     _invoiceDateTime = invoice.dateTime;
     _warehouse = invoice.warehouse;
@@ -300,7 +340,89 @@ class _SalesScreenState extends State<SalesScreen> {
     _totalIqdController.text = invoice.total;
     _remainingIqdController.text = invoice.remaining;
     _currentBalanceIqdController.text = invoice.currentBalance;
+    _activeItems = List<AppSalesInvoiceTableRowData>.unmodifiable(
+      invoice.items,
+    );
+    _summaryQuantity = invoice.summaryQuantity;
+    _summaryDiscount = invoice.summaryDiscount;
+    _summaryTotal = invoice.summaryTotal;
     _tableDataVersion++;
+    _isApplyingFormState = false;
+    _baseline = _currentSnapshot();
+    _hasUnsavedChanges = false;
+  }
+
+  void _setNewForm() {
+    _isApplyingFormState = true;
+    _selectedInvoice = null;
+    _invoiceNumberController.text = '$_nextInvoiceNumber';
+    _invoiceDateTime = DateTime.now();
+    _warehouse = _salesWarehouseOptions.first.value;
+    _saleType = _salesTypeOptions.first.value;
+    _currency = _salesCurrencyOptions.first.value;
+    _exchangeRateController.text = '1,310';
+    _customerNameController.clear();
+    _notesController.clear();
+    _driverNameController.clear();
+    _invoiceDiscountController.text = '0';
+    _discountPercentageController.text = '0';
+    _receivedController.text = '0';
+    _totalIqdController.text = '0';
+    _remainingIqdController.text = '0';
+    _currentBalanceIqdController.text = '0';
+    _activeItems = const [AppSalesInvoiceTableRowData()];
+    _summaryQuantity = '0';
+    _summaryDiscount = '0';
+    _summaryTotal = '0';
+    _tableDataVersion++;
+    _isApplyingFormState = false;
+    _baseline = _currentSnapshot();
+    _hasUnsavedChanges = false;
+  }
+
+  _SalesFormSnapshot _currentSnapshot() => (
+        invoiceDateTime: _invoiceDateTime,
+        warehouse: _warehouse,
+        saleType: _saleType,
+        currency: _currency,
+        exchangeRate: _exchangeRateController.text,
+        customerName: _customerNameController.text,
+        notes: _notesController.text,
+        driverName: _driverNameController.text,
+        invoiceDiscount: _invoiceDiscountController.text,
+        discountPercentage: _discountPercentageController.text,
+        received: _receivedController.text,
+        itemsSignature: _itemsSignature(_activeItems),
+      );
+
+  String _itemsSignature(
+    Iterable<AppSalesInvoiceTableRowData> items,
+  ) {
+    return items
+        .map(
+          (item) => [
+            item.code,
+            item.name,
+            item.warehouse,
+            item.quantity,
+            item.salePrice,
+            item.discount,
+            item.priceAfterDiscount,
+            item.total,
+          ].join('\u001f'),
+        )
+        .join('\u001e');
+  }
+
+  void _refreshUnsavedState() {
+    if (_isApplyingFormState || !mounted) return;
+    final hasUnsavedChanges = _currentSnapshot() != _baseline;
+    if (_hasUnsavedChanges == hasUnsavedChanges) return;
+    setState(() => _hasUnsavedChanges = hasUnsavedChanges);
+  }
+
+  void _refreshSelectionState() {
+    _hasUnsavedChanges = _currentSnapshot() != _baseline;
   }
 
   void _changeDate(DateTime value) {
@@ -312,7 +434,232 @@ class _SalesScreenState extends State<SalesScreen> {
         _invoiceDateTime.hour,
         _invoiceDateTime.minute,
       );
+      _refreshSelectionState();
     });
+  }
+
+  void _changeWarehouse(String value) {
+    if (_warehouse == value) return;
+    setState(() {
+      _warehouse = value;
+      _refreshSelectionState();
+    });
+  }
+
+  void _changeSaleType(String value) {
+    if (_saleType == value) return;
+    setState(() {
+      _saleType = value;
+      _refreshSelectionState();
+    });
+  }
+
+  void _changeCurrency(String value) {
+    if (_currency == value) return;
+    setState(() {
+      _currency = value;
+      _refreshSelectionState();
+    });
+  }
+
+  void _changeItems(List<AppSalesInvoiceTableRowData> items) {
+    setState(() {
+      _activeItems = List<AppSalesInvoiceTableRowData>.unmodifiable(items);
+      _refreshSelectionState();
+    });
+  }
+
+  Future<bool> _confirmDiscardChanges() async {
+    if (!_hasUnsavedChanges) return true;
+    return AppDialogs.confirm(
+      context: context,
+      title: 'تغييرات غير محفوظة',
+      message: 'لديك بيانات أو تعديلات غير محفوظة. هل تريد تجاهلها؟',
+      confirmLabel: 'تجاهل',
+      cancelLabel: 'البقاء',
+      isDanger: true,
+    );
+  }
+
+  void _attemptBack() {
+    unawaited(_leaveAfterConfirmation());
+  }
+
+  Future<void> _leaveAfterConfirmation() async {
+    if (!await _confirmDiscardChanges() || !mounted) return;
+    Navigator.of(context).pop();
+  }
+
+  void _navigate(_SalesNavigation destination) {
+    unawaited(_navigateAfterConfirmation(destination));
+  }
+
+  Future<void> _navigateAfterConfirmation(
+    _SalesNavigation destination,
+  ) async {
+    if (!await _confirmDiscardChanges() || !mounted) return;
+
+    if (_salesInvoices.isEmpty) {
+      setState(_setNewForm);
+      return;
+    }
+
+    final selectedIndex = _selectedInvoiceIndex;
+    final target = switch (destination) {
+      _SalesNavigation.first => _salesInvoices.first,
+      _SalesNavigation.previous => selectedIndex < 0
+          ? _salesInvoices.last
+          : _salesInvoices[selectedIndex <= 0 ? 0 : selectedIndex - 1],
+      _SalesNavigation.next => selectedIndex < 0
+          ? _salesInvoices.first
+          : selectedIndex >= _salesInvoices.length - 1
+              ? null
+              : _salesInvoices[selectedIndex + 1],
+      _SalesNavigation.last => selectedIndex == _salesInvoices.length - 1
+          ? null
+          : _salesInvoices.last,
+    };
+
+    setState(() {
+      if (target == null) {
+        _setNewForm();
+      } else {
+        _loadInvoice(target);
+      }
+    });
+  }
+
+  bool _validateForm() {
+    if (_customerNameController.text.trim().isNotEmpty) return true;
+    AppToast.showWarning(context, 'أدخل اسم الزبون أولاً');
+    return false;
+  }
+
+  _DemoSalesInvoice _invoiceFromForm({
+    required String id,
+  }) {
+    final meaningfulItemCount = _activeItems.where((item) {
+      return item.code.trim().isNotEmpty || item.name.trim().isNotEmpty;
+    }).length;
+    final date =
+        '${_twoDigits(_invoiceDateTime.day)}/'
+        '${_twoDigits(_invoiceDateTime.month)}/'
+        '${_invoiceDateTime.year}';
+    final customerName = _customerNameController.text.trim();
+    final items = List<AppSalesInvoiceTableRowData>.unmodifiable(
+      _activeItems,
+    );
+
+    return _DemoSalesInvoice(
+      id: id,
+      dateTime: _invoiceDateTime,
+      warehouse: _warehouse,
+      saleType: _saleType,
+      currency: _currency,
+      exchangeRate: _exchangeRateController.text,
+      customerName: customerName,
+      notes: _notesController.text.trim(),
+      driverName: _driverNameController.text.trim(),
+      invoiceDiscount: _invoiceDiscountController.text,
+      discountPercentage: _discountPercentageController.text,
+      received: _receivedController.text,
+      total: _totalIqdController.text,
+      remaining: _remainingIqdController.text,
+      currentBalance: _currentBalanceIqdController.text,
+      searchDetails: '$date • $meaningfulItemCount مواد',
+      searchTerms: List<String>.unmodifiable([
+        id,
+        customerName,
+        _saleType,
+        _currency == 'USD' ? 'دولار' : 'دينار',
+        for (final item in items) ...[item.code, item.name],
+      ]),
+      items: items,
+      summaryQuantity: _summaryQuantity,
+      summaryDiscount: _summaryDiscount,
+      summaryTotal: _summaryTotal,
+    );
+  }
+
+  String _twoDigits(int value) => value.toString().padLeft(2, '0');
+
+  void _save() {
+    if (!_validateForm()) return;
+    if (_selectedInvoice != null) {
+      AppToast.showWarning(
+        context,
+        'استخدم زر تحديث لتعديل قائمة البيع المحددة',
+      );
+      return;
+    }
+
+    final invoice = _invoiceFromForm(
+      id: _invoiceNumberController.text,
+    );
+    setState(() {
+      _salesInvoices.add(invoice);
+      _loadInvoice(invoice);
+    });
+    AppToast.showInfo(context, 'تم حفظ قائمة البيع مؤقتاً');
+  }
+
+  void _update() {
+    final selected = _selectedInvoice;
+    if (selected == null) {
+      AppToast.showWarning(context, 'اختر قائمة بيع لتحديثها');
+      return;
+    }
+    if (!_validateForm()) return;
+
+    final updated = _invoiceFromForm(id: selected.id);
+    final index = _salesInvoices.indexWhere(
+      (invoice) => invoice.id == selected.id,
+    );
+    if (index < 0) return;
+
+    setState(() {
+      _salesInvoices[index] = updated;
+      _loadInvoice(updated);
+    });
+    AppToast.showSuccess(context, 'تم تحديث قائمة البيع مؤقتاً');
+  }
+
+  void _undo() {
+    final selected = _selectedInvoice;
+    setState(() {
+      if (selected == null) {
+        _setNewForm();
+      } else {
+        final stored = _salesInvoices.firstWhere(
+          (invoice) => invoice.id == selected.id,
+        );
+        _loadInvoice(stored);
+      }
+    });
+    AppToast.showWarning(context, 'تم التراجع عن التغييرات');
+  }
+
+  Future<void> _delete() async {
+    final selected = _selectedInvoice;
+    if (selected == null) {
+      AppToast.showWarning(context, 'اختر قائمة بيع لحذفها');
+      return;
+    }
+
+    final confirmed = await AppDialogs.confirm(
+      context: context,
+      title: 'حذف قائمة البيع',
+      message: 'هل تريد حذف قائمة البيع رقم ${selected.id}؟',
+      confirmLabel: 'حذف',
+      isDanger: true,
+    );
+    if (!mounted || !confirmed) return;
+
+    setState(() {
+      _salesInvoices.removeWhere((invoice) => invoice.id == selected.id);
+      _setNewForm();
+    });
+    AppToast.showDanger(context, 'تم حذف قائمة البيع مؤقتاً');
   }
 
   Future<void> _showSalesSearch() async {
@@ -332,10 +679,11 @@ class _SalesScreenState extends State<SalesScreen> {
     );
 
     if (!mounted || result == null) return;
-    final invoice = _demoSalesInvoices.firstWhere(
+    final invoice = _salesInvoices.firstWhere(
       (candidate) => candidate.id == result,
     );
-    setState(() => _applyDemoInvoice(invoice));
+    if (!await _confirmDiscardChanges() || !mounted) return;
+    setState(() => _loadInvoice(invoice));
     AppToast.showInfo(context, 'تم اختيار قائمة البيع رقم $result');
   }
 
@@ -362,6 +710,9 @@ class _SalesScreenState extends State<SalesScreen> {
 
   @override
   void dispose() {
+    for (final controller in _editableControllers) {
+      controller.removeListener(_refreshUnsavedState);
+    }
     _invoiceNumberController.dispose();
     _exchangeRateController.dispose();
     _customerNameController.dispose();
@@ -378,6 +729,13 @@ class _SalesScreenState extends State<SalesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final hasSelectedInvoice = _selectedInvoice != null;
+    final selectedInvoiceIndex = _selectedInvoiceIndex;
+    final hasInvoices = _salesInvoices.isNotEmpty;
+    final canMoveToFirstOrPrevious =
+        hasInvoices && selectedInvoiceIndex != 0;
+    final canMoveToNextOrLast =
+        hasInvoices && selectedInvoiceIndex >= 0;
     final currencyName = _currency == 'USD' ? 'دولار' : 'دينار';
     final tint = Color.alphaBlend(
       AppModuleColors.sales.withAlpha(12),
@@ -388,9 +746,13 @@ class _SalesScreenState extends State<SalesScreen> {
       key: const Key('salesScreen'),
       title: 'المبيعات',
       backgroundColor: tint,
-      onBack: () => Navigator.of(context).pop(),
+      onBack: _attemptBack,
       onSearch: _showSalesSearch,
-      onSave: () {},
+      onSave: hasSelectedInvoice
+          ? _hasUnsavedChanges
+              ? _update
+              : null
+          : _save,
       body: ColoredBox(
         key: const Key('salesTintBackground'),
         color: tint,
@@ -436,7 +798,7 @@ class _SalesScreenState extends State<SalesScreen> {
                     options: _salesWarehouseOptions,
                     onChanged: (value) {
                       if (value == null) return;
-                      setState(() => _warehouse = value);
+                      _changeWarehouse(value);
                     },
                   ),
                   AppDropdownField<String>(
@@ -452,7 +814,7 @@ class _SalesScreenState extends State<SalesScreen> {
                     options: _salesTypeOptions,
                     onChanged: (value) {
                       if (value == null) return;
-                      setState(() => _saleType = value);
+                      _changeSaleType(value);
                     },
                   ),
                   AppDropdownField<String>(
@@ -468,7 +830,7 @@ class _SalesScreenState extends State<SalesScreen> {
                     options: _salesCurrencyOptions,
                     onChanged: (value) {
                       if (value == null) return;
-                      setState(() => _currency = value);
+                      _changeCurrency(value);
                     },
                   ),
                   AppTextField(
@@ -517,11 +879,12 @@ class _SalesScreenState extends State<SalesScreen> {
               Expanded(
                 child: AppSalesInvoiceTableTemplate(
                   key: const Key('salesItemsTable'),
-                  initialRows: _selectedDemoInvoice.items,
+                  initialRows: _activeItems,
                   dataVersion: _tableDataVersion,
-                  summaryQuantity: _selectedDemoInvoice.summaryQuantity,
-                  summaryDiscount: _selectedDemoInvoice.summaryDiscount,
-                  summaryTotal: _selectedDemoInvoice.summaryTotal,
+                  summaryQuantity: _summaryQuantity,
+                  summaryDiscount: _summaryDiscount,
+                  summaryTotal: _summaryTotal,
+                  onRowsChanged: _changeItems,
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
@@ -602,14 +965,24 @@ class _SalesScreenState extends State<SalesScreen> {
                 undoButtonKey: const Key('salesUndoButton'),
                 deleteButtonKey: const Key('salesDeleteButton'),
                 accentColor: AppModuleColors.sales,
-                onFirst: () {},
-                onPrevious: () {},
-                onNext: () {},
-                onLast: () {},
-                onSave: () {},
-                onUpdate: () {},
-                onUndo: () {},
-                onDelete: () {},
+                onFirst: canMoveToFirstOrPrevious
+                    ? () => _navigate(_SalesNavigation.first)
+                    : null,
+                onPrevious: canMoveToFirstOrPrevious
+                    ? () => _navigate(_SalesNavigation.previous)
+                    : null,
+                onNext: canMoveToNextOrLast
+                    ? () => _navigate(_SalesNavigation.next)
+                    : null,
+                onLast: canMoveToNextOrLast
+                    ? () => _navigate(_SalesNavigation.last)
+                    : null,
+                onSave: hasSelectedInvoice ? null : _save,
+                onUpdate: hasSelectedInvoice && _hasUnsavedChanges
+                    ? _update
+                    : null,
+                onUndo: _hasUnsavedChanges ? _undo : null,
+                onDelete: hasSelectedInvoice ? _delete : null,
               ),
             ],
           ),
@@ -726,3 +1099,20 @@ class _SalesMoneyField extends StatelessWidget {
     );
   }
 }
+
+enum _SalesNavigation { first, previous, next, last }
+
+typedef _SalesFormSnapshot = ({
+  DateTime invoiceDateTime,
+  String warehouse,
+  String saleType,
+  String currency,
+  String exchangeRate,
+  String customerName,
+  String notes,
+  String driverName,
+  String invoiceDiscount,
+  String discountPercentage,
+  String received,
+  String itemsSignature,
+});
