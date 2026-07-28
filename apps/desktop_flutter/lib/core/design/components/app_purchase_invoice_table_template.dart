@@ -337,6 +337,7 @@ class _AppPurchaseInvoiceTableTemplateState
         options: _purchaseInvoiceWarehouseOptions,
         onChanged: (value) => _changeWarehouse(row, value),
         useIntrinsicHeight: true,
+        minimumHeight: AppControlHeights.invoiceField,
         showLabel: false,
         borderRadius: AppRadii.sm,
       ),

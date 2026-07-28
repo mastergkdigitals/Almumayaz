@@ -650,13 +650,18 @@ void _expectToast(
   required Color color,
   required String message,
 }) {
+  final toastFinder = find.descendant(
+    of: find.byKey(const Key('salesScreen')),
+    matching: find.byKey(const Key('appToast')),
+  );
+  expect(toastFinder, findsOneWidget);
   final toast = tester.widget<SnackBar>(
-    find.byKey(const Key('appToast')),
+    toastFinder,
   );
   expect(toast.backgroundColor, color);
   expect(
     find.descendant(
-      of: find.byKey(const Key('appToast')),
+      of: toastFinder,
       matching: find.text(message),
     ),
     findsOneWidget,
@@ -707,9 +712,7 @@ Future<void> _openSalesScreen(WidgetTester tester) async {
   await tester.enterText(find.byKey(const Key('usernameField')), 'admin');
   await tester.enterText(find.byKey(const Key('passwordField')), 'password');
   await tester.tap(find.byKey(const Key('loginButton')));
-  await tester.pump();
-  await tester.pump(const Duration(milliseconds: 400));
+  await tester.pumpAndSettle();
   await tester.tap(find.byKey(const Key('dashboardCard_sales')));
-  await tester.pump();
-  await tester.pump(const Duration(milliseconds: 400));
+  await tester.pumpAndSettle();
 }

@@ -51,6 +51,7 @@ void main() {
       );
       expect(toast.backgroundColor, entry.value);
 
+      await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(AppToast.duration);
       await tester.pump(const Duration(milliseconds: 300));
     }

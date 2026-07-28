@@ -119,6 +119,10 @@ void main() {
       ),
     );
     expect(warehouseDropdown.useIntrinsicHeight, isTrue);
+    expect(
+      warehouseDropdown.minimumHeight,
+      AppControlHeights.invoiceField,
+    );
     expect(warehouseDropdown.showLabel, isFalse);
     expect(warehouseDropdown.borderRadius, AppRadii.sm);
 
@@ -138,6 +142,7 @@ void main() {
     );
     final codeRect = tester.getRect(codeFieldOutline);
     final dropdownRect = tester.getRect(warehouseDropdownOutline);
+    expect(codeRect.height, AppControlHeights.invoiceField);
     expect(dropdownRect.height, closeTo(codeRect.height, 0.1));
     expect(dropdownRect.top, closeTo(codeRect.top, 0.1));
     expect(dropdownRect.bottom, closeTo(codeRect.bottom, 0.1));
@@ -224,6 +229,40 @@ void main() {
     for (final key in purchaseFieldKeys) {
       expect(find.byKey(Key(key)), findsOneWidget);
     }
+
+    final purchaseWarehouseDropdown = tester.widget<AppDropdownField<String>>(
+      find.ancestor(
+        of: find.byKey(
+          const Key(
+            'appPurchaseInvoiceTemplateWarehouseDropdown-r1',
+          ),
+        ),
+        matching: find.byType(AppDropdownField<String>),
+      ),
+    );
+    expect(
+      purchaseWarehouseDropdown.minimumHeight,
+      AppControlHeights.invoiceField,
+    );
+
+    final purchaseCodeFieldOutline = find.descendant(
+      of: find.byKey(
+        const Key('appPurchaseInvoiceTemplateCodeField-r1'),
+      ),
+      matching: find.byType(InputDecorator),
+    );
+    final purchaseWarehouseDropdownOutline = find.descendant(
+      of: find.byKey(
+        const Key(
+          'appPurchaseInvoiceTemplateWarehouseDropdown-r1',
+        ),
+      ),
+      matching: find.byType(InputDecorator),
+    );
+    expect(
+      tester.getRect(purchaseWarehouseDropdownOutline).height,
+      closeTo(tester.getRect(purchaseCodeFieldOutline).height, 0.1),
+    );
 
     final purchaseAddButton =
         find.byKey(const Key('appPurchaseInvoiceTemplateAddButton'));

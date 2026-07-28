@@ -154,6 +154,7 @@ abstract final class AppRadii {
 abstract final class AppControlHeights {
   static const compact = 40.0;
   static const standard = 48.0;
+  static const invoiceField = 55.0;
   static const large = 56.0;
 }
 

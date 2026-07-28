@@ -325,7 +325,7 @@ void main() {
         find.byKey(const Key('designTransferDialogButton'));
     await reveal(tester, transferButton);
     await tester.tap(transferButton);
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     final transferDialog =
         find.byKey(const Key('inventoryTransferDialog'));

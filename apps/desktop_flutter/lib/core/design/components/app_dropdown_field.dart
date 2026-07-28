@@ -28,11 +28,12 @@ class AppDropdownField<T> extends StatefulWidget {
     this.textAlign = TextAlign.start,
     this.menuTextDirection,
     this.useIntrinsicHeight = false,
+    this.minimumHeight,
     this.contentPadding,
     this.enabled = true,
     this.showLabel = true,
     this.borderRadius,
-  });
+  }) : assert(minimumHeight == null || minimumHeight > 0);
 
   final String label;
   final List<AppDropdownOption<T>> options;
@@ -48,6 +49,7 @@ class AppDropdownField<T> extends StatefulWidget {
   final TextAlign textAlign;
   final TextDirection? menuTextDirection;
   final bool useIntrinsicHeight;
+  final double? minimumHeight;
   final EdgeInsetsGeometry? contentPadding;
   final bool enabled;
   final bool showLabel;
@@ -414,6 +416,11 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
                         isEmpty: widget.value == null,
                         isFocused: _isOpen || _focusNode.hasFocus,
                         decoration: InputDecoration(
+                          constraints: widget.minimumHeight == null
+                              ? null
+                              : BoxConstraints(
+                                  minHeight: widget.minimumHeight!,
+                                ),
                           enabled: widget.enabled,
                           labelText:
                               widget.showLabel ? widget.label : null,

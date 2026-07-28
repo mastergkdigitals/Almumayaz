@@ -70,6 +70,11 @@ class DesignGalleryFoundationsSection extends StatelessWidget {
                 height: AppRegularButton.defaultHeight,
               ),
               _ControlHeightSample(
+                key: Key('designFoundationInvoiceFieldHeight'),
+                label: 'حقل جدول الفاتورة',
+                height: AppControlHeights.invoiceField,
+              ),
+              _ControlHeightSample(
                 key: Key('designFoundationLargeHeight'),
                 label: 'كبير',
                 height: AppControlHeights.large,

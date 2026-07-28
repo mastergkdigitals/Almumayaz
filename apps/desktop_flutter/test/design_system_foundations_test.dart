@@ -73,6 +73,10 @@ void main() {
       findsOneWidget,
     );
     expect(
+      find.byKey(const Key('designFoundationInvoiceFieldHeight')),
+      findsOneWidget,
+    );
+    expect(
       find.byKey(const Key('designFoundationSpacing')),
       findsOneWidget,
     );
@@ -88,6 +92,7 @@ void main() {
       AppRegularButton.defaultHeight,
       52,
     );
+    expect(AppControlHeights.invoiceField, 55);
   });
 
   testWidgets('handles the global keyboard shortcuts', (tester) async {
