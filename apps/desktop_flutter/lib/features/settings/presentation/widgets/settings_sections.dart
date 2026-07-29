@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../../../core/design/app_design_system.dart';
 
@@ -46,14 +45,10 @@ const _settingsCashboxAccountOptions = <AppDropdownOption<String>>[
 class BusinessPoliciesSettingsSection extends StatefulWidget {
   const BusinessPoliciesSettingsSection({
     required this.accentColor,
-    required this.onChanged,
-    required this.onSaved,
     super.key,
   });
 
   final Color accentColor;
-  final VoidCallback onChanged;
-  final VoidCallback onSaved;
 
   @override
   State<BusinessPoliciesSettingsSection> createState() =>
@@ -114,7 +109,6 @@ class _BusinessPoliciesSettingsSectionState
                     inputFormatters: const [
                       AppMoneyInputFormatter(decimalPlaces: 4),
                     ],
-                    onChanged: (_) => widget.onChanged(),
                   ),
                   const SizedBox(height: AppSpacing.md),
                   AppSwitchField(
@@ -127,7 +121,6 @@ class _BusinessPoliciesSettingsSectionState
                     value: _allowInsufficientStockSale,
                     onChanged: (value) {
                       setState(() => _allowInsufficientStockSale = value);
-                      widget.onChanged();
                     },
                   ),
                 ],
@@ -153,7 +146,6 @@ class _BusinessPoliciesSettingsSectionState
                     inputFormatters: const [
                       AppMoneyInputFormatter(decimalPlaces: 0),
                     ],
-                    onChanged: (_) => widget.onChanged(),
                   ),
                   const SizedBox(height: AppSpacing.md),
                   AppTextField(
@@ -166,7 +158,6 @@ class _BusinessPoliciesSettingsSectionState
                     textAlign: TextAlign.right,
                     keyboardType: TextInputType.number,
                     inputFormatters: const [AppIntegerInputFormatter()],
-                    onChanged: (_) => widget.onChanged(),
                   ),
                   const SizedBox(height: AppSpacing.md),
                   AppSwitchField(
@@ -178,7 +169,6 @@ class _BusinessPoliciesSettingsSectionState
                     value: _overdueDebtAlerts,
                     onChanged: (value) {
                       setState(() => _overdueDebtAlerts = value);
-                      widget.onChanged();
                     },
                   ),
                 ],
@@ -198,7 +188,6 @@ class _BusinessPoliciesSettingsSectionState
             variant: AppButtonVariant.primary,
             minWidth: 215,
             onPressed: () {
-              widget.onSaved();
               AppToast.showInfo(
                 context,
                 'تم حفظ سياسات العمل والطباعة مؤقتاً',
@@ -246,7 +235,6 @@ class _BusinessPoliciesSettingsSectionState
             onChanged: (value) {
               if (value == null || value == _printer) return;
               setState(() => _printer = value);
-              widget.onChanged();
             },
           ),
           AppDropdownField<String>(
@@ -266,7 +254,6 @@ class _BusinessPoliciesSettingsSectionState
             onChanged: (value) {
               if (value == null || value == _paperSize) return;
               setState(() => _paperSize = value);
-              widget.onChanged();
             },
           ),
           AppTextField(
@@ -279,7 +266,6 @@ class _BusinessPoliciesSettingsSectionState
             textAlign: TextAlign.right,
             keyboardType: TextInputType.number,
             inputFormatters: const [AppIntegerInputFormatter()],
-            onChanged: (_) => widget.onChanged(),
           ),
           AppSwitchField(
             key: const Key('settingsPrintPreviewSwitch'),
@@ -290,7 +276,6 @@ class _BusinessPoliciesSettingsSectionState
             value: _previewEnabled,
             onChanged: (value) {
               setState(() => _previewEnabled = value);
-              widget.onChanged();
             },
           ),
         ],
@@ -302,14 +287,10 @@ class _BusinessPoliciesSettingsSectionState
 class OperationalDefaultsSettingsSection extends StatefulWidget {
   const OperationalDefaultsSettingsSection({
     required this.accentColor,
-    required this.onChanged,
-    required this.onSaved,
     super.key,
   });
 
   final Color accentColor;
-  final VoidCallback onChanged;
-  final VoidCallback onSaved;
 
   @override
   State<OperationalDefaultsSettingsSection> createState() =>
@@ -499,7 +480,6 @@ class _OperationalDefaultsSettingsSectionState
             variant: AppButtonVariant.primary,
             minWidth: 170,
             onPressed: () {
-              widget.onSaved();
               AppToast.showInfo(
                 context,
                 'تم حفظ الإعدادات الافتراضية مؤقتاً',
@@ -534,7 +514,6 @@ class _OperationalDefaultsSettingsSectionState
       onChanged: (selected) {
         if (selected == null || selected == value) return;
         onChanged(selected);
-        widget.onChanged();
       },
     );
   }
@@ -1297,14 +1276,10 @@ class _SettingsManagementPanelState
 class BackupDataSettingsSection extends StatefulWidget {
   const BackupDataSettingsSection({
     required this.accentColor,
-    required this.onChanged,
-    required this.onSaved,
     super.key,
   });
 
   final Color accentColor;
-  final VoidCallback onChanged;
-  final VoidCallback onSaved;
 
   @override
   State<BackupDataSettingsSection> createState() =>
@@ -1444,7 +1419,6 @@ class _BackupDataSettingsSectionState
                       onPressed: () {
                         _localPathController.text =
                             r'D:\Almumayaz\Backups\Local';
-                        widget.onChanged();
                         AppToast.showInfo(
                           context,
                           'تم اختيار مسار تجريبي',
@@ -1454,7 +1428,6 @@ class _BackupDataSettingsSectionState
                     accentColor: widget.accentColor,
                     textDirection: TextDirection.ltr,
                     textAlign: TextAlign.left,
-                    onChanged: (_) => widget.onChanged(),
                   ),
                   const SizedBox(height: AppSpacing.md),
                   AppSwitchField(
@@ -1466,7 +1439,6 @@ class _BackupDataSettingsSectionState
                     value: _automaticBackup,
                     onChanged: (value) {
                       setState(() => _automaticBackup = value);
-                      widget.onChanged();
                     },
                   ),
                   const SizedBox(height: AppSpacing.md),
@@ -1496,7 +1468,6 @@ class _BackupDataSettingsSectionState
                     onChanged: (value) {
                       if (value == null || value == _backupFrequency) return;
                       setState(() => _backupFrequency = value);
-                      widget.onChanged();
                     },
                   ),
                 ],
@@ -1569,7 +1540,6 @@ class _BackupDataSettingsSectionState
                     readOnly: !_driveConnected,
                     textDirection: TextDirection.rtl,
                     textAlign: TextAlign.right,
-                    onChanged: (_) => widget.onChanged(),
                   ),
                   const SizedBox(height: AppSpacing.md),
                   AppInfoBanner(
@@ -1610,7 +1580,6 @@ class _BackupDataSettingsSectionState
                 icon: Icons.save_outlined,
                 minWidth: 200,
                 onPressed: () {
-                  widget.onSaved();
                   AppToast.showInfo(
                     context,
                     'تم حفظ إعدادات النسخ مؤقتاً',
@@ -1752,16 +1721,10 @@ class _BackupHistoryEntry {
 class UsersSecuritySettingsSection extends StatefulWidget {
   const UsersSecuritySettingsSection({
     required this.accentColor,
-    required this.isActive,
-    required this.onChanged,
-    required this.onSaved,
     super.key,
   });
 
   final Color accentColor;
-  final bool isActive;
-  final VoidCallback onChanged;
-  final VoidCallback onSaved;
 
   @override
   State<UsersSecuritySettingsSection> createState() =>
@@ -1775,14 +1738,9 @@ class _UsersSecuritySettingsSectionState
   final _confirmPasswordController = TextEditingController();
   final _logSearchController = TextEditingController();
   final _logSearchFocusNode = FocusNode();
-  final _shortcutFocusNode = FocusNode(
-    debugLabel: 'settingsUsersSecurityShortcuts',
-  );
   var _selectedTab = 'users';
   var _idleLockEnabled = true;
   var _idleLockDuration = '15 دقيقة';
-  var _passwordDirty = false;
-  var _idleLockDirty = false;
   var _logType = 'الكل';
   var _nextUserId = 4;
   var _nextRoleId = 5;
@@ -1891,23 +1849,12 @@ class _UsersSecuritySettingsSectionState
   ];
 
   @override
-  void didUpdateWidget(covariant UsersSecuritySettingsSection oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!oldWidget.isActive && widget.isActive) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _shortcutFocusNode.requestFocus();
-      });
-    }
-  }
-
-  @override
   void dispose() {
     _currentPasswordController.dispose();
     _newPasswordController.dispose();
     _confirmPasswordController.dispose();
     _logSearchController.dispose();
     _logSearchFocusNode.dispose();
-    _shortcutFocusNode.dispose();
     super.dispose();
   }
 
@@ -2075,24 +2022,6 @@ class _UsersSecuritySettingsSectionState
     });
   }
 
-  void _markPasswordDirty() {
-    _passwordDirty = true;
-    widget.onChanged();
-  }
-
-  void _markIdleLockDirty() {
-    _idleLockDirty = true;
-    widget.onChanged();
-  }
-
-  void _notifySavedIfClean() {
-    if (_passwordDirty || _idleLockDirty) {
-      widget.onChanged();
-    } else {
-      widget.onSaved();
-    }
-  }
-
   void _savePassword() {
     final current = _currentPasswordController.text;
     final password = _newPasswordController.text;
@@ -2108,8 +2037,6 @@ class _UsersSecuritySettingsSectionState
     _currentPasswordController.clear();
     _newPasswordController.clear();
     _confirmPasswordController.clear();
-    _passwordDirty = false;
-    _notifySavedIfClean();
     AppToast.showSuccess(context, 'تم تغيير كلمة المرور تجريبياً');
   }
 
@@ -2167,20 +2094,9 @@ class _UsersSecuritySettingsSectionState
         ),
       ],
     );
-    return CallbackShortcuts(
-      bindings: widget.isActive
-          ? {
-              const SingleActivator(
-                LogicalKeyboardKey.keyF,
-                control: true,
-              ): _focusLogSearch,
-            }
-          : const <ShortcutActivator, VoidCallback>{},
-      child: Focus(
-        focusNode: _shortcutFocusNode,
-        autofocus: widget.isActive,
-        child: content,
-      ),
+    return AppShortcutScope(
+      onSearch: _focusLogSearch,
+      child: content,
     );
   }
 
@@ -2390,7 +2306,6 @@ class _UsersSecuritySettingsSectionState
                 obscureText: true,
                 textDirection: TextDirection.rtl,
                 textAlign: TextAlign.right,
-                onChanged: (_) => _markPasswordDirty(),
               ),
               const SizedBox(height: AppSpacing.md),
               AppTextField(
@@ -2402,7 +2317,6 @@ class _UsersSecuritySettingsSectionState
                 obscureText: true,
                 textDirection: TextDirection.rtl,
                 textAlign: TextAlign.right,
-                onChanged: (_) => _markPasswordDirty(),
               ),
               const SizedBox(height: AppSpacing.md),
               AppTextField(
@@ -2414,7 +2328,6 @@ class _UsersSecuritySettingsSectionState
                 obscureText: true,
                 textDirection: TextDirection.rtl,
                 textAlign: TextAlign.right,
-                onChanged: (_) => _markPasswordDirty(),
                 onSubmitted: (_) => _savePassword(),
               ),
               const SizedBox(height: AppSpacing.md),
@@ -2448,7 +2361,6 @@ class _UsersSecuritySettingsSectionState
                 value: _idleLockEnabled,
                 onChanged: (value) {
                   setState(() => _idleLockEnabled = value);
-                  _markIdleLockDirty();
                 },
               ),
               const SizedBox(height: AppSpacing.md),
@@ -2478,7 +2390,6 @@ class _UsersSecuritySettingsSectionState
                 onChanged: (value) {
                   if (value == null || value == _idleLockDuration) return;
                   setState(() => _idleLockDuration = value);
-                  _markIdleLockDirty();
                 },
               ),
               const SizedBox(height: AppSpacing.md),
@@ -2501,8 +2412,6 @@ class _UsersSecuritySettingsSectionState
                   icon: Icons.save_outlined,
                   minWidth: 180,
                   onPressed: () {
-                    _idleLockDirty = false;
-                    _notifySavedIfClean();
                     AppToast.showInfo(
                       context,
                       'تم حفظ إعداد القفل مؤقتاً',
@@ -3334,12 +3243,10 @@ class _SettingsUserDialogState extends State<_SettingsUserDialog> {
 class ElectronicArchiveSettingsSection extends StatefulWidget {
   const ElectronicArchiveSettingsSection({
     required this.accentColor,
-    required this.isActive,
     super.key,
   });
 
   final Color accentColor;
-  final bool isActive;
 
   @override
   State<ElectronicArchiveSettingsSection> createState() =>
@@ -3350,9 +3257,6 @@ class _ElectronicArchiveSettingsSectionState
     extends State<ElectronicArchiveSettingsSection> {
   final _searchController = TextEditingController();
   final _searchFocusNode = FocusNode(debugLabel: 'settingsArchiveSearch');
-  final _shortcutFocusNode = FocusNode(
-    debugLabel: 'settingsArchiveShortcuts',
-  );
   var _nextDocumentId = 4;
   final _documents = <_ArchiveDocument>[
     const _ArchiveDocument(
@@ -3382,20 +3286,9 @@ class _ElectronicArchiveSettingsSectionState
   ];
 
   @override
-  void didUpdateWidget(covariant ElectronicArchiveSettingsSection oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!oldWidget.isActive && widget.isActive) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _shortcutFocusNode.requestFocus();
-      });
-    }
-  }
-
-  @override
   void dispose() {
     _searchController.dispose();
     _searchFocusNode.dispose();
-    _shortcutFocusNode.dispose();
     super.dispose();
   }
 
@@ -3623,20 +3516,9 @@ class _ElectronicArchiveSettingsSectionState
         ),
       ],
     );
-    return CallbackShortcuts(
-      bindings: widget.isActive
-          ? {
-              const SingleActivator(
-                LogicalKeyboardKey.keyF,
-                control: true,
-              ): _searchFocusNode.requestFocus,
-            }
-          : const <ShortcutActivator, VoidCallback>{},
-      child: Focus(
-        focusNode: _shortcutFocusNode,
-        autofocus: widget.isActive,
-        child: content,
-      ),
+    return AppShortcutScope(
+      onSearch: _searchFocusNode.requestFocus,
+      child: content,
     );
   }
 }

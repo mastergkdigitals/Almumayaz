@@ -358,7 +358,7 @@ void main() {
     );
   });
 
-  testWidgets('preserves Settings edits and guards unsaved exit',
+  testWidgets('resets Settings demo edits and exits without a guard',
       (tester) async {
     await _openSettings(tester);
     await _openSection(tester, 'businessPolicies');
@@ -367,44 +367,23 @@ void main() {
     await tester.enterText(find.byKey(exchangeRateKey), '1,400');
     await tester.pump();
 
-    await _returnToSettingsHub(tester);
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    expect(find.byKey(const Key('settingsHub')), findsOneWidget);
     expect(
-      _hasTextFocus(
-        tester,
-        find.byKey(exchangeRateKey, skipOffstage: false),
-        skipOffstage: false,
-      ),
-      isFalse,
+      find.byKey(exchangeRateKey, skipOffstage: false),
+      findsNothing,
     );
+    expect(find.byKey(const Key('appConfirmDialog')), findsNothing);
+
     await _openSection(tester, 'businessPolicies');
     expect(
       _fieldText(tester, find.byKey(exchangeRateKey)),
-      '1,400',
+      '1,310',
     );
 
     await _returnToSettingsHub(tester);
     await tester.binding.handlePopRoute();
-    await tester.pump();
-    expect(find.byKey(const Key('appConfirmDialog')), findsOneWidget);
-    expect(find.text('مغادرة الإعدادات'), findsOneWidget);
-
-    await tester.tap(find.byKey(const Key('appDialogCancelButton')));
-    await tester.pump();
-    expect(find.byKey(const Key('settingsHub')), findsOneWidget);
-
-    await _openSection(tester, 'businessPolicies');
-    final saveButton =
-        find.byKey(const Key('settingsSaveBusinessPolicies'));
-    await Scrollable.ensureVisible(
-      tester.element(saveButton),
-      duration: Duration.zero,
-    );
-    await tester.pump();
-    await tester.tap(saveButton);
-    await tester.pump();
-
-    await _returnToSettingsHub(tester);
-    await tester.tap(find.byKey(const Key('appScreenBackButton')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('appConfirmDialog')), findsNothing);
     expect(find.byKey(const Key('settingsScreen')), findsNothing);
