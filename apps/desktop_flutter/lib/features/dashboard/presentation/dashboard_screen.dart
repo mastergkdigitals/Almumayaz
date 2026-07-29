@@ -5,6 +5,7 @@ import '../../auth/presentation/login_screen.dart';
 import '../../cashbox/presentation/cashbox_screen.dart';
 import '../../parties/presentation/parties_screen.dart';
 import '../../purchases/presentation/purchase_screen.dart';
+import '../../reports/presentation/reports_screen.dart';
 import '../../sales/presentation/sales_screen.dart';
 import '../../settings/presentation/settings_screen.dart';
 import '../../warehouses/presentation/warehouses_screen.dart';
@@ -115,6 +116,15 @@ class DashboardScreen extends StatelessWidget {
       Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => const WarehousesScreen(),
+        ),
+      );
+      return;
+    }
+
+    if (item.id == 'reports') {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => const ReportsScreen(),
         ),
       );
       return;
