@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../app_formatters.dart';
 import '../app_tokens.dart';
 import 'app_button.dart';
 import 'app_dropdown_field.dart';
@@ -48,6 +49,37 @@ class AppSalesInvoiceTableRowData {
   final String discount;
   final String priceAfterDiscount;
   final String total;
+
+  int get quantityValue => AppFormatters.parseInteger(quantity) ?? 0;
+
+  num get salePriceValue => AppFormatters.parseNumber(salePrice) ?? 0;
+
+  num get discountValue => AppFormatters.parseNumber(discount) ?? 0;
+
+  num get priceAfterDiscountValue {
+    final value = salePriceValue - discountValue;
+    return value < 0 ? 0 : value;
+  }
+
+  num get totalValue => priceAfterDiscountValue * quantityValue;
+
+  AppSalesInvoiceTableRowData withCalculatedValues(
+    String currencyCode,
+  ) {
+    return AppSalesInvoiceTableRowData(
+      code: code,
+      name: name,
+      warehouse: warehouse,
+      quantity: quantity,
+      salePrice: salePrice,
+      discount: discount,
+      priceAfterDiscount: AppFormatters.moneyByCurrency(
+        priceAfterDiscountValue,
+        currencyCode,
+      ),
+      total: AppFormatters.moneyByCurrency(totalValue, currencyCode),
+    );
+  }
 }
 
 class _SalesInvoiceTemplateRow {
@@ -101,6 +133,7 @@ class AppSalesInvoiceTableTemplate extends StatefulWidget {
     this.summaryQuantity = '0',
     this.summaryDiscount = '0',
     this.summaryTotal = '0',
+    this.currencyCode = 'IQD',
     this.onRowsChanged,
   });
 
@@ -109,6 +142,7 @@ class AppSalesInvoiceTableTemplate extends StatefulWidget {
   final String summaryQuantity;
   final String summaryDiscount;
   final String summaryTotal;
+  final String currencyCode;
   final ValueChanged<List<AppSalesInvoiceTableRowData>>? onRowsChanged;
 
   @override
@@ -131,7 +165,14 @@ class _AppSalesInvoiceTableTemplateState
   @override
   void didUpdateWidget(covariant AppSalesInvoiceTableTemplate oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.dataVersion == widget.dataVersion) return;
+    if (oldWidget.dataVersion == widget.dataVersion) {
+      if (oldWidget.currencyCode != widget.currencyCode) {
+        for (final row in _rows) {
+          _recalculateRow(row);
+        }
+      }
+      return;
+    }
 
     final oldRows = _rows;
     _rows = _createRows(widget.initialRows);
@@ -161,7 +202,7 @@ class _AppSalesInvoiceTableTemplateState
     return _SalesInvoiceTemplateRow(
       id: 'r${_nextRowId++}',
       index: index,
-      data: data,
+      data: data.withCalculatedValues(widget.currencyCode),
     );
   }
 
@@ -199,6 +240,21 @@ class _AppSalesInvoiceTableTemplateState
     if (value == null) return;
     setState(() => row.warehouse = value);
     _notifyRowsChanged();
+  }
+
+  void _changeCalculatedValue(_SalesInvoiceTemplateRow row) {
+    setState(() => _recalculateRow(row));
+    _notifyRowsChanged();
+  }
+
+  void _recalculateRow(_SalesInvoiceTemplateRow row) {
+    final data = AppSalesInvoiceTableRowData(
+      quantity: row.quantityController.text,
+      salePrice: row.salePriceController.text,
+      discount: row.discountController.text,
+    ).withCalculatedValues(widget.currencyCode);
+    row.priceAfterDiscountController.text = data.priceAfterDiscount;
+    row.totalController.text = data.total;
   }
 
   void _notifyRowsChanged() {
@@ -334,7 +390,7 @@ class _AppSalesInvoiceTableTemplateState
         keyboardType: TextInputType.number,
         inputFormatters: const [AppIntegerInputFormatter()],
         textInputAction: TextInputAction.next,
-        onChanged: (_) => _notifyRowsChanged(),
+        onChanged: (_) => _changeCalculatedValue(row),
         showLabel: false,
         borderRadius: AppRadii.sm,
       ),
@@ -349,9 +405,13 @@ class _AppSalesInvoiceTableTemplateState
         textDirection: TextDirection.ltr,
         keyboardType:
             const TextInputType.numberWithOptions(decimal: true),
-        inputFormatters: const [AppMoneyInputFormatter()],
+        inputFormatters: [
+          AppMoneyInputFormatter(
+            decimalPlaces: widget.currencyCode == 'USD' ? 2 : 0,
+          ),
+        ],
         textInputAction: TextInputAction.next,
-        onChanged: (_) => _notifyRowsChanged(),
+        onChanged: (_) => _changeCalculatedValue(row),
         showLabel: false,
         borderRadius: AppRadii.sm,
       ),
@@ -366,9 +426,13 @@ class _AppSalesInvoiceTableTemplateState
         textDirection: TextDirection.ltr,
         keyboardType:
             const TextInputType.numberWithOptions(decimal: true),
-        inputFormatters: const [AppMoneyInputFormatter()],
+        inputFormatters: [
+          AppMoneyInputFormatter(
+            decimalPlaces: widget.currencyCode == 'USD' ? 2 : 0,
+          ),
+        ],
         textInputAction: TextInputAction.next,
-        onChanged: (_) => _notifyRowsChanged(),
+        onChanged: (_) => _changeCalculatedValue(row),
         showLabel: false,
         borderRadius: AppRadii.sm,
       ),

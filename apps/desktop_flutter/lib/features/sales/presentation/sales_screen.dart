@@ -271,6 +271,9 @@ class _SalesScreenState extends State<SalesScreen> {
   var _summaryDiscount = '0';
   var _summaryTotal = '0';
   var _tableDataVersion = 0;
+  var _discountInputSource = _InvoiceDiscountInputSource.amount;
+  num _balanceBeforeInvoice = 0;
+  var _nonCashReceivedText = '0';
   late _SalesFormSnapshot _baseline;
   var _isApplyingFormState = false;
   var _hasUnsavedChanges = false;
@@ -336,16 +339,19 @@ class _SalesScreenState extends State<SalesScreen> {
     _driverNameController.text = invoice.driverName;
     _invoiceDiscountController.text = invoice.invoiceDiscount;
     _discountPercentageController.text = invoice.discountPercentage;
-    _receivedController.text = invoice.received;
-    _totalIqdController.text = invoice.total;
-    _remainingIqdController.text = invoice.remaining;
-    _currentBalanceIqdController.text = invoice.currentBalance;
+    _discountInputSource = _InvoiceDiscountInputSource.amount;
+    _balanceBeforeInvoice =
+        (AppFormatters.parseNumber(invoice.currentBalance) ?? 0) -
+            (AppFormatters.parseNumber(invoice.remaining) ?? 0);
+    _nonCashReceivedText =
+        invoice.saleType == 'نقدي' ? '0' : invoice.received;
+    _receivedController.text = _nonCashReceivedText;
     _activeItems = List<AppSalesInvoiceTableRowData>.unmodifiable(
-      invoice.items,
+      invoice.items.map(
+        (item) => item.withCalculatedValues(_currency),
+      ),
     );
-    _summaryQuantity = invoice.summaryQuantity;
-    _summaryDiscount = invoice.summaryDiscount;
-    _summaryTotal = invoice.summaryTotal;
+    _syncCalculatedFields();
     _tableDataVersion++;
     _isApplyingFormState = false;
     _baseline = _currentSnapshot();
@@ -366,14 +372,14 @@ class _SalesScreenState extends State<SalesScreen> {
     _driverNameController.clear();
     _invoiceDiscountController.text = '0';
     _discountPercentageController.text = '0';
+    _discountInputSource = _InvoiceDiscountInputSource.amount;
+    _balanceBeforeInvoice = 0;
+    _nonCashReceivedText = '0';
     _receivedController.text = '0';
-    _totalIqdController.text = '0';
-    _remainingIqdController.text = '0';
-    _currentBalanceIqdController.text = '0';
-    _activeItems = const [AppSalesInvoiceTableRowData()];
-    _summaryQuantity = '0';
-    _summaryDiscount = '0';
-    _summaryTotal = '0';
+    _activeItems = List<AppSalesInvoiceTableRowData>.unmodifiable([
+      const AppSalesInvoiceTableRowData().withCalculatedValues(_currency),
+    ]);
+    _syncCalculatedFields();
     _tableDataVersion++;
     _isApplyingFormState = false;
     _baseline = _currentSnapshot();
@@ -449,7 +455,11 @@ class _SalesScreenState extends State<SalesScreen> {
   void _changeSaleType(String value) {
     if (_saleType == value) return;
     setState(() {
+      if (_saleType != 'نقدي' && value == 'نقدي') {
+        _nonCashReceivedText = _receivedController.text;
+      }
       _saleType = value;
+      _syncCalculatedFields();
       _refreshSelectionState();
     });
   }
@@ -458,15 +468,143 @@ class _SalesScreenState extends State<SalesScreen> {
     if (_currency == value) return;
     setState(() {
       _currency = value;
+      _activeItems = List<AppSalesInvoiceTableRowData>.unmodifiable(
+        _activeItems.map(
+          (item) => item.withCalculatedValues(_currency),
+        ),
+      );
+      _tableDataVersion++;
+      _syncCalculatedFields();
       _refreshSelectionState();
     });
   }
 
   void _changeItems(List<AppSalesInvoiceTableRowData> items) {
     setState(() {
-      _activeItems = List<AppSalesInvoiceTableRowData>.unmodifiable(items);
+      _activeItems = List<AppSalesInvoiceTableRowData>.unmodifiable(
+        items.map(
+          (item) => item.withCalculatedValues(_currency),
+        ),
+      );
+      _syncCalculatedFields();
       _refreshSelectionState();
     });
+  }
+
+  void _changeInvoiceDiscount(String _) {
+    setState(() {
+      _discountInputSource = _InvoiceDiscountInputSource.amount;
+      _syncCalculatedFields();
+      _refreshSelectionState();
+    });
+  }
+
+  void _changeDiscountPercentage(String _) {
+    setState(() {
+      _discountInputSource = _InvoiceDiscountInputSource.percentage;
+      _syncCalculatedFields();
+      _refreshSelectionState();
+    });
+  }
+
+  void _changeReceived(String value) {
+    if (_saleType == 'نقدي') return;
+    setState(() {
+      _nonCashReceivedText = value;
+      _syncCalculatedFields();
+      _refreshSelectionState();
+    });
+  }
+
+  void _syncCalculatedFields() {
+    final wasApplyingFormState = _isApplyingFormState;
+    _isApplyingFormState = true;
+    try {
+      var quantity = 0;
+      num rowDiscount = 0;
+      num subtotal = 0;
+      for (final item in _activeItems) {
+        quantity += item.quantityValue;
+        rowDiscount += item.discountValue;
+        subtotal += item.totalValue;
+      }
+
+      _summaryQuantity = AppFormatters.quantity(quantity);
+      _summaryDiscount = AppFormatters.moneyByCurrency(
+        rowDiscount,
+        _currency,
+      );
+      _summaryTotal = AppFormatters.moneyByCurrency(
+        subtotal,
+        _currency,
+      );
+
+      late final num invoiceDiscount;
+      if (_discountInputSource ==
+          _InvoiceDiscountInputSource.percentage) {
+        final percentage =
+            AppFormatters.parseNumber(_discountPercentageController.text) ??
+                0;
+        invoiceDiscount = subtotal * percentage / 100;
+        _setControllerText(
+          _invoiceDiscountController,
+          AppFormatters.moneyByCurrency(invoiceDiscount, _currency),
+        );
+      } else {
+        invoiceDiscount =
+            AppFormatters.parseNumber(_invoiceDiscountController.text) ?? 0;
+        final percentage =
+            subtotal == 0 ? 0 : invoiceDiscount * 100 / subtotal;
+        _setControllerText(
+          _discountPercentageController,
+          AppFormatters.money(percentage, decimalPlaces: 2),
+        );
+      }
+
+      final discountedTotal = subtotal - invoiceDiscount;
+      final total = discountedTotal < 0 ? 0 : discountedTotal;
+      late final num received;
+      if (_saleType == 'نقدي') {
+        received = total;
+        _setControllerText(
+          _receivedController,
+          AppFormatters.moneyByCurrency(received, _currency),
+        );
+      } else {
+        _setControllerText(
+          _receivedController,
+          _nonCashReceivedText,
+        );
+        received =
+            AppFormatters.parseNumber(_receivedController.text) ?? 0;
+      }
+
+      final unpaid = total - received;
+      final remaining = unpaid < 0 ? 0 : unpaid;
+      final currentBalance = _balanceBeforeInvoice + remaining;
+      _setControllerText(
+        _totalIqdController,
+        AppFormatters.moneyByCurrency(total, _currency),
+      );
+      _setControllerText(
+        _remainingIqdController,
+        AppFormatters.moneyByCurrency(remaining, _currency),
+      );
+      _setControllerText(
+        _currentBalanceIqdController,
+        AppFormatters.moneyByCurrency(currentBalance, _currency),
+      );
+    } finally {
+      _isApplyingFormState = wasApplyingFormState;
+    }
+  }
+
+  void _setControllerText(
+    TextEditingController controller,
+    String value,
+  ) {
+    if (controller.text == value) return;
+    controller.text = value;
   }
 
   Future<bool> _confirmDiscardChanges() async {
@@ -884,6 +1022,7 @@ class _SalesScreenState extends State<SalesScreen> {
                   summaryQuantity: _summaryQuantity,
                   summaryDiscount: _summaryDiscount,
                   summaryTotal: _summaryTotal,
+                  currencyCode: _currency,
                   onRowsChanged: _changeItems,
                 ),
               ),
@@ -905,6 +1044,8 @@ class _SalesScreenState extends State<SalesScreen> {
                     controller: _invoiceDiscountController,
                     label: 'خصم الفاتورة',
                     icon: Icons.discount_rounded,
+                    decimalPlaces: _currency == 'USD' ? 2 : 0,
+                    onChanged: _changeInvoiceDiscount,
                   ),
                   _SalesMoneyField(
                     fieldKey: const Key('salesDiscountPercentageField'),
@@ -912,12 +1053,16 @@ class _SalesScreenState extends State<SalesScreen> {
                     label: 'نسبة الخصم',
                     icon: Icons.percent_rounded,
                     decimalPlaces: 2,
+                    onChanged: _changeDiscountPercentage,
                   ),
                   _SalesMoneyField(
                     fieldKey: const Key('salesReceivedField'),
                     controller: _receivedController,
                     label: 'المقبوض',
                     icon: Icons.payments_rounded,
+                    decimalPlaces: _currency == 'USD' ? 2 : 0,
+                    enabled: _saleType != 'نقدي',
+                    onChanged: _changeReceived,
                   ),
                   AppReadOnlyField(
                     fieldKey: const Key('salesTotalIqdField'),
@@ -1073,6 +1218,8 @@ class _SalesMoneyField extends StatelessWidget {
     required this.label,
     required this.icon,
     this.decimalPlaces = 4,
+    this.enabled = true,
+    this.onChanged,
   });
 
   final Key fieldKey;
@@ -1080,6 +1227,8 @@ class _SalesMoneyField extends StatelessWidget {
   final String label;
   final IconData icon;
   final int decimalPlaces;
+  final bool enabled;
+  final ValueChanged<String>? onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -1095,12 +1244,17 @@ class _SalesMoneyField extends StatelessWidget {
       inputFormatters: [
         AppMoneyInputFormatter(decimalPlaces: decimalPlaces),
       ],
+      enabled: enabled,
+      readOnly: !enabled,
+      onChanged: onChanged,
       textInputAction: TextInputAction.next,
     );
   }
 }
 
 enum _SalesNavigation { first, previous, next, last }
+
+enum _InvoiceDiscountInputSource { amount, percentage }
 
 typedef _SalesFormSnapshot = ({
   DateTime invoiceDateTime,

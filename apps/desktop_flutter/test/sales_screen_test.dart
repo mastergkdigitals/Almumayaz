@@ -454,6 +454,127 @@ void main() {
     expect(installmentsButton().onPressed, isNull);
   });
 
+  testWidgets('calculates Sales rows discounts totals and cash receipt',
+      (tester) async {
+    await _openSalesScreen(tester);
+
+    await tester.tap(find.byKey(const Key('salesLastButton')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('salesLastButton')));
+    await tester.pumpAndSettle();
+
+    final currencyDropdown = tester.widget<AppDropdownField<String>>(
+      find.ancestor(
+        of: find.byKey(const Key('salesCurrencyField')),
+        matching: find.byType(AppDropdownField<String>),
+      ),
+    );
+    currencyDropdown.onChanged('USD');
+    await tester.pump();
+
+    final saleTypeDropdown = tester.widget<AppDropdownField<String>>(
+      find.ancestor(
+        of: find.byKey(const Key('salesTypeField')),
+        matching: find.byType(AppDropdownField<String>),
+      ),
+    );
+    saleTypeDropdown.onChanged('آجل');
+    await tester.pump();
+
+    await tester.enterText(
+      find.byKey(
+        const Key('appSalesInvoiceTemplateQuantityField-r8'),
+      ),
+      '2',
+    );
+    await tester.enterText(
+      find.byKey(
+        const Key('appSalesInvoiceTemplateSalePriceField-r8'),
+      ),
+      '100',
+    );
+    await tester.enterText(
+      find.byKey(
+        const Key('appSalesInvoiceTemplateDiscountField-r8'),
+      ),
+      '10',
+    );
+    await tester.pump();
+
+    expect(
+      _fieldValue(
+        tester,
+        'appSalesInvoiceTemplatePriceAfterDiscountField-r8',
+      ),
+      '90.00',
+    );
+    expect(
+      _fieldValue(
+        tester,
+        'appSalesInvoiceTemplateTotalField-r8',
+      ),
+      '180.00',
+    );
+    final summary = find.byKey(
+      const Key('appSalesInvoiceTableSummary'),
+    );
+    expect(
+      find.descendant(of: summary, matching: find.text('2')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: summary, matching: find.text('10.00')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: summary, matching: find.text('180.00')),
+      findsOneWidget,
+    );
+
+    await tester.enterText(
+      find.byKey(const Key('salesInvoiceDiscountField')),
+      '27',
+    );
+    await tester.pump();
+    expect(
+      _fieldValue(tester, 'salesDiscountPercentageField'),
+      '15.00',
+    );
+    expect(_fieldValue(tester, 'salesTotalIqdField'), '153.00');
+    expect(_fieldValue(tester, 'salesRemainingIqdField'), '153.00');
+    expect(_fieldValue(tester, 'salesCurrentBalanceIqdField'), '153.00');
+
+    await tester.enterText(
+      find.byKey(const Key('salesDiscountPercentageField')),
+      '8.50',
+    );
+    await tester.pump();
+    expect(_fieldValue(tester, 'salesInvoiceDiscountField'), '15.30');
+    expect(_fieldValue(tester, 'salesTotalIqdField'), '164.70');
+
+    tester
+        .widget<AppDropdownField<String>>(
+          find.ancestor(
+            of: find.byKey(const Key('salesTypeField')),
+            matching: find.byType(AppDropdownField<String>),
+          ),
+        )
+        .onChanged('نقدي');
+    await tester.pump();
+
+    final received = tester.widget<TextField>(
+      find.descendant(
+        of: find.byKey(const Key('salesReceivedField')),
+        matching: find.byType(TextField),
+      ),
+    );
+    expect(received.enabled, isFalse);
+    expect(received.readOnly, isTrue);
+    expect(_fieldValue(tester, 'salesReceivedField'), '164.70');
+    expect(_fieldValue(tester, 'salesRemainingIqdField'), '0.00');
+    expect(_fieldValue(tester, 'salesCurrentBalanceIqdField'), '0.00');
+  });
+
   testWidgets('uses the Sales color in the shared date picker',
       (tester) async {
     await _openSalesScreen(tester);

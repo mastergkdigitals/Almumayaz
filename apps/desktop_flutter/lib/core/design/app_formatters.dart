@@ -20,6 +20,10 @@ abstract final class AppFormatters {
 
   static String usd(num value) => money(value, decimalPlaces: 2);
 
+  static String moneyByCurrency(num value, String currencyCode) {
+    return currencyCode.toUpperCase() == 'USD' ? usd(value) : iqd(value);
+  }
+
   static String money(
     num value, {
     int decimalPlaces = 0,

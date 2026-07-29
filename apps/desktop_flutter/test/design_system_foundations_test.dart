@@ -19,6 +19,11 @@ void main() {
     expect(AppFormatters.quantity(1000000), '1,000,000');
     expect(AppFormatters.iqd(1000000), '1,000,000');
     expect(AppFormatters.usd(100000), '100,000.00');
+    expect(AppFormatters.moneyByCurrency(15300.12135, 'IQD'), '15,300');
+    expect(
+      AppFormatters.moneyByCurrency(15.300012135, 'USD'),
+      '15.30',
+    );
     expect(AppFormatters.parseInteger('1,000,000'), 1000000);
     expect(AppFormatters.parseNumber('1,000,000.25'), 1000000.25);
     expect(AppFormatters.money(12345.5, decimalPlaces: 2), '12,345.50');
