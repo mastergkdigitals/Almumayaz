@@ -29,6 +29,13 @@ class AppSwitchField extends StatelessWidget {
             accentColor!.withAlpha(48),
             AppColors.surface,
           );
+    final borderColor = accentColor == null
+        ? AppColors.border
+        : Color.lerp(
+            accentColor!,
+            AppColors.surface,
+            0.62,
+          )!;
 
     return Container(
       constraints: const BoxConstraints(
@@ -41,7 +48,7 @@ class AppSwitchField extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: borderColor),
       ),
       child: Row(
         children: [

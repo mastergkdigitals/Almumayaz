@@ -27,17 +27,55 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   _SettingsSection? _selectedSection;
+  final _dirtySections = <_SettingsSection>{};
+  var _isConfirmingExit = false;
+  var _allowRoutePop = false;
 
   void _openSection(_SettingsSection section) {
+    FocusManager.instance.primaryFocus?.unfocus();
     setState(() => _selectedSection = section);
   }
 
-  void _handleBack() {
+  void _markDirty(_SettingsSection section) {
+    if (_dirtySections.add(section)) setState(() {});
+  }
+
+  void _markSaved(_SettingsSection section) {
+    if (_dirtySections.remove(section)) setState(() {});
+  }
+
+  Future<void> _handleBack() async {
+    FocusManager.instance.primaryFocus?.unfocus();
     if (_selectedSection != null) {
       setState(() => _selectedSection = null);
       return;
     }
-    Navigator.of(context).pop();
+
+    if (_dirtySections.isNotEmpty) {
+      if (_isConfirmingExit) return;
+      _isConfirmingExit = true;
+      final confirmed = await AppDialogs.confirm(
+        context: context,
+        title: 'مغادرة الإعدادات',
+        message:
+            'توجد إعدادات غير محفوظة. هل تريد المغادرة وإهمال التغييرات؟',
+        confirmLabel: 'مغادرة',
+        cancelLabel: 'البقاء',
+        isDanger: true,
+      );
+      _isConfirmingExit = false;
+      if (!mounted || !confirmed) return;
+    }
+
+    _requestRoutePop();
+  }
+
+  void _requestRoutePop() {
+    if (_allowRoutePop || !mounted) return;
+    setState(() => _allowRoutePop = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) Navigator.of(context).pop();
+    });
   }
 
   @override
@@ -50,24 +88,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
       AppColors.surface,
     );
 
-    return AppScreenShell(
-      key: const Key('settingsScreen'),
-      title: selectedSection?.title ?? 'الإعدادات',
-      backgroundColor: tint,
-      onBack: _handleBack,
-      body: ColoredBox(
-        key: const Key('settingsTintBackground'),
-        color: tint,
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Directionality(
-            textDirection: TextDirection.rtl,
-            child: selectedSection == null
-                ? _SettingsHub(onOpenSection: _openSection)
-                : KeyedSubtree(
-                    key: Key('settingsSection_${selectedSection.id}'),
-                    child: _buildSection(selectedSection),
-                  ),
+    return PopScope(
+      canPop: _allowRoutePop,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _handleBack();
+      },
+      child: AppScreenShell(
+        key: const Key('settingsScreen'),
+        title: selectedSection?.title ?? 'الإعدادات',
+        backgroundColor: tint,
+        onBack: _handleBack,
+        body: ColoredBox(
+          key: const Key('settingsTintBackground'),
+          color: tint,
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Directionality(
+              textDirection: TextDirection.rtl,
+              child: IndexedStack(
+                index: selectedSection == null
+                    ? 0
+                    : _SettingsSection.values.indexOf(selectedSection) + 1,
+                children: [
+                  _SettingsHub(onOpenSection: _openSection),
+                  for (final section in _SettingsSection.values)
+                    KeyedSubtree(
+                      key: Key('settingsSection_${section.id}'),
+                      child: _buildSection(section),
+                    ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -79,24 +130,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _SettingsSection.businessPolicies =>
         BusinessPoliciesSettingsSection(
           accentColor: section.palette.middle,
+          onChanged: () => _markDirty(section),
+          onSaved: () => _markSaved(section),
         ),
       _SettingsSection.defaultSettings =>
         OperationalDefaultsSettingsSection(
           accentColor: section.palette.middle,
+          onChanged: () => _markDirty(section),
+          onSaved: () => _markSaved(section),
         ),
       _SettingsSection.masterData => MasterDataSettingsSection(
           accentColor: section.palette.middle,
         ),
       _SettingsSection.backup => BackupDataSettingsSection(
           accentColor: section.palette.middle,
+          onChanged: () => _markDirty(section),
+          onSaved: () => _markSaved(section),
         ),
       _SettingsSection.usersSecurity =>
         UsersSecuritySettingsSection(
           accentColor: section.palette.middle,
+          isActive: _selectedSection == section,
+          onChanged: () => _markDirty(section),
+          onSaved: () => _markSaved(section),
         ),
       _SettingsSection.archive =>
         ElectronicArchiveSettingsSection(
           accentColor: section.palette.middle,
+          isActive: _selectedSection == section,
         ),
     };
   }

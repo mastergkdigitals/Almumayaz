@@ -3,6 +3,7 @@ import 'package:erp/core/design/app_design_system.dart';
 import 'package:erp/features/dashboard/presentation/dashboard_card.dart';
 import 'package:erp/features/settings/presentation/widgets/settings_sections.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -187,6 +188,44 @@ void main() {
           .accentColor,
       AppModulePalettes.settings.middle,
     );
+    expect(
+      tester
+          .getSize(
+            find.byKey(const Key('settingsPricingInventoryPanel')),
+          )
+          .height,
+      moreOrLessEquals(
+        tester
+            .getSize(
+              find.byKey(const Key('settingsDebtInstallmentsPanel')),
+            )
+            .height,
+      ),
+    );
+    final switchSurface = tester
+        .widgetList<Container>(
+          find.descendant(
+            of: find.byKey(
+              const Key('settingsAllowInsufficientStockSale'),
+            ),
+            matching: find.byType(Container),
+          ),
+        )
+        .firstWhere(
+          (container) =>
+              container.decoration is BoxDecoration &&
+              (container.decoration! as BoxDecoration).border is Border,
+        );
+    final switchBorder =
+        (switchSurface.decoration! as BoxDecoration).border! as Border;
+    expect(
+      switchBorder.top.color,
+      Color.lerp(
+        AppModulePalettes.settings.middle,
+        AppColors.surface,
+        0.62,
+      ),
+    );
 
     final policiesList = tester.widget<ListView>(
       find.byKey(const Key('businessPoliciesSettingsContent')),
@@ -302,6 +341,74 @@ void main() {
         AppColors.surface,
       ),
     );
+    final defaultsPanelHeight = tester
+        .getSize(find.byKey(const Key('settingsPurchaseDefaultsPanel')))
+        .height;
+    expect(
+      tester
+          .getSize(find.byKey(const Key('settingsSalesDefaultsPanel')))
+          .height,
+      moreOrLessEquals(defaultsPanelHeight),
+    );
+    expect(
+      tester
+          .getSize(find.byKey(const Key('settingsCashboxDefaultsPanel')))
+          .height,
+      moreOrLessEquals(defaultsPanelHeight),
+    );
+  });
+
+  testWidgets('preserves Settings edits and guards unsaved exit',
+      (tester) async {
+    await _openSettings(tester);
+    await _openSection(tester, 'businessPolicies');
+
+    const exchangeRateKey = Key('settingsDefaultExchangeRateField');
+    await tester.enterText(find.byKey(exchangeRateKey), '1,400');
+    await tester.pump();
+
+    await _returnToSettingsHub(tester);
+    expect(
+      _hasTextFocus(
+        tester,
+        find.byKey(exchangeRateKey, skipOffstage: false),
+        skipOffstage: false,
+      ),
+      isFalse,
+    );
+    await _openSection(tester, 'businessPolicies');
+    expect(
+      _fieldText(tester, find.byKey(exchangeRateKey)),
+      '1,400',
+    );
+
+    await _returnToSettingsHub(tester);
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    expect(find.byKey(const Key('appConfirmDialog')), findsOneWidget);
+    expect(find.text('مغادرة الإعدادات'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('appDialogCancelButton')));
+    await tester.pump();
+    expect(find.byKey(const Key('settingsHub')), findsOneWidget);
+
+    await _openSection(tester, 'businessPolicies');
+    final saveButton =
+        find.byKey(const Key('settingsSaveBusinessPolicies'));
+    await Scrollable.ensureVisible(
+      tester.element(saveButton),
+      duration: Duration.zero,
+    );
+    await tester.pump();
+    await tester.tap(saveButton);
+    await tester.pump();
+
+    await _returnToSettingsHub(tester);
+    await tester.tap(find.byKey(const Key('appScreenBackButton')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byKey(const Key('appConfirmDialog')), findsNothing);
+    expect(find.byKey(const Key('settingsScreen')), findsNothing);
   });
 
   testWidgets('shows master data and backup testing controls',
@@ -329,6 +436,135 @@ void main() {
           .accentColor,
       AppModulePalettes.parties.middle,
     );
+    expect(
+      tester
+          .getSize(find.byKey(const Key('settingsItemGroupsPanel')))
+          .height,
+      moreOrLessEquals(
+        tester
+            .getSize(find.byKey(const Key('settingsItemTypesPanel')))
+            .height,
+      ),
+    );
+
+    final itemTypesTable = tester.widget<AppDataTable>(
+      find.byKey(const Key('settingsItemTypesTable')),
+    );
+    expect(
+      itemTypesTable.columns.map((column) => column.label),
+      ['ت', 'الاسم', 'المجموعة', 'الحالة', 'الإجراءات'],
+    );
+    expect(
+      (itemTypesTable.rows.first.cells[2] as Text).data,
+      'المواد الغذائية',
+    );
+
+    await tester.enterText(
+      find.byKey(const Key('settingsItemGroupsNameField')),
+      'مجموعة اختبار',
+    );
+    await tester.pump();
+    expect(
+      tester
+          .widget<AppButton>(
+            find.byKey(const Key('settingsItemGroupsClearButton')),
+          )
+          .onPressed,
+      isNotNull,
+    );
+    await tester.tap(
+      find.byKey(const Key('settingsItemGroupsAddButton')),
+    );
+    await tester.pump();
+    expect(
+      tester
+          .widget<AppDataTable>(
+            find.byKey(const Key('settingsItemGroupsTable')),
+          )
+          .rows
+          .any(
+            (row) =>
+                (row.cells[1] as Text).data == 'مجموعة اختبار',
+          ),
+      isTrue,
+    );
+    final itemTypeParent = tester.widget<AppDropdownField<String>>(
+      find.ancestor(
+        of: find.byKey(const Key('settingsItemTypesParentField')),
+        matching: find.byType(AppDropdownField<String>),
+      ),
+    );
+    expect(
+      itemTypeParent.options.map((option) => option.label),
+      contains('مجموعة اختبار'),
+    );
+
+    tester
+        .widget<AppDataTable>(
+          find.byKey(const Key('settingsItemTypesTable')),
+        )
+        .rows
+        .first
+        .onTap!();
+    await tester.pump();
+    tester
+        .widget<AppDropdownField<String>>(
+          find.ancestor(
+            of: find.byKey(const Key('settingsItemTypesParentField')),
+            matching: find.byType(AppDropdownField<String>),
+          ),
+        )
+        .onChanged('مجموعة اختبار');
+    await tester.pump();
+    tester
+        .widget<AppButton>(
+          find.byKey(const Key('settingsItemTypesUpdateButton')),
+        )
+        .onPressed!();
+    await tester.pump();
+    expect(
+      (tester
+                  .widget<AppDataTable>(
+                    find.byKey(const Key('settingsItemTypesTable')),
+                  )
+                  .rows
+                  .first
+                  .cells[2]
+              as Text)
+          .data,
+      'مجموعة اختبار',
+    );
+
+    tester
+        .widget<AppDataTable>(
+          find.byKey(const Key('settingsItemGroupsTable')),
+        )
+        .rows
+        .last
+        .onTap!();
+    await tester.pump();
+    await tester.enterText(
+      find.byKey(const Key('settingsItemGroupsNameField')),
+      'مجموعة اختبار معدلة',
+    );
+    tester
+        .widget<AppButton>(
+          find.byKey(const Key('settingsItemGroupsUpdateButton')),
+        )
+        .onPressed!();
+    await tester.pump();
+    expect(
+      (tester
+                  .widget<AppDataTable>(
+                    find.byKey(const Key('settingsItemTypesTable')),
+                  )
+                  .rows
+                  .first
+                  .cells[2]
+              as Text)
+          .data,
+      'مجموعة اختبار معدلة',
+    );
 
     await tester.tap(
       find.byKey(
@@ -339,6 +575,23 @@ void main() {
     expect(
       find.byKey(const Key('settingsWorkplacesBranchesTemplate')),
       findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(const Key('masterDataTab_groupsTypes')),
+    );
+    await tester.pump();
+    expect(
+      tester
+          .widget<AppDataTable>(
+            find.byKey(const Key('settingsItemGroupsTable')),
+          )
+          .rows
+          .any(
+            (row) =>
+                (row.cells[1] as Text).data == 'مجموعة اختبار معدلة',
+          ),
+      isTrue,
     );
 
     await tester.tap(
@@ -368,6 +621,16 @@ void main() {
       find.byKey(const Key('settingsToggleDriveConnectionButton')),
       findsOneWidget,
     );
+    expect(
+      tester
+          .getSize(find.byKey(const Key('settingsLocalBackupPanel')))
+          .height,
+      moreOrLessEquals(
+        tester
+            .getSize(find.byKey(const Key('settingsDriveBackupPanel')))
+            .height,
+      ),
+    );
 
     await tester.tap(
       find.byKey(const Key('settingsToggleDriveConnectionButton')),
@@ -380,6 +643,10 @@ void main() {
       const Offset(0, -700),
     );
     await tester.pump();
+    expect(
+      find.byKey(const Key('settingsSaveBackupConfigurationButton')),
+      findsOneWidget,
+    );
     expect(
       find.byKey(const Key('settingsBackupHistoryTable')),
       findsOneWidget,
@@ -416,6 +683,20 @@ void main() {
       const Color(0xFFDC2626),
     );
 
+    await _sendControlShortcut(tester, LogicalKeyboardKey.keyF);
+    await tester.pump();
+    expect(
+      find.byKey(const Key('settingsSecurityLogsTable')),
+      findsOneWidget,
+    );
+    expect(
+      _hasTextFocus(
+        tester,
+        find.byKey(const Key('settingsSecurityLogSearchField')),
+      ),
+      isTrue,
+    );
+
     await tester.tap(
       find.byKey(const Key('usersSecurityTab_security')),
     );
@@ -450,6 +731,15 @@ void main() {
     expect(
       find.byKey(const Key('settingsArchiveSearchField')),
       findsOneWidget,
+    );
+    await _sendControlShortcut(tester, LogicalKeyboardKey.keyF);
+    await tester.pump();
+    expect(
+      _hasTextFocus(
+        tester,
+        find.byKey(const Key('settingsArchiveSearchField')),
+      ),
+      isTrue,
     );
     expect(
       find.byKey(const Key('settingsArchiveTable')),
@@ -492,6 +782,122 @@ void main() {
     );
     expect(find.text('مستند اختبار'), findsOneWidget);
   });
+
+  testWidgets('keeps user status separate and edits roles and passwords',
+      (tester) async {
+    await _openSettings(tester);
+    await _openSection(tester, 'usersSecurity');
+
+    AppStatusBadge userStatus(int userId) =>
+        tester.widget<AppStatusBadge>(
+          find.descendant(
+            of: find.byKey(Key('settingsUserStatus_$userId')),
+            matching: find.byType(AppStatusBadge),
+          ),
+        );
+
+    void pressUserAction(String key) {
+      tester
+          .widget<AppTableActionButton>(find.byKey(Key(key)))
+          .onPressed!();
+    }
+
+    expect(userStatus(2).label, 'نشط');
+    pressUserAction('settingsUserEnable_2');
+    await tester.pump();
+    expect(userStatus(2).label, 'معطل');
+
+    pressUserAction('settingsUserLock_2');
+    await tester.pump();
+    expect(userStatus(2).label, 'معطل ومقفل');
+
+    pressUserAction('settingsUserLock_2');
+    await tester.pump();
+    expect(userStatus(2).label, 'معطل');
+
+    pressUserAction('settingsUserPassword_2');
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('settingsUserPasswordDialog_2')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('settingsUserPasswordConfirm_2')),
+      findsOneWidget,
+    );
+
+    await tester.enterText(
+      find.byKey(const Key('settingsUserPasswordNewField_2')),
+      'password-2',
+    );
+    await tester.enterText(
+      find.byKey(const Key('settingsUserPasswordConfirmField_2')),
+      'password-2',
+    );
+    await tester.pump();
+    expect(
+      tester
+          .widget<AppButton>(
+            find.byKey(const Key('settingsUserPasswordConfirm_2')),
+          )
+          .onPressed,
+      isNotNull,
+    );
+    await tester.tap(
+      find.byKey(const Key('settingsUserPasswordConfirm_2')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('settingsUserPasswordDialog_2')),
+      findsNothing,
+    );
+
+    await tester.tap(
+      find.byKey(const Key('usersSecurityTab_roles')),
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('settingsAddRoleButton')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('settingsRoleDialog_new')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('settingsRolePermissionMatrix')),
+      findsOneWidget,
+    );
+
+    await tester.enterText(
+      find.byKey(const Key('settingsRoleNameField')),
+      'دور اختبار',
+    );
+    await tester.tap(
+      find.byKey(const Key('settingsRoleSelectAllButton')),
+    );
+    await tester.pump();
+    expect(
+      tester
+          .widget<AppButton>(
+            find.byKey(const Key('settingsRoleDialogConfirmButton')),
+          )
+          .onPressed,
+      isNotNull,
+    );
+    await tester.tap(
+      find.byKey(const Key('settingsRoleDialogConfirmButton')),
+    );
+    await tester.pumpAndSettle();
+
+    final rolesTable = tester.widget<AppDataTable>(
+      find.byKey(const Key('settingsRolesTable')),
+    );
+    expect(
+      rolesTable.rows.any(
+        (row) => (row.cells[1] as Text).data == 'دور اختبار',
+      ),
+      isTrue,
+    );
+  });
 }
 
 Future<void> _openSettings(WidgetTester tester) async {
@@ -533,4 +939,45 @@ Future<void> _returnToSettingsHub(WidgetTester tester) async {
   await tester.tap(find.byKey(const Key('appScreenBackButton')));
   await tester.pump();
   expect(find.byKey(const Key('settingsHub')), findsOneWidget);
+}
+
+String _fieldText(WidgetTester tester, Finder field) {
+  return tester
+      .widget<EditableText>(
+        find.descendant(
+          of: field,
+          matching: find.byType(EditableText),
+        ),
+      )
+      .controller
+      .text;
+}
+
+bool _hasTextFocus(
+  WidgetTester tester,
+  Finder field, {
+  bool skipOffstage = true,
+}) {
+  return tester
+      .widget<EditableText>(
+        find.descendant(
+          of: field,
+          matching: find.byType(
+            EditableText,
+            skipOffstage: skipOffstage,
+          ),
+          skipOffstage: skipOffstage,
+        ),
+      )
+      .focusNode
+      .hasFocus;
+}
+
+Future<void> _sendControlShortcut(
+  WidgetTester tester,
+  LogicalKeyboardKey key,
+) async {
+  await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+  await tester.sendKeyEvent(key);
+  await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
 }
