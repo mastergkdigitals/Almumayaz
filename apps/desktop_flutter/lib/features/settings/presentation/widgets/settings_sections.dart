@@ -2878,9 +2878,12 @@ class SettingsTemplatePanel extends StatelessWidget {
       child: ClipRRect(
         borderRadius: borderRadius,
         clipBehavior: Clip.antiAlias,
-        child: DecoratedBox(
+        child: Container(
           decoration: BoxDecoration(
             color: AppColors.surface,
+            borderRadius: borderRadius,
+          ),
+          foregroundDecoration: BoxDecoration(
             borderRadius: borderRadius,
             border: Border.all(color: borderColor, width: 1.4),
           ),

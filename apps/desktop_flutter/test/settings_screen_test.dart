@@ -206,18 +206,23 @@ void main() {
       BorderRadius.circular(AppRadii.lg),
     );
     final panelSurface = tester
-        .widgetList<DecoratedBox>(
+        .widgetList<Container>(
           find.descendant(
             of: find.byKey(
               const Key('settingsPricingInventoryPanel'),
             ),
-            matching: find.byType(DecoratedBox),
+            matching: find.byType(Container),
           ),
         )
-        .map((box) => box.decoration)
-        .whereType<BoxDecoration>()
-        .firstWhere((decoration) => decoration.border is Border);
-    final panelBorder = panelSurface.border! as Border;
+        .firstWhere(
+          (container) =>
+              container.foregroundDecoration is BoxDecoration &&
+              (container.foregroundDecoration! as BoxDecoration)
+                  .border is Border,
+        );
+    final panelBorder =
+        (panelSurface.foregroundDecoration! as BoxDecoration).border!
+            as Border;
     expect(
       panelBorder.top.color,
       Color.lerp(
