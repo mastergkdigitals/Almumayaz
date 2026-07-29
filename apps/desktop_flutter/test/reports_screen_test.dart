@@ -12,6 +12,40 @@ void main() {
     expect(find.byKey(const Key('reportsScreen')), findsOneWidget);
     expect(find.byKey(const Key('reportsHub')), findsOneWidget);
 
+    final firstRow = find.byKey(const Key('reportsHubRow_0'));
+    final secondRow = find.byKey(const Key('reportsHubRow_1'));
+    final lastRow = find.byKey(const Key('reportsHubRow_2'));
+    expect(firstRow, findsOneWidget);
+    expect(secondRow, findsOneWidget);
+    expect(lastRow, findsOneWidget);
+    for (final report in reportDefinitions.take(3)) {
+      expect(
+        find.descendant(
+          of: firstRow,
+          matching: find.byKey(Key('reportSectionCard_${report.id}')),
+        ),
+        findsOneWidget,
+      );
+    }
+    for (final report in reportDefinitions.skip(3).take(3)) {
+      expect(
+        find.descendant(
+          of: secondRow,
+          matching: find.byKey(Key('reportSectionCard_${report.id}')),
+        ),
+        findsOneWidget,
+      );
+    }
+    expect(
+      find.descendant(
+        of: lastRow,
+        matching: find.byKey(
+          Key('reportSectionCard_${reportDefinitions.last.id}'),
+        ),
+      ),
+      findsOneWidget,
+    );
+
     for (final report in reportDefinitions) {
       expect(
         find.byKey(Key('reportSectionCard_${report.id}')),
@@ -60,6 +94,10 @@ void main() {
       );
       expect(
         find.byKey(Key('reportFiltersPanel_${report.id}')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(Key('reportSelector_${report.id}')),
         findsOneWidget,
       );
       expect(

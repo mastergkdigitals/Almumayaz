@@ -64,6 +64,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                       key: Key('reportSection_${selectedReport.id}'),
                       child: ReportSectionView(
                         definition: selectedReport,
+                        definitions: reportDefinitions,
+                        onDefinitionChanged: _openReport,
                       ),
                     ),
             ),
@@ -83,8 +85,8 @@ class _ReportsHub extends StatelessWidget {
   Widget build(BuildContext context) {
     final rows = <List<ReportDefinition>>[
       reportDefinitions.sublist(0, 3),
-      reportDefinitions.sublist(3, 5),
-      reportDefinitions.sublist(5),
+      reportDefinitions.sublist(3, 6),
+      reportDefinitions.sublist(6),
     ];
 
     return Column(
@@ -94,6 +96,7 @@ class _ReportsHub extends StatelessWidget {
           if (index > 0) const SizedBox(height: AppSpacing.md),
           Expanded(
             child: _ReportsHubRow(
+              key: Key('reportsHubRow_$index'),
               reports: rows[index],
               onOpenReport: onOpenReport,
             ),
@@ -108,6 +111,7 @@ class _ReportsHubRow extends StatelessWidget {
   const _ReportsHubRow({
     required this.reports,
     required this.onOpenReport,
+    super.key,
   });
 
   final List<ReportDefinition> reports;

@@ -207,12 +207,10 @@ const List<ReportMetricDefinition> _salesMetrics = [
   ReportMetricDefinition(label: 'الإجمالي - دينار', value: '487,000'),
   ReportMetricDefinition(label: 'المقبوض - دينار', value: '310,000'),
   ReportMetricDefinition(label: 'المتبقي - دينار', value: '177,000'),
-  ReportMetricDefinition(label: 'القوائم الملغاة - دينار', value: '0'),
   ReportMetricDefinition(label: 'عدد القوائم - دولار', value: '1'),
   ReportMetricDefinition(label: 'الإجمالي - دولار', value: '1,250.00'),
   ReportMetricDefinition(label: 'المقبوض - دولار', value: '250.00'),
   ReportMetricDefinition(label: 'المتبقي - دولار', value: '1,000.00'),
-  ReportMetricDefinition(label: 'القوائم الملغاة - دولار', value: '0'),
 ];
 
 const List<ReportColumnDefinition> _salesColumns = [
@@ -368,12 +366,10 @@ const List<ReportMetricDefinition> _purchaseMetrics = [
   ReportMetricDefinition(label: 'الإجمالي - دينار', value: '240,000'),
   ReportMetricDefinition(label: 'المدفوع - دينار', value: '90,000'),
   ReportMetricDefinition(label: 'المتبقي - دينار', value: '150,000'),
-  ReportMetricDefinition(label: 'القوائم الملغاة - دينار', value: '0'),
   ReportMetricDefinition(label: 'عدد القوائم - دولار', value: '1'),
   ReportMetricDefinition(label: 'الإجمالي - دولار', value: '1,500.00'),
   ReportMetricDefinition(label: 'المدفوع - دولار', value: '500.00'),
   ReportMetricDefinition(label: 'المتبقي - دولار', value: '1,000.00'),
-  ReportMetricDefinition(label: 'القوائم الملغاة - دولار', value: '0'),
 ];
 
 const List<ReportColumnDefinition> _purchaseColumns = [
@@ -525,18 +521,10 @@ const List<ReportMetricDefinition> _profitMetrics = [
   ReportMetricDefinition(label: 'التكلفة - دينار', value: '120,000'),
   ReportMetricDefinition(label: 'الربح - دينار', value: '70,000'),
   ReportMetricDefinition(label: 'هامش الربح - دينار', value: '36.84%'),
-  ReportMetricDefinition(label: 'القوائم المحتسبة - دينار', value: '1'),
-  ReportMetricDefinition(label: 'السطور المحتسبة - دينار', value: '2'),
-  ReportMetricDefinition(label: 'مبيعات بلا تكلفة - دينار', value: '302,000'),
-  ReportMetricDefinition(label: 'سطور بلا تكلفة - دينار', value: '4'),
   ReportMetricDefinition(label: 'المبيعات المحتسبة - دولار', value: '850.00'),
   ReportMetricDefinition(label: 'التكلفة - دولار', value: '600.00'),
   ReportMetricDefinition(label: 'الربح - دولار', value: '250.00'),
   ReportMetricDefinition(label: 'هامش الربح - دولار', value: '29.41%'),
-  ReportMetricDefinition(label: 'القوائم المحتسبة - دولار', value: '1'),
-  ReportMetricDefinition(label: 'السطور المحتسبة - دولار', value: '1'),
-  ReportMetricDefinition(label: 'مبيعات بلا تكلفة - دولار', value: '400.00'),
-  ReportMetricDefinition(label: 'سطور بلا تكلفة - دولار', value: '1'),
 ];
 
 const List<ReportColumnDefinition> _profitColumns = [

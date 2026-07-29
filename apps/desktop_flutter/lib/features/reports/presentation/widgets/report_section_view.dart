@@ -6,10 +6,14 @@ import '../report_definition.dart';
 class ReportSectionView extends StatefulWidget {
   const ReportSectionView({
     required this.definition,
+    required this.definitions,
+    required this.onDefinitionChanged,
     super.key,
   });
 
   final ReportDefinition definition;
+  final List<ReportDefinition> definitions;
+  final ValueChanged<ReportDefinition> onDefinitionChanged;
 
   @override
   State<ReportSectionView> createState() => _ReportSectionViewState();
@@ -18,8 +22,6 @@ class ReportSectionView extends StatefulWidget {
 class _ReportSectionViewState extends State<ReportSectionView> {
   final _searchController = TextEditingController();
   final _searchFocusNode = FocusNode();
-  final _filtersScrollController = ScrollController();
-  final _metricsScrollController = ScrollController();
 
   late ReportVariantDefinition _variant;
   DateTimeRange? _dateRange;
@@ -39,8 +41,6 @@ class _ReportSectionViewState extends State<ReportSectionView> {
   void dispose() {
     _searchController.dispose();
     _searchFocusNode.dispose();
-    _filtersScrollController.dispose();
-    _metricsScrollController.dispose();
     super.dispose();
   }
 
@@ -134,135 +134,111 @@ class _ReportSectionViewState extends State<ReportSectionView> {
         key: Key('reportContent_$reportId'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ReportTemplatePanel(
-            key: Key('reportFiltersPanel_$reportId'),
-            title: 'تصفية التقرير',
-            icon: Icons.filter_alt_rounded,
-            accentColor: _accentColor,
-            actions: widget.definition.variants.length > 1
-                ? [
-                    _ReportVariantTabs(
-                      reportId: reportId,
-                      variants: widget.definition.variants,
-                      selected: _variant,
-                      accentColor: _accentColor,
-                      onChanged: _changeVariant,
-                    ),
-                  ]
-                : const [],
-            child: SizedBox(
-              height: 68,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Scrollbar(
-                      controller: _filtersScrollController,
-                      scrollbarOrientation: ScrollbarOrientation.bottom,
-                      child: SingleChildScrollView(
-                        controller: _filtersScrollController,
-                        scrollDirection: Axis.horizontal,
-                        padding:
-                            const EdgeInsets.only(bottom: AppSpacing.sm),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            for (final filter in _variant.filters) ...[
-                              _buildFilter(reportId, filter),
-                              const SizedBox(width: AppSpacing.sm),
-                            ],
-                          ],
-                        ),
+          Row(
+            key: Key('reportHeaderBar_$reportId'),
+            children: [
+              SizedBox(
+                width: 360,
+                child: AppDropdownField<String>(
+                  fieldKey: Key('reportSelector_$reportId'),
+                  label: 'التقرير',
+                  icon: widget.definition.icon,
+                  value: reportId,
+                  options: [
+                    for (final definition in widget.definitions)
+                      AppDropdownOption<String>(
+                        value: definition.id,
+                        label: definition.title,
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  SizedBox(
-                    width: 240,
-                    child: AppSearchField(
-                      fieldKey: Key('reportSearch_$reportId'),
-                      clearButtonKey: Key('reportSearchClear_$reportId'),
-                      controller: _searchController,
-                      focusNode: _searchFocusNode,
-                      label: 'بحث في النتائج',
-                      hint: 'رقم أو اسم',
-                      accentColor: _accentColor,
-                      onChanged: (_) => setState(() {}),
-                      onSubmitted: (_) => _showReport(),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  AppButton(
-                    key: Key('reportShowButton_$reportId'),
-                    label: 'عرض التقرير',
-                    icon: Icons.assessment_rounded,
-                    variant: AppButtonVariant.primary,
-                    backgroundColor: _accentColor,
-                    minWidth: 142,
-                    height: AppRegularButton.defaultHeight,
-                    onPressed: _showReport,
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  AppRegularButton(
-                    key: Key('reportResetButton_$reportId'),
-                    label: 'مسح التصفية',
-                    icon: Icons.filter_alt_off_rounded,
-                    onPressed: _resetFilters,
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  AppRegularButton(
-                    key: Key('reportPrintButton_$reportId'),
-                    label: 'طباعة',
-                    icon: Icons.print_rounded,
-                    onPressed: _printReport,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          ReportTemplatePanel(
-            key: Key('reportSummaryPanel_$reportId'),
-            title: 'الملخص العام للبيانات التجريبية',
-            icon: Icons.summarize_rounded,
-            accentColor: _accentColor,
-            child: SizedBox(
-              height: 80,
-              child: Scrollbar(
-                controller: _metricsScrollController,
-                scrollbarOrientation: ScrollbarOrientation.bottom,
-                child: SingleChildScrollView(
-                  controller: _metricsScrollController,
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                  child: Row(
-                    children: [
-                      _ReportMetricTile(
-                        key: Key(
-                          'reportMetric_${reportId}_${_variant.id}_matches',
-                        ),
-                        metric: ReportMetricDefinition(
-                          label: 'النتائج المطابقة',
-                          value: '${_visibleRows.length}',
-                        ),
-                        accentColor: _accentColor,
+                  ],
+                  accentColor: _accentColor,
+                  textDirection: TextDirection.rtl,
+                  textAlign: TextAlign.right,
+                  menuTextDirection: TextDirection.rtl,
+                  onChanged: (value) {
+                    if (value == null || value == reportId) return;
+                    widget.onDefinitionChanged(
+                      widget.definitions.firstWhere(
+                        (definition) => definition.id == value,
                       ),
-                      for (var index = 0;
-                          index < _variant.metrics.length;
-                          index++) ...[
-                        const SizedBox(width: AppSpacing.sm),
-                        _ReportMetricTile(
-                          key: Key(
-                            'reportMetric_${reportId}_${_variant.id}_$index',
-                          ),
-                          metric: _variant.metrics[index],
-                          accentColor: _accentColor,
-                        ),
-                      ],
-                    ],
-                  ),
+                    );
+                  },
                 ),
               ),
-            ),
+              if (widget.definition.variants.length > 1) ...[
+                const SizedBox(width: AppSpacing.md),
+                _ReportVariantTabs(
+                  reportId: reportId,
+                  variants: widget.definition.variants,
+                  selected: _variant,
+                  accentColor: _accentColor,
+                  onChanged: _changeVariant,
+                ),
+              ],
+              const Spacer(),
+              AppRegularButton(
+                key: Key('reportPrintButton_$reportId'),
+                label: 'طباعة',
+                icon: Icons.print_rounded,
+                onPressed: _printReport,
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          LayoutBuilder(
+            key: Key('reportFiltersPanel_$reportId'),
+            builder: (context, constraints) {
+              final fieldWidth =
+                  (constraints.maxWidth - AppSpacing.sm * 4) / 5;
+
+              return Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.sm,
+                children: [
+                  for (final filter in _variant.filters)
+                    _buildFilter(reportId, filter, fieldWidth),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            key: Key('reportActionBar_$reportId'),
+            children: [
+              SizedBox(
+                width: 360,
+                child: AppSearchField(
+                  fieldKey: Key('reportSearch_$reportId'),
+                  clearButtonKey: Key('reportSearchClear_$reportId'),
+                  controller: _searchController,
+                  focusNode: _searchFocusNode,
+                  label: 'بحث في النتائج',
+                  hint: 'رقم أو اسم',
+                  accentColor: _accentColor,
+                  onChanged: (_) => setState(() {}),
+                  onSubmitted: (_) => _showReport(),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              AppButton(
+                key: Key('reportShowButton_$reportId'),
+                label: 'عرض التقرير',
+                icon: Icons.assessment_rounded,
+                variant: AppButtonVariant.primary,
+                backgroundColor: _accentColor,
+                minWidth: 142,
+                height: AppRegularButton.defaultHeight,
+                onPressed: _showReport,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              AppRegularButton(
+                key: Key('reportResetButton_$reportId'),
+                label: 'مسح التصفية',
+                icon: Icons.filter_alt_off_rounded,
+                onPressed: _resetFilters,
+              ),
+              const Spacer(),
+            ],
           ),
           const SizedBox(height: AppSpacing.md),
           Expanded(
@@ -319,6 +295,15 @@ class _ReportSectionViewState extends State<ReportSectionView> {
               },
             ),
           ),
+          const SizedBox(height: AppSpacing.sm),
+          _ReportSummaryBar(
+            key: Key('reportSummaryPanel_$reportId'),
+            reportId: reportId,
+            variantId: _variant.id,
+            metrics: _variant.metrics,
+            matchingCount: _visibleRows.length,
+            accentColor: _accentColor,
+          ),
         ],
       ),
     );
@@ -327,12 +312,13 @@ class _ReportSectionViewState extends State<ReportSectionView> {
   Widget _buildFilter(
     String reportId,
     ReportFilterDefinition filter,
+    double width,
   ) {
     final fieldKey = Key('reportFilter_${reportId}_${filter.id}');
 
     return switch (filter.kind) {
       ReportFilterKind.dateRange => SizedBox(
-          width: 310,
+          width: width,
           child: AppDateRangeField(
             fieldKey: fieldKey,
             label: filter.label,
@@ -342,7 +328,7 @@ class _ReportSectionViewState extends State<ReportSectionView> {
           ),
         ),
       ReportFilterKind.dropdown => SizedBox(
-          width: 220,
+          width: width,
           child: AppDropdownField<String>(
             fieldKey: fieldKey,
             label: filter.label,
@@ -368,106 +354,6 @@ class _ReportSectionViewState extends State<ReportSectionView> {
           ),
         ),
     };
-  }
-}
-
-class ReportTemplatePanel extends StatelessWidget {
-  const ReportTemplatePanel({
-    required this.title,
-    required this.icon,
-    required this.accentColor,
-    required this.child,
-    super.key,
-    this.actions = const [],
-  });
-
-  final String title;
-  final IconData icon;
-  final Color accentColor;
-  final Widget child;
-  final List<Widget> actions;
-
-  @override
-  Widget build(BuildContext context) {
-    final borderRadius = BorderRadius.circular(AppRadii.lg);
-    final borderColor = Color.lerp(
-      accentColor,
-      AppColors.surface,
-      0.62,
-    )!;
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: borderRadius,
-        boxShadow: AppShadows.soft,
-      ),
-      child: ClipRRect(
-        borderRadius: borderRadius,
-        clipBehavior: Clip.antiAlias,
-        child: Container(
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: borderRadius,
-          ),
-          foregroundDecoration: BoxDecoration(
-            borderRadius: borderRadius,
-            border: Border.all(color: borderColor, width: 1.4),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md,
-                  vertical: AppSpacing.sm,
-                ),
-                color: Color.alphaBlend(
-                  accentColor.withAlpha(14),
-                  AppColors.surface,
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: Color.alphaBlend(
-                          accentColor.withAlpha(24),
-                          AppColors.surface,
-                        ),
-                        borderRadius: BorderRadius.circular(AppRadii.md),
-                        border: Border.all(
-                          color: accentColor.withAlpha(90),
-                        ),
-                      ),
-                      child: Icon(icon, color: accentColor),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: AppTypography.sectionTitle,
-                      ),
-                    ),
-                    if (actions.isNotEmpty)
-                      Wrap(
-                        spacing: AppSpacing.sm,
-                        runSpacing: AppSpacing.sm,
-                        children: actions,
-                      ),
-                  ],
-                ),
-              ),
-              Divider(height: 1, color: borderColor),
-              Padding(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                child: child,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }
 
@@ -517,68 +403,248 @@ class _ReportVariantTabs extends StatelessWidget {
   }
 }
 
-class _ReportMetricTile extends StatelessWidget {
-  const _ReportMetricTile({
-    required this.metric,
+class _ReportSummaryBar extends StatelessWidget {
+  const _ReportSummaryBar({
+    required this.reportId,
+    required this.variantId,
+    required this.metrics,
+    required this.matchingCount,
     required this.accentColor,
     super.key,
   });
 
-  final ReportMetricDefinition metric;
+  final String reportId;
+  final String variantId;
+  final List<ReportMetricDefinition> metrics;
+  final int matchingCount;
+  final Color accentColor;
+
+  @override
+  Widget build(BuildContext context) {
+    const iqdSuffix = ' - دينار';
+    const usdSuffix = ' - دولار';
+    final allMetrics = <_ReportSummaryMetricData>[
+      _ReportSummaryMetricData(
+        key: Key('reportMetric_${reportId}_${variantId}_matches'),
+        label: 'النتائج المطابقة',
+        value: '$matchingCount',
+      ),
+      for (var index = 0; index < metrics.length; index++)
+        _ReportSummaryMetricData(
+          key: Key('reportMetric_${reportId}_${variantId}_$index'),
+          label: metrics[index].label,
+          value: metrics[index].value,
+        ),
+    ];
+    final generalMetrics = allMetrics
+        .where(
+          (metric) =>
+              !metric.label.endsWith(iqdSuffix) &&
+              !metric.label.endsWith(usdSuffix),
+        )
+        .toList(growable: false);
+    final iqdMetrics = allMetrics
+        .where((metric) => metric.label.endsWith(iqdSuffix))
+        .map((metric) => metric.withoutSuffix(iqdSuffix))
+        .toList(growable: false);
+    final usdMetrics = allMetrics
+        .where((metric) => metric.label.endsWith(usdSuffix))
+        .map((metric) => metric.withoutSuffix(usdSuffix))
+        .toList(growable: false);
+    final groups = <_ReportSummaryGroupData>[
+      if (generalMetrics.isNotEmpty)
+        _ReportSummaryGroupData(
+          title: 'عام',
+          metrics: generalMetrics,
+        ),
+      if (iqdMetrics.isNotEmpty)
+        _ReportSummaryGroupData(
+          title: 'دينار',
+          metrics: iqdMetrics,
+        ),
+      if (usdMetrics.isNotEmpty)
+        _ReportSummaryGroupData(
+          title: 'دولار',
+          metrics: usdMetrics,
+        ),
+    ];
+
+    return SizedBox(
+      height: 88,
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.sm),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          border: Border.all(
+            color: Color.lerp(
+              accentColor,
+              AppColors.surface,
+              0.58,
+            )!,
+            width: 1.3,
+          ),
+        ),
+        child: Row(
+          children: [
+            for (var index = 0; index < groups.length; index++) ...[
+              if (index > 0) const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                flex: groups[index].flex,
+                child: _ReportSummaryGroup(
+                  group: groups[index],
+                  accentColor: accentColor,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ReportSummaryGroup extends StatelessWidget {
+  const _ReportSummaryGroup({
+    required this.group,
+    required this.accentColor,
+  });
+
+  final _ReportSummaryGroupData group;
   final Color accentColor;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 210,
       padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.sm,
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
       ),
       decoration: BoxDecoration(
         color: Color.alphaBlend(
           accentColor.withAlpha(10),
           AppColors.surface,
         ),
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(
-          color: Color.lerp(
-            accentColor,
-            AppColors.surface,
-            0.68,
-          )!,
-        ),
+        borderRadius: BorderRadius.circular(AppRadii.sm),
+        border: Border.all(color: accentColor.withAlpha(48)),
       ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            metric.label,
+            group.title,
             maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
+            style: TextStyle(
+              color: accentColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: AppSpacing.xs),
-          Directionality(
-            textDirection: TextDirection.ltr,
-            child: Text(
-              metric.value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: accentColor,
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-              ),
+          const SizedBox(height: 2),
+          Expanded(
+            child: Row(
+              children: [
+                for (var index = 0;
+                    index < group.metrics.length;
+                    index++) ...[
+                  if (index > 0)
+                    VerticalDivider(
+                      width: AppSpacing.sm,
+                      thickness: 1,
+                      color: accentColor.withAlpha(34),
+                    ),
+                  Expanded(
+                    child: _ReportSummaryMetric(
+                      key: group.metrics[index].key,
+                      metric: group.metrics[index],
+                      accentColor: accentColor,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ReportSummaryMetric extends StatelessWidget {
+  const _ReportSummaryMetric({
+    required this.metric,
+    required this.accentColor,
+    super.key,
+  });
+
+  final _ReportSummaryMetricData metric;
+  final Color accentColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: Text(
+            metric.value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: accentColor,
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        Text(
+          metric.label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ReportSummaryGroupData {
+  const _ReportSummaryGroupData({
+    required this.title,
+    required this.metrics,
+  });
+
+  final String title;
+  final List<_ReportSummaryMetricData> metrics;
+
+  int get flex {
+    if (metrics.length < 2) return 2;
+    if (metrics.length > 5) return 5;
+    return metrics.length;
+  }
+}
+
+class _ReportSummaryMetricData {
+  const _ReportSummaryMetricData({
+    required this.key,
+    required this.label,
+    required this.value,
+  });
+
+  final Key key;
+  final String label;
+  final String value;
+
+  _ReportSummaryMetricData withoutSuffix(String suffix) {
+    return _ReportSummaryMetricData(
+      key: key,
+      label: label.substring(0, label.length - suffix.length),
+      value: value,
     );
   }
 }
