@@ -14,6 +14,34 @@ void main() {
 
     final table = find.byKey(const Key('designMaterialsTable'));
     await reveal(tester, table);
+    final tableWidget = tester.widget<AppDataTable>(table);
+    expect(tableWidget.accentColor, AppModuleColors.parties);
+
+    final tableSurface = tester
+        .widgetList<Container>(
+          find.descendant(
+            of: table,
+            matching: find.byType(Container),
+          ),
+        )
+        .firstWhere(
+          (container) =>
+              container.foregroundDecoration is BoxDecoration &&
+              (container.foregroundDecoration! as BoxDecoration)
+                  .border is Border,
+        );
+    final tableBorder =
+        (tableSurface.foregroundDecoration! as BoxDecoration).border!
+            as Border;
+    expect(
+      tableBorder.top.color,
+      Color.lerp(
+        AppModuleColors.parties,
+        AppColors.surface,
+        0.62,
+      ),
+    );
+    expect(tableBorder.top.width, 1.4);
 
     final materialCodeHeader = find.descendant(
       of: table,

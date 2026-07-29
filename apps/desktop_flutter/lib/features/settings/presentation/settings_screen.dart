@@ -42,11 +42,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final selectedSection = _selectedSection;
+    final accentColor =
+        selectedSection?.palette.middle ?? AppModuleColors.settings;
     final tint = Color.alphaBlend(
-      AppModuleColors.settings.withAlpha(12),
+      accentColor.withAlpha(12),
       AppColors.surface,
     );
-    final selectedSection = _selectedSection;
 
     return AppScreenShell(
       key: const Key('settingsScreen'),
@@ -75,15 +77,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildSection(_SettingsSection section) {
     return switch (section) {
       _SettingsSection.businessPolicies =>
-        const BusinessPoliciesSettingsSection(),
+        BusinessPoliciesSettingsSection(
+          accentColor: section.palette.middle,
+        ),
       _SettingsSection.defaultSettings =>
-        const OperationalDefaultsSettingsSection(),
-      _SettingsSection.masterData => const MasterDataSettingsSection(),
-      _SettingsSection.backup => const BackupDataSettingsSection(),
+        OperationalDefaultsSettingsSection(
+          accentColor: section.palette.middle,
+        ),
+      _SettingsSection.masterData => MasterDataSettingsSection(
+          accentColor: section.palette.middle,
+        ),
+      _SettingsSection.backup => BackupDataSettingsSection(
+          accentColor: section.palette.middle,
+        ),
       _SettingsSection.usersSecurity =>
-        const UsersSecuritySettingsSection(),
+        UsersSecuritySettingsSection(
+          accentColor: section.palette.middle,
+        ),
       _SettingsSection.archive =>
-        const ElectronicArchiveSettingsSection(),
+        ElectronicArchiveSettingsSection(
+          accentColor: section.palette.middle,
+        ),
     };
   }
 }
@@ -192,13 +206,13 @@ enum _SettingsSection {
     id: 'usersSecurity',
     title: 'المستخدمون والأمان',
     icon: Icons.admin_panel_settings_rounded,
-    palette: AppModulePalettes.sales,
+    palette: _oldActivityLogPalette,
   ),
   archive(
     id: 'archive',
     title: 'الأرشيف الإلكتروني',
     icon: Icons.inventory_2_rounded,
-    palette: _oldActivityLogPalette,
+    palette: AppModulePalettes.sales,
   );
 
   const _SettingsSection({

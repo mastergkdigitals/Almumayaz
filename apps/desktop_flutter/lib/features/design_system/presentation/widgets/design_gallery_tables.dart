@@ -92,9 +92,15 @@ class DesignGalleryTablesSection extends StatelessWidget {
             'جداول القوائم والسجلات',
             style: AppTypography.sectionTitle,
           ),
+          const SizedBox(height: AppSpacing.sm),
+          const Text(
+            'يتبع رأس الجدول وحدوده لون القسم مع الحفاظ على صفوف بيضاء واضحة.',
+            style: TextStyle(color: AppColors.textSecondary),
+          ),
           const SizedBox(height: AppSpacing.md),
           AppDataTable(
             key: const Key('designMaterialsTable'),
+            accentColor: AppModuleColors.parties,
             columns: const [
               AppTableColumn(label: 'رمز المادة'),
               AppTableColumn(label: 'اسم المادة'),

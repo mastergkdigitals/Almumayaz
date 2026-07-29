@@ -46,6 +46,7 @@ class AppDataTable extends StatefulWidget {
     this.emptyState,
     this.verticalScrollController,
     this.accentColor,
+    this.borderColor,
     this.headerBackgroundColor,
     this.headerForegroundColor,
     this.cellHorizontalPadding = AppSpacing.md,
@@ -66,6 +67,7 @@ class AppDataTable extends StatefulWidget {
   final Widget? emptyState;
   final ScrollController? verticalScrollController;
   final Color? accentColor;
+  final Color? borderColor;
   final Color? headerBackgroundColor;
   final Color? headerForegroundColor;
   final double cellHorizontalPadding;
@@ -103,6 +105,14 @@ class _AppDataTableState extends State<AppDataTable> {
     );
 
     final borderRadius = BorderRadius.circular(widget.borderRadius);
+    final effectiveBorderColor = widget.borderColor ??
+        (widget.accentColor == null
+            ? AppColors.border
+            : Color.lerp(
+                widget.accentColor,
+                AppColors.surface,
+                0.62,
+              )!);
     final columnWidths = <int, TableColumnWidth>{
       for (var index = 0; index < widget.columns.length; index++)
         index: FlexColumnWidth(widget.columns[index].flex),
@@ -116,7 +126,7 @@ class _AppDataTableState extends State<AppDataTable> {
       ),
       foregroundDecoration: BoxDecoration(
         borderRadius: borderRadius,
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: effectiveBorderColor, width: 1.4),
       ),
       clipBehavior: Clip.antiAlias,
       child: LayoutBuilder(
@@ -147,13 +157,17 @@ class _AppDataTableState extends State<AppDataTable> {
                         columnWidths: columnWidths,
                         height: widget.headerHeight,
                         accentColor: widget.accentColor,
+                        borderColor: effectiveBorderColor,
                         backgroundColor: widget.headerBackgroundColor,
                         foregroundColor: widget.headerForegroundColor,
                         horizontalPadding: widget.cellHorizontalPadding,
                         showColumnDividers: widget.showColumnDividers,
                       ),
                       Expanded(
-                        child: _buildBody(columnWidths),
+                        child: _buildBody(
+                          columnWidths,
+                          effectiveBorderColor,
+                        ),
                       ),
                     ],
                   ),
@@ -166,7 +180,10 @@ class _AppDataTableState extends State<AppDataTable> {
     );
   }
 
-  Widget _buildBody(Map<int, TableColumnWidth> columnWidths) {
+  Widget _buildBody(
+    Map<int, TableColumnWidth> columnWidths,
+    Color borderColor,
+  ) {
     if (widget.isLoading) {
       return const Center(
         child: AppLoadingIndicator(size: 40, strokeWidth: 4),
@@ -203,6 +220,7 @@ class _AppDataTableState extends State<AppDataTable> {
                 ? widget.alternatingRowColor
                 : null,
             selectedColor: widget.selectedRowColor,
+            borderColor: borderColor,
           );
         },
       ),
@@ -216,6 +234,7 @@ class _TableHeader extends StatelessWidget {
     required this.columnWidths,
     required this.height,
     required this.accentColor,
+    required this.borderColor,
     required this.backgroundColor,
     required this.foregroundColor,
     required this.horizontalPadding,
@@ -226,6 +245,7 @@ class _TableHeader extends StatelessWidget {
   final Map<int, TableColumnWidth> columnWidths;
   final double height;
   final Color? accentColor;
+  final Color borderColor;
   final Color? backgroundColor;
   final Color? foregroundColor;
   final double horizontalPadding;
@@ -245,8 +265,8 @@ class _TableHeader extends StatelessWidget {
       height: height,
       decoration: BoxDecoration(
         color: headerColor,
-        border: const Border(
-          bottom: BorderSide(color: AppColors.border, width: 0.8),
+        border: Border(
+          bottom: BorderSide(color: borderColor, width: 0.8),
         ),
       ),
       child: Table(
@@ -260,9 +280,9 @@ class _TableHeader extends StatelessWidget {
                   decoration: BoxDecoration(
                     border: showColumnDividers &&
                             index < columns.length - 1
-                        ? const Border(
+                        ? Border(
                             left: BorderSide(
-                              color: AppColors.border,
+                              color: borderColor,
                               width: 0.8,
                             ),
                           )
@@ -305,6 +325,7 @@ class _TableBodyRow extends StatelessWidget {
     required this.showColumnDividers,
     required this.backgroundColor,
     required this.selectedColor,
+    required this.borderColor,
   });
 
   final List<AppTableColumn> columns;
@@ -316,6 +337,7 @@ class _TableBodyRow extends StatelessWidget {
   final bool showColumnDividers;
   final Color? backgroundColor;
   final Color? selectedColor;
+  final Color borderColor;
 
   @override
   Widget build(BuildContext context) {
@@ -335,8 +357,8 @@ class _TableBodyRow extends StatelessWidget {
         child: DecoratedBox(
           decoration: BoxDecoration(
             border: showBottomBorder
-                ? const Border(
-                    bottom: BorderSide(color: AppColors.border, width: 0.8),
+                ? Border(
+                    bottom: BorderSide(color: borderColor, width: 0.8),
                   )
                 : null,
           ),
@@ -352,9 +374,9 @@ class _TableBodyRow extends StatelessWidget {
                       decoration: BoxDecoration(
                         border: showColumnDividers &&
                                 index < row.cells.length - 1
-                            ? const Border(
+                            ? Border(
                                 left: BorderSide(
-                                  color: AppColors.border,
+                                  color: borderColor,
                                   width: 0.8,
                                 ),
                               )

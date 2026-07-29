@@ -10,6 +10,7 @@ class AppSwitchField extends StatelessWidget {
     super.key,
     this.subtitle,
     this.icon,
+    this.accentColor,
   });
 
   final String title;
@@ -17,9 +18,18 @@ class AppSwitchField extends StatelessWidget {
   final bool value;
   final ValueChanged<bool>? onChanged;
   final IconData? icon;
+  final Color? accentColor;
 
   @override
   Widget build(BuildContext context) {
+    final selectedThumbColor = accentColor ?? AppColors.success;
+    final selectedTrackColor = accentColor == null
+        ? AppColors.switchTrackSelected
+        : Color.alphaBlend(
+            accentColor!.withAlpha(48),
+            AppColors.surface,
+          );
+
     return Container(
       constraints: const BoxConstraints(
         minHeight: AppControlHeights.large,
@@ -36,7 +46,7 @@ class AppSwitchField extends StatelessWidget {
       child: Row(
         children: [
           if (icon != null) ...[
-            Icon(icon, color: AppColors.primary),
+            Icon(icon, color: accentColor ?? AppColors.primary),
             const SizedBox(width: AppSpacing.md),
           ],
           Expanded(
@@ -69,7 +79,7 @@ class AppSwitchField extends StatelessWidget {
                 return AppColors.disabled;
               }
               return states.contains(WidgetState.selected)
-                  ? AppColors.success
+                  ? selectedThumbColor
                   : AppColors.danger;
             }),
             trackColor: WidgetStateProperty.resolveWith<Color?>((states) {
@@ -77,7 +87,7 @@ class AppSwitchField extends StatelessWidget {
                 return AppColors.switchTrack;
               }
               return states.contains(WidgetState.selected)
-                  ? AppColors.switchTrackSelected
+                  ? selectedTrackColor
                   : AppColors.switchTrack;
             }),
             trackOutlineColor:

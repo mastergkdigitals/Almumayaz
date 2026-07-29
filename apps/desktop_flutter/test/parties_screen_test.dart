@@ -58,6 +58,14 @@ void main() {
     );
     expect(find.byKey(const Key('partiesActionBar')), findsOneWidget);
     expect(find.byKey(const Key('partiesTable')), findsOneWidget);
+    expect(
+      tester
+          .widget<AppDataTable>(
+            find.byKey(const Key('partiesTable')),
+          )
+          .accentColor,
+      AppModuleColors.parties,
+    );
     expect(find.byKey(const Key('appScreenBackButton')), findsOneWidget);
     expect(find.text('بيانات الطرف'), findsNothing);
     expect(find.text('نوع الطرف مخصص للتقارير فقط'), findsNothing);

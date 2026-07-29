@@ -94,6 +94,7 @@ class _PartiesTableState extends State<PartiesTable> {
       rowHeight: _rowHeight,
       verticalScrollController: _scrollController,
       minimumColumnWidth: 145,
+      accentColor: AppModuleColors.parties,
       columns: const [
         AppTableColumn(label: 'اسم الطرف', flex: 1.5),
         AppTableColumn(label: 'النوع', flex: 0.9),

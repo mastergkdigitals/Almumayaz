@@ -1,6 +1,7 @@
 import 'package:erp/app/app.dart';
 import 'package:erp/core/design/app_design_system.dart';
 import 'package:erp/features/dashboard/presentation/dashboard_card.dart';
+import 'package:erp/features/settings/presentation/widgets/settings_sections.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -97,17 +98,20 @@ void main() {
       const Color(0xFF4F46E5),
     );
     expect(
-      card('archive').colors,
+      card('usersSecurity').colors,
       const [
         Color(0xFF7F1D1D),
         Color(0xFFDC2626),
         Color(0xFFFCA5A5),
       ],
     );
-    expect(card('archive').shadowColor, const Color(0xFFB91C1C));
-    expect(card('usersSecurity').colors, AppModulePalettes.sales.gradient);
     expect(
       card('usersSecurity').shadowColor,
+      const Color(0xFFB91C1C),
+    );
+    expect(card('archive').colors, AppModulePalettes.sales.gradient);
+    expect(
+      card('archive').shadowColor,
       AppModulePalettes.sales.shadow,
     );
     expect(card('backup').colors, AppModulePalettes.reports.gradient);
@@ -165,6 +169,24 @@ void main() {
       find.byKey(const Key('settingsOverdueDebtAlerts')),
       findsOneWidget,
     );
+    expect(
+      tester
+          .widget<SettingsTemplatePanel>(
+            find.byKey(const Key('settingsPricingInventoryPanel')),
+          )
+          .accentColor,
+      AppModulePalettes.settings.middle,
+    );
+    expect(
+      tester
+          .widget<AppSwitchField>(
+            find.byKey(
+              const Key('settingsAllowInsufficientStockSale'),
+            ),
+          )
+          .accentColor,
+      AppModulePalettes.settings.middle,
+    );
 
     final policiesList = tester.widget<ListView>(
       find.byKey(const Key('businessPoliciesSettingsContent')),
@@ -183,6 +205,28 @@ void main() {
       panelClip.borderRadius,
       BorderRadius.circular(AppRadii.lg),
     );
+    final panelSurface = tester
+        .widgetList<DecoratedBox>(
+          find.descendant(
+            of: find.byKey(
+              const Key('settingsPricingInventoryPanel'),
+            ),
+            matching: find.byType(DecoratedBox),
+          ),
+        )
+        .map((box) => box.decoration)
+        .whereType<BoxDecoration>()
+        .firstWhere((decoration) => decoration.border is Border);
+    final panelBorder = panelSurface.border! as Border;
+    expect(
+      panelBorder.top.color,
+      Color.lerp(
+        AppModulePalettes.settings.middle,
+        AppColors.surface,
+        0.62,
+      ),
+    );
+    expect(panelBorder.top.width, 1.4);
 
     await tester.drag(
       find.byKey(const Key('businessPoliciesSettingsContent')),
@@ -233,6 +277,26 @@ void main() {
       find.byKey(const Key('settingsCashboxDefaultAccount')),
       findsOneWidget,
     );
+    const defaultsAccent = Color(0xFF4F46E5);
+    expect(
+      tester
+          .widget<SettingsTemplatePanel>(
+            find.byKey(const Key('settingsPurchaseDefaultsPanel')),
+          )
+          .accentColor,
+      defaultsAccent,
+    );
+    expect(
+      tester
+          .widget<AppScreenShell>(
+            find.byKey(const Key('settingsScreen')),
+          )
+          .backgroundColor,
+      Color.alphaBlend(
+        defaultsAccent.withAlpha(12),
+        AppColors.surface,
+      ),
+    );
   });
 
   testWidgets('shows master data and backup testing controls',
@@ -251,6 +315,14 @@ void main() {
     expect(
       find.byKey(const Key('settingsItemGroupsTable')),
       findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<AppDataTable>(
+            find.byKey(const Key('settingsItemGroupsTable')),
+          )
+          .accentColor,
+      AppModulePalettes.parties.middle,
     );
 
     await tester.tap(
@@ -307,6 +379,14 @@ void main() {
       find.byKey(const Key('settingsBackupHistoryTable')),
       findsOneWidget,
     );
+    expect(
+      tester
+          .widget<AppDataTable>(
+            find.byKey(const Key('settingsBackupHistoryTable')),
+          )
+          .accentColor,
+      AppModulePalettes.reports.middle,
+    );
   });
 
   testWidgets('shows users security logs and archive interactions',
@@ -321,6 +401,14 @@ void main() {
     expect(
       find.byKey(const Key('settingsUsersTable')),
       findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<AppDataTable>(
+            find.byKey(const Key('settingsUsersTable')),
+          )
+          .accentColor,
+      const Color(0xFFDC2626),
     );
 
     await tester.tap(
@@ -361,6 +449,14 @@ void main() {
     expect(
       find.byKey(const Key('settingsArchiveTable')),
       findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<AppDataTable>(
+            find.byKey(const Key('settingsArchiveTable')),
+          )
+          .accentColor,
+      AppModulePalettes.sales.middle,
     );
 
     await tester.tap(

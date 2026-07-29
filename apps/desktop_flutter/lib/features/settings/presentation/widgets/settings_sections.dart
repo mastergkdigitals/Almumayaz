@@ -43,7 +43,12 @@ const _settingsCashboxAccountOptions = <AppDropdownOption<String>>[
 ];
 
 class BusinessPoliciesSettingsSection extends StatefulWidget {
-  const BusinessPoliciesSettingsSection({super.key});
+  const BusinessPoliciesSettingsSection({
+    required this.accentColor,
+    super.key,
+  });
+
+  final Color accentColor;
 
   @override
   State<BusinessPoliciesSettingsSection> createState() =>
@@ -86,7 +91,7 @@ class _BusinessPoliciesSettingsSectionState
               key: const Key('settingsPricingInventoryPanel'),
               title: 'الأسعار والمخزون',
               icon: Icons.currency_exchange_rounded,
-              accentColor: AppModuleColors.settings,
+              accentColor: widget.accentColor,
               child: Column(
                 children: [
                   AppTextField(
@@ -95,7 +100,7 @@ class _BusinessPoliciesSettingsSectionState
                     controller: _exchangeRateController,
                     label: 'سعر الصرف الافتراضي',
                     icon: Icons.currency_exchange_rounded,
-                    accentColor: AppModuleColors.settings,
+                    accentColor: widget.accentColor,
                     textDirection: TextDirection.rtl,
                     textAlign: TextAlign.right,
                     keyboardType:
@@ -111,6 +116,7 @@ class _BusinessPoliciesSettingsSectionState
                     subtitle:
                         'يظهر تنبيه قبل إكمال البيع عندما تكون الكمية غير كافية',
                     icon: Icons.inventory_2_outlined,
+                    accentColor: widget.accentColor,
                     value: _allowInsufficientStockSale,
                     onChanged: (value) {
                       setState(() => _allowInsufficientStockSale = value);
@@ -123,7 +129,7 @@ class _BusinessPoliciesSettingsSectionState
               key: const Key('settingsDebtInstallmentsPanel'),
               title: 'الديون والأقساط',
               icon: Icons.account_balance_wallet_outlined,
-              accentColor: AppModuleColors.settings,
+              accentColor: widget.accentColor,
               child: Column(
                 children: [
                   AppTextField(
@@ -132,7 +138,7 @@ class _BusinessPoliciesSettingsSectionState
                     controller: _customerDebtLimitController,
                     label: 'حد الدين الافتراضي للزبون',
                     icon: Icons.credit_score_rounded,
-                    accentColor: AppModuleColors.settings,
+                    accentColor: widget.accentColor,
                     textDirection: TextDirection.rtl,
                     textAlign: TextAlign.right,
                     keyboardType: TextInputType.number,
@@ -146,7 +152,7 @@ class _BusinessPoliciesSettingsSectionState
                     controller: _debtDueDaysController,
                     label: 'مدة استحقاق الدين الافتراضية بالأيام',
                     icon: Icons.event_repeat_rounded,
-                    accentColor: AppModuleColors.settings,
+                    accentColor: widget.accentColor,
                     textDirection: TextDirection.rtl,
                     textAlign: TextAlign.right,
                     keyboardType: TextInputType.number,
@@ -158,6 +164,7 @@ class _BusinessPoliciesSettingsSectionState
                     title: 'تنبيه الديون أو الأقساط المتأخرة',
                     subtitle: 'إظهار تنبيه عند تجاوز تاريخ الاستحقاق',
                     icon: Icons.notifications_active_outlined,
+                    accentColor: widget.accentColor,
                     value: _overdueDebtAlerts,
                     onChanged: (value) {
                       setState(() => _overdueDebtAlerts = value);
@@ -194,7 +201,7 @@ class _BusinessPoliciesSettingsSectionState
       key: const Key('settingsPrintingPanel'),
       title: 'الطباعة',
       icon: Icons.print_rounded,
-      accentColor: AppModuleColors.sales,
+      accentColor: widget.accentColor,
       child: SettingsResponsiveGrid(
         preferredColumns: 2,
         children: [
@@ -202,7 +209,7 @@ class _BusinessPoliciesSettingsSectionState
             fieldKey: const Key('settingsDefaultPrinterField'),
             label: 'الطابعة الافتراضية',
             icon: Icons.print_outlined,
-            accentColor: AppModuleColors.sales,
+            accentColor: widget.accentColor,
             value: _printer,
             options: const [
               AppDropdownOption(
@@ -230,7 +237,7 @@ class _BusinessPoliciesSettingsSectionState
             fieldKey: const Key('settingsPaperSizeField'),
             label: 'حجم الورق',
             icon: Icons.description_outlined,
-            accentColor: AppModuleColors.sales,
+            accentColor: widget.accentColor,
             value: _paperSize,
             options: const [
               AppDropdownOption(value: 'A4', label: 'A4'),
@@ -249,7 +256,7 @@ class _BusinessPoliciesSettingsSectionState
             controller: _copiesController,
             label: 'عدد النسخ',
             icon: Icons.copy_all_outlined,
-            accentColor: AppModuleColors.sales,
+            accentColor: widget.accentColor,
             textDirection: TextDirection.rtl,
             textAlign: TextAlign.right,
             keyboardType: TextInputType.number,
@@ -260,6 +267,7 @@ class _BusinessPoliciesSettingsSectionState
             title: 'تشغيل معاينة الطباعة',
             subtitle: 'عرض الفاتورة قبل إرسالها إلى الطابعة',
             icon: Icons.preview_outlined,
+            accentColor: widget.accentColor,
             value: _previewEnabled,
             onChanged: (value) {
               setState(() => _previewEnabled = value);
@@ -272,7 +280,12 @@ class _BusinessPoliciesSettingsSectionState
 }
 
 class OperationalDefaultsSettingsSection extends StatefulWidget {
-  const OperationalDefaultsSettingsSection({super.key});
+  const OperationalDefaultsSettingsSection({
+    required this.accentColor,
+    super.key,
+  });
+
+  final Color accentColor;
 
   @override
   State<OperationalDefaultsSettingsSection> createState() =>
@@ -306,14 +319,14 @@ class _OperationalDefaultsSettingsSectionState
               key: const Key('settingsPurchaseDefaultsPanel'),
               title: 'المشتريات',
               icon: Icons.shopping_cart_checkout_rounded,
-              accentColor: AppModuleColors.purchases,
+              accentColor: widget.accentColor,
               child: Column(
                 children: [
                   _dropdown(
                     key: 'settingsPurchaseDefaultWarehouse',
                     label: 'المخزن الافتراضي',
                     icon: Icons.warehouse_rounded,
-                    accentColor: AppModuleColors.purchases,
+                    accentColor: widget.accentColor,
                     value: _purchaseWarehouse,
                     options: _settingsWarehouseOptions,
                     onChanged: (value) {
@@ -325,7 +338,7 @@ class _OperationalDefaultsSettingsSectionState
                     key: 'settingsPurchaseDefaultType',
                     label: 'نوع الشراء الافتراضي',
                     icon: Icons.sell_outlined,
-                    accentColor: AppModuleColors.purchases,
+                    accentColor: widget.accentColor,
                     value: _purchaseType,
                     options: _settingsPurchaseTypeOptions,
                     onChanged: (value) {
@@ -337,7 +350,7 @@ class _OperationalDefaultsSettingsSectionState
                     key: 'settingsPurchaseDefaultPayment',
                     label: 'نوع الدفع الافتراضي',
                     icon: Icons.payments_outlined,
-                    accentColor: AppModuleColors.purchases,
+                    accentColor: widget.accentColor,
                     value: _purchasePaymentType,
                     options: _settingsPaymentTypeOptions,
                     onChanged: (value) {
@@ -349,7 +362,7 @@ class _OperationalDefaultsSettingsSectionState
                     key: 'settingsPurchaseDefaultCurrency',
                     label: 'العملة الافتراضية',
                     icon: Icons.currency_exchange_rounded,
-                    accentColor: AppModuleColors.purchases,
+                    accentColor: widget.accentColor,
                     value: _purchaseCurrency,
                     options: _settingsCurrencyOptions,
                     onChanged: (value) {
@@ -363,14 +376,14 @@ class _OperationalDefaultsSettingsSectionState
               key: const Key('settingsSalesDefaultsPanel'),
               title: 'المبيعات',
               icon: Icons.point_of_sale_rounded,
-              accentColor: AppModuleColors.sales,
+              accentColor: widget.accentColor,
               child: Column(
                 children: [
                   _dropdown(
                     key: 'settingsSalesDefaultWarehouse',
                     label: 'المخزن الافتراضي',
                     icon: Icons.warehouse_rounded,
-                    accentColor: AppModuleColors.sales,
+                    accentColor: widget.accentColor,
                     value: _salesWarehouse,
                     options: _settingsWarehouseOptions,
                     onChanged: (value) {
@@ -382,7 +395,7 @@ class _OperationalDefaultsSettingsSectionState
                     key: 'settingsSalesDefaultType',
                     label: 'نوع البيع الافتراضي',
                     icon: Icons.sell_outlined,
-                    accentColor: AppModuleColors.sales,
+                    accentColor: widget.accentColor,
                     value: _saleType,
                     options: _settingsSaleTypeOptions,
                     onChanged: (value) {
@@ -394,7 +407,7 @@ class _OperationalDefaultsSettingsSectionState
                     key: 'settingsSalesDefaultCurrency',
                     label: 'العملة الافتراضية',
                     icon: Icons.currency_exchange_rounded,
-                    accentColor: AppModuleColors.sales,
+                    accentColor: widget.accentColor,
                     value: _salesCurrency,
                     options: _settingsCurrencyOptions,
                     onChanged: (value) {
@@ -408,14 +421,14 @@ class _OperationalDefaultsSettingsSectionState
               key: const Key('settingsCashboxDefaultsPanel'),
               title: 'الصندوق',
               icon: Icons.account_balance_wallet_rounded,
-              accentColor: AppModuleColors.cashbox,
+              accentColor: widget.accentColor,
               child: Column(
                 children: [
                   _dropdown(
                     key: 'settingsCashboxDefaultVoucherType',
                     label: 'نوع الحركة الافتراضي',
                     icon: Icons.swap_vert_circle_outlined,
-                    accentColor: AppModuleColors.cashbox,
+                    accentColor: widget.accentColor,
                     value: _voucherType,
                     options: _settingsVoucherTypeOptions,
                     onChanged: (value) {
@@ -427,7 +440,7 @@ class _OperationalDefaultsSettingsSectionState
                     key: 'settingsCashboxDefaultAccount',
                     label: 'الحساب الرئيسي الافتراضي',
                     icon: Icons.account_tree_outlined,
-                    accentColor: AppModuleColors.cashbox,
+                    accentColor: widget.accentColor,
                     value: _cashboxAccount,
                     options: _settingsCashboxAccountOptions,
                     onChanged: (value) {
@@ -439,7 +452,7 @@ class _OperationalDefaultsSettingsSectionState
                     key: 'settingsCashboxDefaultCurrency',
                     label: 'العملة الافتراضية',
                     icon: Icons.currency_exchange_rounded,
-                    accentColor: AppModuleColors.cashbox,
+                    accentColor: widget.accentColor,
                     value: _cashboxCurrency,
                     options: _settingsCurrencyOptions,
                     onChanged: (value) {
@@ -498,7 +511,12 @@ class _OperationalDefaultsSettingsSectionState
 }
 
 class MasterDataSettingsSection extends StatefulWidget {
-  const MasterDataSettingsSection({super.key});
+  const MasterDataSettingsSection({
+    required this.accentColor,
+    super.key,
+  });
+
+  final Color accentColor;
 
   @override
   State<MasterDataSettingsSection> createState() =>
@@ -518,6 +536,7 @@ class _MasterDataSettingsSectionState
       children: [
         SettingsTemplateTabs<String>(
           keyPrefix: 'masterDataTab_',
+          accentColor: widget.accentColor,
           selected: _selectedTab,
           onChanged: (value) => setState(() => _selectedTab = value),
           items: const [
@@ -540,9 +559,15 @@ class _MasterDataSettingsSectionState
         ),
         const SizedBox(height: AppSpacing.lg),
         switch (_selectedTab) {
-          'workplacesBranches' => const _WorkplacesBranchesTemplate(),
-          'cashboxAccounts' => const _CashboxAccountsTemplate(),
-          _ => const _GroupsTypesTemplate(),
+          'workplacesBranches' => _WorkplacesBranchesTemplate(
+              accentColor: widget.accentColor,
+            ),
+          'cashboxAccounts' => _CashboxAccountsTemplate(
+              accentColor: widget.accentColor,
+            ),
+          _ => _GroupsTypesTemplate(
+              accentColor: widget.accentColor,
+            ),
         },
       ],
     );
@@ -550,21 +575,23 @@ class _MasterDataSettingsSectionState
 }
 
 class _GroupsTypesTemplate extends StatelessWidget {
-  const _GroupsTypesTemplate();
+  const _GroupsTypesTemplate({required this.accentColor});
+
+  final Color accentColor;
 
   @override
   Widget build(BuildContext context) {
     return SettingsResponsiveGrid(
       key: const Key('settingsGroupsTypesTemplate'),
       preferredColumns: 2,
-      children: const [
+      children: [
         _SettingsManagementPanel(
           keyPrefix: 'settingsItemGroups',
           title: 'مجموعات المواد',
           fieldLabel: 'اسم المجموعة',
           icon: Icons.folder_copy_outlined,
-          accentColor: AppModuleColors.warehouses,
-          initialEntries: [
+          accentColor: accentColor,
+          initialEntries: const [
             _SettingsNamedEntry(id: 1, name: 'المواد الغذائية'),
             _SettingsNamedEntry(id: 2, name: 'الأجهزة الكهربائية'),
             _SettingsNamedEntry(id: 3, name: 'القرطاسية'),
@@ -581,8 +608,8 @@ class _GroupsTypesTemplate extends StatelessWidget {
             'القرطاسية',
           ],
           icon: Icons.account_tree_outlined,
-          accentColor: AppModuleColors.warehouses,
-          initialEntries: [
+          accentColor: accentColor,
+          initialEntries: const [
             _SettingsNamedEntry(id: 1, name: 'مشروبات'),
             _SettingsNamedEntry(id: 2, name: 'مواد جافة'),
             _SettingsNamedEntry(id: 3, name: 'أجهزة منزلية'),
@@ -594,21 +621,23 @@ class _GroupsTypesTemplate extends StatelessWidget {
 }
 
 class _WorkplacesBranchesTemplate extends StatelessWidget {
-  const _WorkplacesBranchesTemplate();
+  const _WorkplacesBranchesTemplate({required this.accentColor});
+
+  final Color accentColor;
 
   @override
   Widget build(BuildContext context) {
     return SettingsResponsiveGrid(
       key: const Key('settingsWorkplacesBranchesTemplate'),
       preferredColumns: 2,
-      children: const [
+      children: [
         _SettingsManagementPanel(
           keyPrefix: 'settingsWorkplaces',
           title: 'جهات العمل',
           fieldLabel: 'اسم جهة العمل',
           icon: Icons.business_center_outlined,
-          accentColor: AppModuleColors.parties,
-          initialEntries: [
+          accentColor: accentColor,
+          initialEntries: const [
             _SettingsNamedEntry(id: 1, name: 'شركة المميز'),
             _SettingsNamedEntry(id: 2, name: 'السوق المحلي'),
             _SettingsNamedEntry(id: 3, name: 'المبيعات المباشرة'),
@@ -625,8 +654,8 @@ class _WorkplacesBranchesTemplate extends StatelessWidget {
             'المبيعات المباشرة',
           ],
           icon: Icons.fork_right_outlined,
-          accentColor: AppModuleColors.parties,
-          initialEntries: [
+          accentColor: accentColor,
+          initialEntries: const [
             _SettingsNamedEntry(id: 1, name: 'الفرع الرئيسي'),
             _SettingsNamedEntry(id: 2, name: 'فرع الكرادة'),
             _SettingsNamedEntry(id: 3, name: 'فرع المنصور'),
@@ -638,21 +667,23 @@ class _WorkplacesBranchesTemplate extends StatelessWidget {
 }
 
 class _CashboxAccountsTemplate extends StatelessWidget {
-  const _CashboxAccountsTemplate();
+  const _CashboxAccountsTemplate({required this.accentColor});
+
+  final Color accentColor;
 
   @override
   Widget build(BuildContext context) {
     return SettingsResponsiveGrid(
       key: const Key('settingsCashboxAccountsTemplate'),
       preferredColumns: 2,
-      children: const [
+      children: [
         _SettingsManagementPanel(
           keyPrefix: 'settingsCashboxMainAccounts',
           title: 'الحسابات الرئيسية',
           fieldLabel: 'اسم الحساب الرئيسي',
           icon: Icons.account_balance_wallet_outlined,
-          accentColor: AppModuleColors.cashbox,
-          initialEntries: [
+          accentColor: accentColor,
+          initialEntries: const [
             _SettingsNamedEntry(
               id: 1,
               name: 'الصندوق الرئيسي',
@@ -673,8 +704,8 @@ class _CashboxAccountsTemplate extends StatelessWidget {
             'حساب الأطراف',
           ],
           icon: Icons.segment_outlined,
-          accentColor: AppModuleColors.cashbox,
-          initialEntries: [
+          accentColor: accentColor,
+          initialEntries: const [
             _SettingsNamedEntry(id: 1, name: 'النقدية اليومية'),
             _SettingsNamedEntry(id: 2, name: 'أجور النقل'),
             _SettingsNamedEntry(id: 3, name: 'مصروفات المكتب'),
@@ -960,7 +991,12 @@ class _SettingsManagementPanelState
 }
 
 class BackupDataSettingsSection extends StatefulWidget {
-  const BackupDataSettingsSection({super.key});
+  const BackupDataSettingsSection({
+    required this.accentColor,
+    super.key,
+  });
+
+  final Color accentColor;
 
   @override
   State<BackupDataSettingsSection> createState() =>
@@ -1063,12 +1099,16 @@ class _BackupDataSettingsSectionState
       primary: false,
       padding: const EdgeInsets.all(AppSpacing.md),
       children: [
-        const AppInfoBanner(
-          key: Key('settingsBackupPolicyBanner'),
+        AppInfoBanner(
+          key: const Key('settingsBackupPolicyBanner'),
           message:
               'يُنشأ النسخ التلقائي محلياً دائماً، وتُرفع نسخة إضافية إلى Google Drive عند ربط الحساب.',
           icon: Icons.shield_outlined,
-          foregroundColor: AppModuleColors.settings,
+          foregroundColor: widget.accentColor,
+          backgroundColor: Color.alphaBlend(
+            widget.accentColor.withAlpha(18),
+            AppColors.surface,
+          ),
         ),
         const SizedBox(height: AppSpacing.lg),
         SettingsResponsiveGrid(
@@ -1078,7 +1118,7 @@ class _BackupDataSettingsSectionState
               key: const Key('settingsLocalBackupPanel'),
               title: 'النسخ المحلي والتلقائي',
               icon: Icons.save_alt_rounded,
-              accentColor: AppModuleColors.settings,
+              accentColor: widget.accentColor,
               child: Column(
                 children: [
                   AppTextField(
@@ -1091,7 +1131,7 @@ class _BackupDataSettingsSectionState
                           const Key('settingsBrowseLocalBackupPath'),
                       icon: Icons.folder_open_rounded,
                       tooltip: 'اختيار مجلد',
-                      color: AppModuleColors.settings,
+                      color: widget.accentColor,
                       onPressed: () {
                         _localPathController.text =
                             r'D:\Almumayaz\Backups';
@@ -1101,7 +1141,7 @@ class _BackupDataSettingsSectionState
                         );
                       },
                     ),
-                    accentColor: AppModuleColors.settings,
+                    accentColor: widget.accentColor,
                     textDirection: TextDirection.ltr,
                     textAlign: TextAlign.left,
                   ),
@@ -1111,6 +1151,7 @@ class _BackupDataSettingsSectionState
                     title: 'النسخ التلقائي',
                     subtitle: 'إنشاء النسخة حسب التكرار المحدد',
                     icon: Icons.autorenew_rounded,
+                    accentColor: widget.accentColor,
                     value: _automaticBackup,
                     onChanged: (value) {
                       setState(() => _automaticBackup = value);
@@ -1122,7 +1163,7 @@ class _BackupDataSettingsSectionState
                         const Key('settingsBackupFrequencyField'),
                     label: 'تكرار النسخ',
                     icon: Icons.schedule_rounded,
-                    accentColor: AppModuleColors.settings,
+                    accentColor: widget.accentColor,
                     value: _backupFrequency,
                     enabled: _automaticBackup,
                     options: const [
@@ -1153,7 +1194,7 @@ class _BackupDataSettingsSectionState
               key: const Key('settingsDriveBackupPanel'),
               title: 'Google Drive',
               icon: Icons.cloud_outlined,
-              accentColor: AppColors.blue,
+              accentColor: widget.accentColor,
               child: Column(
                 children: [
                   Container(
@@ -1163,7 +1204,14 @@ class _BackupDataSettingsSectionState
                           ? AppColors.successSurface
                           : AppColors.neutralSurface,
                       borderRadius: BorderRadius.circular(AppRadii.md),
-                      border: Border.all(color: AppColors.border),
+                      border: Border.all(
+                        color: Color.lerp(
+                          widget.accentColor,
+                          AppColors.surface,
+                          0.62,
+                        )!,
+                        width: 1.4,
+                      ),
                     ),
                     child: Row(
                       children: [
@@ -1204,7 +1252,7 @@ class _BackupDataSettingsSectionState
                     controller: _driveFolderController,
                     label: 'مجلد Google Drive',
                     icon: Icons.drive_folder_upload_outlined,
-                    accentColor: AppColors.blue,
+                    accentColor: widget.accentColor,
                     enabled: _driveConnected,
                     readOnly: !_driveConnected,
                     textDirection: TextDirection.rtl,
@@ -1216,10 +1264,14 @@ class _BackupDataSettingsSectionState
                         ? 'سيتم رفع النسخة المحلية الجديدة إلى المجلد المحدد.'
                         : 'اربط الحساب لتفعيل مجلد Google Drive والرفع السحابي.',
                     icon: Icons.info_outline_rounded,
-                    foregroundColor:
-                        _driveConnected ? AppColors.blue : AppColors.grey,
+                    foregroundColor: _driveConnected
+                        ? widget.accentColor
+                        : AppColors.grey,
                     backgroundColor: _driveConnected
-                        ? AppColors.infoSurface
+                        ? Color.alphaBlend(
+                            widget.accentColor.withAlpha(18),
+                            AppColors.surface,
+                          )
                         : AppColors.neutralSurface,
                   ),
                 ],
@@ -1232,7 +1284,7 @@ class _BackupDataSettingsSectionState
           key: const Key('settingsBackupActionsPanel'),
           title: 'الإجراءات',
           icon: Icons.settings_backup_restore_rounded,
-          accentColor: AppModuleColors.settings,
+          accentColor: widget.accentColor,
           child: Wrap(
             textDirection: TextDirection.rtl,
             alignment: WrapAlignment.center,
@@ -1262,7 +1314,7 @@ class _BackupDataSettingsSectionState
           key: const Key('settingsBackupHistoryPanel'),
           title: 'سجل النسخ وآخر حالة',
           icon: Icons.history_rounded,
-          accentColor: AppModuleColors.settings,
+          accentColor: widget.accentColor,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -1296,7 +1348,7 @@ class _BackupDataSettingsSectionState
                 height: 300,
                 rowHeight: 56,
                 minimumColumnWidth: 150,
-                accentColor: AppModuleColors.settings,
+                accentColor: widget.accentColor,
                 showShadow: false,
                 columns: const [
                   AppTableColumn(label: 'التاريخ والوقت', flex: 1.5),
@@ -1372,7 +1424,12 @@ class _BackupHistoryEntry {
 }
 
 class UsersSecuritySettingsSection extends StatefulWidget {
-  const UsersSecuritySettingsSection({super.key});
+  const UsersSecuritySettingsSection({
+    required this.accentColor,
+    super.key,
+  });
+
+  final Color accentColor;
 
   @override
   State<UsersSecuritySettingsSection> createState() =>
@@ -1502,7 +1559,7 @@ class _UsersSecuritySettingsSectionState
       barrierDismissible: false,
       builder: (dialogContext) => Directionality(
         textDirection: TextDirection.rtl,
-        child: const _SettingsUserDialog(),
+        child: _SettingsUserDialog(accentColor: widget.accentColor),
       ),
     );
     if (draft == null || !mounted) return;
@@ -1576,6 +1633,7 @@ class _UsersSecuritySettingsSectionState
       children: [
         SettingsTemplateTabs<String>(
           keyPrefix: 'usersSecurityTab_',
+          accentColor: widget.accentColor,
           selected: _selectedTab,
           onChanged: (value) => setState(() => _selectedTab = value),
           items: const [
@@ -1617,7 +1675,7 @@ class _UsersSecuritySettingsSectionState
       key: const Key('settingsUsersPanel'),
       title: 'المستخدمون',
       icon: Icons.people_alt_outlined,
-      accentColor: AppModuleColors.settings,
+      accentColor: widget.accentColor,
       actions: [
         AppRegularButton(
           key: const Key('settingsAddUserButton'),
@@ -1629,10 +1687,15 @@ class _UsersSecuritySettingsSectionState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const AppInfoBanner(
+          AppInfoBanner(
             message:
                 'يمكن تفعيل الحساب أو تعطيله أو قفله، وتغيير كلمة مروره من قائمة المستخدمين.',
             icon: Icons.info_outline_rounded,
+            foregroundColor: widget.accentColor,
+            backgroundColor: Color.alphaBlend(
+              widget.accentColor.withAlpha(18),
+              AppColors.surface,
+            ),
           ),
           const SizedBox(height: AppSpacing.md),
           AppDataTable(
@@ -1640,7 +1703,7 @@ class _UsersSecuritySettingsSectionState
             height: 430,
             rowHeight: 58,
             minimumColumnWidth: 150,
-            accentColor: AppModuleColors.settings,
+            accentColor: widget.accentColor,
             showShadow: false,
             columns: const [
               AppTableColumn(label: 'الاسم الكامل', flex: 1.3),
@@ -1718,7 +1781,7 @@ class _UsersSecuritySettingsSectionState
       key: const Key('settingsRolesPanel'),
       title: 'الأدوار والصلاحيات',
       icon: Icons.admin_panel_settings_outlined,
-      accentColor: AppModuleColors.settings,
+      accentColor: widget.accentColor,
       actions: [
         AppRegularButton(
           key: const Key('settingsAddRoleButton'),
@@ -1732,10 +1795,15 @@ class _UsersSecuritySettingsSectionState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const AppInfoBanner(
+          AppInfoBanner(
             message:
                 'هذا نموذج لتجميع صلاحيات الشاشات والإضافة والتعديل والحذف والطباعة ضمن أدوار واضحة.',
             icon: Icons.verified_user_outlined,
+            foregroundColor: widget.accentColor,
+            backgroundColor: Color.alphaBlend(
+              widget.accentColor.withAlpha(18),
+              AppColors.surface,
+            ),
           ),
           const SizedBox(height: AppSpacing.md),
           AppDataTable(
@@ -1743,7 +1811,7 @@ class _UsersSecuritySettingsSectionState
             height: 390,
             rowHeight: 62,
             minimumColumnWidth: 160,
-            accentColor: AppModuleColors.settings,
+            accentColor: widget.accentColor,
             showShadow: false,
             columns: const [
               AppTableColumn(label: 'ت', flex: 0.4, numeric: true),
@@ -1793,7 +1861,7 @@ class _UsersSecuritySettingsSectionState
           key: const Key('settingsChangePasswordPanel'),
           title: 'تغيير كلمة المرور',
           icon: Icons.password_rounded,
-          accentColor: AppModuleColors.settings,
+          accentColor: widget.accentColor,
           child: Column(
             children: [
               AppTextField(
@@ -1801,7 +1869,7 @@ class _UsersSecuritySettingsSectionState
                 controller: _currentPasswordController,
                 label: 'كلمة المرور الحالية',
                 icon: Icons.lock_outline_rounded,
-                accentColor: AppModuleColors.settings,
+                accentColor: widget.accentColor,
                 obscureText: true,
                 textDirection: TextDirection.rtl,
                 textAlign: TextAlign.right,
@@ -1812,7 +1880,7 @@ class _UsersSecuritySettingsSectionState
                 controller: _newPasswordController,
                 label: 'كلمة المرور الجديدة',
                 icon: Icons.key_rounded,
-                accentColor: AppModuleColors.settings,
+                accentColor: widget.accentColor,
                 obscureText: true,
                 textDirection: TextDirection.rtl,
                 textAlign: TextAlign.right,
@@ -1823,7 +1891,7 @@ class _UsersSecuritySettingsSectionState
                 controller: _confirmPasswordController,
                 label: 'تأكيد كلمة المرور الجديدة',
                 icon: Icons.verified_user_outlined,
-                accentColor: AppModuleColors.settings,
+                accentColor: widget.accentColor,
                 obscureText: true,
                 textDirection: TextDirection.rtl,
                 textAlign: TextAlign.right,
@@ -1847,7 +1915,7 @@ class _UsersSecuritySettingsSectionState
           key: const Key('settingsIdleLockPanel'),
           title: 'القفل التلقائي',
           icon: Icons.lock_clock_outlined,
-          accentColor: AppModuleColors.settings,
+          accentColor: widget.accentColor,
           child: Column(
             children: [
               AppSwitchField(
@@ -1856,6 +1924,7 @@ class _UsersSecuritySettingsSectionState
                 subtitle:
                     'يعيد المستخدم إلى شاشة الدخول بعد مدة دون استخدام',
                 icon: Icons.timer_outlined,
+                accentColor: widget.accentColor,
                 value: _idleLockEnabled,
                 onChanged: (value) {
                   setState(() => _idleLockEnabled = value);
@@ -1866,7 +1935,7 @@ class _UsersSecuritySettingsSectionState
                 fieldKey: const Key('settingsIdleLockDurationField'),
                 label: 'مدة الخمول',
                 icon: Icons.schedule_rounded,
-                accentColor: AppModuleColors.settings,
+                accentColor: widget.accentColor,
                 value: _idleLockDuration,
                 enabled: _idleLockEnabled,
                 options: const [
@@ -1892,10 +1961,15 @@ class _UsersSecuritySettingsSectionState
                 },
               ),
               const SizedBox(height: AppSpacing.md),
-              const AppInfoBanner(
+              AppInfoBanner(
                 message:
                     'القفل لا يغلق التطبيق ولا يفقد العمل المحفوظ؛ يطلب تسجيل الدخول فقط.',
                 icon: Icons.security_rounded,
+                foregroundColor: widget.accentColor,
+                backgroundColor: Color.alphaBlend(
+                  widget.accentColor.withAlpha(18),
+                  AppColors.surface,
+                ),
               ),
               const SizedBox(height: AppSpacing.md),
               Align(
@@ -1933,7 +2007,7 @@ class _UsersSecuritySettingsSectionState
       key: const Key('settingsSecurityLogsPanel'),
       title: 'سجل الدخول والنشاط والتعديلات',
       icon: Icons.receipt_long_outlined,
-      accentColor: AppModuleColors.settings,
+      accentColor: widget.accentColor,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -1945,14 +2019,14 @@ class _UsersSecuritySettingsSectionState
                 controller: _logSearchController,
                 label: 'بحث في السجل',
                 hint: 'المستخدم أو العملية أو التفاصيل',
-                accentColor: AppModuleColors.settings,
+                accentColor: widget.accentColor,
                 onChanged: (_) => setState(() {}),
               ),
               AppDropdownField<String>(
                 fieldKey: const Key('settingsSecurityLogTypeField'),
                 label: 'نوع العملية',
                 icon: Icons.filter_alt_outlined,
-                accentColor: AppModuleColors.settings,
+                accentColor: widget.accentColor,
                 value: _logType,
                 options: const [
                   AppDropdownOption(value: 'الكل', label: 'الكل'),
@@ -1980,7 +2054,7 @@ class _UsersSecuritySettingsSectionState
             height: 430,
             rowHeight: 58,
             minimumColumnWidth: 155,
-            accentColor: AppModuleColors.settings,
+            accentColor: widget.accentColor,
             showShadow: false,
             emptyState: const AppStatePanel(
               type: AppStateType.empty,
@@ -2109,7 +2183,9 @@ class _SettingsUserDraft {
 }
 
 class _SettingsUserDialog extends StatefulWidget {
-  const _SettingsUserDialog();
+  const _SettingsUserDialog({required this.accentColor});
+
+  final Color accentColor;
 
   @override
   State<_SettingsUserDialog> createState() =>
@@ -2152,7 +2228,7 @@ class _SettingsUserDialogState extends State<_SettingsUserDialog> {
       title: 'إضافة مستخدم',
       subtitle: 'نموذج تجريبي لبيانات الحساب الأساسية',
       icon: Icons.person_add_alt_1_rounded,
-      accentColor: AppModuleColors.settings,
+      accentColor: widget.accentColor,
       onClose: _close,
       width: 620,
       actions: [
@@ -2179,7 +2255,7 @@ class _SettingsUserDialogState extends State<_SettingsUserDialog> {
             controller: _fullNameController,
             label: 'الاسم الكامل',
             icon: Icons.badge_outlined,
-            accentColor: AppModuleColors.settings,
+            accentColor: widget.accentColor,
             textDirection: TextDirection.rtl,
             textAlign: TextAlign.right,
             onChanged: (_) => setState(() {}),
@@ -2190,7 +2266,7 @@ class _SettingsUserDialogState extends State<_SettingsUserDialog> {
             controller: _usernameController,
             label: 'اسم المستخدم',
             icon: Icons.alternate_email_rounded,
-            accentColor: AppModuleColors.settings,
+            accentColor: widget.accentColor,
             textDirection: TextDirection.ltr,
             textAlign: TextAlign.left,
             onChanged: (_) => setState(() {}),
@@ -2200,7 +2276,7 @@ class _SettingsUserDialogState extends State<_SettingsUserDialog> {
             fieldKey: const Key('settingsAddUserRoleField'),
             label: 'الدور',
             icon: Icons.admin_panel_settings_outlined,
-            accentColor: AppModuleColors.settings,
+            accentColor: widget.accentColor,
             value: _role,
             options: const [
               AppDropdownOption(
@@ -2226,7 +2302,12 @@ class _SettingsUserDialogState extends State<_SettingsUserDialog> {
 }
 
 class ElectronicArchiveSettingsSection extends StatefulWidget {
-  const ElectronicArchiveSettingsSection({super.key});
+  const ElectronicArchiveSettingsSection({
+    required this.accentColor,
+    super.key,
+  });
+
+  final Color accentColor;
 
   @override
   State<ElectronicArchiveSettingsSection> createState() =>
@@ -2276,7 +2357,7 @@ class _ElectronicArchiveSettingsSectionState
       barrierDismissible: false,
       builder: (dialogContext) => Directionality(
         textDirection: TextDirection.rtl,
-        child: const _ArchiveUploadDialog(),
+        child: _ArchiveUploadDialog(accentColor: widget.accentColor),
       ),
     );
     if (draft == null || !mounted) return;
@@ -2303,7 +2384,10 @@ class _ElectronicArchiveSettingsSectionState
       barrierDismissible: false,
       builder: (dialogContext) => Directionality(
         textDirection: TextDirection.rtl,
-        child: _ArchiveRenameDialog(initialName: document.name),
+        child: _ArchiveRenameDialog(
+          initialName: document.name,
+          accentColor: widget.accentColor,
+        ),
       ),
     );
     if (name == null || !mounted) return;
@@ -2356,19 +2440,23 @@ class _ElectronicArchiveSettingsSectionState
       primary: false,
       padding: const EdgeInsets.all(AppSpacing.md),
       children: [
-        const AppInfoBanner(
-          key: Key('settingsArchiveInfoBanner'),
+        AppInfoBanner(
+          key: const Key('settingsArchiveInfoBanner'),
           message:
               'الأرشيف مخصص لملفات PDF وPNG، مع التسمية والبحث والمعاينة وإعادة التسمية والحذف.',
           icon: Icons.inventory_2_outlined,
-          foregroundColor: AppModuleColors.reports,
+          foregroundColor: widget.accentColor,
+          backgroundColor: Color.alphaBlend(
+            widget.accentColor.withAlpha(18),
+            AppColors.surface,
+          ),
         ),
         const SizedBox(height: AppSpacing.lg),
         SettingsTemplatePanel(
           key: const Key('settingsArchivePanel'),
           title: 'ملفات الأرشيف',
           icon: Icons.folder_copy_outlined,
-          accentColor: AppModuleColors.reports,
+          accentColor: widget.accentColor,
           actions: [
             AppRegularButton(
               key: const Key('settingsArchiveUploadButton'),
@@ -2387,7 +2475,7 @@ class _ElectronicArchiveSettingsSectionState
                 controller: _searchController,
                 label: 'بحث في الأرشيف',
                 hint: 'اسم المستند أو الملف أو النوع أو التاريخ',
-                accentColor: AppModuleColors.reports,
+                accentColor: widget.accentColor,
                 onChanged: (_) => setState(() {}),
               ),
               const SizedBox(height: AppSpacing.md),
@@ -2396,7 +2484,7 @@ class _ElectronicArchiveSettingsSectionState
                 height: 440,
                 rowHeight: 62,
                 minimumColumnWidth: 155,
-                accentColor: AppModuleColors.reports,
+                accentColor: widget.accentColor,
                 showShadow: false,
                 emptyState: const AppStatePanel(
                   type: AppStateType.empty,
@@ -2531,7 +2619,9 @@ class _ArchiveDocumentDraft {
 }
 
 class _ArchiveUploadDialog extends StatefulWidget {
-  const _ArchiveUploadDialog();
+  const _ArchiveUploadDialog({required this.accentColor});
+
+  final Color accentColor;
 
   @override
   State<_ArchiveUploadDialog> createState() =>
@@ -2584,7 +2674,7 @@ class _ArchiveUploadDialogState extends State<_ArchiveUploadDialog> {
       title: 'رفع ملف إلى الأرشيف',
       subtitle: 'اختر ملف PDF أو PNG واكتب اسماً واضحاً له',
       icon: Icons.upload_file_rounded,
-      accentColor: AppModuleColors.reports,
+      accentColor: widget.accentColor,
       onClose: _close,
       width: 680,
       actions: [
@@ -2600,7 +2690,7 @@ class _ArchiveUploadDialogState extends State<_ArchiveUploadDialog> {
           key: const Key('settingsArchiveUploadConfirmButton'),
           label: 'رفع',
           icon: Icons.upload_rounded,
-          backgroundColor: AppModuleColors.reports,
+          backgroundColor: widget.accentColor,
           width: 145,
           onPressed: _canUpload ? _upload : null,
         ),
@@ -2612,7 +2702,7 @@ class _ArchiveUploadDialogState extends State<_ArchiveUploadDialog> {
             controller: _nameController,
             label: 'اسم المستند',
             icon: Icons.title_rounded,
-            accentColor: AppModuleColors.reports,
+            accentColor: widget.accentColor,
             textDirection: TextDirection.rtl,
             textAlign: TextAlign.right,
             onChanged: (_) => setState(() {}),
@@ -2622,7 +2712,7 @@ class _ArchiveUploadDialogState extends State<_ArchiveUploadDialog> {
             fieldKey: const Key('settingsArchiveFileTypeField'),
             label: 'نوع الملف',
             icon: Icons.description_outlined,
-            accentColor: AppModuleColors.reports,
+            accentColor: widget.accentColor,
             value: _type,
             options: const [
               AppDropdownOption(value: 'PDF', label: 'PDF'),
@@ -2647,7 +2737,7 @@ class _ArchiveUploadDialogState extends State<_ArchiveUploadDialog> {
             controller: _fileController,
             label: 'الملف المحدد',
             icon: Icons.attach_file_rounded,
-            accentColor: AppModuleColors.reports,
+            accentColor: widget.accentColor,
             readOnly: true,
             enabled: false,
             textDirection: TextDirection.ltr,
@@ -2670,9 +2760,13 @@ class _ArchiveUploadDialogState extends State<_ArchiveUploadDialog> {
 }
 
 class _ArchiveRenameDialog extends StatefulWidget {
-  const _ArchiveRenameDialog({required this.initialName});
+  const _ArchiveRenameDialog({
+    required this.initialName,
+    required this.accentColor,
+  });
 
   final String initialName;
+  final Color accentColor;
 
   @override
   State<_ArchiveRenameDialog> createState() =>
@@ -2708,7 +2802,7 @@ class _ArchiveRenameDialogState extends State<_ArchiveRenameDialog> {
       key: const Key('settingsArchiveRenameDialog'),
       title: 'تعديل اسم المستند',
       icon: Icons.drive_file_rename_outline,
-      accentColor: AppModuleColors.reports,
+      accentColor: widget.accentColor,
       onClose: _close,
       width: 580,
       actions: [
@@ -2733,7 +2827,7 @@ class _ArchiveRenameDialogState extends State<_ArchiveRenameDialog> {
         controller: _nameController,
         label: 'اسم المستند',
         icon: Icons.title_rounded,
-        accentColor: AppModuleColors.reports,
+        accentColor: widget.accentColor,
         autofocus: true,
         textDirection: TextDirection.rtl,
         textAlign: TextAlign.right,
@@ -2770,6 +2864,11 @@ class SettingsTemplatePanel extends StatelessWidget {
     );
 
     final borderRadius = BorderRadius.circular(AppRadii.lg);
+    final borderColor = Color.lerp(
+      accentColor,
+      AppColors.surface,
+      0.62,
+    )!;
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -2783,7 +2882,7 @@ class SettingsTemplatePanel extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: borderRadius,
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: borderColor, width: 1.4),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2829,7 +2928,7 @@ class SettingsTemplatePanel extends StatelessWidget {
                   ],
                 ),
               ),
-              const Divider(height: 1, color: AppColors.border),
+              Divider(height: 1, color: borderColor),
               if (expandChild) Expanded(child: body) else body,
             ],
           ),
@@ -2884,6 +2983,7 @@ class SettingsTemplateTabs<T> extends StatelessWidget {
     required this.selected,
     required this.onChanged,
     required this.keyPrefix,
+    required this.accentColor,
     super.key,
   });
 
@@ -2891,6 +2991,7 @@ class SettingsTemplateTabs<T> extends StatelessWidget {
   final T selected;
   final ValueChanged<T> onChanged;
   final String keyPrefix;
+  final Color accentColor;
 
   @override
   Widget build(BuildContext context) {
@@ -2908,7 +3009,7 @@ class SettingsTemplateTabs<T> extends StatelessWidget {
                 ? AppButtonVariant.primary
                 : AppButtonVariant.navigation,
             backgroundColor:
-                item.value == selected ? AppModuleColors.settings : null,
+                item.value == selected ? accentColor : null,
             minWidth: 160,
             onPressed: item.value == selected
                 ? () {}
