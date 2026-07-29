@@ -90,7 +90,7 @@ void main() {
       findsOneWidget,
     );
 
-    expect(find.text('2000 px'), findsOneWidget);
+    expect(find.text('1440 px'), findsOneWidget);
     expect(find.text('1280 × 720'), findsOneWidget);
     expect(find.text('16:9'), findsOneWidget);
     expect(

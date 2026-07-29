@@ -183,7 +183,7 @@ abstract final class AppTooltipColors {
 }
 
 abstract final class AppBreakpoints {
-  static const designWidth = 2000.0;
+  static const designWidth = 1440.0;
   static const compactDesktop = 1280.0;
 }
 

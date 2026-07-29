@@ -8,9 +8,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('uses the 2000-wide responsive design canvas', () {
-    expect(AppBreakpoints.designWidth, 2000.0);
-    expect(ResponsiveDesktopConfig.designWidth, 2000.0);
+  test('uses the 1440-wide responsive design canvas', () {
+    expect(AppBreakpoints.designWidth, 1440.0);
+    expect(ResponsiveDesktopConfig.designWidth, 1440.0);
   });
 
   testWidgets('shows Arabic login screen', (tester) async {
