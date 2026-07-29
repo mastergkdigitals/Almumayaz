@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../app_formatters.dart';
 import '../app_tokens.dart';
 import 'app_button.dart';
 import 'app_dropdown_field.dart';
@@ -60,6 +61,80 @@ class AppPurchaseInvoiceTableRowData {
   final String cost;
   final String totalCost;
   final String salePrice;
+
+  int get quantityValue => AppFormatters.parseInteger(quantity) ?? 0;
+
+  num get purchasePriceValue =>
+      AppFormatters.parseNumber(purchasePrice) ?? 0;
+
+  num get discountValue => AppFormatters.parseNumber(discount) ?? 0;
+
+  num get grossTotalValue => quantityValue * purchasePriceValue;
+
+  num get totalValue => grossTotalValue - discountValue;
+
+  num get priceAfterDiscountValue {
+    if (quantityValue <= 0) return 0;
+    return totalValue / quantityValue;
+  }
+
+  num totalCostValue({
+    required num lineBaseTotal,
+    required num invoiceAdjustment,
+  }) {
+    if (lineBaseTotal <= 0) return totalValue;
+    return totalValue +
+        invoiceAdjustment * (totalValue / lineBaseTotal);
+  }
+
+  num costValue({
+    required num lineBaseTotal,
+    required num invoiceAdjustment,
+  }) {
+    if (quantityValue <= 0) return 0;
+    return totalCostValue(
+          lineBaseTotal: lineBaseTotal,
+          invoiceAdjustment: invoiceAdjustment,
+        ) /
+        quantityValue;
+  }
+
+  AppPurchaseInvoiceTableRowData withCalculatedValues(
+    String currencyCode, {
+    required num lineBaseTotal,
+    required num invoiceAdjustment,
+  }) {
+    final calculatedTotalCost = totalCostValue(
+      lineBaseTotal: lineBaseTotal,
+      invoiceAdjustment: invoiceAdjustment,
+    );
+    return AppPurchaseInvoiceTableRowData(
+      code: code,
+      name: name,
+      warehouse: warehouse,
+      quantity: quantity,
+      container: container,
+      purchasePrice: purchasePrice,
+      discount: discount,
+      priceAfterDiscount: AppFormatters.moneyByCurrency(
+        priceAfterDiscountValue,
+        currencyCode,
+      ),
+      total: AppFormatters.moneyByCurrency(totalValue, currencyCode),
+      cost: AppFormatters.moneyByCurrency(
+        costValue(
+          lineBaseTotal: lineBaseTotal,
+          invoiceAdjustment: invoiceAdjustment,
+        ),
+        currencyCode,
+      ),
+      totalCost: AppFormatters.moneyByCurrency(
+        calculatedTotalCost,
+        currencyCode,
+      ),
+      salePrice: salePrice,
+    );
+  }
 }
 
 class _PurchaseInvoiceTemplateRow {
@@ -127,6 +202,9 @@ class AppPurchaseInvoiceTableTemplate extends StatefulWidget {
     this.summaryDiscount = '0',
     this.summaryTotal = '0',
     this.summaryTotalCost = '0',
+    this.currencyCode = 'IQD',
+    this.lineBaseTotal = 0,
+    this.invoiceAdjustment = 0,
     this.onRowsChanged,
   });
 
@@ -136,6 +214,9 @@ class AppPurchaseInvoiceTableTemplate extends StatefulWidget {
   final String summaryDiscount;
   final String summaryTotal;
   final String summaryTotalCost;
+  final String currencyCode;
+  final num lineBaseTotal;
+  final num invoiceAdjustment;
   final ValueChanged<List<AppPurchaseInvoiceTableRowData>>? onRowsChanged;
 
   @override
@@ -160,7 +241,14 @@ class _AppPurchaseInvoiceTableTemplateState
     covariant AppPurchaseInvoiceTableTemplate oldWidget,
   ) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.dataVersion == widget.dataVersion) return;
+    if (oldWidget.dataVersion == widget.dataVersion) {
+      if (oldWidget.currencyCode != widget.currencyCode ||
+          oldWidget.lineBaseTotal != widget.lineBaseTotal ||
+          oldWidget.invoiceAdjustment != widget.invoiceAdjustment) {
+        _recalculateRows();
+      }
+      return;
+    }
 
     final oldRows = _rows;
     _rows = _createRows(widget.initialRows);
@@ -190,7 +278,11 @@ class _AppPurchaseInvoiceTableTemplateState
     return _PurchaseInvoiceTemplateRow(
       id: 'r${_nextRowId++}',
       index: index,
-      data: data,
+      data: data.withCalculatedValues(
+        widget.currencyCode,
+        lineBaseTotal: widget.lineBaseTotal,
+        invoiceAdjustment: widget.invoiceAdjustment,
+      ),
     );
   }
 
@@ -228,6 +320,29 @@ class _AppPurchaseInvoiceTableTemplateState
     if (value == null) return;
     setState(() => row.warehouse = value);
     _notifyRowsChanged();
+  }
+
+  void _changeCalculatedValue() {
+    setState(_recalculateRows);
+    _notifyRowsChanged();
+  }
+
+  void _recalculateRows() {
+    for (final row in _rows) {
+      final data = AppPurchaseInvoiceTableRowData(
+        quantity: row.quantityController.text,
+        purchasePrice: row.purchasePriceController.text,
+        discount: row.discountController.text,
+      ).withCalculatedValues(
+        widget.currencyCode,
+        lineBaseTotal: widget.lineBaseTotal,
+        invoiceAdjustment: widget.invoiceAdjustment,
+      );
+      row.priceAfterDiscountController.text = data.priceAfterDiscount;
+      row.totalController.text = data.total;
+      row.costController.text = data.cost;
+      row.totalCostController.text = data.totalCost;
+    }
   }
 
   void _notifyRowsChanged() {
@@ -347,6 +462,7 @@ class _AppPurchaseInvoiceTableTemplateState
         controller: row.quantityController,
         label: 'الكمية',
         wholeNumber: true,
+        recalculates: true,
       ),
       _editableField(
         keyName: 'Container',
@@ -361,6 +477,7 @@ class _AppPurchaseInvoiceTableTemplateState
         controller: row.purchasePriceController,
         label: 'سعر الشراء',
         numeric: true,
+        recalculates: true,
       ),
       _editableField(
         keyName: 'Discount',
@@ -368,6 +485,7 @@ class _AppPurchaseInvoiceTableTemplateState
         controller: row.discountController,
         label: 'الخصم',
         numeric: true,
+        recalculates: true,
       ),
       _readOnlyField(
         keyName: 'PriceAfterDiscount',
@@ -435,6 +553,7 @@ class _AppPurchaseInvoiceTableTemplateState
     required String label,
     bool numeric = false,
     bool wholeNumber = false,
+    bool recalculates = false,
   }) {
     return AppTextField(
       fieldKey: Key(
@@ -454,12 +573,22 @@ class _AppPurchaseInvoiceTableTemplateState
               ? TextInputType.number
               : null,
       inputFormatters: numeric
-          ? const [AppMoneyInputFormatter()]
+          ? [
+              AppMoneyInputFormatter(
+                decimalPlaces: widget.currencyCode == 'USD' ? 2 : 0,
+              ),
+            ]
           : wholeNumber
               ? const [AppIntegerInputFormatter()]
               : null,
       textInputAction: TextInputAction.next,
-      onChanged: (_) => _notifyRowsChanged(),
+      onChanged: (_) {
+        if (recalculates) {
+          _changeCalculatedValue();
+        } else {
+          _notifyRowsChanged();
+        }
+      },
       showLabel: false,
       borderRadius: AppRadii.sm,
     );
