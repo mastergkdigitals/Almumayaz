@@ -4,6 +4,20 @@ import '../../../core/design/app_design_system.dart';
 import '../../dashboard/presentation/dashboard_card.dart';
 import 'widgets/settings_sections.dart';
 
+const _oldDefaultsSettingsPalette = AppModulePalette(
+  dark: Color(0xFF312E81),
+  middle: Color(0xFF4F46E5),
+  light: Color(0xFFA5B4FC),
+  shadow: Color(0xFF4F46E5),
+);
+
+const _oldActivityLogPalette = AppModulePalette(
+  dark: Color(0xFF7F1D1D),
+  middle: Color(0xFFDC2626),
+  light: Color(0xFFFCA5A5),
+  shadow: Color(0xFFB91C1C),
+);
+
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -64,7 +78,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         const BusinessPoliciesSettingsSection(),
       _SettingsSection.defaultSettings =>
         const OperationalDefaultsSettingsSection(),
-      _SettingsSection.printing => const PrintingSettingsSection(),
       _SettingsSection.masterData => const MasterDataSettingsSection(),
       _SettingsSection.backup => const BackupDataSettingsSection(),
       _SettingsSection.usersSecurity =>
@@ -90,7 +103,6 @@ class _SettingsHub extends StatelessWidget {
             sections: const [
               _SettingsSection.businessPolicies,
               _SettingsSection.defaultSettings,
-              _SettingsSection.printing,
             ],
             onOpenSection: onOpenSection,
           ),
@@ -162,13 +174,7 @@ enum _SettingsSection {
     id: 'defaultSettings',
     title: 'الإعدادات الافتراضية',
     icon: Icons.tune_rounded,
-    palette: AppModulePalettes.cashbox,
-  ),
-  printing(
-    id: 'printing',
-    title: 'الطباعة',
-    icon: Icons.print_rounded,
-    palette: AppModulePalettes.sales,
+    palette: _oldDefaultsSettingsPalette,
   ),
   masterData(
     id: 'masterData',
@@ -180,19 +186,19 @@ enum _SettingsSection {
     id: 'backup',
     title: 'النسخ الاحتياطي والبيانات',
     icon: Icons.backup_rounded,
-    palette: AppModulePalettes.purchases,
+    palette: AppModulePalettes.reports,
   ),
   usersSecurity(
     id: 'usersSecurity',
     title: 'المستخدمون والأمان',
     icon: Icons.admin_panel_settings_rounded,
-    palette: AppModulePalettes.about,
+    palette: AppModulePalettes.sales,
   ),
   archive(
     id: 'archive',
     title: 'الأرشيف الإلكتروني',
     icon: Icons.inventory_2_rounded,
-    palette: AppModulePalettes.reports,
+    palette: _oldActivityLogPalette,
   );
 
   const _SettingsSection({

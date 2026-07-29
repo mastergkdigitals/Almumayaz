@@ -1,10 +1,11 @@
 import 'package:erp/app/app.dart';
 import 'package:erp/core/design/app_design_system.dart';
+import 'package:erp/features/dashboard/presentation/dashboard_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('shows the seven-section Settings hub in three rows',
+  testWidgets('shows the six-section Settings hub with approved gradients',
       (tester) async {
     await _openSettings(tester);
 
@@ -14,7 +15,6 @@ void main() {
     const sections = [
       ('businessPolicies', 'سياسات العمل'),
       ('defaultSettings', 'الإعدادات الافتراضية'),
-      ('printing', 'الطباعة'),
       ('masterData', 'إدارة البيانات الأساسية'),
       ('backup', 'النسخ الاحتياطي والبيانات'),
       ('usersSecurity', 'المستخدمون والأمان'),
@@ -46,12 +46,8 @@ void main() {
       moreOrLessEquals(firstRowY),
     );
     expect(
-      tester
-          .getTopLeft(
-            find.byKey(const Key('settingsSectionCard_printing')),
-          )
-          .dy,
-      moreOrLessEquals(firstRowY),
+      find.byKey(const Key('settingsSectionCard_printing')),
+      findsNothing,
     );
 
     final secondRowY = tester
@@ -84,6 +80,39 @@ void main() {
     );
     expect(thirdRowY, greaterThan(secondRowY));
 
+    DashboardCard card(String id) => tester.widget<DashboardCard>(
+          find.byKey(Key('settingsSectionCard_$id')),
+        );
+
+    expect(
+      card('defaultSettings').colors,
+      const [
+        Color(0xFF312E81),
+        Color(0xFF4F46E5),
+        Color(0xFFA5B4FC),
+      ],
+    );
+    expect(
+      card('defaultSettings').shadowColor,
+      const Color(0xFF4F46E5),
+    );
+    expect(
+      card('archive').colors,
+      const [
+        Color(0xFF7F1D1D),
+        Color(0xFFDC2626),
+        Color(0xFFFCA5A5),
+      ],
+    );
+    expect(card('archive').shadowColor, const Color(0xFFB91C1C));
+    expect(card('usersSecurity').colors, AppModulePalettes.sales.gradient);
+    expect(
+      card('usersSecurity').shadowColor,
+      AppModulePalettes.sales.shadow,
+    );
+    expect(card('backup').colors, AppModulePalettes.reports.gradient);
+    expect(card('backup').shadowColor, AppModulePalettes.reports.shadow);
+
     final expectedTint = Color.alphaBlend(
       AppModuleColors.settings.withAlpha(12),
       AppColors.surface,
@@ -111,7 +140,7 @@ void main() {
     );
   });
 
-  testWidgets('opens policy defaults and printing templates',
+  testWidgets('keeps printing inside Business Policies and rounds panels',
       (tester) async {
     await _openSettings(tester);
 
@@ -136,6 +165,51 @@ void main() {
       find.byKey(const Key('settingsOverdueDebtAlerts')),
       findsOneWidget,
     );
+
+    final policiesList = tester.widget<ListView>(
+      find.byKey(const Key('businessPoliciesSettingsContent')),
+    );
+    expect(policiesList.padding, const EdgeInsets.all(AppSpacing.md));
+
+    final panelClip = tester.widget<ClipRRect>(
+      find
+          .descendant(
+            of: find.byKey(const Key('settingsPricingInventoryPanel')),
+            matching: find.byType(ClipRRect),
+          )
+          .first,
+    );
+    expect(
+      panelClip.borderRadius,
+      BorderRadius.circular(AppRadii.lg),
+    );
+
+    await tester.drag(
+      find.byKey(const Key('businessPoliciesSettingsContent')),
+      const Offset(0, -420),
+    );
+    await tester.pump();
+    expect(
+      find.byKey(const Key('settingsPrintingPanel')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('settingsDefaultPrinterField')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('settingsPaperSizeField')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('settingsPrintCopiesField')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('settingsPrintPreviewSwitch')),
+      findsOneWidget,
+    );
+
     await _returnToSettingsHub(tester);
 
     await _openSection(tester, 'defaultSettings');
@@ -157,29 +231,6 @@ void main() {
     );
     expect(
       find.byKey(const Key('settingsCashboxDefaultAccount')),
-      findsOneWidget,
-    );
-    await _returnToSettingsHub(tester);
-
-    await _openSection(tester, 'printing');
-    expect(
-      find.byKey(const Key('printingSettingsContent')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const Key('settingsDefaultPrinterField')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const Key('settingsPaperSizeField')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const Key('settingsPrintCopiesField')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const Key('settingsPrintPreviewSwitch')),
       findsOneWidget,
     );
   });

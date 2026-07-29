@@ -56,14 +56,19 @@ class _BusinessPoliciesSettingsSectionState
   final _customerDebtLimitController =
       TextEditingController(text: '5,000,000');
   final _debtDueDaysController = TextEditingController(text: '30');
+  final _copiesController = TextEditingController(text: '1');
   var _allowInsufficientStockSale = false;
   var _overdueDebtAlerts = true;
+  var _printer = 'Microsoft Print to PDF';
+  var _paperSize = 'A4';
+  var _previewEnabled = true;
 
   @override
   void dispose() {
     _exchangeRateController.dispose();
     _customerDebtLimitController.dispose();
     _debtDueDaysController.dispose();
+    _copiesController.dispose();
     super.dispose();
   }
 
@@ -72,6 +77,7 @@ class _BusinessPoliciesSettingsSectionState
     return ListView(
       key: const Key('businessPoliciesSettingsContent'),
       primary: false,
+      padding: const EdgeInsets.all(AppSpacing.md),
       children: [
         SettingsResponsiveGrid(
           preferredColumns: 2,
@@ -163,21 +169,104 @@ class _BusinessPoliciesSettingsSectionState
           ],
         ),
         const SizedBox(height: AppSpacing.lg),
+        _buildPrintingPanel(),
+        const SizedBox(height: AppSpacing.lg),
         Align(
           alignment: Alignment.centerLeft,
           child: AppButton(
             key: const Key('settingsSaveBusinessPolicies'),
-            label: 'حفظ السياسات',
+            label: 'حفظ السياسات والطباعة',
             icon: Icons.save_outlined,
             variant: AppButtonVariant.primary,
-            minWidth: 170,
+            minWidth: 215,
             onPressed: () => AppToast.showInfo(
               context,
-              'تم حفظ سياسات العمل مؤقتاً',
+              'تم حفظ سياسات العمل والطباعة مؤقتاً',
             ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildPrintingPanel() {
+    return SettingsTemplatePanel(
+      key: const Key('settingsPrintingPanel'),
+      title: 'الطباعة',
+      icon: Icons.print_rounded,
+      accentColor: AppModuleColors.sales,
+      child: SettingsResponsiveGrid(
+        preferredColumns: 2,
+        children: [
+          AppDropdownField<String>(
+            fieldKey: const Key('settingsDefaultPrinterField'),
+            label: 'الطابعة الافتراضية',
+            icon: Icons.print_outlined,
+            accentColor: AppModuleColors.sales,
+            value: _printer,
+            options: const [
+              AppDropdownOption(
+                value: 'Microsoft Print to PDF',
+                label: 'Microsoft Print to PDF',
+              ),
+              AppDropdownOption(
+                value: 'HP LaserJet Pro',
+                label: 'HP LaserJet Pro',
+              ),
+              AppDropdownOption(
+                value: 'Canon Office Printer',
+                label: 'Canon Office Printer',
+              ),
+            ],
+            useIntrinsicHeight: true,
+            textDirection: TextDirection.rtl,
+            textAlign: TextAlign.right,
+            menuTextDirection: TextDirection.rtl,
+            onChanged: (value) {
+              if (value != null) setState(() => _printer = value);
+            },
+          ),
+          AppDropdownField<String>(
+            fieldKey: const Key('settingsPaperSizeField'),
+            label: 'حجم الورق',
+            icon: Icons.description_outlined,
+            accentColor: AppModuleColors.sales,
+            value: _paperSize,
+            options: const [
+              AppDropdownOption(value: 'A4', label: 'A4'),
+              AppDropdownOption(value: 'A5', label: 'A5'),
+            ],
+            useIntrinsicHeight: true,
+            textDirection: TextDirection.rtl,
+            textAlign: TextAlign.right,
+            menuTextDirection: TextDirection.rtl,
+            onChanged: (value) {
+              if (value != null) setState(() => _paperSize = value);
+            },
+          ),
+          AppTextField(
+            fieldKey: const Key('settingsPrintCopiesField'),
+            controller: _copiesController,
+            label: 'عدد النسخ',
+            icon: Icons.copy_all_outlined,
+            accentColor: AppModuleColors.sales,
+            textDirection: TextDirection.rtl,
+            textAlign: TextAlign.right,
+            keyboardType: TextInputType.number,
+            inputFormatters: const [AppIntegerInputFormatter()],
+          ),
+          AppSwitchField(
+            key: const Key('settingsPrintPreviewSwitch'),
+            title: 'تشغيل معاينة الطباعة',
+            subtitle: 'عرض الفاتورة قبل إرسالها إلى الطابعة',
+            icon: Icons.preview_outlined,
+            value: _previewEnabled,
+            onChanged: (value) {
+              setState(() => _previewEnabled = value);
+            },
+          ),
+        ],
+      ),
     );
   }
 }
@@ -208,6 +297,7 @@ class _OperationalDefaultsSettingsSectionState
     return ListView(
       key: const Key('operationalDefaultsSettingsContent'),
       primary: false,
+      padding: const EdgeInsets.all(AppSpacing.md),
       children: [
         SettingsResponsiveGrid(
           preferredColumns: 3,
@@ -407,139 +497,6 @@ class _OperationalDefaultsSettingsSectionState
   }
 }
 
-class PrintingSettingsSection extends StatefulWidget {
-  const PrintingSettingsSection({super.key});
-
-  @override
-  State<PrintingSettingsSection> createState() =>
-      _PrintingSettingsSectionState();
-}
-
-class _PrintingSettingsSectionState extends State<PrintingSettingsSection> {
-  final _copiesController = TextEditingController(text: '1');
-  var _printer = 'Microsoft Print to PDF';
-  var _paperSize = 'A4';
-  var _previewEnabled = true;
-
-  @override
-  void dispose() {
-    _copiesController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      key: const Key('printingSettingsContent'),
-      primary: false,
-      children: [
-        Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 980),
-            child: SettingsTemplatePanel(
-              key: const Key('settingsPrintingPanel'),
-              title: 'إعدادات الطباعة',
-              icon: Icons.print_rounded,
-              accentColor: AppModuleColors.sales,
-              child: SettingsResponsiveGrid(
-                preferredColumns: 2,
-                children: [
-                  AppDropdownField<String>(
-                    fieldKey: const Key('settingsDefaultPrinterField'),
-                    label: 'الطابعة الافتراضية',
-                    icon: Icons.print_outlined,
-                    accentColor: AppModuleColors.sales,
-                    value: _printer,
-                    options: const [
-                      AppDropdownOption(
-                        value: 'Microsoft Print to PDF',
-                        label: 'Microsoft Print to PDF',
-                      ),
-                      AppDropdownOption(
-                        value: 'HP LaserJet Pro',
-                        label: 'HP LaserJet Pro',
-                      ),
-                      AppDropdownOption(
-                        value: 'Canon Office Printer',
-                        label: 'Canon Office Printer',
-                      ),
-                    ],
-                    useIntrinsicHeight: true,
-                    textDirection: TextDirection.rtl,
-                    textAlign: TextAlign.right,
-                    menuTextDirection: TextDirection.rtl,
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => _printer = value);
-                      }
-                    },
-                  ),
-                  AppDropdownField<String>(
-                    fieldKey: const Key('settingsPaperSizeField'),
-                    label: 'حجم الورق',
-                    icon: Icons.description_outlined,
-                    accentColor: AppModuleColors.sales,
-                    value: _paperSize,
-                    options: const [
-                      AppDropdownOption(value: 'A4', label: 'A4'),
-                      AppDropdownOption(value: 'A5', label: 'A5'),
-                    ],
-                    useIntrinsicHeight: true,
-                    textDirection: TextDirection.rtl,
-                    textAlign: TextAlign.right,
-                    menuTextDirection: TextDirection.rtl,
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => _paperSize = value);
-                      }
-                    },
-                  ),
-                  AppTextField(
-                    fieldKey: const Key('settingsPrintCopiesField'),
-                    controller: _copiesController,
-                    label: 'عدد النسخ',
-                    icon: Icons.copy_all_outlined,
-                    accentColor: AppModuleColors.sales,
-                    textDirection: TextDirection.rtl,
-                    textAlign: TextAlign.right,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: const [AppIntegerInputFormatter()],
-                  ),
-                  AppSwitchField(
-                    key: const Key('settingsPrintPreviewSwitch'),
-                    title: 'تشغيل معاينة الطباعة',
-                    subtitle: 'عرض الفاتورة قبل إرسالها إلى الطابعة',
-                    icon: Icons.preview_outlined,
-                    value: _previewEnabled,
-                    onChanged: (value) {
-                      setState(() => _previewEnabled = value);
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: AppButton(
-            key: const Key('settingsSavePrinting'),
-            label: 'حفظ إعدادات الطباعة',
-            icon: Icons.save_outlined,
-            variant: AppButtonVariant.primary,
-            minWidth: 205,
-            onPressed: () => AppToast.showInfo(
-              context,
-              'تم حفظ إعدادات الطباعة مؤقتاً',
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class MasterDataSettingsSection extends StatefulWidget {
   const MasterDataSettingsSection({super.key});
 
@@ -557,6 +514,7 @@ class _MasterDataSettingsSectionState
     return ListView(
       key: const Key('masterDataSettingsContent'),
       primary: false,
+      padding: const EdgeInsets.all(AppSpacing.md),
       children: [
         SettingsTemplateTabs<String>(
           keyPrefix: 'masterDataTab_',
@@ -1103,6 +1061,7 @@ class _BackupDataSettingsSectionState
     return ListView(
       key: const Key('backupDataSettingsContent'),
       primary: false,
+      padding: const EdgeInsets.all(AppSpacing.md),
       children: [
         const AppInfoBanner(
           key: Key('settingsBackupPolicyBanner'),
@@ -1613,6 +1572,7 @@ class _UsersSecuritySettingsSectionState
     return ListView(
       key: const Key('usersSecuritySettingsContent'),
       primary: false,
+      padding: const EdgeInsets.all(AppSpacing.md),
       children: [
         SettingsTemplateTabs<String>(
           keyPrefix: 'usersSecurityTab_',
@@ -2394,6 +2354,7 @@ class _ElectronicArchiveSettingsSectionState
     return ListView(
       key: const Key('electronicArchiveSettingsContent'),
       primary: false,
+      padding: const EdgeInsets.all(AppSpacing.md),
       children: [
         const AppInfoBanner(
           key: Key('settingsArchiveInfoBanner'),
@@ -2808,57 +2769,71 @@ class SettingsTemplatePanel extends StatelessWidget {
       child: child,
     );
 
-    return Container(
+    final borderRadius = BorderRadius.circular(AppRadii.lg);
+
+    return DecoratedBox(
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-        border: Border.all(color: AppColors.border),
+        borderRadius: borderRadius,
         boxShadow: AppShadows.soft,
       ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md,
-              vertical: AppSpacing.sm,
-            ),
-            color: Color.alphaBlend(
-              accentColor.withAlpha(14),
-              AppColors.surface,
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: Color.alphaBlend(
-                      accentColor.withAlpha(24),
-                      AppColors.surface,
-                    ),
-                    borderRadius: BorderRadius.circular(AppRadii.md),
-                    border: Border.all(color: accentColor.withAlpha(90)),
-                  ),
-                  child: Icon(icon, color: accentColor),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Text(title, style: AppTypography.sectionTitle),
-                ),
-                if (actions.isNotEmpty)
-                  Wrap(
-                    spacing: AppSpacing.sm,
-                    runSpacing: AppSpacing.sm,
-                    children: actions,
-                  ),
-              ],
-            ),
+      child: ClipRRect(
+        borderRadius: borderRadius,
+        clipBehavior: Clip.antiAlias,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: borderRadius,
+            border: Border.all(color: AppColors.border),
           ),
-          const Divider(height: 1, color: AppColors.border),
-          if (expandChild) Expanded(child: body) else body,
-        ],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
+                ),
+                color: Color.alphaBlend(
+                  accentColor.withAlpha(14),
+                  AppColors.surface,
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: Color.alphaBlend(
+                          accentColor.withAlpha(24),
+                          AppColors.surface,
+                        ),
+                        borderRadius: BorderRadius.circular(AppRadii.md),
+                        border:
+                            Border.all(color: accentColor.withAlpha(90)),
+                      ),
+                      child: Icon(icon, color: accentColor),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: AppTypography.sectionTitle,
+                      ),
+                    ),
+                    if (actions.isNotEmpty)
+                      Wrap(
+                        spacing: AppSpacing.sm,
+                        runSpacing: AppSpacing.sm,
+                        children: actions,
+                      ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, color: AppColors.border),
+              if (expandChild) Expanded(child: body) else body,
+            ],
+          ),
+        ),
       ),
     );
   }
