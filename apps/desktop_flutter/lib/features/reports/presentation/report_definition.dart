@@ -55,8 +55,7 @@ class ReportFilterDefinition {
     required this.label,
     required this.icon,
     required this.options,
-  }) : kind = ReportFilterKind.dropdown,
-        assert(options.length > 0);
+  }) : kind = ReportFilterKind.dropdown;
 
   final String id;
   final String label;
