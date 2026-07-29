@@ -551,6 +551,16 @@ void main() {
     );
     await tester.pump();
     expect(
+      tester
+          .widget<AppButton>(
+            find.byKey(
+              const Key('masterDataTab_workplacesBranches'),
+            ),
+          )
+          .padding,
+      const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+    );
+    expect(
       find.byKey(const Key('settingsWorkplacesBranchesTemplate')),
       findsOneWidget,
     );
@@ -679,6 +689,14 @@ void main() {
       find.byKey(const Key('usersSecurityTab_security')),
     );
     await tester.pump();
+    expect(
+      tester
+          .widget<AppButton>(
+            find.byKey(const Key('usersSecurityTab_security')),
+          )
+          .padding,
+      const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+    );
     expect(
       find.byKey(const Key('settingsCurrentPasswordField')),
       findsOneWidget,

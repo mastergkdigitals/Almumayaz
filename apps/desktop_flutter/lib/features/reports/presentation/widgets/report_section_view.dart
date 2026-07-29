@@ -392,6 +392,9 @@ class _ReportVariantTabs extends StatelessWidget {
                   : AppButtonVariant.navigation,
               backgroundColor:
                   variants[index].id == selected.id ? accentColor : null,
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+              ),
               minWidth: 154,
               height: AppControlHeights.compact,
               onPressed: () => onChanged(variants[index]),

@@ -219,6 +219,16 @@ void main() {
       ),
       findsOneWidget,
     );
+    expect(
+      tester
+          .widget<AppButton>(
+            find.byKey(
+              const Key('reportVariantTab_inventory_transfers'),
+            ),
+          )
+          .padding,
+      const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+    );
 
     await tester.tap(
       find.byKey(

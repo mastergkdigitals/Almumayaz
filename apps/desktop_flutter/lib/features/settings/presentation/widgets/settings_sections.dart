@@ -3971,6 +3971,9 @@ class SettingsTemplateTabs<T> extends StatelessWidget {
                 : AppButtonVariant.navigation,
             backgroundColor:
                 item.value == selected ? accentColor : null,
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+            ),
             minWidth: 160,
             onPressed: item.value == selected
                 ? () {}
