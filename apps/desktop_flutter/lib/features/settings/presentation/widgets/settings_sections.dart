@@ -338,7 +338,7 @@ class _OperationalDefaultsSettingsSectionState
       children: [
         SettingsResponsiveGrid(
           preferredColumns: 3,
-          minimumChildHeight: 460,
+          minimumChildHeight: 480,
           children: [
             SettingsTemplatePanel(
               key: const Key('settingsPurchaseDefaultsPanel'),

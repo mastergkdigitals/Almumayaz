@@ -65,9 +65,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
       _isConfirmingExit = false;
       if (!mounted || !confirmed) return;
+      _requestRoutePop();
+      return;
     }
 
-    _requestRoutePop();
+    Navigator.of(context).pop();
   }
 
   void _requestRoutePop() {
@@ -89,7 +91,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
 
     return PopScope(
-      canPop: _allowRoutePop,
+      canPop: _allowRoutePop ||
+          (selectedSection == null && _dirtySections.isEmpty),
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) _handleBack();
       },

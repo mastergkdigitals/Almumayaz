@@ -405,8 +405,7 @@ void main() {
 
     await _returnToSettingsHub(tester);
     await tester.tap(find.byKey(const Key('appScreenBackButton')));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
     expect(find.byKey(const Key('appConfirmDialog')), findsNothing);
     expect(find.byKey(const Key('settingsScreen')), findsNothing);
   });
