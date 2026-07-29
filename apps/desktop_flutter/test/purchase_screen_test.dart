@@ -187,6 +187,18 @@ void main() {
       ).label,
       'المصاريف',
     );
+    expect(
+      tester.getSize(
+        find.byKey(const Key('purchaseExpensesButton')),
+      ).width,
+      greaterThan(
+        tester
+            .getSize(
+              find.byKey(const Key('purchaseExpensesField')),
+            )
+            .width,
+      ),
+    );
 
     const invoiceButtons = <String, (IconData, String)>{
       'purchaseSearchButton': (Icons.search_rounded, 'بحث'),
@@ -509,7 +521,7 @@ void main() {
       color: AppColors.green,
       message: 'تم تحديث قائمة الشراء مؤقتاً',
     );
-    await tester.pumpAndSettle();
+    await _finishToast(tester);
 
     await tester.enterText(
       find.byKey(const Key('purchaseNotesField')),
@@ -524,7 +536,7 @@ void main() {
       message: 'تم التراجع عن التغييرات',
     );
     expect(_fieldValue(tester, 'purchaseNotesField'), 'ملاحظة محدثة');
-    await tester.pumpAndSettle();
+    await _finishToast(tester);
 
     await tester.tap(find.byKey(const Key('purchaseLastButton')));
     await tester.pumpAndSettle();
@@ -544,7 +556,7 @@ void main() {
       color: AppColors.blue,
       message: 'تم حفظ قائمة الشراء مؤقتاً',
     );
-    await tester.pumpAndSettle();
+    await _finishToast(tester);
 
     await tester.tap(find.byKey(const Key('purchaseDeleteButton')));
     await tester.pumpAndSettle();
@@ -676,6 +688,12 @@ void _expectToast(
     ),
     findsOneWidget,
   );
+}
+
+Future<void> _finishToast(WidgetTester tester) async {
+  await tester.pump(const Duration(milliseconds: 300));
+  await tester.pump(AppToast.duration);
+  await tester.pump(const Duration(milliseconds: 300));
 }
 
 Future<void> _openPurchaseScreen(WidgetTester tester) async {

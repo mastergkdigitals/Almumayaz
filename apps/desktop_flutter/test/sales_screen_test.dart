@@ -341,7 +341,7 @@ void main() {
       color: AppColors.green,
       message: 'تم تحديث قائمة البيع مؤقتاً',
     );
-    await tester.pumpAndSettle();
+    await _finishToast(tester);
 
     await tester.enterText(
       find.byKey(const Key('salesNotesField')),
@@ -356,7 +356,7 @@ void main() {
       message: 'تم التراجع عن التغييرات',
     );
     expect(_fieldValue(tester, 'salesNotesField'), 'ملاحظة محدثة');
-    await tester.pumpAndSettle();
+    await _finishToast(tester);
 
     await tester.tap(find.byKey(const Key('salesLastButton')));
     await tester.pumpAndSettle();
@@ -377,7 +377,7 @@ void main() {
       message: 'تم حفظ قائمة البيع مؤقتاً',
     );
     expect(_actionButton(tester, 'salesDeleteButton').onPressed, isNotNull);
-    await tester.pumpAndSettle();
+    await _finishToast(tester);
 
     await tester.tap(find.byKey(const Key('salesDeleteButton')));
     await tester.pumpAndSettle();
@@ -787,6 +787,12 @@ void _expectToast(
     ),
     findsOneWidget,
   );
+}
+
+Future<void> _finishToast(WidgetTester tester) async {
+  await tester.pump(const Duration(milliseconds: 300));
+  await tester.pump(AppToast.duration);
+  await tester.pump(const Duration(milliseconds: 300));
 }
 
 String _fieldValue(WidgetTester tester, String key) {

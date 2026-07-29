@@ -484,7 +484,7 @@ void main() {
     await tester.tap(
       find.byKey(const Key('settingsArchiveUploadConfirmButton')),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(
       find.byKey(const Key('settingsArchiveUploadDialog')),

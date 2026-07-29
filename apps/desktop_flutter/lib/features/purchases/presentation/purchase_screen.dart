@@ -1051,6 +1051,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
               ),
               const SizedBox(height: AppSpacing.md),
               _PurchaseFieldRow(
+                flexes: const [5, 4, 4, 4, 4, 4, 4, 4],
                 children: [
                   AppRegularButton(
                     key: const Key('purchaseExpensesButton'),
@@ -1222,9 +1223,16 @@ class _PurchaseInvoiceButtons extends StatelessWidget {
 }
 
 class _PurchaseFieldRow extends StatelessWidget {
-  const _PurchaseFieldRow({required this.children});
+  const _PurchaseFieldRow({
+    required this.children,
+    this.flexes,
+  }) : assert(
+          flexes == null || flexes.length == children.length,
+          'Provide one flex value for each child.',
+        );
 
   final List<Widget> children;
+  final List<int>? flexes;
 
   @override
   Widget build(BuildContext context) {
@@ -1235,7 +1243,10 @@ class _PurchaseFieldRow extends StatelessWidget {
         children: [
           for (var index = 0; index < children.length; index++) ...[
             if (index > 0) const SizedBox(width: AppSpacing.md),
-            Expanded(child: children[index]),
+            Expanded(
+              flex: flexes?[index] ?? 1,
+              child: children[index],
+            ),
           ],
         ],
       ),
