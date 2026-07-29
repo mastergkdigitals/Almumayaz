@@ -326,6 +326,7 @@ void main() {
     await reveal(tester, transferButton);
     await tester.tap(transferButton);
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
     final transferDialog =
         find.byKey(const Key('inventoryTransferDialog'));
