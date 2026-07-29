@@ -308,7 +308,6 @@ class _OperationalDefaultsSettingsSectionState
   var _salesCurrency = 'IQD';
   var _voucherType = 'قبض';
   var _cashboxAccount = 'الصندوق الرئيسي';
-  var _cashboxCurrency = 'IQD';
 
   @override
   Widget build(BuildContext context) {
@@ -451,18 +450,6 @@ class _OperationalDefaultsSettingsSectionState
                     options: _settingsCashboxAccountOptions,
                     onChanged: (value) {
                       setState(() => _cashboxAccount = value);
-                    },
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  _dropdown(
-                    key: 'settingsCashboxDefaultCurrency',
-                    label: 'العملة الافتراضية',
-                    icon: Icons.currency_exchange_rounded,
-                    accentColor: widget.accentColor,
-                    value: _cashboxCurrency,
-                    options: _settingsCurrencyOptions,
-                    onChanged: (value) {
-                      setState(() => _cashboxCurrency = value);
                     },
                   ),
                 ],

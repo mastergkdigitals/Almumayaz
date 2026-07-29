@@ -5,6 +5,27 @@ import 'package:flutter_test/flutter_test.dart';
 import 'design_system_test_harness.dart';
 
 void main() {
+  test('identifies complete and fully empty invoice rows', () {
+    expect(const AppSalesInvoiceTableRowData().isEmpty, isTrue);
+    expect(
+      const AppSalesInvoiceTableRowData(
+        code: 'S-001',
+        name: 'مادة تجريبية',
+        quantity: '1',
+      ).hasRequiredValues,
+      isTrue,
+    );
+    expect(const AppPurchaseInvoiceTableRowData().isEmpty, isTrue);
+    expect(
+      const AppPurchaseInvoiceTableRowData(
+        code: 'P-001',
+        name: 'مادة تجريبية',
+        quantity: '1',
+      ).hasRequiredValues,
+      isTrue,
+    );
+  });
+
   testWidgets('keeps the list table header fixed while rows scroll',
       (tester) async {
     await pumpDesignSystemGallery(tester);
@@ -178,6 +199,35 @@ void main() {
     final salesAddButton =
         find.byKey(const Key('appSalesInvoiceTemplateAddButton'));
     await reveal(tester, salesAddButton);
+    expect(
+      tester.widget<AppTableActionButton>(salesAddButton).onPressed,
+      isNull,
+    );
+
+    await tester.enterText(
+      find.byKey(
+        const Key('appSalesInvoiceTemplateCodeField-r1'),
+      ),
+      'S-001',
+    );
+    await tester.enterText(
+      find.byKey(
+        const Key('appSalesInvoiceTemplateNameField-r1'),
+      ),
+      'مادة تجريبية',
+    );
+    await tester.enterText(
+      find.byKey(
+        const Key('appSalesInvoiceTemplateQuantityField-r1'),
+      ),
+      '1',
+    );
+    await tester.pump();
+    expect(
+      tester.widget<AppTableActionButton>(salesAddButton).onPressed,
+      isNotNull,
+    );
+
     await tester.tap(salesAddButton);
     await tester.pump();
 
@@ -295,6 +345,35 @@ void main() {
     final purchaseAddButton =
         find.byKey(const Key('appPurchaseInvoiceTemplateAddButton'));
     await reveal(tester, purchaseAddButton);
+    expect(
+      tester.widget<AppTableActionButton>(purchaseAddButton).onPressed,
+      isNull,
+    );
+
+    await tester.enterText(
+      find.byKey(
+        const Key('appPurchaseInvoiceTemplateCodeField-r1'),
+      ),
+      'P-001',
+    );
+    await tester.enterText(
+      find.byKey(
+        const Key('appPurchaseInvoiceTemplateNameField-r1'),
+      ),
+      'مادة تجريبية',
+    );
+    await tester.enterText(
+      find.byKey(
+        const Key('appPurchaseInvoiceTemplateQuantityField-r1'),
+      ),
+      '1',
+    );
+    await tester.pump();
+    expect(
+      tester.widget<AppTableActionButton>(purchaseAddButton).onPressed,
+      isNotNull,
+    );
+
     await tester.tap(purchaseAddButton);
     await tester.pump();
 

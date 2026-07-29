@@ -42,6 +42,13 @@ void main() {
     }
     expect(
       find.ancestor(
+        of: find.byKey(const Key('salesCustomerNameField')),
+        matching: find.byType(AppAutocompleteField<String>),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.ancestor(
         of: find.byKey(const Key('salesTimeField')),
         matching: find.byType(AppTimeField),
       ),
@@ -253,6 +260,16 @@ void main() {
     );
     expect(_actionButton(tester, 'salesNextButton').onPressed, isNull);
     expect(_actionButton(tester, 'salesLastButton').onPressed, isNull);
+    expect(
+      tester
+          .widget<AppTableActionButton>(
+            find.byKey(
+              const Key('appSalesInvoiceTemplateAddButton'),
+            ),
+          )
+          .onPressed,
+      isNull,
+    );
 
     await tester.tap(find.byKey(const Key('salesFirstButton')));
     await tester.pumpAndSettle();
@@ -261,6 +278,29 @@ void main() {
       _fieldValue(tester, 'salesCustomerNameField'),
       'شركة النخيل للتجارة',
     );
+  });
+
+  testWidgets('shows and filters Sales customer suggestions',
+      (tester) async {
+    await _openSalesScreen(tester);
+
+    final customer =
+        find.byKey(const Key('salesCustomerNameField'));
+    await tester.tap(customer);
+    await tester.pump();
+    expect(find.text('أحمد كريم'), findsOneWidget);
+    expect(find.text('أسواق دجلة'), findsOneWidget);
+
+    await tester.enterText(customer, 'أسو');
+    await tester.pump();
+    expect(find.text('أحمد كريم'), findsNothing);
+    expect(find.text('أسواق دجلة'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('salesNotesField')));
+    await tester.pump();
+    await tester.tap(customer);
+    await tester.pump();
+    expect(find.text('أحمد كريم'), findsOneWidget);
   });
 
   testWidgets('enables Sales actions for form and table edits',
@@ -378,6 +418,20 @@ void main() {
     );
     expect(_actionButton(tester, 'salesDeleteButton').onPressed, isNotNull);
     await _finishToast(tester);
+
+    await tester.tap(find.byKey(const Key('salesSearchButton')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('salesRecordSearchField')),
+      'زبون تجريبي',
+    );
+    await tester.pump();
+    expect(find.textContaining('0 مواد'), findsOneWidget);
+    await tester.tap(
+      find.byKey(const Key('salesRecordSearchResult-0')),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
 
     await tester.tap(find.byKey(const Key('salesDeleteButton')));
     await tester.pumpAndSettle();
@@ -746,6 +800,14 @@ void main() {
     expect(
       tester.widget<AppModuleDialog>(report).accentColor,
       AppModuleColors.sales,
+    );
+    expect(
+      tester
+          .widget<AppButton>(
+            find.byKey(const Key('appStatementPrint')),
+          )
+          .backgroundColor,
+      AppColors.blue,
     );
     expect(
       tester

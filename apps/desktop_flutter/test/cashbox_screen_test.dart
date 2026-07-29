@@ -97,9 +97,40 @@ void main() {
         findsOneWidget);
     expect(find.byKey(const Key('cashboxSubaccountField')),
         findsOneWidget);
+    expect(
+      find.ancestor(
+        of: find.byKey(const Key('cashboxMainAccountField')),
+        matching:
+            find.byType(AppAutocompleteField<CashboxMainAccount>),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.ancestor(
+        of: find.byKey(const Key('cashboxSubaccountField')),
+        matching:
+            find.byType(AppAutocompleteField<CashboxSubaccount>),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      _editableText(
+        tester,
+        find.byKey(const Key('cashboxMainAccountField')),
+      ).controller.text,
+      'الأطراف',
+    );
+    expect(
+      _editableText(
+        tester,
+        find.byKey(const Key('cashboxSubaccountField')),
+      ).controller.text,
+      '1 - شركة النخيل للتجارة',
+    );
     expect(find.byKey(const Key('cashboxAmountIqdField')), findsOneWidget);
     expect(find.byKey(const Key('cashboxAmountUsdField')), findsOneWidget);
     expect(find.byKey(const Key('cashboxNotesField')), findsOneWidget);
+    expect(find.byKey(const Key('cashboxPrintButton')), findsOneWidget);
 
     final dateField = tester.widget<TextFormField>(
       find.byKey(const Key('cashboxDateField')),
@@ -215,6 +246,58 @@ void main() {
         isNull,
       );
     }
+
+    await tester.tap(find.byKey(const Key('cashboxPrintButton')));
+    await tester.pump();
+    final toast = find.byKey(const Key('appToast'));
+    expect(toast, findsOneWidget);
+    expect(tester.widget<SnackBar>(toast).backgroundColor, AppColors.blue);
+    expect(
+      find.descendant(
+        of: toast,
+        matching: find.text('تم تجهيز معاينة طباعة الصندوق'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('shows and filters Cashbox account suggestions',
+      (tester) async {
+    await _openCashbox(tester);
+
+    final mainAccount =
+        find.byKey(const Key('cashboxMainAccountField'));
+    final otherIncomeCount =
+        find.text('إيرادات أخرى').evaluate().length;
+    final expensesCount = find.text('المصاريف').evaluate().length;
+
+    await tester.tap(mainAccount);
+    await tester.pump();
+    expect(
+      find.text('إيرادات أخرى'),
+      findsNWidgets(otherIncomeCount + 1),
+    );
+
+    await tester.enterText(mainAccount, 'مصا');
+    await tester.pump();
+    expect(
+      find.text('إيرادات أخرى'),
+      findsNWidgets(otherIncomeCount),
+    );
+    expect(
+      find.text('المصاريف'),
+      findsNWidgets(expensesCount + 1),
+    );
+
+    await tester.enterText(mainAccount, 'المصاريف');
+    await tester.pump();
+    expect(
+      _editableText(
+        tester,
+        find.byKey(const Key('cashboxSubaccountField')),
+      ).controller.text,
+      'نقل',
+    );
   });
 
   testWidgets('searches, selects, and edits a Cashbox voucher',

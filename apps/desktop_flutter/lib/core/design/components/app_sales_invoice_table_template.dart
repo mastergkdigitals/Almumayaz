@@ -52,6 +52,16 @@ class AppSalesInvoiceTableRowData {
 
   int get quantityValue => AppFormatters.parseInteger(quantity) ?? 0;
 
+  bool get hasRequiredValues =>
+      code.trim().isNotEmpty &&
+      name.trim().isNotEmpty &&
+      quantityValue > 0;
+
+  bool get isEmpty =>
+      code.trim().isEmpty &&
+      name.trim().isEmpty &&
+      quantityValue == 0;
+
   num get salePriceValue => AppFormatters.parseNumber(salePrice) ?? 0;
 
   num get discountValue => AppFormatters.parseNumber(discount) ?? 0;
@@ -247,6 +257,19 @@ class _AppSalesInvoiceTableTemplateState
     _notifyRowsChanged();
   }
 
+  void _changeRowText() {
+    setState(() {});
+    _notifyRowsChanged();
+  }
+
+  bool _canAddRow(_SalesInvoiceTemplateRow row) {
+    return AppSalesInvoiceTableRowData(
+      code: row.codeController.text,
+      name: row.nameController.text,
+      quantity: row.quantityController.text,
+    ).hasRequiredValues;
+  }
+
   void _recalculateRow(_SalesInvoiceTemplateRow row) {
     final data = AppSalesInvoiceTableRowData(
       quantity: row.quantityController.text,
@@ -347,7 +370,7 @@ class _AppSalesInvoiceTableTemplateState
         label: 'رمز المادة',
         accentColor: AppModuleColors.sales,
         textInputAction: TextInputAction.next,
-        onChanged: (_) => _notifyRowsChanged(),
+        onChanged: (_) => _changeRowText(),
         showLabel: false,
         borderRadius: AppRadii.sm,
       ),
@@ -359,7 +382,7 @@ class _AppSalesInvoiceTableTemplateState
         label: 'اسم المادة',
         accentColor: AppModuleColors.sales,
         textInputAction: TextInputAction.next,
-        onChanged: (_) => _notifyRowsChanged(),
+        onChanged: (_) => _changeRowText(),
         showLabel: false,
         borderRadius: AppRadii.sm,
       ),
@@ -482,7 +505,11 @@ class _AppSalesInvoiceTableTemplateState
           size: 40,
           iconSize: AppIconSizes.md,
           borderRadius: AppRadii.sm,
-          onPressed: isLastRow ? _addRow : () => _removeRow(index),
+          onPressed: isLastRow
+              ? _canAddRow(row)
+                  ? _addRow
+                  : null
+              : () => _removeRow(index),
         ),
       ),
     ];

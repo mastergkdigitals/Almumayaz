@@ -27,6 +27,14 @@ const _purchaseCurrencyOptions = <AppDropdownOption<String>>[
   AppDropdownOption(value: 'USD', label: 'دولار'),
 ];
 
+const _purchaseSupplierOptions = <String>[
+  'شركة الرافدين للتجهيز',
+  'شركة التجارة العالمية',
+  'مجهز الكرادة',
+  'مجهز الفرات',
+  'شركة الموصل الحديثة',
+];
+
 final _demoPurchaseInvoices = <_DemoPurchaseInvoice>[
   _DemoPurchaseInvoice(
     id: '103',
@@ -677,17 +685,15 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
   _DemoPurchaseInvoice _invoiceFromForm({
     required String id,
   }) {
-    final meaningfulItemCount = _activeItems.where((item) {
-      return item.code.trim().isNotEmpty || item.name.trim().isNotEmpty;
-    }).length;
+    final items = List<AppPurchaseInvoiceTableRowData>.unmodifiable(
+      _activeItems.where((item) => !item.isEmpty),
+    );
+    final meaningfulItemCount = items.length;
     final date =
         '${_twoDigits(_invoiceDateTime.day)}/'
         '${_twoDigits(_invoiceDateTime.month)}/'
         '${_invoiceDateTime.year}';
     final supplierName = _supplierNameController.text.trim();
-    final items = List<AppPurchaseInvoiceTableRowData>.unmodifiable(
-      _activeItems,
-    );
 
     return _DemoPurchaseInvoice(
       id: id,
@@ -1011,15 +1017,17 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
               const SizedBox(height: AppSpacing.md),
               _PurchaseFieldRow(
                 children: [
-                  AppTextField(
+                  AppAutocompleteField<String>(
                     fieldKey: const Key('purchaseSupplierNameField'),
                     controller: _supplierNameController,
                     label: 'اسم المجهز',
                     icon: Icons.person_search_rounded,
                     accentColor: AppModuleColors.purchases,
+                    options: _purchaseSupplierOptions,
+                    displayStringForOption: (value) => value,
+                    onSelected: (_) {},
                     textDirection: TextDirection.rtl,
                     textAlign: TextAlign.right,
-                    textInputAction: TextInputAction.next,
                   ),
                   AppTextField(
                     fieldKey: const Key('purchaseNotesField'),

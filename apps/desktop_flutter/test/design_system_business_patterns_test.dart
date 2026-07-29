@@ -285,6 +285,14 @@ void main() {
     );
     expect(
       tester
+          .widget<AppButton>(
+            find.byKey(const Key('appStatementPrint')),
+          )
+          .backgroundColor,
+      AppColors.blue,
+    );
+    expect(
+      tester
           .widget<Row>(
             find.byKey(const Key('appStatementReportActions')),
           )

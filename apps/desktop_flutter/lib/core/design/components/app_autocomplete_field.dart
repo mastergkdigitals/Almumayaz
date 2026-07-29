@@ -24,6 +24,7 @@ class AppAutocompleteField<T extends Object> extends StatefulWidget {
     this.maxOptions = 24,
     this.textDirection,
     this.textAlign = TextAlign.start,
+    this.showOptionsOnFocus = true,
   });
 
   final TextEditingController controller;
@@ -44,6 +45,7 @@ class AppAutocompleteField<T extends Object> extends StatefulWidget {
   final int maxOptions;
   final TextDirection? textDirection;
   final TextAlign textAlign;
+  final bool showOptionsOnFocus;
 
   @override
   State<AppAutocompleteField<T>> createState() =>
@@ -53,13 +55,81 @@ class AppAutocompleteField<T extends Object> extends StatefulWidget {
 class _AppAutocompleteFieldState<T extends Object>
     extends State<AppAutocompleteField<T>> {
   final _internalFocusNode = FocusNode();
+  var _showAllOptions = false;
+  var _isRefreshingOptions = false;
+  late String _lastControllerText;
 
   FocusNode get _focusNode => widget.focusNode ?? _internalFocusNode;
 
   @override
+  void initState() {
+    super.initState();
+    _lastControllerText = widget.controller.text;
+    widget.controller.addListener(_handleControllerChanged);
+    _focusNode.addListener(_handleFocusChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant AppAutocompleteField<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_handleControllerChanged);
+      _lastControllerText = widget.controller.text;
+      widget.controller.addListener(_handleControllerChanged);
+    }
+
+    final oldFocusNode = oldWidget.focusNode ?? _internalFocusNode;
+    if (oldFocusNode != _focusNode) {
+      oldFocusNode.removeListener(_handleFocusChanged);
+      _focusNode.addListener(_handleFocusChanged);
+    }
+  }
+
+  @override
   void dispose() {
+    widget.controller.removeListener(_handleControllerChanged);
+    _focusNode.removeListener(_handleFocusChanged);
     _internalFocusNode.dispose();
     super.dispose();
+  }
+
+  void _handleControllerChanged() {
+    final text = widget.controller.text;
+    if (text == _lastControllerText) return;
+    _lastControllerText = text;
+    if (!_isRefreshingOptions) {
+      _showAllOptions = false;
+    }
+  }
+
+  void _handleFocusChanged() {
+    if (!_focusNode.hasFocus) {
+      _showAllOptions = false;
+      return;
+    }
+    _showAllOptionsOnFocus();
+  }
+
+  void _showAllOptionsOnFocus() {
+    if (!widget.enabled || !widget.showOptionsOnFocus) return;
+    _showAllOptions = true;
+    _refreshOptions();
+  }
+
+  void _refreshOptions() {
+    final value = widget.controller.value;
+    final refreshText = '${value.text}\u200B';
+    _isRefreshingOptions = true;
+    try {
+      widget.controller.value = TextEditingValue(
+        text: refreshText,
+        selection: TextSelection.collapsed(offset: refreshText.length),
+      );
+      widget.controller.value = value;
+      _lastControllerText = value.text;
+    } finally {
+      _isRefreshingOptions = false;
+    }
   }
 
   @override
@@ -77,7 +147,9 @@ class _AppAutocompleteFieldState<T extends Object>
           displayStringForOption: widget.displayStringForOption,
           optionsBuilder: (value) {
             if (!widget.enabled) return Iterable<T>.empty();
-            final query = _normalizeAutocompleteText(value.text);
+            final query = _showAllOptions
+                ? ''
+                : _normalizeAutocompleteText(value.text);
             if (query.isEmpty) {
               return widget.options.take(widget.maxOptions);
             }
@@ -109,7 +181,10 @@ class _AppAutocompleteFieldState<T extends Object>
             });
             return matches.take(widget.maxOptions);
           },
-          onSelected: widget.onSelected,
+          onSelected: (option) {
+            _showAllOptions = false;
+            widget.onSelected(option);
+          },
           fieldViewBuilder: (
             context,
             controller,
@@ -129,6 +204,7 @@ class _AppAutocompleteFieldState<T extends Object>
               textAlign: widget.textAlign,
               textInputAction: TextInputAction.search,
               onChanged: widget.onChanged,
+              onTap: _showAllOptionsOnFocus,
               onSubmitted: (value) {
                 onFieldSubmitted();
                 widget.onSubmitted?.call(value);

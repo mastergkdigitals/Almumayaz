@@ -14,6 +14,8 @@ class CashboxFormControllers {
   final exchangeRate = TextEditingController();
   final currentBalanceIqd = TextEditingController();
   final currentBalanceUsd = TextEditingController();
+  final mainAccount = TextEditingController();
+  final subaccount = TextEditingController();
   final amountIqd = TextEditingController();
   final equivalentUsd = TextEditingController();
   final previousBalanceIqd = TextEditingController();
@@ -81,6 +83,8 @@ class CashboxFormControllers {
     exchangeRate.dispose();
     currentBalanceIqd.dispose();
     currentBalanceUsd.dispose();
+    mainAccount.dispose();
+    subaccount.dispose();
     amountIqd.dispose();
     equivalentUsd.dispose();
     previousBalanceIqd.dispose();
@@ -98,8 +102,6 @@ class CashboxForm extends StatelessWidget {
     required this.controllers,
     required this.voucherDateTime,
     required this.voucherType,
-    required this.mainAccountId,
-    required this.subaccountId,
     required this.mainAccounts,
     required this.subaccounts,
     required this.onDateChanged,
@@ -112,8 +114,6 @@ class CashboxForm extends StatelessWidget {
   final CashboxFormControllers controllers;
   final DateTime voucherDateTime;
   final CashboxVoucherType voucherType;
-  final String mainAccountId;
-  final String subaccountId;
   final List<CashboxMainAccount> mainAccounts;
   final List<CashboxSubaccount> subaccounts;
   final ValueChanged<DateTime> onDateChanged;
@@ -255,42 +255,58 @@ class CashboxForm extends StatelessWidget {
         const SizedBox(height: AppSpacing.md),
         _CashboxFieldRow(
           children: [
-            AppDropdownField<String>(
+            AppAutocompleteField<CashboxMainAccount>(
               fieldKey: const Key('cashboxMainAccountField'),
+              controller: controllers.mainAccount,
               label: 'الحساب الرئيسي',
               icon: Icons.account_tree_rounded,
               accentColor: accentColor,
-              useIntrinsicHeight: true,
-              value: mainAccountId,
-              options: [
-                for (final account in mainAccounts)
-                  AppDropdownOption(
-                    value: account.id,
-                    label: account.label,
-                  ),
+              options: mainAccounts,
+              displayStringForOption: (account) => account.label,
+              searchTermsForOption: (account) => [
+                account.id,
+                account.label,
               ],
-              onChanged: (value) {
-                if (value != null) onMainAccountChanged(value);
+              onSelected: (account) {
+                onMainAccountChanged(account.id);
               },
+              onChanged: (value) {
+                for (final account in mainAccounts) {
+                  if (account.label == value.trim()) {
+                    onMainAccountChanged(account.id);
+                    return;
+                  }
+                }
+              },
+              textDirection: TextDirection.rtl,
+              textAlign: TextAlign.right,
             ),
-            AppDropdownField<String>(
+            AppAutocompleteField<CashboxSubaccount>(
               fieldKey: const Key('cashboxSubaccountField'),
+              controller: controllers.subaccount,
               label: 'الحساب الفرعي',
               icon: Icons.subdirectory_arrow_left_rounded,
               accentColor: accentColor,
-              useIntrinsicHeight: true,
               enabled: subaccounts.isNotEmpty,
-              value: subaccountId,
-              options: [
-                for (final subaccount in subaccounts)
-                  AppDropdownOption(
-                    value: subaccount.id,
-                    label: subaccount.label,
-                  ),
+              options: subaccounts,
+              displayStringForOption: (subaccount) => subaccount.label,
+              searchTermsForOption: (subaccount) => [
+                subaccount.id,
+                subaccount.label,
               ],
-              onChanged: (value) {
-                if (value != null) onSubaccountChanged(value);
+              onSelected: (subaccount) {
+                onSubaccountChanged(subaccount.id);
               },
+              onChanged: (value) {
+                for (final subaccount in subaccounts) {
+                  if (subaccount.label == value.trim()) {
+                    onSubaccountChanged(subaccount.id);
+                    return;
+                  }
+                }
+              },
+              textDirection: TextDirection.rtl,
+              textAlign: TextAlign.right,
             ),
           ],
         ),

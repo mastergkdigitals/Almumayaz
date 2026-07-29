@@ -167,6 +167,19 @@ class _PartiesScreenState extends State<PartiesScreen> {
     return false;
   }
 
+  bool _hasDuplicatePartyName({String? excludingPartyId}) {
+    final candidate = _normalizePartyName(_formControllers.name.text);
+    return _partiesController.state.parties.any(
+      (party) =>
+          party.id != excludingPartyId &&
+          _normalizePartyName(party.name) == candidate,
+    );
+  }
+
+  void _showDuplicateNameMessage() {
+    AppToast.showWarning(context, 'يوجد طرف مسجل بهذا الاسم');
+  }
+
   Party _newPartyFromForm() {
     return Party(
       id: 'local-${DateTime.now().microsecondsSinceEpoch}',
@@ -207,6 +220,10 @@ class _PartiesScreenState extends State<PartiesScreen> {
       AppToast.showWarning(context, 'استخدم زر تحديث لتعديل الطرف المحدد');
       return;
     }
+    if (_hasDuplicatePartyName()) {
+      _showDuplicateNameMessage();
+      return;
+    }
 
     final party = _newPartyFromForm();
     _partiesController.add(party);
@@ -221,6 +238,10 @@ class _PartiesScreenState extends State<PartiesScreen> {
       return;
     }
     if (!_validateName()) return;
+    if (_hasDuplicatePartyName(excludingPartyId: selected.id)) {
+      _showDuplicateNameMessage();
+      return;
+    }
 
     final updated = _updatedPartyFromForm(selected);
     _partiesController.update(updated);
@@ -391,3 +412,16 @@ typedef _PartyFormSnapshot = ({
   String address,
   String notes,
 });
+
+String _normalizePartyName(String value) {
+  return value
+      .trim()
+      .toLowerCase()
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .replaceAll(RegExp(r'[\u064B-\u065F\u0670]'), '')
+      .replaceAll(RegExp('[أإآ]'), 'ا')
+      .replaceAll('ى', 'ي')
+      .replaceAll('ؤ', 'و')
+      .replaceAll('ئ', 'ي')
+      .replaceAll('ة', 'ه');
+}

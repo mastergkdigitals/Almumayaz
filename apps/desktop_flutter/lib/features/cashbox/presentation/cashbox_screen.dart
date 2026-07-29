@@ -99,6 +99,8 @@ class _CashboxScreenState extends State<CashboxScreen> {
   bool _hasUnsavedChanges = false;
 
   Iterable<TextEditingController> get _editableControllers => [
+        _formControllers.mainAccount,
+        _formControllers.subaccount,
         _formControllers.exchangeRate,
         _formControllers.amountIqd,
         _formControllers.amountUsd,
@@ -155,6 +157,7 @@ class _CashboxScreenState extends State<CashboxScreen> {
         number: _cashboxController.nextNumber,
         exchangeRateValue: 1310,
       );
+    _syncAccountFields();
     _syncCalculatedFields();
     _isApplyingFormState = false;
     _baseline = _currentSnapshot();
@@ -175,6 +178,7 @@ class _CashboxScreenState extends State<CashboxScreen> {
     _formControllers
       ..setSummary(_cashboxController.summary)
       ..load(voucher);
+    _syncAccountFields();
     _syncCalculatedFields();
     _isApplyingFormState = false;
     _baseline = _currentSnapshot();
@@ -214,6 +218,8 @@ class _CashboxScreenState extends State<CashboxScreen> {
         voucherType: _voucherType,
         mainAccountId: _mainAccountId,
         subaccountId: _subaccountId,
+        mainAccountText: _formControllers.mainAccount.text,
+        subaccountText: _formControllers.subaccount.text,
         exchangeRate: _formControllers.exchangeRate.text,
         amountIqd: _formControllers.amountIqd.text,
         amountUsd: _formControllers.amountUsd.text,
@@ -259,8 +265,14 @@ class _CashboxScreenState extends State<CashboxScreen> {
   void _changeMainAccount(String value) {
     if (_mainAccountId == value) return;
     setState(() {
-      _mainAccountId = value;
-      _subaccountId = _selectedMainAccount.subaccounts.first.id;
+      _isApplyingFormState = true;
+      try {
+        _mainAccountId = value;
+        _subaccountId = _selectedMainAccount.subaccounts.first.id;
+        _syncAccountFields();
+      } finally {
+        _isApplyingFormState = false;
+      }
       _refreshSelectionState();
     });
   }
@@ -268,9 +280,20 @@ class _CashboxScreenState extends State<CashboxScreen> {
   void _changeSubaccount(String value) {
     if (_subaccountId == value) return;
     setState(() {
-      _subaccountId = value;
+      _isApplyingFormState = true;
+      try {
+        _subaccountId = value;
+        _syncAccountFields();
+      } finally {
+        _isApplyingFormState = false;
+      }
       _refreshSelectionState();
     });
+  }
+
+  void _syncAccountFields() {
+    _formControllers.mainAccount.text = _selectedMainAccount.label;
+    _formControllers.subaccount.text = _selectedSubaccount.label;
   }
 
   void _syncCalculatedFields() {
@@ -328,6 +351,17 @@ class _CashboxScreenState extends State<CashboxScreen> {
   }
 
   bool _validateForm() {
+    if (_formControllers.mainAccount.text.trim() !=
+        _selectedMainAccount.label) {
+      AppToast.showWarning(context, 'اختر الحساب الرئيسي من القائمة');
+      return false;
+    }
+    if (_formControllers.subaccount.text.trim() !=
+        _selectedSubaccount.label) {
+      AppToast.showWarning(context, 'اختر الحساب الفرعي من القائمة');
+      return false;
+    }
+
     final exchangeRate =
         AppFormatters.parseNumber(_formControllers.exchangeRate.text);
     if (exchangeRate == null || exchangeRate <= 0) {
@@ -435,6 +469,11 @@ class _CashboxScreenState extends State<CashboxScreen> {
     AppToast.showWarning(context, 'تم التراجع عن التغييرات');
   }
 
+  void _print() {
+    FocusManager.instance.primaryFocus?.unfocus();
+    AppToast.showInfo(context, 'تم تجهيز معاينة طباعة الصندوق');
+  }
+
   Future<void> _delete() async {
     final selected = _cashboxController.selectedVoucher;
     if (selected == null) {
@@ -487,6 +526,15 @@ class _CashboxScreenState extends State<CashboxScreen> {
                   ? _update
                   : null
               : _save,
+          actions: [
+            AppHeaderIconButton(
+              key: const Key('cashboxPrintButton'),
+              tooltipKey: const Key('cashboxPrintTooltip'),
+              icon: Icons.print_rounded,
+              tooltip: 'طباعة',
+              onPressed: _print,
+            ),
+          ],
           body: Padding(
             padding: const EdgeInsets.all(AppSpacing.lg),
             child: Column(
@@ -495,8 +543,6 @@ class _CashboxScreenState extends State<CashboxScreen> {
                   controllers: _formControllers,
                   voucherDateTime: _voucherDateTime,
                   voucherType: _voucherType,
-                  mainAccountId: _mainAccountId,
-                  subaccountId: _subaccountId,
                   mainAccounts: _mainAccounts,
                   subaccounts: _visibleSubaccounts,
                   onDateChanged: _changeDate,
@@ -571,6 +617,8 @@ typedef _CashboxFormSnapshot = ({
   CashboxVoucherType voucherType,
   String mainAccountId,
   String subaccountId,
+  String mainAccountText,
+  String subaccountText,
   String exchangeRate,
   String amountIqd,
   String amountUsd,

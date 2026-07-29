@@ -64,6 +64,16 @@ class AppPurchaseInvoiceTableRowData {
 
   int get quantityValue => AppFormatters.parseInteger(quantity) ?? 0;
 
+  bool get hasRequiredValues =>
+      code.trim().isNotEmpty &&
+      name.trim().isNotEmpty &&
+      quantityValue > 0;
+
+  bool get isEmpty =>
+      code.trim().isEmpty &&
+      name.trim().isEmpty &&
+      quantityValue == 0;
+
   num get purchasePriceValue =>
       AppFormatters.parseNumber(purchasePrice) ?? 0;
 
@@ -327,6 +337,19 @@ class _AppPurchaseInvoiceTableTemplateState
     _notifyRowsChanged();
   }
 
+  void _changeRowText() {
+    setState(() {});
+    _notifyRowsChanged();
+  }
+
+  bool _canAddRow(_PurchaseInvoiceTemplateRow row) {
+    return AppPurchaseInvoiceTableRowData(
+      code: row.codeController.text,
+      name: row.nameController.text,
+      quantity: row.quantityController.text,
+    ).hasRequiredValues;
+  }
+
   void _recalculateRows() {
     for (final row in _rows) {
       final data = AppPurchaseInvoiceTableRowData(
@@ -540,7 +563,11 @@ class _AppPurchaseInvoiceTableTemplateState
           size: 40,
           iconSize: AppIconSizes.md,
           borderRadius: AppRadii.sm,
-          onPressed: isLastRow ? _addRow : () => _removeRow(index),
+          onPressed: isLastRow
+              ? _canAddRow(row)
+                  ? _addRow
+                  : null
+              : () => _removeRow(index),
         ),
       ),
     ];
@@ -586,7 +613,7 @@ class _AppPurchaseInvoiceTableTemplateState
         if (recalculates) {
           _changeCalculatedValue();
         } else {
-          _notifyRowsChanged();
+          _changeRowText();
         }
       },
       showLabel: false,

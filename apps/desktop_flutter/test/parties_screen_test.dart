@@ -478,6 +478,75 @@ void main() {
     expect(_fieldText(tester, name), 'أحمد كريم');
   });
 
+  testWidgets('prevents duplicate party names when saving',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(const AlmumayazApp());
+    await _login(tester);
+    await tester.tap(find.byKey(const Key('dashboardCard_parties')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('partyNameField')),
+      '  أحمد   كريم  ',
+    );
+    await tester.tap(find.byKey(const Key('partiesSaveButton')));
+    await tester.pump();
+
+    final toast = find.byKey(const Key('appToast'));
+    expect(toast, findsOneWidget);
+    expect(tester.widget<SnackBar>(toast).backgroundColor, AppColors.orange);
+    expect(
+      find.descendant(
+        of: toast,
+        matching: find.text('يوجد طرف مسجل بهذا الاسم'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<AppDataTable>(
+            find.byKey(const Key('partiesTable')),
+          )
+          .rows,
+      hasLength(10),
+    );
+  });
+
+  testWidgets('shows and filters workplace and branch suggestions',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(const AlmumayazApp());
+    await _login(tester);
+    await tester.tap(find.byKey(const Key('dashboardCard_parties')));
+    await tester.pumpAndSettle();
+
+    final wholesaleCount =
+        find.text('تجارة الجملة').evaluate().length;
+    await tester.tap(find.byKey(const Key('partyWorkplaceField')));
+    await tester.pump();
+    expect(
+      find.text('تجارة الجملة'),
+      findsNWidgets(wholesaleCount + 1),
+    );
+
+    await tester.enterText(
+      find.byKey(const Key('partyWorkplaceField')),
+      'الأجه',
+    );
+    await tester.pump();
+    expect(find.text('تجارة الجملة'), findsNWidgets(wholesaleCount));
+
+    expect(find.text('أربيل'), findsNothing);
+    await tester.tap(find.byKey(const Key('partyBranchField')));
+    await tester.pump();
+    expect(find.text('أربيل'), findsOneWidget);
+  });
+
   testWidgets('opens statement options and report from a party row',
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(1440, 900));

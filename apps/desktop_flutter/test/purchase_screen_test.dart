@@ -66,6 +66,13 @@ void main() {
     ]) {
       expect(find.byKey(Key(key)), findsOneWidget);
     }
+    expect(
+      find.ancestor(
+        of: find.byKey(const Key('purchaseSupplierNameField')),
+        matching: find.byType(AppAutocompleteField<String>),
+      ),
+      findsOneWidget,
+    );
 
     _expectRightToLeftOrder(tester, firstRowKeys);
     _expectRightToLeftOrder(tester, secondRowKeys);
@@ -286,6 +293,16 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('purchaseLastButton')));
     await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<AppTableActionButton>(
+            find.byKey(
+              const Key('appPurchaseInvoiceTemplateAddButton'),
+            ),
+          )
+          .onPressed,
+      isNull,
+    );
 
     _dropdown(tester, 'purchaseCurrencyField').onChanged('USD');
     await tester.pump();
@@ -324,6 +341,16 @@ void main() {
       '20',
     );
     await tester.pump();
+    expect(
+      tester
+          .widget<AppTableActionButton>(
+            find.byKey(
+              const Key('appPurchaseInvoiceTemplateAddButton'),
+            ),
+          )
+          .onPressed,
+      isNull,
+    );
 
     expect(
       _fieldValue(
@@ -497,6 +524,23 @@ void main() {
     expect(_fieldValue(tester, 'purchasePaidField'), '90,000');
   });
 
+  testWidgets('shows and filters purchase supplier suggestions',
+      (tester) async {
+    await _openPurchaseScreen(tester);
+
+    final supplier =
+        find.byKey(const Key('purchaseSupplierNameField'));
+    await tester.tap(supplier);
+    await tester.pump();
+    expect(find.text('شركة التجارة العالمية'), findsOneWidget);
+    expect(find.text('مجهز الفرات'), findsOneWidget);
+
+    await tester.enterText(supplier, 'الفر');
+    await tester.pump();
+    expect(find.text('شركة التجارة العالمية'), findsNothing);
+    expect(find.text('مجهز الفرات'), findsOneWidget);
+  });
+
   testWidgets('shows matching purchase action toasts', (tester) async {
     await _openPurchaseScreen(tester);
 
@@ -558,6 +602,20 @@ void main() {
     );
     await _finishToast(tester);
 
+    await tester.tap(find.byKey(const Key('purchaseSearchButton')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('purchaseRecordSearchField')),
+      'مجهز تجريبي',
+    );
+    await tester.pump();
+    expect(find.textContaining('0 مواد'), findsOneWidget);
+    await tester.tap(
+      find.byKey(const Key('purchaseRecordSearchResult-0')),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+
     await tester.tap(find.byKey(const Key('purchaseDeleteButton')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('appDialogConfirmButton')));
@@ -612,6 +670,14 @@ void main() {
     expect(
       tester.widget<AppModuleDialog>(report).accentColor,
       AppModuleColors.purchases,
+    );
+    expect(
+      tester
+          .widget<AppButton>(
+            find.byKey(const Key('appStatementPrint')),
+          )
+          .backgroundColor,
+      AppColors.blue,
     );
   });
 }

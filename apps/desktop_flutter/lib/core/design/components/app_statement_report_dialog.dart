@@ -101,7 +101,7 @@ class _StatementReportBody extends StatelessWidget {
           label: 'طباعة',
           icon: Icons.print_rounded,
           width: 132,
-          backgroundColor: accentColor,
+          backgroundColor: AppColors.blue,
           onPressed: _noop,
         ),
         AppButton(

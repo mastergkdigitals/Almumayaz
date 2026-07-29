@@ -321,6 +321,10 @@ void main() {
       find.byKey(const Key('settingsCashboxDefaultAccount')),
       findsOneWidget,
     );
+    expect(
+      find.byKey(const Key('settingsCashboxDefaultCurrency')),
+      findsNothing,
+    );
     const defaultsAccent = Color(0xFF4F46E5);
     expect(
       tester

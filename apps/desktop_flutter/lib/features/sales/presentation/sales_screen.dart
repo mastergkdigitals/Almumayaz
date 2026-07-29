@@ -22,6 +22,14 @@ const _salesCurrencyOptions = <AppDropdownOption<String>>[
   AppDropdownOption(value: 'USD', label: 'دولار'),
 ];
 
+const _salesCustomerOptions = <String>[
+  'شركة النخيل للتجارة',
+  'أحمد كريم',
+  'أسواق دجلة',
+  'مكتب البصرة',
+  'علي حسن',
+];
+
 final _demoSalesInvoices = <_DemoSalesInvoice>[
   _DemoSalesInvoice(
     id: '103',
@@ -676,17 +684,15 @@ class _SalesScreenState extends State<SalesScreen> {
   _DemoSalesInvoice _invoiceFromForm({
     required String id,
   }) {
-    final meaningfulItemCount = _activeItems.where((item) {
-      return item.code.trim().isNotEmpty || item.name.trim().isNotEmpty;
-    }).length;
+    final items = List<AppSalesInvoiceTableRowData>.unmodifiable(
+      _activeItems.where((item) => !item.isEmpty),
+    );
+    final meaningfulItemCount = items.length;
     final date =
         '${_twoDigits(_invoiceDateTime.day)}/'
         '${_twoDigits(_invoiceDateTime.month)}/'
         '${_invoiceDateTime.year}';
     final customerName = _customerNameController.text.trim();
-    final items = List<AppSalesInvoiceTableRowData>.unmodifiable(
-      _activeItems,
-    );
 
     return _DemoSalesInvoice(
       id: id,
@@ -991,15 +997,17 @@ class _SalesScreenState extends State<SalesScreen> {
               const SizedBox(height: AppSpacing.md),
               _SalesFieldRow(
                 children: [
-                  AppTextField(
+                  AppAutocompleteField<String>(
                     fieldKey: const Key('salesCustomerNameField'),
                     controller: _customerNameController,
                     label: 'اسم الزبون',
                     icon: Icons.person_rounded,
                     accentColor: AppModuleColors.sales,
+                    options: _salesCustomerOptions,
+                    displayStringForOption: (value) => value,
+                    onSelected: (_) {},
                     textDirection: TextDirection.rtl,
                     textAlign: TextAlign.right,
-                    textInputAction: TextInputAction.next,
                   ),
                   AppTextField(
                     fieldKey: const Key('salesNotesField'),
