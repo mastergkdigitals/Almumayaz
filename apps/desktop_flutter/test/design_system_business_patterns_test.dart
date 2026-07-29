@@ -409,19 +409,19 @@ void main() {
       ),
       findsNothing,
     );
-    expect(
-      find.descendant(
-        of: find.byKey(const Key('inventoryTransferSourceStock')),
-        matching: find.text('1,200'),
-      ),
-      findsOneWidget,
+    final sourceStockTable = tester.widget<AppDataTable>(
+      find.byKey(const Key('inventoryTransferSourceStockTable')),
+    );
+    final destinationStockTable = tester.widget<AppDataTable>(
+      find.byKey(const Key('inventoryTransferDestinationStockTable')),
     );
     expect(
-      find.descendant(
-        of: find.byKey(const Key('inventoryTransferDestinationStock')),
-        matching: find.text('80'),
-      ),
-      findsOneWidget,
+      (sourceStockTable.rows.first.cells.last as Text).data,
+      '1,200',
+    );
+    expect(
+      (destinationStockTable.rows.first.cells.last as Text).data,
+      '80',
     );
 
     await tester.tap(
