@@ -226,7 +226,7 @@ class _ReportSectionViewState extends State<ReportSectionView> {
             icon: Icons.summarize_rounded,
             accentColor: _accentColor,
             child: SizedBox(
-              height: 66,
+              height: 80,
               child: Scrollbar(
                 controller: _metricsScrollController,
                 scrollbarOrientation: ScrollbarOrientation.bottom,
