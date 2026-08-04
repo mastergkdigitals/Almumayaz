@@ -18,7 +18,7 @@ void main() {
           variant.filters.map((filter) => filter.id),
           isNot(contains('status')),
         );
-        for (final row in variant.rows) {
+        for (final row in _demoRows(report, variant)) {
           expect(row.filterValues.containsKey('status'), isFalse);
           expect(row.cells, hasLength(variant.columns.length));
         }
@@ -26,12 +26,25 @@ void main() {
     }
   });
 
+  test('loads demo rows through the report rows service', () async {
+    const service = DemoReportRowsService(delay: Duration.zero);
+    final report = reportDefinitions.first;
+    final variant = report.variants.first;
+    final request = ReportRowsRequest(
+      reportId: report.id,
+      variantId: variant.id,
+    );
+
+    expect(service.snapshot(request), _demoRows(report, variant));
+    expect(await service.load(request), _demoRows(report, variant));
+  });
+
   test('calculates report metrics from only the supplied rows', () {
     final report = reportDefinitions.singleWhere(
       (candidate) => candidate.id == 'salesInvoices',
     );
     final variant = report.variants.single;
-    final usdRows = variant.rows
+    final usdRows = _demoRows(report, variant)
         .where((row) => row.filterValues['currency'] == 'USD')
         .toList(growable: false);
 
@@ -57,7 +70,7 @@ void main() {
     const service = DemoReportOutputService(delay: Duration.zero);
     final report = reportDefinitions.first;
     final variant = report.variants.first;
-    final row = variant.rows.first;
+    final row = _demoRows(report, variant).first;
     final request = ReportOutputRequest(
       reportTitle: report.title,
       variantLabel: variant.label,
@@ -102,7 +115,7 @@ void main() {
       (candidate) => candidate.id == 'partyBalances',
     );
     final variant = report.variants.single;
-    final rows = variant.rows
+    final rows = _demoRows(report, variant)
         .where(
           (row) =>
               (row.filterValues['currency'] ?? '').split('|').contains('IQD'),
@@ -131,7 +144,7 @@ void main() {
     final cashboxMetrics = ReportSummaryCalculator.calculate(
       reportId: cashbox.id,
       variantId: cashboxVariant.id,
-      rows: cashboxVariant.rows,
+      rows: _demoRows(cashbox, cashboxVariant),
       fallbackMetrics: cashboxVariant.metrics,
     );
     String cashboxValue(String label) => cashboxMetrics
@@ -151,7 +164,7 @@ void main() {
     final transferMetrics = ReportSummaryCalculator.calculate(
       reportId: inventory.id,
       variantId: transfers.id,
-      rows: [transfers.rows.last],
+      rows: [_demoRows(inventory, transfers).last],
       fallbackMetrics: transfers.metrics,
     );
     String transferValue(String label) => transferMetrics
@@ -490,6 +503,59 @@ void main() {
     await _finishToast(tester);
   });
 
+  testWidgets('shows a missing-reference state for stale filters',
+      (tester) async {
+    final definition = reportDefinitions.first;
+    await tester.binding.setSurfaceSize(const Size(1280, 720));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Directionality(
+            textDirection: TextDirection.rtl,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: ReportSectionView(
+                definition: definition,
+                definitions: [definition],
+                onDefinitionChanged: (_) {},
+                initialDropdownValues: const {
+                  'currency': 'removed-currency',
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final state = find.byKey(
+      const Key('reportMissingReferenceState_salesInvoices'),
+    );
+    expect(state, findsOneWidget);
+    expect(
+      find.descendant(
+        of: state,
+        matching: find.text('مرجع التصفية غير متاح'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.descendant(
+        of: state,
+        matching: find.byType(AppRegularButton),
+      ),
+    );
+    await tester.pump();
+    expect(state, findsNothing);
+    expect(
+      find.byKey(const Key('reportTable_salesInvoices_main')),
+      findsOneWidget,
+    );
+    await _finishToast(tester);
+  });
+
   testWidgets('shows an empty state and blocks empty exports',
       (tester) async {
     await _openReports(tester);
@@ -635,6 +701,16 @@ class _FailingReportRowsService implements ReportRowsService {
     await Future<void>.delayed(const Duration(milliseconds: 20));
     throw StateError('demo failure');
   }
+}
+
+List<ReportRowDefinition> _demoRows(
+  ReportDefinition report,
+  ReportVariantDefinition variant,
+) {
+  return reportDemoRowsFor(
+    reportId: report.id,
+    variantId: variant.id,
+  );
 }
 
 Future<void> _openReports(WidgetTester tester) async {

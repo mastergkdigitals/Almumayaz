@@ -26,7 +26,7 @@ class ReportVariantDefinition {
     required this.filters,
     required this.metrics,
     required this.columns,
-    required this.rows,
+    this.rows = const [],
     this.minimumColumnWidth = 135,
   }) : assert(columns.length > 0);
 
@@ -36,6 +36,12 @@ class ReportVariantDefinition {
   final List<ReportFilterDefinition> filters;
   final List<ReportMetricDefinition> metrics;
   final List<ReportColumnDefinition> columns;
+
+  /// Kept only for source compatibility with early report definitions.
+  ///
+  /// Production and demo rows are loaded through `ReportRowsService`; report
+  /// metadata must not own the current result set.
+  @Deprecated('Load report rows through ReportRowsService instead.')
   final List<ReportRowDefinition> rows;
   final double minimumColumnWidth;
 }
