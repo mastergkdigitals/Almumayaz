@@ -266,7 +266,9 @@ class _AppDatePickerBodyState extends State<_AppDatePickerBody> {
           vertical: AppSpacing.lg,
         ),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 440),
+          constraints: const BoxConstraints(
+            maxWidth: 440 * AppDensity.scale,
+          ),
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: AppColors.surface,
@@ -326,7 +328,7 @@ class _AppDatePickerBodyState extends State<_AppDatePickerBody> {
                         key: const Key('appDatePickerCancel'),
                         label: 'إلغاء',
                         variant: AppButtonVariant.secondary,
-                        width: 144,
+                        width: 144 * AppDensity.scale,
                         onPressed: () => Navigator.of(context).pop(),
                       ),
                       const SizedBox(width: AppSpacing.sm),
@@ -335,7 +337,7 @@ class _AppDatePickerBodyState extends State<_AppDatePickerBody> {
                         label: 'موافق',
                         icon: Icons.check_rounded,
                         backgroundColor: widget.accentColor,
-                        width: 144,
+                        width: 144 * AppDensity.scale,
                         onPressed: _canConfirm ? _confirm : null,
                       ),
                     ],
@@ -411,7 +413,9 @@ class _WeekdayHeader extends StatelessWidget {
               child: Text(
                 label,
                 textAlign: TextAlign.center,
-                style: AppTypography.tableHeader.copyWith(fontSize: 12),
+                style: AppTypography.tableHeader.copyWith(
+                  fontSize: 12 * AppDensity.scale,
+                ),
               ),
             ),
           ),
@@ -462,10 +466,13 @@ class _CalendarGrid extends StatelessWidget {
                 for (final date in cells.skip(row * 7).take(7))
                   Expanded(
                     child: Padding(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 2 * AppDensity.scale,
+                      ),
                       child: date == null
-                          ? const SizedBox(height: 42)
+                          ? const SizedBox(
+                              height: 42 * AppDensity.scale,
+                            )
                           : _DayButton(
                               date: date,
                               selected:
@@ -540,7 +547,7 @@ class _DayButton extends StatelessWidget {
             : AppColors.textPrimary;
 
     return SizedBox(
-      height: 42,
+      height: 42 * AppDensity.scale,
       child: OutlinedButton(
         onPressed: enabled ? onPressed : null,
         style: ButtonStyle(

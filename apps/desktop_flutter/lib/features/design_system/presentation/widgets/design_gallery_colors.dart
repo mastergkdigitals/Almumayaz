@@ -147,7 +147,7 @@ class _ColorFamilyRow extends StatelessWidget {
           family.name,
           style: const TextStyle(
             color: AppColors.textPrimary,
-            fontSize: 18,
+            fontSize: 18 * AppDensity.scale,
             fontWeight: FontWeight.w800,
           ),
         ),
@@ -194,7 +194,7 @@ class _ColorSample extends StatelessWidget {
 
     return Container(
       width: width,
-      height: 92,
+      height: 92 * AppDensity.scale,
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: color,

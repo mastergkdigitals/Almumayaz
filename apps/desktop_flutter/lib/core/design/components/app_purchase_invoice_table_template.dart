@@ -560,7 +560,7 @@ class _AppPurchaseInvoiceTableTemplateState
               : AppButtonVariant.danger,
           backgroundColor: isLastRow ? AppColors.green : AppColors.red,
           foregroundColor: Colors.white,
-          size: 40,
+          size: AppControlHeights.compact,
           iconSize: AppIconSizes.md,
           borderRadius: AppRadii.sm,
           onPressed: isLastRow

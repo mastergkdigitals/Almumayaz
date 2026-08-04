@@ -38,10 +38,10 @@ class AppDataTable extends StatefulWidget {
     required this.columns,
     required this.rows,
     super.key,
-    this.height = 360,
-    this.headerHeight = 56,
-    this.rowHeight = 56,
-    this.minimumColumnWidth = 180,
+    this.height = 360 * AppDensity.scale,
+    this.headerHeight = 56 * AppDensity.scale,
+    this.rowHeight = 56 * AppDensity.scale,
+    this.minimumColumnWidth = 180 * AppDensity.scale,
     this.isLoading = false,
     this.emptyState,
     this.verticalScrollController,
@@ -186,7 +186,10 @@ class _AppDataTableState extends State<AppDataTable> {
   ) {
     if (widget.isLoading) {
       return const Center(
-        child: AppLoadingIndicator(size: 40, strokeWidth: 4),
+        child: AppLoadingIndicator(
+          size: 40 * AppDensity.scale,
+          strokeWidth: 3.6,
+        ),
       );
     }
 

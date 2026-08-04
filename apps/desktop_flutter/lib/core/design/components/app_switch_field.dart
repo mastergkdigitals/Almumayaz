@@ -67,7 +67,7 @@ class AppSwitchField extends StatelessWidget {
                     subtitle!,
                     style: const TextStyle(
                       color: AppColors.textSecondary,
-                      fontSize: 13,
+                      fontSize: 13 * AppDensity.scale,
                     ),
                   ),
               ],
@@ -104,7 +104,7 @@ class AppSwitchField extends StatelessWidget {
               return Icon(
                 isSelected ? Icons.check_rounded : Icons.close_rounded,
                 color: AppColors.onStrong,
-                size: 14,
+                size: 14 * AppDensity.scale,
               );
             }),
           ),

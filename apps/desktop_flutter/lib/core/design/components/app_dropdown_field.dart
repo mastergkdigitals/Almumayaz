@@ -296,8 +296,9 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
                 onPressed:
                     widget.enabled ? () => _selectOption(option) : null,
                 style: ButtonStyle(
-                  minimumSize:
-                      const WidgetStatePropertyAll<Size>(Size(0, 44)),
+                  minimumSize: const WidgetStatePropertyAll<Size>(
+                    Size(0, 44 * AppDensity.scale),
+                  ),
                   padding:
                       const WidgetStatePropertyAll<EdgeInsetsGeometry>(
                     EdgeInsets.symmetric(horizontal: AppSpacing.md),
@@ -331,7 +332,7 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
                   animationDuration: AppDurations.fast,
                 ),
                 child: SizedBox(
-                  height: 42,
+                  height: 42 * AppDensity.scale,
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
@@ -454,7 +455,7 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
                             borderRadius: BorderRadius.circular(fieldRadius),
                             borderSide: BorderSide(
                               color: accentColor,
-                              width: 1.6,
+                              width: 1.5,
                             ),
                           ),
                           disabledBorder: OutlineInputBorder(

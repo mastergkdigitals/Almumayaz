@@ -138,7 +138,7 @@ class _ReportSectionViewState extends State<ReportSectionView> {
             key: Key('reportHeaderBar_$reportId'),
             children: [
               SizedBox(
-                width: 360,
+                width: 360 * AppDensity.scale,
                 child: AppDropdownField<String>(
                   fieldKey: Key('reportSelector_$reportId'),
                   label: 'التقرير',
@@ -206,7 +206,7 @@ class _ReportSectionViewState extends State<ReportSectionView> {
             key: Key('reportActionBar_$reportId'),
             children: [
               SizedBox(
-                width: 360,
+                width: 360 * AppDensity.scale,
                 child: AppSearchField(
                   fieldKey: Key('reportSearch_$reportId'),
                   clearButtonKey: Key('reportSearchClear_$reportId'),
@@ -226,7 +226,7 @@ class _ReportSectionViewState extends State<ReportSectionView> {
                 icon: Icons.assessment_rounded,
                 variant: AppButtonVariant.primary,
                 backgroundColor: _accentColor,
-                minWidth: 142,
+                minWidth: 142 * AppDensity.scale,
                 height: AppRegularButton.defaultHeight,
                 onPressed: _showReport,
               ),
@@ -279,9 +279,10 @@ class _ReportSectionViewState extends State<ReportSectionView> {
                       ),
                   ],
                   height: constraints.maxHeight,
-                  headerHeight: 52,
-                  rowHeight: 52,
-                  minimumColumnWidth: _variant.minimumColumnWidth,
+                  headerHeight: 52 * AppDensity.scale,
+                  rowHeight: 52 * AppDensity.scale,
+                  minimumColumnWidth:
+                      _variant.minimumColumnWidth * AppDensity.scale,
                   accentColor: _accentColor,
                   selectedRowColor: Color.alphaBlend(
                     _accentColor.withAlpha(18),
@@ -395,7 +396,7 @@ class _ReportVariantTabs extends StatelessWidget {
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.md,
               ),
-              minWidth: 154,
+              minWidth: 154 * AppDensity.scale,
               height: AppControlHeights.compact,
               onPressed: () => onChanged(variants[index]),
             ),
@@ -473,7 +474,7 @@ class _ReportSummaryBar extends StatelessWidget {
     ];
 
     return SizedBox(
-      height: 88,
+      height: 88 * AppDensity.scale,
       child: Container(
         padding: const EdgeInsets.all(AppSpacing.sm),
         decoration: BoxDecoration(
@@ -538,11 +539,11 @@ class _ReportSummaryGroup extends StatelessWidget {
             maxLines: 1,
             style: TextStyle(
               color: accentColor,
-              fontSize: 12,
+              fontSize: 12 * AppDensity.scale,
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 2 * AppDensity.scale),
           Expanded(
             child: Row(
               children: [
@@ -595,7 +596,7 @@ class _ReportSummaryMetric extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: accentColor,
-              fontSize: 16,
+              fontSize: 16 * AppDensity.scale,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -607,7 +608,7 @@ class _ReportSummaryMetric extends StatelessWidget {
           textAlign: TextAlign.center,
           style: const TextStyle(
             color: AppColors.textSecondary,
-            fontSize: 11,
+            fontSize: 11 * AppDensity.scale,
             fontWeight: FontWeight.w600,
           ),
         ),

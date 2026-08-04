@@ -231,7 +231,9 @@ class _AppAutocompleteFieldState<T extends Object>
                 child: SizedBox(
                   width: optionsWidth,
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 260),
+                    constraints: const BoxConstraints(
+                      maxHeight: 260 * AppDensity.scale,
+                    ),
                     child: ListView.builder(
                       padding: const EdgeInsets.all(AppSpacing.xs),
                       shrinkWrap: true,
@@ -249,7 +251,7 @@ class _AppAutocompleteFieldState<T extends Object>
                             child: Container(
                               height: widget.optionSubtitle == null
                                   ? AppControlHeights.standard
-                                  : 58,
+                                  : 58 * AppDensity.scale,
                               alignment: Alignment.centerRight,
                               padding: const EdgeInsets.symmetric(
                                 horizontal: AppSpacing.md,
@@ -305,7 +307,7 @@ class _AppAutocompleteFieldState<T extends Object>
                                           textAlign: TextAlign.right,
                                           style: const TextStyle(
                                             color: AppColors.textSecondary,
-                                            fontSize: 13,
+                                            fontSize: 13 * AppDensity.scale,
                                             fontWeight: FontWeight.w600,
                                           ),
                                         ),

@@ -281,12 +281,12 @@ void main() {
       find.byKey(const Key('inventoryTransferCreateTab')),
     );
     expect(createTab.width, isNull);
-    expect(createTab.minWidth, 180);
+    expect(createTab.minWidth, 180 * AppDensity.scale);
     final historyTab = tester.widget<AppButton>(
       find.byKey(const Key('inventoryTransferHistoryTab')),
     );
     expect(historyTab.width, isNull);
-    expect(historyTab.minWidth, 210);
+    expect(historyTab.minWidth, 210 * AppDensity.scale);
 
     final source = tester.widget<AppDropdownField<String>>(
       find.byKey(const Key('inventoryTransferFromDropdown')),
@@ -310,7 +310,7 @@ void main() {
     final executeButton = tester.widget<AppButton>(
       find.byKey(const Key('inventoryTransferExecuteButton')),
     );
-    expect(executeButton.width, 200);
+    expect(executeButton.width, 200 * AppDensity.scale);
     expect(executeButton.onPressed, isNotNull);
 
     await tester.tap(
@@ -339,7 +339,7 @@ void main() {
     );
     expect(refreshButton.variant, AppButtonVariant.success);
     expect(refreshButton.width, isNull);
-    expect(refreshButton.minWidth, 160);
+    expect(refreshButton.minWidth, 160 * AppDensity.scale);
     await tester.tap(
       find.byKey(const Key('inventoryTransferHistoryRefreshButton')),
     );
@@ -368,7 +368,7 @@ void main() {
       find.byKey(const Key('inventoryTransferHistoryTable')),
     );
     expect(historyTable.accentColor, AppModuleColors.warehouses);
-    expect(historyTable.rowHeight, 56);
+    expect(historyTable.rowHeight, 56 * AppDensity.scale);
     expect(historyTable.showColumnDividers, isFalse);
     expect(historyTable.showShadow, isTrue);
     expect(historyTable.alternatingRowColor, isNull);

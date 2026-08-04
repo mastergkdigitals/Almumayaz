@@ -5,8 +5,8 @@ import 'app_tokens.dart';
 class AppLogo extends StatelessWidget {
   const AppLogo({
     super.key,
-    this.size = 48,
-    this.padding = 6,
+    this.size = 48 * AppDensity.scale,
+    this.padding = 6 * AppDensity.scale,
     this.showBackground = true,
   });
 

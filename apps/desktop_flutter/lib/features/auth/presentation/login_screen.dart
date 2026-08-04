@@ -100,7 +100,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(AppSpacing.xl),
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 430),
+                    constraints: const BoxConstraints(
+                      maxWidth: 430 * AppDensity.scale,
+                    ),
                     child: _buildForm(context),
                   ),
                 ),
@@ -223,7 +225,7 @@ class _BrandPanel extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const AppLogo(
-                size: 112,
+                size: 112 * AppDensity.scale,
                 padding: 0,
                 showBackground: false,
               ),

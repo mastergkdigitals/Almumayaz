@@ -101,7 +101,7 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
             runSpacing: AppSpacing.md,
             children: [
               SizedBox(
-                width: 320,
+                width: 320 * AppDensity.scale,
                 child: AppTextField(
                   fieldKey: const Key('designNameField'),
                   controller: _nameController,
@@ -111,7 +111,7 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
                 ),
               ),
               SizedBox(
-                width: 320,
+                width: 320 * AppDensity.scale,
                 child: AppSearchField(
                   controller: _searchController,
                   fieldKey: const Key('designSearchField'),
@@ -120,7 +120,7 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
                 ),
               ),
               SizedBox(
-                width: 320,
+                width: 320 * AppDensity.scale,
                 child: AppIntegerField(
                   fieldKey: const Key('designQuantityField'),
                   controller: _quantityController,
@@ -129,7 +129,7 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
                 ),
               ),
               SizedBox(
-                width: 320,
+                width: 320 * AppDensity.scale,
                 child: AppMoneyField(
                   fieldKey: const Key('designMoneyField'),
                   controller: _moneyController,
@@ -137,7 +137,7 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
                 ),
               ),
               SizedBox(
-                width: 320,
+                width: 320 * AppDensity.scale,
                 child: AppPhoneField(
                   fieldKey: const Key('designPhoneField'),
                   controller: _phoneController,
@@ -145,7 +145,7 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
                 ),
               ),
               SizedBox(
-                width: 320,
+                width: 320 * AppDensity.scale,
                 child: AppDropdownField<String>(
                   fieldKey: const Key('designCurrencyDropdown'),
                   label: 'العملة',
@@ -161,7 +161,7 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
                 ),
               ),
               SizedBox(
-                width: 320,
+                width: 320 * AppDensity.scale,
                 child: AppSearchableDropdownField<String>(
                   fieldKey: const Key('designCityField'),
                   controller: _cityController,
@@ -173,7 +173,7 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
                 ),
               ),
               SizedBox(
-                width: 320,
+                width: 320 * AppDensity.scale,
                 child: AppDateField(
                   fieldKey: const Key('designDateField'),
                   label: 'التاريخ',
@@ -182,7 +182,7 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
                 ),
               ),
               SizedBox(
-                width: 320,
+                width: 320 * AppDensity.scale,
                 child: AppTimeField(
                   fieldKey: const Key('designTimeField'),
                   label: 'الوقت',
@@ -190,7 +190,7 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
                 ),
               ),
               SizedBox(
-                width: 320,
+                width: 320 * AppDensity.scale,
                 child: AppReadOnlyField(
                   fieldKey: const Key('designReadOnlyField'),
                   controller: _readOnlyController,
@@ -200,7 +200,7 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
                 ),
               ),
               SizedBox(
-                width: 320,
+                width: 320 * AppDensity.scale,
                 child: AppTextField(
                   fieldKey: const Key('designDisabledField'),
                   controller: _disabledController,
@@ -210,7 +210,7 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
                 ),
               ),
               SizedBox(
-                width: 320,
+                width: 320 * AppDensity.scale,
                 child: AppTextField(
                   fieldKey: const Key('designErrorField'),
                   controller: _errorController,
@@ -220,7 +220,7 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
                 ),
               ),
               SizedBox(
-                width: 660,
+                width: 660 * AppDensity.scale,
                 child: AppTextField(
                   fieldKey: const Key('designNotesField'),
                   controller: _notesController,
@@ -229,7 +229,7 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
                 ),
               ),
               SizedBox(
-                width: 420,
+                width: 420 * AppDensity.scale,
                 child: AppSwitchField(
                   title: 'السماح بالمخزون السالب',
                   subtitle: 'مغلق افتراضياً ويمكن تفعيله بصلاحية',
@@ -314,8 +314,8 @@ class _ModuleFieldsPreview extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 5,
-                height: 24,
+                width: 5 * AppDensity.scale,
+                height: 24 * AppDensity.scale,
                 decoration: BoxDecoration(
                   color: data.accentColor,
                   borderRadius: BorderRadius.circular(AppRadii.sm),

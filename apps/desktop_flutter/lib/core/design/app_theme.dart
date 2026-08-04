@@ -26,7 +26,9 @@ abstract final class AppTheme {
       textTheme: base.textTheme.apply(
         bodyColor: AppColors.textPrimary,
         displayColor: AppColors.textPrimary,
+        fontSizeFactor: AppDensity.scale,
       ),
+      iconTheme: base.iconTheme.copyWith(size: AppIconSizes.lg),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.surface,
@@ -38,12 +40,12 @@ abstract final class AppTheme {
         ),
         errorStyle: const TextStyle(
           color: AppColors.danger,
-          fontSize: 12,
+          fontSize: 12 * AppDensity.scale,
           fontWeight: FontWeight.w600,
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md,
-          vertical: 14,
+          vertical: 14 * AppDensity.scale,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadii.md),
@@ -57,13 +59,16 @@ abstract final class AppTheme {
           borderRadius: BorderRadius.circular(AppRadii.md),
           borderSide: const BorderSide(
             color: AppColors.primary,
-            width: 1.6,
+            width: 1.5,
           ),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          minimumSize: const Size(120, AppControlHeights.standard),
+          minimumSize: const Size(
+            120 * AppDensity.scale,
+            AppControlHeights.standard,
+          ),
           backgroundColor: AppColors.primary,
           foregroundColor: AppColors.onStrong,
           shape: RoundedRectangleBorder(
@@ -73,7 +78,10 @@ abstract final class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size(120, AppControlHeights.standard),
+          minimumSize: const Size(
+            120 * AppDensity.scale,
+            AppControlHeights.standard,
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadii.md),
           ),
@@ -81,7 +89,10 @@ abstract final class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          minimumSize: const Size(96, AppControlHeights.standard),
+          minimumSize: const Size(
+            96 * AppDensity.scale,
+            AppControlHeights.standard,
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadii.md),
           ),

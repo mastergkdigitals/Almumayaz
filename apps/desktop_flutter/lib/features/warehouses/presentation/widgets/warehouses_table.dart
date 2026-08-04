@@ -28,7 +28,7 @@ class WarehousesTable extends StatefulWidget {
 }
 
 class _WarehousesTableState extends State<WarehousesTable> {
-  static const _rowHeight = 56.0;
+  static const _rowHeight = 56.0 * AppDensity.scale;
 
   final _scrollController = ScrollController();
 
@@ -100,7 +100,7 @@ class _WarehousesTableState extends State<WarehousesTable> {
       height: widget.height,
       rowHeight: _rowHeight,
       verticalScrollController: _scrollController,
-      minimumColumnWidth: 115,
+      minimumColumnWidth: 115 * AppDensity.scale,
       accentColor: AppModuleColors.warehouses,
       selectedRowColor: selectedTint,
       columns: const [

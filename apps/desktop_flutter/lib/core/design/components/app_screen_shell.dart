@@ -96,7 +96,7 @@ class AppScreenHeader extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: AppColors.textSecondary,
-                      fontSize: 14,
+                      fontSize: 14 * AppDensity.scale,
                       fontWeight: FontWeight.w500,
                     ),
                   ),

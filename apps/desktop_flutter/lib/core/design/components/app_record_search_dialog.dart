@@ -150,10 +150,10 @@ class _AppRecordSearchDialogState<T extends Object>
       accentColor: widget.accentColor,
       centerHeader: true,
       showHeaderCloseButton: true,
-      width: 760,
+      width: 760 * AppDensity.scale,
       onClose: () => Navigator.of(context).pop(),
       child: SizedBox(
-        height: 430,
+        height: 430 * AppDensity.scale,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -258,8 +258,8 @@ class _SearchResultTile<T extends Object> extends StatelessWidget {
           child: Row(
             children: [
               Container(
-                width: 42,
-                height: 42,
+                width: 42 * AppDensity.scale,
+                height: 42 * AppDensity.scale,
                 decoration: BoxDecoration(
                   color: Color.alphaBlend(
                     accentColor.withAlpha(20),
@@ -291,7 +291,7 @@ class _SearchResultTile<T extends Object> extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: AppColors.textSecondary,
-                          fontSize: 14,
+                          fontSize: 14 * AppDensity.scale,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -304,7 +304,7 @@ class _SearchResultTile<T extends Object> extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: accentColor,
-                          fontSize: 13,
+                          fontSize: 13 * AppDensity.scale,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -346,7 +346,7 @@ class _SearchEmptyState extends StatelessWidget {
           children: [
             Icon(
               Icons.search_off_rounded,
-              size: 42,
+              size: 42 * AppDensity.scale,
               color: accentColor,
             ),
             const SizedBox(height: AppSpacing.sm),

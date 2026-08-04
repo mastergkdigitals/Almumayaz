@@ -14,8 +14,8 @@ class AppInvoiceFieldColumn {
     this.width, {
     this.grow = 0,
     this.padding = const EdgeInsets.symmetric(
-      horizontal: 4,
-      vertical: 10,
+      horizontal: AppSpacing.xs,
+      vertical: 10 * AppDensity.scale,
     ),
   });
 
@@ -50,11 +50,11 @@ class AppInvoiceFieldTable extends StatelessWidget {
     this.headerKey,
     this.summaryKey,
     this.rowKeyBuilder,
-    this.headerHeight = 46,
-    this.rowHeight = 80,
-    this.summaryHeight = 46,
-    this.edgeInset = 6,
-    this.widthSafetyBuffer = 12,
+    this.headerHeight = 46 * AppDensity.scale,
+    this.rowHeight = 80 * AppDensity.scale,
+    this.summaryHeight = 46 * AppDensity.scale,
+    this.edgeInset = 6 * AppDensity.scale,
+    this.widthSafetyBuffer = 12 * AppDensity.scale,
     this.outerRadius = AppRadii.lg,
   })  : assert(columns.length == summaryCells.length),
         assert(rowCount >= 0);
@@ -111,7 +111,9 @@ class AppInvoiceFieldTable extends StatelessWidget {
         final tableWidth =
             availableWidth > minimumWidth ? availableWidth : minimumWidth;
         final tableHeight =
-            constraints.hasBoundedHeight ? constraints.maxHeight : 308.0;
+            constraints.hasBoundedHeight
+                ? constraints.maxHeight
+                : 308.0 * AppDensity.scale;
         final expandedColumns = _expandColumns(
           columns,
           tableWidth - (edgeInset * 2),
@@ -232,9 +234,7 @@ class _InvoiceFieldTableHeader extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 18,
+                    style: AppTypography.fieldText.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -323,13 +323,13 @@ class _InvoiceFieldTableSummary extends StatelessWidget {
               SizedBox(
                 width: columns[index].width,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                  ),
                   child: Center(
                     child: DefaultTextStyle(
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 18,
+                      style: AppTypography.fieldText.copyWith(
                         fontWeight: FontWeight.w800,
                       ),
                       child: cells[index],

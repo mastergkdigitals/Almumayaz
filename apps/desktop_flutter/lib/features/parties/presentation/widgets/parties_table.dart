@@ -26,7 +26,7 @@ class PartiesTable extends StatefulWidget {
 }
 
 class _PartiesTableState extends State<PartiesTable> {
-  static const _rowHeight = 56.0;
+  static const _rowHeight = 56.0 * AppDensity.scale;
 
   final _scrollController = ScrollController();
 
@@ -93,7 +93,7 @@ class _PartiesTableState extends State<PartiesTable> {
       height: widget.height,
       rowHeight: _rowHeight,
       verticalScrollController: _scrollController,
-      minimumColumnWidth: 145,
+      minimumColumnWidth: 145 * AppDensity.scale,
       accentColor: AppModuleColors.parties,
       columns: const [
         AppTableColumn(label: 'اسم الطرف', flex: 1.5),
@@ -156,7 +156,7 @@ class _WorkplaceCell extends StatelessWidget {
             textAlign: TextAlign.center,
             style: const TextStyle(
               color: AppColors.textSecondary,
-              fontSize: 12,
+              fontSize: 12 * AppDensity.scale,
               fontWeight: FontWeight.w500,
             ),
           ),

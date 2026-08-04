@@ -150,7 +150,10 @@ void main() {
       final button = tester.widget<AppHeaderIconButton>(finder);
       expect(button.icon, entry.value.$1);
       expect(button.tooltip, entry.value.$2);
-      expect(tester.getSize(finder), const Size.square(52));
+      expect(
+        tester.getSize(finder),
+        const Size.square(52 * AppDensity.scale),
+      );
     }
     expect(
       tester
