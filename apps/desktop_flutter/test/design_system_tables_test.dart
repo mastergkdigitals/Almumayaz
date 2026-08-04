@@ -374,6 +374,7 @@ void main() {
       isNotNull,
     );
 
+    await reveal(tester, purchaseAddButton);
     await tester.tap(purchaseAddButton);
     await tester.pump();
 
