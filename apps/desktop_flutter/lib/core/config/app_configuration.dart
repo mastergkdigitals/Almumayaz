@@ -15,7 +15,7 @@ enum AppModuleId {
 }
 
 class AppConfiguration {
-  const AppConfiguration({
+  const AppConfiguration._({
     required this.edition,
     required this.showDesignSystem,
     required this.enabledModules,
@@ -54,12 +54,16 @@ class AppConfiguration {
         ? AppEdition.customer
         : AppEdition.internal;
     final designSystemOverride = designSystemValue.trim().toLowerCase();
-    final showDesignSystem = designSystemOverride.isEmpty
-        ? edition == AppEdition.internal
+    final internalDesignSystemRequested = designSystemOverride.isEmpty
+        ? true
         : designSystemOverride == 'true';
+    // The Design System is a development tool. A customer build must never be
+    // able to expose it, even when an incorrect dart-define requests it.
+    final showDesignSystem =
+        edition == AppEdition.internal && internalDesignSystemRequested;
     final enabledModules = _parseModules(modulesValue);
 
-    return AppConfiguration(
+    return AppConfiguration._(
       edition: edition,
       showDesignSystem: showDesignSystem,
       enabledModules: enabledModules,
@@ -71,7 +75,7 @@ class AppConfiguration {
   }
 
   factory AppConfiguration.internal() {
-    return const AppConfiguration(
+    return const AppConfiguration._(
       edition: AppEdition.internal,
       showDesignSystem: true,
       enabledModules: {
@@ -93,7 +97,7 @@ class AppConfiguration {
     String? companyLogoAsset,
     Set<AppModuleId>? enabledModules,
   }) {
-    return AppConfiguration(
+    return AppConfiguration._(
       edition: AppEdition.customer,
       showDesignSystem: false,
       enabledModules: enabledModules ?? AppModuleId.values.toSet(),

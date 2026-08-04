@@ -1,0 +1,8 @@
+{
+  "APP_EDITION": "internal",
+  "SHOW_DESIGN_SYSTEM": "true",
+  "ENABLED_MODULES": "purchases,sales,cashbox,parties,company,warehouses,reports,settings,about",
+  "APP_TITLE": "المميز ERP",
+  "COMPANY_NAME": "اسم الشركة + الشعار",
+  "COMPANY_LOGO_ASSET": ""
+}

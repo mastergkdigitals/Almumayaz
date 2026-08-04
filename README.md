@@ -43,3 +43,8 @@ This repository is a new application and does not depend on the legacy
 
 The approved product and business rules are documented in
 [`docs/business_rules/app_blueprint_ar.md`](docs/business_rules/app_blueprint_ar.md).
+
+Internal and customer Flutter editions are built from this same repository.
+Profile configuration, customer feature flags, and Windows build commands are
+documented in
+[`docs/deployment/flutter_customer_editions.md`](docs/deployment/flutter_customer_editions.md).

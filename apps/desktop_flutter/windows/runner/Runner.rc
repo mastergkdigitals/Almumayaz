@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.almumayaz" "\0"
-            VALUE "FileDescription", "erp" "\0"
+            VALUE "CompanyName", "Almumayaz" "\0"
+            VALUE "FileDescription", "Almumayaz" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "erp" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.almumayaz. All rights reserved." "\0"
-            VALUE "OriginalFilename", "erp.exe" "\0"
-            VALUE "ProductName", "erp" "\0"
+            VALUE "InternalName", "Almumayaz" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 Almumayaz. All rights reserved." "\0"
+            VALUE "OriginalFilename", "Almumayaz.exe" "\0"
+            VALUE "ProductName", "Almumayaz" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
