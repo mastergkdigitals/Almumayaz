@@ -190,14 +190,14 @@ const List<ReportFilterDefinition> _salesFilters = [
 ];
 
 const List<ReportMetricDefinition> _salesMetrics = [
-  ReportMetricDefinition(label: 'عدد القوائم - دينار', value: '2'),
-  ReportMetricDefinition(label: 'الإجمالي - دينار', value: '487,000'),
-  ReportMetricDefinition(label: 'المقبوض - دينار', value: '310,000'),
-  ReportMetricDefinition(label: 'المتبقي - دينار', value: '177,000'),
-  ReportMetricDefinition(label: 'عدد القوائم - دولار', value: '1'),
-  ReportMetricDefinition(label: 'الإجمالي - دولار', value: '1,250.00'),
-  ReportMetricDefinition(label: 'المقبوض - دولار', value: '250.00'),
-  ReportMetricDefinition(label: 'المتبقي - دولار', value: '1,000.00'),
+  ReportMetricDefinition(label: 'عدد القوائم - دينار'),
+  ReportMetricDefinition(label: 'الإجمالي - دينار'),
+  ReportMetricDefinition(label: 'المقبوض - دينار'),
+  ReportMetricDefinition(label: 'المتبقي - دينار'),
+  ReportMetricDefinition(label: 'عدد القوائم - دولار'),
+  ReportMetricDefinition(label: 'الإجمالي - دولار'),
+  ReportMetricDefinition(label: 'المقبوض - دولار'),
+  ReportMetricDefinition(label: 'المتبقي - دولار'),
 ];
 
 const List<ReportColumnDefinition> _salesColumns = [
@@ -241,7 +241,7 @@ final List<ReportRowDefinition> _salesRows =
   ),
   ReportRowDefinition(
     id: 'sales-102',
-    date: DateTime(2026, 7, 26),
+    date: DateTime(2026, 7, 26, 15, 30),
     filterValues: const {
       'warehouse': 'mansour',
       'customer': 'ahmed',
@@ -336,14 +336,14 @@ const List<ReportFilterDefinition> _purchaseFilters = [
 ];
 
 const List<ReportMetricDefinition> _purchaseMetrics = [
-  ReportMetricDefinition(label: 'عدد القوائم - دينار', value: '2'),
-  ReportMetricDefinition(label: 'الإجمالي - دينار', value: '240,000'),
-  ReportMetricDefinition(label: 'المدفوع - دينار', value: '90,000'),
-  ReportMetricDefinition(label: 'المتبقي - دينار', value: '150,000'),
-  ReportMetricDefinition(label: 'عدد القوائم - دولار', value: '1'),
-  ReportMetricDefinition(label: 'الإجمالي - دولار', value: '1,500.00'),
-  ReportMetricDefinition(label: 'المدفوع - دولار', value: '500.00'),
-  ReportMetricDefinition(label: 'المتبقي - دولار', value: '1,000.00'),
+  ReportMetricDefinition(label: 'عدد القوائم - دينار'),
+  ReportMetricDefinition(label: 'الإجمالي - دينار'),
+  ReportMetricDefinition(label: 'المدفوع - دينار'),
+  ReportMetricDefinition(label: 'المتبقي - دينار'),
+  ReportMetricDefinition(label: 'عدد القوائم - دولار'),
+  ReportMetricDefinition(label: 'الإجمالي - دولار'),
+  ReportMetricDefinition(label: 'المدفوع - دولار'),
+  ReportMetricDefinition(label: 'المتبقي - دولار'),
 ];
 
 const List<ReportColumnDefinition> _purchaseColumns = [
@@ -484,14 +484,14 @@ const List<ReportFilterDefinition> _profitFilters = [
 ];
 
 const List<ReportMetricDefinition> _profitMetrics = [
-  ReportMetricDefinition(label: 'المبيعات المحتسبة - دينار', value: '190,000'),
-  ReportMetricDefinition(label: 'التكلفة - دينار', value: '120,000'),
-  ReportMetricDefinition(label: 'الربح - دينار', value: '70,000'),
-  ReportMetricDefinition(label: 'هامش الربح - دينار', value: '36.84%'),
-  ReportMetricDefinition(label: 'المبيعات المحتسبة - دولار', value: '850.00'),
-  ReportMetricDefinition(label: 'التكلفة - دولار', value: '600.00'),
-  ReportMetricDefinition(label: 'الربح - دولار', value: '250.00'),
-  ReportMetricDefinition(label: 'هامش الربح - دولار', value: '29.41%'),
+  ReportMetricDefinition(label: 'المبيعات المحتسبة - دينار'),
+  ReportMetricDefinition(label: 'التكلفة - دينار'),
+  ReportMetricDefinition(label: 'الربح - دينار'),
+  ReportMetricDefinition(label: 'هامش الربح - دينار'),
+  ReportMetricDefinition(label: 'المبيعات المحتسبة - دولار'),
+  ReportMetricDefinition(label: 'التكلفة - دولار'),
+  ReportMetricDefinition(label: 'الربح - دولار'),
+  ReportMetricDefinition(label: 'هامش الربح - دولار'),
 ];
 
 const List<ReportColumnDefinition> _profitColumns = [
@@ -803,10 +803,10 @@ const List<ReportFilterDefinition> _currentStockFilters = [
 ];
 
 const List<ReportMetricDefinition> _currentStockMetrics = [
-  ReportMetricDefinition(label: 'المواد المختلفة', value: '4'),
-  ReportMetricDefinition(label: 'المخازن', value: '4'),
-  ReportMetricDefinition(label: 'الأرصدة الموجبة', value: '9'),
-  ReportMetricDefinition(label: 'مجموع الكميات', value: '344'),
+  ReportMetricDefinition(label: 'المواد المختلفة'),
+  ReportMetricDefinition(label: 'المخازن'),
+  ReportMetricDefinition(label: 'الأرصدة الموجبة'),
+  ReportMetricDefinition(label: 'مجموع الكميات'),
 ];
 
 const List<ReportColumnDefinition> _currentStockColumns = [
@@ -1031,9 +1031,9 @@ const List<ReportFilterDefinition> _transferFilters = [
 ];
 
 const List<ReportMetricDefinition> _transferMetrics = [
-  ReportMetricDefinition(label: 'عدد عمليات النقل', value: '2'),
-  ReportMetricDefinition(label: 'عدد سطور المواد', value: '3'),
-  ReportMetricDefinition(label: 'مجموع الكميات', value: '27'),
+  ReportMetricDefinition(label: 'عدد عمليات النقل'),
+  ReportMetricDefinition(label: 'عدد سطور المواد'),
+  ReportMetricDefinition(label: 'مجموع الكميات'),
 ];
 
 const List<ReportColumnDefinition> _transferColumns = [
@@ -1130,15 +1130,15 @@ const List<ReportFilterDefinition> _cashboxFilters = [
 ];
 
 const List<ReportMetricDefinition> _cashboxMetrics = [
-  ReportMetricDefinition(label: 'القبض - دينار', value: '1,525,000'),
-  ReportMetricDefinition(label: 'الصرف - دينار', value: '210,000'),
-  ReportMetricDefinition(label: 'الصافي - دينار', value: '1,315,000'),
-  ReportMetricDefinition(label: 'الرصيد - دينار', value: '11,115,000'),
-  ReportMetricDefinition(label: 'القبض - دولار', value: '0'),
-  ReportMetricDefinition(label: 'الصرف - دولار', value: '400.00'),
-  ReportMetricDefinition(label: 'الصافي - دولار', value: '-400.00'),
-  ReportMetricDefinition(label: 'الرصيد - دولار', value: '4,100.00'),
-  ReportMetricDefinition(label: 'عدد الحركات', value: '6'),
+  ReportMetricDefinition(label: 'القبض - دينار'),
+  ReportMetricDefinition(label: 'الصرف - دينار'),
+  ReportMetricDefinition(label: 'الصافي - دينار'),
+  ReportMetricDefinition(label: 'الرصيد - دينار'),
+  ReportMetricDefinition(label: 'القبض - دولار'),
+  ReportMetricDefinition(label: 'الصرف - دولار'),
+  ReportMetricDefinition(label: 'الصافي - دولار'),
+  ReportMetricDefinition(label: 'الرصيد - دولار'),
+  ReportMetricDefinition(label: 'عدد الحركات'),
 ];
 
 const List<ReportColumnDefinition> _cashboxColumns = [
@@ -1358,12 +1358,12 @@ const List<ReportFilterDefinition> _partyBalanceFilters = [
 ];
 
 const List<ReportMetricDefinition> _partyBalanceMetrics = [
-  ReportMetricDefinition(label: 'عدد الأطراف', value: '8'),
-  ReportMetricDefinition(label: 'بدون رصيد', value: '0'),
-  ReportMetricDefinition(label: 'ذمم لنا - دينار', value: '2,775,000'),
-  ReportMetricDefinition(label: 'ذمم لنا - دولار', value: '1,375.00'),
-  ReportMetricDefinition(label: 'ذمم علينا - دينار', value: '5,875,000'),
-  ReportMetricDefinition(label: 'ذمم علينا - دولار', value: '1,625.00'),
+  ReportMetricDefinition(label: 'عدد الأطراف'),
+  ReportMetricDefinition(label: 'بدون رصيد'),
+  ReportMetricDefinition(label: 'ذمم لنا - دينار'),
+  ReportMetricDefinition(label: 'ذمم لنا - دولار'),
+  ReportMetricDefinition(label: 'ذمم علينا - دينار'),
+  ReportMetricDefinition(label: 'ذمم علينا - دولار'),
 ];
 
 const List<ReportColumnDefinition> _partyBalanceColumns = [
@@ -1613,30 +1613,19 @@ const List<ReportFilterDefinition> _debtFilters = [
     icon: Icons.currency_exchange_rounded,
     options: _currencyOptions,
   ),
-  ReportFilterDefinition.dropdown(
-    id: 'status',
-    label: 'الحالة',
-    icon: Icons.schedule_rounded,
-    options: [
-      ReportFilterOption('all', 'الكل'),
-      ReportFilterOption('due', 'مستحق'),
-      ReportFilterOption('overdue', 'متأخر'),
-      ReportFilterOption('paid', 'مدفوع'),
-    ],
-  ),
 ];
 
 const List<ReportMetricDefinition> _debtMetrics = [
-  ReportMetricDefinition(label: 'المتبقي - دينار', value: '177,000'),
-  ReportMetricDefinition(label: 'المتأخر - دينار', value: '177,000'),
-  ReportMetricDefinition(label: 'المستحق - دينار', value: '0'),
-  ReportMetricDefinition(label: 'المدفوع - دينار', value: '0'),
-  ReportMetricDefinition(label: 'المتبقي - دولار', value: '1,000.00'),
-  ReportMetricDefinition(label: 'المتأخر - دولار', value: '0'),
-  ReportMetricDefinition(label: 'المستحق - دولار', value: '1,000.00'),
-  ReportMetricDefinition(label: 'المدفوع - دولار', value: '250.00'),
-  ReportMetricDefinition(label: 'عدد المتأخر', value: '1'),
-  ReportMetricDefinition(label: 'عدد المستحق', value: '2'),
+  ReportMetricDefinition(label: 'المتبقي - دينار'),
+  ReportMetricDefinition(label: 'المتأخر - دينار'),
+  ReportMetricDefinition(label: 'المستحق - دينار'),
+  ReportMetricDefinition(label: 'المدفوع - دينار'),
+  ReportMetricDefinition(label: 'المتبقي - دولار'),
+  ReportMetricDefinition(label: 'المتأخر - دولار'),
+  ReportMetricDefinition(label: 'المستحق - دولار'),
+  ReportMetricDefinition(label: 'المدفوع - دولار'),
+  ReportMetricDefinition(label: 'عدد المتأخر'),
+  ReportMetricDefinition(label: 'عدد المستحق'),
 ];
 
 const List<ReportColumnDefinition> _debtColumns = [
@@ -1663,7 +1652,6 @@ final List<ReportRowDefinition> _debtRows =
       'customer': 'nakheel',
       'recordType': 'debt',
       'currency': 'IQD',
-      'status': 'overdue',
     },
     cells: const [
       '1',
@@ -1687,7 +1675,6 @@ final List<ReportRowDefinition> _debtRows =
       'customer': 'ahmed',
       'recordType': 'installment',
       'currency': 'USD',
-      'status': 'paid',
     },
     cells: const [
       '2',
@@ -1711,7 +1698,6 @@ final List<ReportRowDefinition> _debtRows =
       'customer': 'ahmed',
       'recordType': 'installment',
       'currency': 'USD',
-      'status': 'due',
     },
     cells: const [
       '3',
@@ -1735,7 +1721,6 @@ final List<ReportRowDefinition> _debtRows =
       'customer': 'ahmed',
       'recordType': 'installment',
       'currency': 'USD',
-      'status': 'due',
     },
     cells: const [
       '4',

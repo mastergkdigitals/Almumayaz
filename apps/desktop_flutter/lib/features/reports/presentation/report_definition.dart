@@ -74,6 +74,14 @@ class ReportFilterOption {
 class ReportMetricDefinition {
   const ReportMetricDefinition({
     required this.label,
+  });
+
+  final String label;
+}
+
+class ReportMetricValue {
+  const ReportMetricValue({
+    required this.label,
     required this.value,
   });
 

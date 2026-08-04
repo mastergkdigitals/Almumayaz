@@ -1,31 +1,165 @@
 import 'package:erp/app/app.dart';
 import 'package:erp/core/design/app_design_system.dart';
+import 'package:erp/features/reports/application/report_output_service.dart';
+import 'package:erp/features/reports/application/report_rows_service.dart';
+import 'package:erp/features/reports/application/report_summary_calculator.dart';
+import 'package:erp/features/reports/presentation/report_definition.dart';
 import 'package:erp/features/reports/presentation/reports_demo_data.dart';
+import 'package:erp/features/reports/presentation/widgets/report_section_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('keeps saved Sales and Purchase lists status-free', () {
-    for (final reportId in ['salesInvoices', 'purchaseInvoices']) {
-      final report = reportDefinitions.singleWhere(
-        (candidate) => candidate.id == reportId,
-      );
-      final variant = report.variants.single;
-
-      expect(
-        variant.filters.map((filter) => filter.id),
-        isNot(contains('status')),
-      );
-      expect(
-        variant.columns.map((column) => column.label),
-        isNot(contains('الحالة')),
-      );
-      for (final row in variant.rows) {
-        expect(row.filterValues.containsKey('status'), isFalse);
-        expect(row.cells, hasLength(variant.columns.length));
+  test('keeps report filters status-free and rows aligned', () {
+    for (final report in reportDefinitions) {
+      for (final variant in report.variants) {
+        expect(
+          variant.filters.map((filter) => filter.id),
+          isNot(contains('status')),
+        );
+        for (final row in variant.rows) {
+          expect(row.filterValues.containsKey('status'), isFalse);
+          expect(row.cells, hasLength(variant.columns.length));
+        }
       }
     }
+  });
+
+  test('calculates report metrics from only the supplied rows', () {
+    final report = reportDefinitions.singleWhere(
+      (candidate) => candidate.id == 'salesInvoices',
+    );
+    final variant = report.variants.single;
+    final usdRows = variant.rows
+        .where((row) => row.filterValues['currency'] == 'USD')
+        .toList(growable: false);
+
+    final metrics = ReportSummaryCalculator.calculate(
+      reportId: report.id,
+      variantId: variant.id,
+      rows: usdRows,
+      fallbackMetrics: variant.metrics,
+    );
+    String value(String label) =>
+        metrics.singleWhere((metric) => metric.label == label).value;
+
+    expect(value('عدد القوائم - دينار'), '0');
+    expect(value('الإجمالي - دينار'), '0');
+    expect(value('عدد القوائم - دولار'), '1');
+    expect(value('الإجمالي - دولار'), '1,250.00');
+    expect(value('المقبوض - دولار'), '250.00');
+    expect(value('المتبقي - دولار'), '1,000.00');
+  });
+
+  test('demo report output contains the filtered rows and summaries',
+      () async {
+    const service = DemoReportOutputService(delay: Duration.zero);
+    final report = reportDefinitions.first;
+    final variant = report.variants.first;
+    final row = variant.rows.first;
+    final request = ReportOutputRequest(
+      reportTitle: report.title,
+      variantLabel: variant.label,
+      columnLabels: [
+        for (final column in variant.columns) column.label,
+      ],
+      rowValues: [row.cells],
+      metrics: {
+        for (final metric in ReportSummaryCalculator.calculate(
+          reportId: report.id,
+          variantId: variant.id,
+          rows: [row],
+          fallbackMetrics: variant.metrics,
+        ))
+          metric.label: metric.value,
+      },
+    );
+
+    final preview = await service.createPreview(request);
+    final excel = await service.export(request, ReportExportFormat.excel);
+
+    expect(preview.rowCount, 1);
+    expect(preview.content, contains('أسواق دجلة'));
+    expect(excel.fileName, endsWith('.xlsx'));
+    expect(excel.content, contains('\t'));
+    await expectLater(
+      service.createPreview(
+        const ReportOutputRequest(
+          reportTitle: 'فارغ',
+          variantLabel: 'فارغ',
+          columnLabels: ['العمود'],
+          rowValues: [],
+          metrics: {},
+        ),
+      ),
+      throwsA(isA<ReportOutputException>()),
+    );
+  });
+
+  test('currency filters also constrain multi-currency party summaries', () {
+    final report = reportDefinitions.singleWhere(
+      (candidate) => candidate.id == 'partyBalances',
+    );
+    final variant = report.variants.single;
+    final rows = variant.rows
+        .where(
+          (row) =>
+              (row.filterValues['currency'] ?? '').split('|').contains('IQD'),
+        )
+        .toList(growable: false);
+    final metrics = ReportSummaryCalculator.calculate(
+      reportId: report.id,
+      variantId: variant.id,
+      rows: rows,
+      fallbackMetrics: variant.metrics,
+      selectedFilters: const {'currency': 'IQD'},
+    );
+    String value(String label) =>
+        metrics.singleWhere((metric) => metric.label == label).value;
+
+    expect(value('ذمم لنا - دينار'), '2,775,000');
+    expect(value('ذمم لنا - دولار'), '0.00');
+    expect(value('ذمم علينا - دولار'), '0.00');
+  });
+
+  test('calculates cashbox balances and embedded transfer quantities', () {
+    final cashbox = reportDefinitions.singleWhere(
+      (candidate) => candidate.id == 'cashbox',
+    );
+    final cashboxVariant = cashbox.variants.single;
+    final cashboxMetrics = ReportSummaryCalculator.calculate(
+      reportId: cashbox.id,
+      variantId: cashboxVariant.id,
+      rows: cashboxVariant.rows,
+      fallbackMetrics: cashboxVariant.metrics,
+    );
+    String cashboxValue(String label) => cashboxMetrics
+        .singleWhere((metric) => metric.label == label)
+        .value;
+    expect(cashboxValue('الصافي - دينار'), '1,315,000');
+    expect(cashboxValue('الرصيد - دينار'), '11,115,000');
+    expect(cashboxValue('الصافي - دولار'), '-400.00');
+    expect(cashboxValue('الرصيد - دولار'), '4,100.00');
+
+    final inventory = reportDefinitions.singleWhere(
+      (candidate) => candidate.id == 'inventory',
+    );
+    final transfers = inventory.variants.singleWhere(
+      (variant) => variant.id == 'transfers',
+    );
+    final transferMetrics = ReportSummaryCalculator.calculate(
+      reportId: inventory.id,
+      variantId: transfers.id,
+      rows: [transfers.rows.last],
+      fallbackMetrics: transfers.metrics,
+    );
+    String transferValue(String label) => transferMetrics
+        .singleWhere((metric) => metric.label == label)
+        .value;
+    expect(transferValue('عدد عمليات النقل'), '1');
+    expect(transferValue('عدد سطور المواد'), '2');
+    expect(transferValue('مجموع الكميات'), '7');
   });
 
   testWidgets('opens the seven-section Reports hub', (tester) async {
@@ -142,6 +276,14 @@ void main() {
         find.byKey(Key('reportPrintButton_${report.id}')),
         findsOneWidget,
       );
+      expect(
+        find.byKey(Key('reportPdfButton_${report.id}')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(Key('reportExcelButton_${report.id}')),
+        findsOneWidget,
+      );
 
       final variant = report.variants.first;
       final table = tester.widget<AppDataTable>(
@@ -186,6 +328,15 @@ void main() {
       (salesTable().rows.single.cells[3] as Text).data,
       'أحمد كريم',
     );
+    expect(
+      find.descendant(
+        of: find.byKey(
+          const Key('reportMetric_salesInvoices_main_1'),
+        ),
+        matching: find.text('0'),
+      ),
+      findsOneWidget,
+    );
 
     final currencyField =
         find.byKey(const Key('reportFilter_salesInvoices_currency'));
@@ -207,9 +358,44 @@ void main() {
     expect(_fieldText(tester, searchField), isEmpty);
     expect(salesTable().rows, hasLength(3));
     expect(
+      find.descendant(
+        of: find.byKey(
+          const Key('reportMetric_salesInvoices_main_1'),
+        ),
+        matching: find.text('487,000'),
+      ),
+      findsOneWidget,
+    );
+    expect(
       _dropdown(tester, currencyField).value,
       'all',
     );
+    await _finishToast(tester);
+
+    tester
+        .widget<AppDateRangeField>(find.byType(AppDateRangeField))
+        .onChanged(
+          DateTimeRange(
+            start: DateTime(2026, 7, 26),
+            end: DateTime(2026, 7, 26),
+          ),
+        );
+    await tester.pump();
+    expect(salesTable().rows, hasLength(1));
+    expect(
+      find.descendant(
+        of: find.byKey(
+          const Key('reportMetric_salesInvoices_main_5'),
+        ),
+        matching: find.text('1,250.00'),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.byKey(const Key('reportResetButton_salesInvoices')),
+    );
+    await tester.pump();
+    expect(salesTable().rows, hasLength(3));
     await _finishToast(tester);
 
     await tester.tap(
@@ -221,6 +407,132 @@ void main() {
       find.text('تم تجهيز معاينة طباعة تقرير قوائم المبيعات'),
       findsOneWidget,
     );
+    await tester.pump(const Duration(milliseconds: 150));
+    await tester.pump();
+    expect(
+      find.byKey(const Key('reportOutputPreviewDialog')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('reportOutputPreviewContent')),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.byKey(const Key('reportOutputPreviewClose')),
+    );
+    await tester.pump();
+    await _finishToast(tester);
+
+    await tester.tap(
+      find.byKey(const Key('reportPdfButton_salesInvoices')),
+    );
+    await tester.pump(const Duration(milliseconds: 150));
+    await tester.pump();
+    expect(find.textContaining('.pdf'), findsOneWidget);
+    await tester.tap(
+      find.byKey(const Key('reportOutputPreviewClose')),
+    );
+    await tester.pump();
+
+    await tester.tap(
+      find.byKey(const Key('reportExcelButton_salesInvoices')),
+    );
+    await tester.pump(const Duration(milliseconds: 150));
+    await tester.pump();
+    expect(find.textContaining('.xlsx'), findsOneWidget);
+    await tester.tap(
+      find.byKey(const Key('reportOutputPreviewClose')),
+    );
+    await tester.pump();
+  });
+
+  testWidgets('shows loading and error states', (tester) async {
+    final definition = reportDefinitions.first;
+    await tester.binding.setSurfaceSize(const Size(1280, 720));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Directionality(
+            textDirection: TextDirection.rtl,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: ReportSectionView(
+                definition: definition,
+                definitions: [definition],
+                onDefinitionChanged: (_) {},
+                rowsService: const _FailingReportRowsService(),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(
+      find.byKey(const Key('reportShowButton_salesInvoices')),
+    );
+    await tester.pump();
+    expect(
+      tester
+          .widget<AppDataTable>(
+            find.byKey(const Key('reportTable_salesInvoices_main')),
+          )
+          .isLoading,
+      isTrue,
+    );
+    await tester.pump(const Duration(milliseconds: 30));
+    await tester.pump();
+    expect(
+      find.byKey(const Key('reportErrorState_salesInvoices')),
+      findsOneWidget,
+    );
+    await _finishToast(tester);
+  });
+
+  testWidgets('shows an empty state and blocks empty exports',
+      (tester) async {
+    await _openReports(tester);
+    await _openReport(tester, 'salesInvoices');
+    await tester.enterText(
+      find.byKey(const Key('reportSearch_salesInvoices')),
+      'نتيجة غير موجودة',
+    );
+    await tester.pump();
+
+    expect(
+      find.byKey(const Key('reportEmptyState_salesInvoices')),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.byKey(const Key('reportExcelButton_salesInvoices')),
+    );
+    await tester.pump();
+    expect(find.text('لا توجد نتائج لتجهيزها'), findsOneWidget);
+    expect(
+      find.byKey(const Key('reportOutputPreviewDialog')),
+      findsNothing,
+    );
+    await _finishToast(tester);
+  });
+
+  testWidgets('moves report row selection with the keyboard',
+      (tester) async {
+    await _openReports(tester);
+    await _openReport(tester, 'salesInvoices');
+
+    await tester.tap(
+      find.byKey(const Key('reportShowButton_salesInvoices')),
+    );
+    await tester.pump(const Duration(milliseconds: 120));
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+
+    final table = tester.widget<AppDataTable>(
+      find.byKey(const Key('reportTable_salesInvoices_main')),
+    );
+    expect(table.rows.first.selected, isTrue);
     await _finishToast(tester);
   });
 
@@ -313,6 +625,16 @@ void main() {
     expect(find.byKey(const Key('appConfirmDialog')), findsNothing);
     expect(find.byKey(const Key('reportsScreen')), findsNothing);
   });
+}
+
+class _FailingReportRowsService implements ReportRowsService {
+  const _FailingReportRowsService();
+
+  @override
+  Future<List<ReportRowDefinition>> load(ReportRowsRequest request) async {
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    throw StateError('demo failure');
+  }
 }
 
 Future<void> _openReports(WidgetTester tester) async {
