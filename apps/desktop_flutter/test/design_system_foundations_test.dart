@@ -38,20 +38,6 @@ void main() {
     );
   });
 
-  test('uses the balanced global density without changing the canvas', () {
-    expect(AppDensity.scale, 0.92);
-    expect(AppBreakpoints.designWidth, 1440);
-    expect(
-      AppControlHeights.standard,
-      48 * AppDensity.scale,
-    );
-    expect(
-      AppHeaderSizes.screen,
-      104 * AppDensity.scale,
-    );
-    expect(AppIconSizes.lg, 24 * AppDensity.scale);
-  });
-
   test('uses the approved system colors', () {
     expect(AppColors.blue, const Color(0xFF2563EB));
     expect(AppColors.green, const Color(0xFF16A34A));
@@ -80,10 +66,6 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.byKey(const Key('designFoundationDensity')),
-      findsOneWidget,
-    );
-    expect(
       find.byKey(const Key('designFoundationMinimumWindow')),
       findsOneWidget,
     );
@@ -109,18 +91,13 @@ void main() {
     );
 
     expect(find.text('1440 px'), findsOneWidget);
-    expect(find.text('92% (أصغر 8%)'), findsOneWidget);
     expect(find.text('1280 × 720'), findsOneWidget);
     expect(find.text('16:9'), findsOneWidget);
-    expect(AppDensity.scale, 0.92);
     expect(
       AppRegularButton.defaultHeight,
-      52 * AppDensity.scale,
+      52,
     );
-    expect(
-      AppControlHeights.invoiceField,
-      55 * AppDensity.scale,
-    );
+    expect(AppControlHeights.invoiceField, 55);
   });
 
   testWidgets('handles the global keyboard shortcuts', (tester) async {

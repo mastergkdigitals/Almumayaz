@@ -48,7 +48,7 @@ class AppStatusBadge extends StatelessWidget {
           label,
           style: TextStyle(
             color: _foreground,
-            fontSize: 13 * AppDensity.scale,
+            fontSize: 13,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -149,16 +149,9 @@ class AppStatePanel extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (type == AppStateType.loading)
-            const AppLoadingIndicator(
-              size: 40 * AppDensity.scale,
-              strokeWidth: 3.6,
-            )
+            const AppLoadingIndicator(size: 40, strokeWidth: 4)
           else
-            Icon(
-              _icon,
-              size: 40 * AppDensity.scale,
-              color: _color,
-            ),
+            Icon(_icon, size: 40, color: _color),
           const SizedBox(height: AppSpacing.md),
           Text(title, style: AppTypography.sectionTitle),
           const SizedBox(height: AppSpacing.sm),

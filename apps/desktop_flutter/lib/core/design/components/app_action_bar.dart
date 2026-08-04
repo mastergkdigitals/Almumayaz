@@ -15,14 +15,12 @@ class AppActionButtons extends StatelessWidget {
     this.updateButtonKey,
     this.undoButtonKey,
     this.deleteButtonKey,
-    this.buttonWidth = 108 * AppDensity.scale,
+    this.buttonWidth = 108,
   });
 
-  static const _actionPadding = EdgeInsets.symmetric(
-    horizontal: 6 * AppDensity.scale,
-  );
+  static const _actionPadding = EdgeInsets.symmetric(horizontal: 6);
   static const _buttonTextStyle = TextStyle(
-    fontSize: 16 * AppDensity.scale,
+    fontSize: 16,
     fontWeight: FontWeight.w700,
   );
 
@@ -49,9 +47,9 @@ class AppActionButtons extends StatelessWidget {
           icon: Icons.save_rounded,
           variant: AppButtonVariant.primary,
           minWidth: buttonWidth,
-          height: 52 * AppDensity.scale,
+          height: 52,
           padding: _actionPadding,
-          iconSize: 18 * AppDensity.scale,
+          iconSize: 18,
           iconSpacing: AppSpacing.xs,
           textStyle: _buttonTextStyle,
           onPressed: onSave,
@@ -62,9 +60,9 @@ class AppActionButtons extends StatelessWidget {
           icon: Icons.update_rounded,
           variant: AppButtonVariant.success,
           minWidth: buttonWidth,
-          height: 52 * AppDensity.scale,
+          height: 52,
           padding: _actionPadding,
-          iconSize: 18 * AppDensity.scale,
+          iconSize: 18,
           iconSpacing: AppSpacing.xs,
           textStyle: _buttonTextStyle,
           onPressed: onUpdate,
@@ -75,9 +73,9 @@ class AppActionButtons extends StatelessWidget {
           icon: Icons.undo_rounded,
           variant: AppButtonVariant.warning,
           minWidth: buttonWidth,
-          height: 52 * AppDensity.scale,
+          height: 52,
           padding: _actionPadding,
-          iconSize: 18 * AppDensity.scale,
+          iconSize: 18,
           iconSpacing: AppSpacing.xs,
           textStyle: _buttonTextStyle,
           onPressed: onUndo,
@@ -88,9 +86,9 @@ class AppActionButtons extends StatelessWidget {
           icon: Icons.delete_rounded,
           variant: AppButtonVariant.danger,
           minWidth: buttonWidth,
-          height: 52 * AppDensity.scale,
+          height: 52,
           padding: _actionPadding,
-          iconSize: 18 * AppDensity.scale,
+          iconSize: 18,
           iconSpacing: AppSpacing.xs,
           textStyle: _buttonTextStyle,
           onPressed: onDelete,
@@ -129,9 +127,9 @@ class AppActionBar extends StatelessWidget {
     this.onSearchChanged,
     this.onSearchSubmitted,
     this.accentColor,
-    this.compactWidth = 1180 * AppDensity.scale,
-    this.navigationButtonWidth = 104 * AppDensity.scale,
-    this.buttonWidth = 108 * AppDensity.scale,
+    this.compactWidth = 1180,
+    this.navigationButtonWidth = 104,
+    this.buttonWidth = 108,
   }) : assert(
           searchController != null || middle != null,
           'Provide either searchController or middle.',

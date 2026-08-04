@@ -55,7 +55,7 @@ class WarehouseInventoryPanel extends StatelessWidget {
                             'إجمالي الكمية: $totalQuantity',
                     style: const TextStyle(
                       color: AppColors.textSecondary,
-                      fontSize: 14 * AppDensity.scale,
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -100,8 +100,8 @@ class WarehouseInventoryPanel extends StatelessWidget {
           child: AppDataTable(
             key: const Key('warehouseInventoryTable'),
             height: height,
-            rowHeight: 56 * AppDensity.scale,
-            minimumColumnWidth: 150 * AppDensity.scale,
+            rowHeight: 56,
+            minimumColumnWidth: 150,
             accentColor: AppModuleColors.warehouses,
             columns: const [
               AppTableColumn(label: 'رمز المادة', flex: 2),

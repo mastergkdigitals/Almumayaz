@@ -44,7 +44,7 @@ abstract final class AppDialogs {
                           ? Icons.warning_amber_rounded
                           : Icons.help_outline_rounded,
                       color: isDanger ? AppColors.danger : AppColors.primary,
-                      size: 42 * AppDensity.scale,
+                      size: 42,
                     ),
                     const SizedBox(height: AppSpacing.md),
                     Text(
@@ -68,7 +68,7 @@ abstract final class AppDialogs {
                           onPressed: () =>
                               Navigator.of(dialogContext).pop(false),
                           variant: AppButtonVariant.secondary,
-                          width: 144 * AppDensity.scale,
+                          width: 144,
                         ),
                         const SizedBox(width: AppSpacing.md),
                         AppButton(
@@ -79,7 +79,7 @@ abstract final class AppDialogs {
                           variant: isDanger
                               ? AppButtonVariant.danger
                               : AppButtonVariant.primary,
-                          width: 144 * AppDensity.scale,
+                          width: 144,
                         ),
                       ],
                     ),

@@ -26,15 +26,12 @@ void main() {
       final finder = find.byKey(Key(entry.key));
       final button = tester.widget<AppButton>(finder);
       final size = tester.getSize(finder);
-      expect(
-        size.width,
-        greaterThanOrEqualTo(AppRegularButton.defaultMinWidth),
-      );
-      expect(size.height, AppRegularButton.defaultHeight);
+      expect(size.width, greaterThanOrEqualTo(104));
+      expect(size.height, 52);
       expect(button.icon, entry.value);
       expect(button.variant, AppButtonVariant.navigation);
-      expect(button.minWidth, AppRegularButton.defaultMinWidth);
-      expect(button.height, AppRegularButton.defaultHeight);
+      expect(button.minWidth, 104);
+      expect(button.height, 52);
     }
 
     const actions =
@@ -64,16 +61,13 @@ void main() {
       final finder = find.byKey(Key(entry.key));
       final button = tester.widget<AppButton>(finder);
       final size = tester.getSize(finder);
-      expect(
-        size.width,
-        greaterThanOrEqualTo(108 * AppDensity.scale),
-      );
-      expect(size.height, 52 * AppDensity.scale);
+      expect(size.width, greaterThanOrEqualTo(108));
+      expect(size.height, 52);
       expect(button.icon, entry.value.$1);
       expect(button.variant, entry.value.$2);
-      expect(button.iconSize, 18 * AppDensity.scale);
-      expect(button.minWidth, 108 * AppDensity.scale);
-      expect(button.textStyle?.fontSize, 16 * AppDensity.scale);
+      expect(button.iconSize, 18);
+      expect(button.minWidth, 108);
+      expect(button.textStyle?.fontSize, 16);
       expect(button.textStyle?.fontWeight, FontWeight.w700);
 
       final renderedButton = tester.widget<ElevatedButton>(
@@ -204,19 +198,16 @@ void main() {
         );
 
     expect(tooltip().message, 'داكن');
-    expect(tooltip().verticalOffset, 32 * AppDensity.scale);
+    expect(tooltip().verticalOffset, 32);
     expect(
       tooltip().padding,
-      const EdgeInsets.symmetric(
-        horizontal: 12 * AppDensity.scale,
-        vertical: 9 * AppDensity.scale,
-      ),
+      const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
     );
     expect(
       tooltip().textStyle,
       const TextStyle(
         color: AppTooltipColors.text,
-        fontSize: 13 * AppDensity.scale,
+        fontSize: 13,
         fontWeight: FontWeight.w800,
         height: 1.2,
       ),
@@ -229,16 +220,13 @@ void main() {
     );
     expect(
       tooltipDecoration.borderRadius,
-      BorderRadius.circular(AppRadii.md),
+      BorderRadius.circular(12),
     );
     expect(tooltipDecoration.boxShadow, hasLength(1));
-    expect(
-      tooltipDecoration.boxShadow!.single.blurRadius,
-      14 * AppDensity.scale,
-    );
+    expect(tooltipDecoration.boxShadow!.single.blurRadius, 14);
     expect(
       tooltipDecoration.boxShadow!.single.offset,
-      const Offset(0, 7 * AppDensity.scale),
+      const Offset(0, 7),
     );
     expect(
       tester.widget<Icon>(
@@ -289,10 +277,7 @@ void main() {
       final button = tester.widget<AppHeaderIconButton>(finder);
       expect(button.icon, entry.value.$1);
       expect(button.tooltip, entry.value.$2);
-      expect(
-        tester.getSize(finder),
-        const Size.square(52 * AppDensity.scale),
-      );
+      expect(tester.getSize(finder), const Size.square(52));
 
       final tooltip = tester.widget<Tooltip>(
         find.descendant(of: finder, matching: find.byType(Tooltip)),
@@ -354,10 +339,7 @@ void main() {
     );
     final shape = button.style?.shape?.resolve(<WidgetState>{})
         as RoundedRectangleBorder;
-    expect(
-      shape.borderRadius,
-      BorderRadius.circular(14 * AppDensity.scale),
-    );
+    expect(shape.borderRadius, BorderRadius.circular(14));
   });
 
   testWidgets('uses real action states and consistent colors',
@@ -379,33 +361,21 @@ void main() {
     ];
     for (final key in buttonKeys.take(4)) {
       final size = tester.getSize(find.byKey(key));
-      expect(
-        size.width,
-        greaterThanOrEqualTo(AppRegularButton.defaultMinWidth),
-      );
-      expect(size.height, AppRegularButton.defaultHeight);
+      expect(size.width, greaterThanOrEqualTo(104));
+      expect(size.height, 52);
     }
     for (final key in buttonKeys.skip(4)) {
       final size = tester.getSize(find.byKey(key));
-      expect(
-        size.width,
-        greaterThanOrEqualTo(108 * AppDensity.scale),
-      );
-      expect(size.height, 52 * AppDensity.scale);
+      expect(size.width, greaterThanOrEqualTo(108));
+      expect(size.height, 52);
     }
 
     AppButton appButton(String key) =>
         tester.widget<AppButton>(find.byKey(Key(key)));
 
-    expect(
-      appButton('designActionBarFirst').minWidth,
-      AppRegularButton.defaultMinWidth,
-    );
+    expect(appButton('designActionBarFirst').minWidth, 104);
     expect(appButton('designActionBarFirst').width, isNull);
-    expect(
-      appButton('designActionBarSave').minWidth,
-      108 * AppDensity.scale,
-    );
+    expect(appButton('designActionBarSave').minWidth, 108);
     expect(appButton('designActionBarSave').width, isNull);
     expect(
       appButton('designActionBarSave').variant,

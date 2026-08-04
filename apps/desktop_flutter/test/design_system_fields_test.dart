@@ -11,10 +11,7 @@ void main() {
     final nameField = find.byKey(const Key('designNameField'));
     await reveal(tester, nameField);
 
-    expect(
-      AppTypography.fieldText.fontSize,
-      18 * AppDensity.scale,
-    );
+    expect(AppTypography.fieldText.fontSize, 18);
     expect(AppTypography.fieldText.fontWeight, FontWeight.w600);
     expect(find.byKey(const Key('designCityField')), findsOneWidget);
     expect(find.byKey(const Key('designDateField')), findsOneWidget);
@@ -189,7 +186,7 @@ void main() {
       BorderRadius.circular(AppRadii.md),
     );
     expect(focusedBorder.borderSide.color, AppModuleColors.purchases);
-    expect(focusedBorder.borderSide.width, 1.5);
+    expect(focusedBorder.borderSide.width, 1.6);
     final prefixIcon = decorator.decoration.prefixIcon! as Icon;
     expect(prefixIcon.icon, Icons.currency_exchange_rounded);
     expect(prefixIcon.color, AppModuleColors.purchases);
@@ -223,10 +220,7 @@ void main() {
     expect(selectedValue.textDirection, isNull);
     expect(selectedValue.textAlign, TextAlign.start);
     expect(selectedValue.style?.color, AppColors.textPrimary);
-    expect(
-      selectedValue.style?.fontSize,
-      18 * AppDensity.scale,
-    );
+    expect(selectedValue.style?.fontSize, 18);
     expect(selectedValue.style?.fontWeight, FontWeight.w600);
 
     final menuAnchor = tester.widget<MenuAnchor>(
@@ -258,7 +252,7 @@ void main() {
     );
     expect(dollar, findsOneWidget);
     final label = tester.widget<Text>(dollar);
-    expect(label.style?.fontSize, 18 * AppDensity.scale);
+    expect(label.style?.fontSize, 18);
     expect(label.style?.fontWeight, FontWeight.w600);
     expect(label.style?.color, AppColors.textPrimary);
 
@@ -266,7 +260,7 @@ void main() {
     final selectedButton = tester.widget<MenuItemButton>(selectedOption);
     expect(
       selectedButton.style?.minimumSize?.resolve(<WidgetState>{}),
-      const Size(0, 44 * AppDensity.scale),
+      const Size(0, 44),
     );
     expect(
       selectedButton.style?.backgroundColor?.resolve(<WidgetState>{}),

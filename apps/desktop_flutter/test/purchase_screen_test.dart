@@ -224,10 +224,7 @@ void main() {
       final button = tester.widget<AppHeaderIconButton>(finder);
       expect(button.icon, entry.value.$1);
       expect(button.tooltip, entry.value.$2);
-      expect(
-        tester.getSize(finder),
-        const Size.square(52 * AppDensity.scale),
-      );
+      expect(tester.getSize(finder), const Size.square(52));
     }
     _expectRightToLeftOrder(tester, invoiceButtons.keys.toList());
 
@@ -618,7 +615,6 @@ void main() {
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 250));
-    await _finishToast(tester);
 
     await tester.tap(find.byKey(const Key('purchaseDeleteButton')));
     await tester.pumpAndSettle();

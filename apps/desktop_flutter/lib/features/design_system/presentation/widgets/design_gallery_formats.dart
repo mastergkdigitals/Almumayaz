@@ -130,7 +130,7 @@ class _FormatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 210 * AppDensity.scale,
+      width: 210,
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: AppColors.neutralSurface,

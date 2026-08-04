@@ -30,9 +30,7 @@ class _DashboardCardState extends State<DashboardCard> {
   @override
   Widget build(BuildContext context) {
     final interactive = widget.onTap != null;
-    final lift = interactive && _hovered && !_pressed
-        ? -4.0 * AppDensity.scale
-        : 0.0;
+    final lift = interactive && _hovered && !_pressed ? -4.0 : 0.0;
     final scale = _pressed
         ? 0.985
         : interactive && _hovered
@@ -47,7 +45,6 @@ class _DashboardCardState extends State<DashboardCard> {
         duration: const Duration(milliseconds: 140),
         curve: Curves.easeOutCubic,
         child: AnimatedContainer(
-          margin: const EdgeInsets.all(AppSpacing.xs),
           duration: const Duration(milliseconds: 160),
           curve: Curves.easeOutCubic,
           transform: Matrix4.translationValues(0, lift, 0),
@@ -66,11 +63,8 @@ class _DashboardCardState extends State<DashboardCard> {
                 color: widget.shadowColor.withValues(
                   alpha: _hovered ? 0.24 : 0.16,
                 ),
-                blurRadius: (_hovered ? 24 : 16) * AppDensity.scale,
-                offset: Offset(
-                  0,
-                  (_hovered ? 12 : 8) * AppDensity.scale,
-                ),
+                blurRadius: _hovered ? 24 : 16,
+                offset: Offset(0, _hovered ? 12 : 8),
               ),
             ],
           ),
@@ -99,30 +93,30 @@ class _DashboardCardState extends State<DashboardCard> {
                 children: [
                   _DecorativeIcon(
                     icon: widget.icon,
-                    size: 92 * AppDensity.scale,
-                    top: -18 * AppDensity.scale,
-                    left: 24 * AppDensity.scale,
+                    size: 92,
+                    top: -18,
+                    left: 24,
                     opacity: 0.12,
                   ),
                   _DecorativeIcon(
                     icon: widget.icon,
-                    size: 46 * AppDensity.scale,
-                    top: 28 * AppDensity.scale,
-                    right: 26 * AppDensity.scale,
+                    size: 46,
+                    top: 28,
+                    right: 26,
                     opacity: 0.15,
                   ),
                   _DecorativeIcon(
                     icon: widget.icon,
-                    size: 64 * AppDensity.scale,
-                    bottom: 18 * AppDensity.scale,
-                    left: 34 * AppDensity.scale,
+                    size: 64,
+                    bottom: 18,
+                    left: 34,
                     opacity: 0.11,
                   ),
                   _DecorativeIcon(
                     icon: widget.icon,
-                    size: 34 * AppDensity.scale,
-                    bottom: 28 * AppDensity.scale,
-                    right: 38 * AppDensity.scale,
+                    size: 34,
+                    bottom: 28,
+                    right: 38,
                     opacity: 0.17,
                   ),
                   Center(
@@ -130,8 +124,8 @@ class _DashboardCardState extends State<DashboardCard> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
-                          width: 66 * AppDensity.scale,
-                          height: 66 * AppDensity.scale,
+                          width: 66,
+                          height: 66,
                           decoration: BoxDecoration(
                             color: AppColors.onStrong.withValues(alpha: 0.18),
                             borderRadius: BorderRadius.circular(AppRadii.lg),
@@ -143,14 +137,12 @@ class _DashboardCardState extends State<DashboardCard> {
                           child: Icon(
                             widget.icon,
                             color: AppColors.onStrong,
-                            size: 34 * AppDensity.scale,
+                            size: 34,
                           ),
                         ),
                         const SizedBox(height: AppSpacing.md),
                         Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 18 * AppDensity.scale,
-                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 18),
                           child: Text(
                             widget.title,
                             textAlign: TextAlign.center,
@@ -158,7 +150,7 @@ class _DashboardCardState extends State<DashboardCard> {
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               color: AppColors.onStrong,
-                              fontSize: 22 * AppDensity.scale,
+                              fontSize: 22,
                               fontWeight: FontWeight.w800,
                             ),
                           ),

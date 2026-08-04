@@ -28,16 +28,11 @@ class AboutScreen extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const AppLogo(
-                    size: 112 * AppDensity.scale,
-                    showBackground: false,
-                  ),
+                  const AppLogo(size: 112, showBackground: false),
                   const SizedBox(height: AppSpacing.lg),
                   Text(
                     'المميز للمحاسبة',
-                    style: AppTypography.screenTitle.copyWith(
-                      fontSize: 30 * AppDensity.scale,
-                    ),
+                    style: AppTypography.screenTitle.copyWith(fontSize: 30),
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   const Text(
@@ -45,7 +40,7 @@ class AboutScreen extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: AppColors.textSecondary,
-                      fontSize: 18 * AppDensity.scale,
+                      fontSize: 18,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -86,7 +81,7 @@ class AboutScreen extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: AppColors.textSecondary,
-                      fontSize: 14 * AppDensity.scale,
+                      fontSize: 14,
                     ),
                   ),
                 ],

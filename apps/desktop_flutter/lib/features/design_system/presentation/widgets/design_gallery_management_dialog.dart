@@ -267,21 +267,21 @@ class _ManagementDialogState extends State<_ManagementDialog> {
           key: Key('${_spec.keyName}Cancel'),
           label: 'إغلاق',
           variant: AppButtonVariant.secondary,
-          width: 144 * AppDensity.scale,
+          width: 144,
           onPressed: () => Navigator.of(context).pop(),
         ),
         AppButton(
           key: Key('${_spec.keyName}Confirm'),
           label: 'حفظ',
           icon: Icons.save_rounded,
-          width: 144 * AppDensity.scale,
+          width: 144,
           backgroundColor: _spec.accentColor,
           onPressed: () => Navigator.of(context).pop(),
         ),
       ],
       child: SizedBox(
         key: Key('${_spec.keyName}Content'),
-        height: 390 * AppDensity.scale,
+        height: 390,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -427,7 +427,7 @@ class _ManagementEditor extends StatelessWidget {
           key: buttonKey,
           label: editing ? 'تحديث' : 'إضافة',
           icon: editing ? Icons.update_rounded : Icons.add_rounded,
-          width: 112 * AppDensity.scale,
+          width: 112,
           backgroundColor: accentColor,
           onPressed: onCommit,
         ),
@@ -543,11 +543,7 @@ class _ManagementEntryTile extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(
-                Icons.circle,
-                size: 9 * AppDensity.scale,
-                color: accentColor,
-              ),
+              Icon(Icons.circle, size: 9, color: accentColor),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(entry.name, style: AppTypography.tableCell),

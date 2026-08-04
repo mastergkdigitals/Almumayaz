@@ -117,18 +117,15 @@ class _AppButtonState extends State<AppButton> {
 
     final content = widget.isLoading
         ? const SizedBox.square(
-            dimension: 24 * AppDensity.scale,
+            dimension: 24,
             child: DecoratedBox(
               decoration: BoxDecoration(
                 color: AppColors.surface,
                 shape: BoxShape.circle,
               ),
               child: Padding(
-                padding: EdgeInsets.all(3 * AppDensity.scale),
-                child: AppLoadingIndicator(
-                  size: 18 * AppDensity.scale,
-                  strokeWidth: 2,
-                ),
+                padding: EdgeInsets.all(3),
+                child: AppLoadingIndicator(size: 18, strokeWidth: 2.2),
               ),
             ),
           )
@@ -205,7 +202,7 @@ class _AppButtonState extends State<AppButton> {
           isDark ? const Color(0xFFE5E7EB) : const Color(0xFF111827);
       final focusRing =
           isDark ? const Color(0xFF60A5FA) : AppColors.blue;
-      final radius = widget.borderRadius ?? 14 * AppDensity.scale;
+      final radius = widget.borderRadius ?? 14;
 
       return withoutShadow(
         OutlinedButton.styleFrom(
@@ -438,14 +435,14 @@ class AppRegularButton extends StatelessWidget {
     );
   }
 
-  static const double defaultMinWidth = 104 * AppDensity.scale;
-  static const double defaultHeight = 52 * AppDensity.scale;
+  static const double defaultMinWidth = 104;
+  static const double defaultHeight = 52;
   static const EdgeInsetsGeometry defaultPadding =
-      EdgeInsets.symmetric(horizontal: 14 * AppDensity.scale);
+      EdgeInsets.symmetric(horizontal: 14);
   static const double defaultIconSize = AppIconSizes.md;
   static const double defaultIconSpacing = AppSpacing.sm;
   static const TextStyle defaultTextStyle = TextStyle(
-    fontSize: 16 * AppDensity.scale,
+    fontSize: 16,
     fontWeight: FontWeight.w800,
   );
 }

@@ -186,7 +186,7 @@ class _BusinessPoliciesSettingsSectionState
             label: 'حفظ السياسات والطباعة',
             icon: Icons.save_outlined,
             variant: AppButtonVariant.primary,
-            minWidth: 215 * AppDensity.scale,
+            minWidth: 215,
             onPressed: () {
               AppToast.showInfo(
                 context,
@@ -465,7 +465,7 @@ class _OperationalDefaultsSettingsSectionState
             label: 'حفظ الإعدادات',
             icon: Icons.save_outlined,
             variant: AppButtonVariant.primary,
-            minWidth: 170 * AppDensity.scale,
+            minWidth: 170,
             onPressed: () {
               AppToast.showInfo(
                 context,
@@ -1163,7 +1163,7 @@ class _SettingsManagementPanelState
                 label: 'إضافة',
                 icon: Icons.add_rounded,
                 backgroundColor: widget.accentColor,
-                minWidth: 115 * AppDensity.scale,
+                minWidth: 115,
                 onPressed: widget.parentLabel != null &&
                         _selectedParent == null
                     ? null
@@ -1174,7 +1174,7 @@ class _SettingsManagementPanelState
                 label: 'تحديث',
                 icon: Icons.refresh_rounded,
                 variant: AppButtonVariant.success,
-                minWidth: 115 * AppDensity.scale,
+                minWidth: 115,
                 onPressed: _selectedId == null ||
                         (widget.parentLabel != null &&
                             _selectedParent == null)
@@ -1186,7 +1186,7 @@ class _SettingsManagementPanelState
                 label: 'تراجع',
                 icon: Icons.undo_rounded,
                 variant: AppButtonVariant.warning,
-                minWidth: 115 * AppDensity.scale,
+                minWidth: 115,
                 onPressed: _selectedId == null &&
                         _nameController.text.isEmpty
                     ? null
@@ -1197,9 +1197,9 @@ class _SettingsManagementPanelState
           const SizedBox(height: AppSpacing.md),
           AppDataTable(
             key: Key('${prefix}Table'),
-            height: 270 * AppDensity.scale,
-            rowHeight: 54 * AppDensity.scale,
-            minimumColumnWidth: 115 * AppDensity.scale,
+            height: 270,
+            rowHeight: 54,
+            minimumColumnWidth: 115,
             accentColor: widget.accentColor,
             showShadow: false,
             columns: [
@@ -1565,7 +1565,7 @@ class _BackupDataSettingsSectionState
                 key: const Key('settingsSaveBackupConfigurationButton'),
                 label: 'حفظ إعدادات النسخ',
                 icon: Icons.save_outlined,
-                minWidth: 200 * AppDensity.scale,
+                minWidth: 200,
                 onPressed: () {
                   AppToast.showInfo(
                     context,
@@ -1577,7 +1577,7 @@ class _BackupDataSettingsSectionState
                 key: const Key('settingsRunBackupButton'),
                 label: 'إنشاء نسخة الآن',
                 icon: Icons.backup_rounded,
-                minWidth: 190 * AppDensity.scale,
+                minWidth: 190,
                 onPressed: _createBackup,
               ),
               AppButton(
@@ -1585,7 +1585,7 @@ class _BackupDataSettingsSectionState
                 label: 'استعادة نسخة',
                 icon: Icons.restore_rounded,
                 variant: AppButtonVariant.warning,
-                minWidth: 190 * AppDensity.scale,
+                minWidth: 190,
                 onPressed: _restoreBackup,
               ),
             ],
@@ -1627,9 +1627,9 @@ class _BackupDataSettingsSectionState
               const SizedBox(height: AppSpacing.md),
               AppDataTable(
                 key: const Key('settingsBackupHistoryTable'),
-                height: 300 * AppDensity.scale,
-                rowHeight: 56 * AppDensity.scale,
-                minimumColumnWidth: 150 * AppDensity.scale,
+                height: 300,
+                rowHeight: 56,
+                minimumColumnWidth: 150,
                 accentColor: widget.accentColor,
                 showShadow: false,
                 columns: const [
@@ -2117,9 +2117,9 @@ class _UsersSecuritySettingsSectionState
           const SizedBox(height: AppSpacing.md),
           AppDataTable(
             key: const Key('settingsUsersTable'),
-            height: 430 * AppDensity.scale,
-            rowHeight: 58 * AppDensity.scale,
-            minimumColumnWidth: 150 * AppDensity.scale,
+            height: 430,
+            rowHeight: 58,
+            minimumColumnWidth: 150,
             accentColor: widget.accentColor,
             showShadow: false,
             columns: const [
@@ -2224,9 +2224,9 @@ class _UsersSecuritySettingsSectionState
           const SizedBox(height: AppSpacing.md),
           AppDataTable(
             key: const Key('settingsRolesTable'),
-            height: 390 * AppDensity.scale,
-            rowHeight: 62 * AppDensity.scale,
-            minimumColumnWidth: 160 * AppDensity.scale,
+            height: 390,
+            rowHeight: 62,
+            minimumColumnWidth: 160,
             accentColor: widget.accentColor,
             showShadow: false,
             columns: const [
@@ -2324,7 +2324,7 @@ class _UsersSecuritySettingsSectionState
                   key: const Key('settingsSavePasswordButton'),
                   label: 'تغيير كلمة المرور',
                   icon: Icons.save_outlined,
-                  minWidth: 190 * AppDensity.scale,
+                  minWidth: 190,
                   onPressed: _savePassword,
                 ),
               ),
@@ -2397,7 +2397,7 @@ class _UsersSecuritySettingsSectionState
                   key: const Key('settingsSaveIdleLockButton'),
                   label: 'حفظ إعداد القفل',
                   icon: Icons.save_outlined,
-                  minWidth: 180 * AppDensity.scale,
+                  minWidth: 180,
                   onPressed: () {
                     AppToast.showInfo(
                       context,
@@ -2473,9 +2473,9 @@ class _UsersSecuritySettingsSectionState
           const SizedBox(height: AppSpacing.md),
           AppDataTable(
             key: const Key('settingsSecurityLogsTable'),
-            height: 430 * AppDensity.scale,
-            rowHeight: 58 * AppDensity.scale,
-            minimumColumnWidth: 155 * AppDensity.scale,
+            height: 430,
+            rowHeight: 58,
+            minimumColumnWidth: 155,
             accentColor: widget.accentColor,
             showShadow: false,
             emptyState: const AppStatePanel(
@@ -2758,14 +2758,14 @@ class _SettingsUserPasswordDialogState
       icon: Icons.password_rounded,
       accentColor: widget.accentColor,
       onClose: _close,
-      width: 620 * AppDensity.scale,
+      width: 620,
       actions: [
         AppButton(
           key: Key('settingsUserPasswordCancel_$userId'),
           label: 'إلغاء',
           icon: Icons.close_rounded,
           variant: AppButtonVariant.secondary,
-          width: 145 * AppDensity.scale,
+          width: 145,
           onPressed: _close,
         ),
         AppButton(
@@ -2773,7 +2773,7 @@ class _SettingsUserPasswordDialogState
           label: 'تحديث',
           icon: Icons.refresh_rounded,
           variant: AppButtonVariant.success,
-          width: 145 * AppDensity.scale,
+          width: 145,
           onPressed: _canSave ? _save : null,
         ),
       ],
@@ -2926,7 +2926,7 @@ class _SettingsRoleDialogState extends State<_SettingsRoleDialog> {
       icon: Icons.admin_panel_settings_outlined,
       accentColor: widget.accentColor,
       onClose: _close,
-      width: 980 * AppDensity.scale,
+      width: 980,
       maxHeightFactor: 0.94,
       actions: [
         AppButton(
@@ -2934,7 +2934,7 @@ class _SettingsRoleDialogState extends State<_SettingsRoleDialog> {
           label: 'إلغاء',
           icon: Icons.close_rounded,
           variant: AppButtonVariant.secondary,
-          width: 145 * AppDensity.scale,
+          width: 145,
           onPressed: _close,
         ),
         AppButton(
@@ -2944,7 +2944,7 @@ class _SettingsRoleDialogState extends State<_SettingsRoleDialog> {
           variant: _isEditing
               ? AppButtonVariant.success
               : AppButtonVariant.primary,
-          width: 145 * AppDensity.scale,
+          width: 145,
           onPressed: _canSave ? _save : null,
         ),
       ],
@@ -3018,7 +3018,7 @@ class _SettingsRoleDialogState extends State<_SettingsRoleDialog> {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: SizedBox(
-          width: 860 * AppDensity.scale,
+          width: 860,
           child: Table(
             textDirection: TextDirection.rtl,
             border: TableBorder.all(color: borderColor),
@@ -3039,7 +3039,7 @@ class _SettingsRoleDialogState extends State<_SettingsRoleDialog> {
                       'الشاشة',
                       style: AppTypography.tableHeader,
                     ),
-                    height: 50 * AppDensity.scale,
+                    height: 50,
                   ),
                   for (final action in _settingsPermissionActions)
                     cell(
@@ -3047,7 +3047,7 @@ class _SettingsRoleDialogState extends State<_SettingsRoleDialog> {
                         action.label,
                         style: AppTypography.tableHeader,
                       ),
-                      height: 50 * AppDensity.scale,
+                      height: 50,
                     ),
                 ],
               ),
@@ -3160,21 +3160,21 @@ class _SettingsUserDialogState extends State<_SettingsUserDialog> {
       icon: Icons.person_add_alt_1_rounded,
       accentColor: widget.accentColor,
       onClose: _close,
-      width: 620 * AppDensity.scale,
+      width: 620,
       actions: [
         AppButton(
           key: const Key('settingsAddUserCancelButton'),
           label: 'إلغاء',
           icon: Icons.close_rounded,
           variant: AppButtonVariant.secondary,
-          width: 145 * AppDensity.scale,
+          width: 145,
           onPressed: _close,
         ),
         AppButton(
           key: const Key('settingsAddUserConfirmButton'),
           label: 'إضافة',
           icon: Icons.add_rounded,
-          width: 145 * AppDensity.scale,
+          width: 145,
           onPressed: _canSave ? _save : null,
         ),
       ],
@@ -3410,9 +3410,9 @@ class _ElectronicArchiveSettingsSectionState
               const SizedBox(height: AppSpacing.md),
               AppDataTable(
                 key: const Key('settingsArchiveTable'),
-                height: 440 * AppDensity.scale,
-                rowHeight: 62 * AppDensity.scale,
-                minimumColumnWidth: 155 * AppDensity.scale,
+                height: 440,
+                rowHeight: 62,
+                minimumColumnWidth: 155,
                 accentColor: widget.accentColor,
                 showShadow: false,
                 emptyState: const AppStatePanel(
@@ -3609,14 +3609,14 @@ class _ArchiveUploadDialogState extends State<_ArchiveUploadDialog> {
       icon: Icons.upload_file_rounded,
       accentColor: widget.accentColor,
       onClose: _close,
-      width: 680 * AppDensity.scale,
+      width: 680,
       actions: [
         AppButton(
           key: const Key('settingsArchiveUploadCancelButton'),
           label: 'إلغاء',
           icon: Icons.close_rounded,
           variant: AppButtonVariant.secondary,
-          width: 145 * AppDensity.scale,
+          width: 145,
           onPressed: _close,
         ),
         AppButton(
@@ -3624,7 +3624,7 @@ class _ArchiveUploadDialogState extends State<_ArchiveUploadDialog> {
           label: 'رفع',
           icon: Icons.upload_rounded,
           backgroundColor: widget.accentColor,
-          width: 145 * AppDensity.scale,
+          width: 145,
           onPressed: _canUpload ? _upload : null,
         ),
       ],
@@ -3737,13 +3737,13 @@ class _ArchiveRenameDialogState extends State<_ArchiveRenameDialog> {
       icon: Icons.drive_file_rename_outline,
       accentColor: widget.accentColor,
       onClose: _close,
-      width: 580 * AppDensity.scale,
+      width: 580,
       actions: [
         AppButton(
           key: const Key('settingsArchiveRenameCancelButton'),
           label: 'إلغاء',
           variant: AppButtonVariant.secondary,
-          width: 140 * AppDensity.scale,
+          width: 140,
           onPressed: _close,
         ),
         AppButton(
@@ -3751,7 +3751,7 @@ class _ArchiveRenameDialogState extends State<_ArchiveRenameDialog> {
           label: 'تحديث',
           icon: Icons.refresh_rounded,
           variant: AppButtonVariant.success,
-          width: 140 * AppDensity.scale,
+          width: 140,
           onPressed: _canSave ? _save : null,
         ),
       ],
@@ -3835,8 +3835,8 @@ class SettingsTemplatePanel extends StatelessWidget {
                 child: Row(
                   children: [
                     Container(
-                      width: 42 * AppDensity.scale,
-                      height: 42 * AppDensity.scale,
+                      width: 42,
+                      height: 42,
                       decoration: BoxDecoration(
                         color: Color.alphaBlend(
                           accentColor.withAlpha(24),
@@ -3961,7 +3961,7 @@ class SettingsTemplateTabs<T> extends StatelessWidget {
             padding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.md,
             ),
-            minWidth: 160 * AppDensity.scale,
+            minWidth: 160,
             onPressed: item.value == selected
                 ? () {}
                 : () => onChanged(item.value),

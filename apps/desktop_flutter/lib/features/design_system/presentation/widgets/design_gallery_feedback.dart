@@ -48,7 +48,7 @@ class DesignGalleryFeedbackGroup extends StatelessWidget {
             runSpacing: AppSpacing.lg,
             children: [
               const SizedBox(
-                width: 360 * AppDensity.scale,
+                width: 360,
                 child: AppStatePanel(
                   type: AppStateType.empty,
                   title: 'لا توجد بيانات',
@@ -56,7 +56,7 @@ class DesignGalleryFeedbackGroup extends StatelessWidget {
                 ),
               ),
               SizedBox(
-                width: 360 * AppDensity.scale,
+                width: 360,
                 child: AppStatePanel(
                   type: AppStateType.error,
                   title: 'تعذر تحميل البيانات',
@@ -67,7 +67,7 @@ class DesignGalleryFeedbackGroup extends StatelessWidget {
                 ),
               ),
               const SizedBox(
-                width: 360 * AppDensity.scale,
+                width: 360,
                 child: AppStatePanel(
                   type: AppStateType.loading,
                   title: 'جاري التحميل',
@@ -122,7 +122,7 @@ class DesignGalleryFeedbackGroup extends StatelessWidget {
         const DesignGallerySection(
           title: 'طبقة التحميل',
           child: SizedBox(
-            height: 180 * AppDensity.scale,
+            height: 180,
             child: AppLoadingOverlay(
               isLoading: true,
               message: 'جاري حفظ البيانات',

@@ -88,8 +88,8 @@ void main() {
     final confirmButton = tester.widget<AppButton>(
       find.byKey(const Key('appDatePickerConfirm')),
     );
-    expect(cancelButton.width, 144 * AppDensity.scale);
-    expect(confirmButton.width, 144 * AppDensity.scale);
+    expect(cancelButton.width, 144);
+    expect(confirmButton.width, 144);
     expect(confirmButton.backgroundColor, AppColors.primary);
 
     await tester.tap(find.byKey(const Key('appDatePickerCancel')));
@@ -307,7 +307,7 @@ void main() {
     final partyName = tester.widget<Text>(
       find.descendant(of: report, matching: find.text('أسواق دجلة')),
     );
-    expect(partyName.style?.fontSize, 22 * AppDensity.scale);
+    expect(partyName.style?.fontSize, 22);
     expect(partyName.style?.fontWeight, FontWeight.w800);
 
     final close = find.byKey(const Key('appModuleDialogClose'));

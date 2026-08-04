@@ -310,7 +310,7 @@ class _InventoryTransferDialogState
         key: const Key('inventoryTransferExecuteButton'),
         label: 'تنفيذ النقل',
         icon: Icons.swap_horiz_rounded,
-        width: 200 * AppDensity.scale,
+        width: 200,
         backgroundColor: AppModuleColors.warehouses,
         onPressed: _canExecute ? _executeTransfer : null,
       ),
@@ -324,7 +324,7 @@ class _InventoryTransferDialogState
         label: 'تحديث السجل',
         icon: Icons.refresh_rounded,
         variant: AppButtonVariant.success,
-        minWidth: 160 * AppDensity.scale,
+        minWidth: 160,
         onPressed: () {
           _historySearchController.clear();
           setState(() => _historyQuery = '');
@@ -551,7 +551,7 @@ class _ViewSelector extends StatelessWidget {
           label: 'نقل جديد',
           icon: Icons.compare_arrows_rounded,
           variant: AppButtonVariant.navigation,
-          minWidth: 180 * AppDensity.scale,
+          minWidth: 180,
           backgroundColor:
               view == _InventoryTransferView.create ? selectedTint : null,
           foregroundColor: view == _InventoryTransferView.create
@@ -565,7 +565,7 @@ class _ViewSelector extends StatelessWidget {
           label: 'سجل النقل المخزني',
           icon: Icons.history_rounded,
           variant: AppButtonVariant.navigation,
-          minWidth: 210 * AppDensity.scale,
+          minWidth: 210,
           backgroundColor:
               view == _InventoryTransferView.history ? selectedTint : null,
           foregroundColor: view == _InventoryTransferView.history
@@ -606,9 +606,9 @@ class _WarehouseStockPanel extends StatelessWidget {
           return AppDataTable(
             key: tableKey,
             height: constraints.maxHeight,
-            headerHeight: 44 * AppDensity.scale,
-            rowHeight: 44 * AppDensity.scale,
-            minimumColumnWidth: 112 * AppDensity.scale,
+            headerHeight: 44,
+            rowHeight: 44,
+            minimumColumnWidth: 112,
             accentColor: AppModuleColors.warehouses,
             columns: const [
               AppTableColumn(label: 'رمز المادة'),
@@ -710,8 +710,8 @@ class _TransferHistoryTableState extends State<_TransferHistoryTable> {
     return AppDataTable(
       key: const Key('inventoryTransferHistoryTable'),
       height: widget.height,
-      rowHeight: 56 * AppDensity.scale,
-      minimumColumnWidth: 150 * AppDensity.scale,
+      rowHeight: 56,
+      minimumColumnWidth: 150,
       verticalScrollController: _scrollController,
       accentColor: AppModuleColors.warehouses,
       alternatingRowColor: null,

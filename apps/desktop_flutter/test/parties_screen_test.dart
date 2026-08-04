@@ -153,15 +153,10 @@ void main() {
     expect(partiesFirstButton.variant, AppButtonVariant.navigation);
     expect(
       partiesFirstButton.padding,
-      const EdgeInsets.symmetric(
-        horizontal: 14 * AppDensity.scale,
-      ),
+      const EdgeInsets.symmetric(horizontal: 14),
     );
-    expect(partiesFirstButton.iconSize, AppIconSizes.md);
-    expect(
-      partiesFirstButton.textStyle?.fontSize,
-      16 * AppDensity.scale,
-    );
+    expect(partiesFirstButton.iconSize, 20);
+    expect(partiesFirstButton.textStyle?.fontSize, 16);
     expect(partiesFirstButton.textStyle?.fontWeight, FontWeight.w800);
     final partiesFirstOutlinedButton = tester.widget<OutlinedButton>(
       find.descendant(
@@ -229,7 +224,7 @@ void main() {
     final focusedNameBorder =
         nameDecoration.focusedBorder as OutlineInputBorder;
     expect(focusedNameBorder.borderSide.color, AppColors.blue);
-    expect(focusedNameBorder.borderSide.width, 1.5);
+    expect(focusedNameBorder.borderSide.width, 1.6);
     expect(
       tester
           .widget<Icon>(

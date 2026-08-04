@@ -16,7 +16,7 @@ class DesignGalleryFoundationsSection extends StatelessWidget {
         children: [
           const AppInfoBanner(
             message:
-                'مرجع بصري موحد بكثافة متوازنة 92% للاستجابة والارتفاعات والزوايا والمسافات والخطوط.',
+                'مرجع بصري موحد للاستجابة والارتفاعات والزوايا والمسافات والخطوط.',
             icon: Icons.straighten_rounded,
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -31,12 +31,6 @@ class DesignGalleryFoundationsSection extends StatelessWidget {
                 title: 'عرض التصميم الأساسي',
                 value: '${AppBreakpoints.designWidth.toInt()} px',
                 icon: Icons.desktop_windows_rounded,
-              ),
-              const _MetricCard(
-                key: Key('designFoundationDensity'),
-                title: 'كثافة الواجهة',
-                value: '92% (أصغر 8%)',
-                icon: Icons.compress_rounded,
               ),
               const _MetricCard(
                 key: Key('designFoundationMinimumWindow'),
@@ -155,7 +149,7 @@ class _MetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 250 * AppDensity.scale,
+      width: 250,
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: AppColors.infoSurface,
@@ -174,7 +168,7 @@ class _MetricCard extends StatelessWidget {
                   title,
                   style: const TextStyle(
                     color: AppColors.textSecondary,
-                    fontSize: 13 * AppDensity.scale,
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -184,7 +178,7 @@ class _MetricCard extends StatelessWidget {
                   textDirection: TextDirection.ltr,
                   style: const TextStyle(
                     color: AppColors.textPrimary,
-                    fontSize: 20 * AppDensity.scale,
+                    fontSize: 20,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -210,7 +204,7 @@ class _ControlHeightSample extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 220 * AppDensity.scale,
+      width: 220,
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -229,7 +223,7 @@ class _ControlHeightSample extends StatelessWidget {
               border: Border.all(color: AppColors.controlHoverBorder),
             ),
             child: Text(
-              '${height.round()} px',
+              '${height.toInt()} px',
               textDirection: TextDirection.ltr,
               style: const TextStyle(
                 color: AppColors.textPrimary,
@@ -264,8 +258,8 @@ class _RadiusSample extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 180 * AppDensity.scale,
-      height: 96 * AppDensity.scale,
+      width: 180,
+      height: 96,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: AppColors.neutralSurface,
@@ -273,7 +267,7 @@ class _RadiusSample extends StatelessWidget {
         border: Border.all(color: AppColors.controlHoverBorder),
       ),
       child: Text(
-        '$label  •  ${radius.round()} px',
+        '$label  •  ${radius.toInt()} px',
         style: const TextStyle(
           color: AppColors.textPrimary,
           fontWeight: FontWeight.w700,
@@ -298,7 +292,7 @@ class _SpacingSample extends StatelessWidget {
       children: [
         Container(
           width: value * 2,
-          height: 18 * AppDensity.scale,
+          height: 18,
           decoration: BoxDecoration(
             color: AppColors.blue,
             borderRadius: BorderRadius.circular(AppRadii.sm),
@@ -306,11 +300,11 @@ class _SpacingSample extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.sm),
         Text(
-          '$label • ${value.round()}',
+          '$label • ${value.toInt()}',
           textDirection: TextDirection.ltr,
           style: const TextStyle(
             color: AppColors.textSecondary,
-            fontSize: 13 * AppDensity.scale,
+            fontSize: 13,
             fontWeight: FontWeight.w600,
           ),
         ),

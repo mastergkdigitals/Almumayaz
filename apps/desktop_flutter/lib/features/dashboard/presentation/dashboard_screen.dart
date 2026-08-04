@@ -243,7 +243,7 @@ class _DashboardHeader extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               color: AppColors.textPrimary,
-              fontSize: 30 * AppDensity.scale,
+              fontSize: 30,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -255,7 +255,7 @@ class _DashboardHeader extends StatelessWidget {
               textDirection: TextDirection.rtl,
               style: const TextStyle(
                 color: AppColors.textSecondary,
-                fontSize: 16 * AppDensity.scale,
+                fontSize: 16,
                 fontWeight: FontWeight.w500,
               ),
             ),

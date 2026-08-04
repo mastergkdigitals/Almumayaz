@@ -20,8 +20,8 @@ class AppTooltip extends StatefulWidget {
 }
 
 class _AppTooltipState extends State<AppTooltip> {
-  static const _targetGap = 6.0 * AppDensity.scale;
-  static const _fallbackTargetHeight = 42.0 * AppDensity.scale;
+  static const _targetGap = 6.0;
+  static const _fallbackTargetHeight = 42.0;
 
   final _targetKey = GlobalKey();
   Size _targetSize = Size.zero;
@@ -67,21 +67,18 @@ class _AppTooltipState extends State<AppTooltip> {
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.12),
-            blurRadius: 14 * AppDensity.scale,
-            offset: const Offset(0, 7 * AppDensity.scale),
+            blurRadius: 14,
+            offset: const Offset(0, 7),
           ),
         ],
       ),
       textStyle: const TextStyle(
         color: AppTooltipColors.text,
-        fontSize: 13 * AppDensity.scale,
+        fontSize: 13,
         fontWeight: FontWeight.w800,
         height: 1.2,
       ),
-      padding: const EdgeInsets.symmetric(
-        horizontal: 12 * AppDensity.scale,
-        vertical: 9 * AppDensity.scale,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       child: KeyedSubtree(
         key: _targetKey,
         child: Directionality(
@@ -101,7 +98,7 @@ class AppTooltipIconButton extends StatelessWidget {
     super.key,
     this.tooltipKey,
     this.flipIconHorizontally = false,
-    this.size = 52 * AppDensity.scale,
+    this.size = 52,
     this.iconSize = AppIconSizes.lg,
     this.variant = AppButtonVariant.navigation,
     this.backgroundColor,
@@ -157,7 +154,7 @@ class AppHeaderIconButton extends StatelessWidget {
     super.key,
     this.tooltipKey,
     this.flipIconHorizontally = false,
-    this.size = 52 * AppDensity.scale,
+    this.size = 52,
   });
 
   final IconData icon;

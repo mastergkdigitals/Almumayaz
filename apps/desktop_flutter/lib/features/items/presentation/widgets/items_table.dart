@@ -24,7 +24,7 @@ class ItemsTable extends StatefulWidget {
 }
 
 class _ItemsTableState extends State<ItemsTable> {
-  static const _rowHeight = 60.0 * AppDensity.scale;
+  static const _rowHeight = 60.0;
 
   final _scrollController = ScrollController();
 
@@ -96,7 +96,7 @@ class _ItemsTableState extends State<ItemsTable> {
       height: widget.height,
       rowHeight: _rowHeight,
       verticalScrollController: _scrollController,
-      minimumColumnWidth: 170 * AppDensity.scale,
+      minimumColumnWidth: 170,
       accentColor: AppModuleColors.warehouses,
       alternatingRowColor: null,
       selectedRowColor: selectedTint,
@@ -150,7 +150,7 @@ class _GroupTypeCell extends StatelessWidget {
           textAlign: TextAlign.center,
           style: const TextStyle(
             color: AppColors.textSecondary,
-            fontSize: 12 * AppDensity.scale,
+            fontSize: 12,
             fontWeight: FontWeight.w500,
           ),
         ),

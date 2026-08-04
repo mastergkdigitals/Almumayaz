@@ -24,7 +24,7 @@ class CashboxTable extends StatefulWidget {
 }
 
 class _CashboxTableState extends State<CashboxTable> {
-  static const _rowHeight = 56.0 * AppDensity.scale;
+  static const _rowHeight = 56.0;
 
   final _scrollController = ScrollController();
 
@@ -96,7 +96,7 @@ class _CashboxTableState extends State<CashboxTable> {
       height: widget.height,
       rowHeight: _rowHeight,
       verticalScrollController: _scrollController,
-      minimumColumnWidth: 135 * AppDensity.scale,
+      minimumColumnWidth: 135,
       accentColor: AppModuleColors.cashbox,
       selectedRowColor: selectedTint,
       columns: const [

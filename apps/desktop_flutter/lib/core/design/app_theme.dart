@@ -3,32 +3,6 @@ import 'package:flutter/material.dart';
 import 'app_tokens.dart';
 
 abstract final class AppTheme {
-  static TextTheme _scaleTextTheme(TextTheme theme) {
-    TextStyle? scaled(TextStyle? style) {
-      final fontSize = style?.fontSize;
-      if (style == null || fontSize == null) return style;
-      return style.copyWith(fontSize: fontSize * AppDensity.scale);
-    }
-
-    return theme.copyWith(
-      displayLarge: scaled(theme.displayLarge),
-      displayMedium: scaled(theme.displayMedium),
-      displaySmall: scaled(theme.displaySmall),
-      headlineLarge: scaled(theme.headlineLarge),
-      headlineMedium: scaled(theme.headlineMedium),
-      headlineSmall: scaled(theme.headlineSmall),
-      titleLarge: scaled(theme.titleLarge),
-      titleMedium: scaled(theme.titleMedium),
-      titleSmall: scaled(theme.titleSmall),
-      bodyLarge: scaled(theme.bodyLarge),
-      bodyMedium: scaled(theme.bodyMedium),
-      bodySmall: scaled(theme.bodySmall),
-      labelLarge: scaled(theme.labelLarge),
-      labelMedium: scaled(theme.labelMedium),
-      labelSmall: scaled(theme.labelSmall),
-    );
-  }
-
   static ThemeData light() {
     final scheme = ColorScheme.fromSeed(
       seedColor: AppColors.primary,
@@ -49,13 +23,10 @@ abstract final class AppTheme {
       textSelectionTheme: const TextSelectionThemeData(
         cursorColor: AppColors.cursor,
       ),
-      textTheme: _scaleTextTheme(
-        base.textTheme.apply(
-          bodyColor: AppColors.textPrimary,
-          displayColor: AppColors.textPrimary,
-        ),
+      textTheme: base.textTheme.apply(
+        bodyColor: AppColors.textPrimary,
+        displayColor: AppColors.textPrimary,
       ),
-      iconTheme: base.iconTheme.copyWith(size: AppIconSizes.lg),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.surface,
@@ -67,12 +38,12 @@ abstract final class AppTheme {
         ),
         errorStyle: const TextStyle(
           color: AppColors.danger,
-          fontSize: 12 * AppDensity.scale,
+          fontSize: 12,
           fontWeight: FontWeight.w600,
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md,
-          vertical: 14 * AppDensity.scale,
+          vertical: 14,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadii.md),
@@ -86,16 +57,13 @@ abstract final class AppTheme {
           borderRadius: BorderRadius.circular(AppRadii.md),
           borderSide: const BorderSide(
             color: AppColors.primary,
-            width: 1.5,
+            width: 1.6,
           ),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          minimumSize: const Size(
-            120 * AppDensity.scale,
-            AppControlHeights.standard,
-          ),
+          minimumSize: const Size(120, AppControlHeights.standard),
           backgroundColor: AppColors.primary,
           foregroundColor: AppColors.onStrong,
           shape: RoundedRectangleBorder(
@@ -105,10 +73,7 @@ abstract final class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size(
-            120 * AppDensity.scale,
-            AppControlHeights.standard,
-          ),
+          minimumSize: const Size(120, AppControlHeights.standard),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadii.md),
           ),
@@ -116,10 +81,7 @@ abstract final class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          minimumSize: const Size(
-            96 * AppDensity.scale,
-            AppControlHeights.standard,
-          ),
+          minimumSize: const Size(96, AppControlHeights.standard),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadii.md),
           ),

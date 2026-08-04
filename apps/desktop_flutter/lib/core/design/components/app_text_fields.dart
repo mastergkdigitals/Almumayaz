@@ -126,7 +126,7 @@ class AppTextField extends StatelessWidget {
       borderRadius: BorderRadius.circular(fieldRadius),
       borderSide: BorderSide(
         color: accentColor ?? AppColors.primary,
-        width: 1.5,
+        width: 1.6,
       ),
     );
 

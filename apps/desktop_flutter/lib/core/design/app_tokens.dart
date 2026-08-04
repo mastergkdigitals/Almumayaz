@@ -135,44 +135,39 @@ abstract final class AppModulePalettes {
   );
 }
 
-abstract final class AppDensity {
-  // Visual density only; the responsive design canvas remains 1440 px.
-  static const scale = 0.92;
-}
-
 abstract final class AppSpacing {
-  static const xs = 4.0 * AppDensity.scale;
-  static const sm = 8.0 * AppDensity.scale;
-  static const md = 16.0 * AppDensity.scale;
-  static const lg = 24.0 * AppDensity.scale;
-  static const xl = 32.0 * AppDensity.scale;
-  static const xxl = 48.0 * AppDensity.scale;
+  static const xs = 4.0;
+  static const sm = 8.0;
+  static const md = 16.0;
+  static const lg = 24.0;
+  static const xl = 32.0;
+  static const xxl = 48.0;
 }
 
 abstract final class AppRadii {
-  static const sm = 8.0 * AppDensity.scale;
-  static const md = 12.0 * AppDensity.scale;
-  static const lg = 18.0 * AppDensity.scale;
-  static const xl = 24.0 * AppDensity.scale;
+  static const sm = 8.0;
+  static const md = 12.0;
+  static const lg = 18.0;
+  static const xl = 24.0;
 }
 
 abstract final class AppControlHeights {
-  static const compact = 40.0 * AppDensity.scale;
-  static const standard = 48.0 * AppDensity.scale;
-  static const invoiceField = 55.0 * AppDensity.scale;
-  static const large = 56.0 * AppDensity.scale;
+  static const compact = 40.0;
+  static const standard = 48.0;
+  static const invoiceField = 55.0;
+  static const large = 56.0;
 }
 
 abstract final class AppHeaderSizes {
-  static const screen = 104.0 * AppDensity.scale;
-  static const dashboard = 112.0 * AppDensity.scale;
+  static const screen = 104.0;
+  static const dashboard = 112.0;
 }
 
 abstract final class AppIconSizes {
-  static const sm = 16.0 * AppDensity.scale;
-  static const md = 20.0 * AppDensity.scale;
-  static const lg = 24.0 * AppDensity.scale;
-  static const xl = 32.0 * AppDensity.scale;
+  static const sm = 16.0;
+  static const md = 20.0;
+  static const lg = 24.0;
+  static const xl = 32.0;
 }
 
 abstract final class AppDurations {
@@ -193,46 +188,46 @@ abstract final class AppBreakpoints {
 }
 
 abstract final class AppDialogSizes {
-  static const small = 480.0 * AppDensity.scale;
-  static const medium = 680.0 * AppDensity.scale;
-  static const large = 920.0 * AppDensity.scale;
-  static const extraLarge = 1180.0 * AppDensity.scale;
+  static const small = 480.0;
+  static const medium = 680.0;
+  static const large = 920.0;
+  static const extraLarge = 1180.0;
   static const maxHeightFactor = 0.88;
 }
 
 abstract final class AppTypography {
   static const screenTitle = TextStyle(
     color: AppColors.textPrimary,
-    fontSize: 28 * AppDensity.scale,
+    fontSize: 28,
     fontWeight: FontWeight.w800,
   );
 
   static const sectionTitle = TextStyle(
     color: AppColors.textPrimary,
-    fontSize: 18 * AppDensity.scale,
+    fontSize: 18,
     fontWeight: FontWeight.w700,
   );
 
   static const fieldText = TextStyle(
     color: AppColors.textPrimary,
-    fontSize: 18 * AppDensity.scale,
+    fontSize: 18,
     fontWeight: FontWeight.w600,
   );
 
   static const buttonText = TextStyle(
-    fontSize: 14 * AppDensity.scale,
+    fontSize: 14,
     fontWeight: FontWeight.w700,
   );
 
   static const tableHeader = TextStyle(
     color: AppColors.textPrimary,
-    fontSize: 14 * AppDensity.scale,
+    fontSize: 14,
     fontWeight: FontWeight.w700,
   );
 
   static const tableCell = TextStyle(
     color: AppColors.textPrimary,
-    fontSize: 14 * AppDensity.scale,
+    fontSize: 14,
     fontWeight: FontWeight.w500,
   );
 }
@@ -241,8 +236,8 @@ abstract final class AppShadows {
   static const soft = <BoxShadow>[
     BoxShadow(
       color: Color(0x140F2742),
-      blurRadius: 18 * AppDensity.scale,
-      offset: Offset(0, 6 * AppDensity.scale),
+      blurRadius: 18,
+      offset: Offset(0, 6),
     ),
   ];
 }

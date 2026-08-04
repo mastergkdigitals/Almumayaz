@@ -140,7 +140,7 @@ class DesignGalleryTablesSection extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.md),
           const SizedBox(
-            height: 360 * AppDensity.scale,
+            height: 360,
             child: AppSalesInvoiceTableTemplate(
               key: Key('designSalesInvoiceTable'),
             ),
@@ -152,7 +152,7 @@ class DesignGalleryTablesSection extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.md),
           const SizedBox(
-            height: 360 * AppDensity.scale,
+            height: 360,
             child: AppPurchaseInvoiceTableTemplate(
               key: Key('designPurchaseInvoiceTable'),
             ),

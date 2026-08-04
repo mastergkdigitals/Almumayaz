@@ -502,7 +502,7 @@ class _AppSalesInvoiceTableTemplateState
               : AppButtonVariant.danger,
           backgroundColor: isLastRow ? AppColors.green : AppColors.red,
           foregroundColor: Colors.white,
-          size: AppControlHeights.compact,
+          size: 40,
           iconSize: AppIconSizes.md,
           borderRadius: AppRadii.sm,
           onPressed: isLastRow

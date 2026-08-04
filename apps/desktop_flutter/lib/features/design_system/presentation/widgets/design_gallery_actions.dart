@@ -266,7 +266,7 @@ class _DesignGalleryActionsGroupState
               Align(
                 alignment: AlignmentDirectional.centerStart,
                 child: SizedBox(
-                  width: 320 * AppDensity.scale,
+                  width: 320,
                   child: AppDropdownField<_ActionBarPreviewState>(
                     fieldKey: const Key('designActionBarStateDropdown'),
                     label: 'حالة النموذج',

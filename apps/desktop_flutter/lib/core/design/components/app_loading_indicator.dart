@@ -7,8 +7,8 @@ import '../app_tokens.dart';
 class AppLoadingIndicator extends StatefulWidget {
   const AppLoadingIndicator({
     super.key,
-    this.size = 40 * AppDensity.scale,
-    this.strokeWidth = 4 * AppDensity.scale,
+    this.size = 40,
+    this.strokeWidth = 4,
   });
 
   final double size;

@@ -140,15 +140,15 @@ class AppModuleDialog extends StatelessWidget {
     return Row(
       children: [
         SizedBox(
-          width: 48 * AppDensity.scale,
-          height: 48 * AppDensity.scale,
+          width: 48,
+          height: 48,
           child: showHeaderCloseButton
               ? AppTooltipIconButton(
                   key: const Key('appModuleDialogClose'),
                   tooltipKey: const Key('appModuleDialogCloseTooltip'),
                   icon: Icons.close_rounded,
                   tooltip: 'إغلاق',
-                  size: 48 * AppDensity.scale,
+                  size: 48,
                   onPressed: onClose,
                 )
               : null,
@@ -191,9 +191,7 @@ class _HeaderText extends StatelessWidget {
         Text(
           title,
           textAlign: centered ? TextAlign.center : TextAlign.start,
-          style: AppTypography.screenTitle.copyWith(
-            fontSize: 24 * AppDensity.scale,
-          ),
+          style: AppTypography.screenTitle.copyWith(fontSize: 24),
         ),
         if (subtitle != null) ...[
           const SizedBox(height: AppSpacing.xs),
@@ -224,8 +222,8 @@ class _HeaderIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 48 * AppDensity.scale,
-      height: 48 * AppDensity.scale,
+      width: 48,
+      height: 48,
       decoration: BoxDecoration(
         color: Color.alphaBlend(
           accentColor.withAlpha(24),
@@ -278,8 +276,8 @@ class AppDialogSection extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 4 * AppDensity.scale,
-                height: 24 * AppDensity.scale,
+                width: 4,
+                height: 24,
                 decoration: BoxDecoration(
                   color: accentColor,
                   borderRadius: BorderRadius.circular(AppRadii.sm),

@@ -30,9 +30,7 @@ class AppLoadingOverlay extends StatelessWidget {
                     liveRegion: true,
                     label: message,
                     child: Container(
-                      constraints: const BoxConstraints(
-                        minWidth: 180 * AppDensity.scale,
-                      ),
+                      constraints: const BoxConstraints(minWidth: 180),
                       padding: const EdgeInsets.all(AppSpacing.lg),
                       decoration: BoxDecoration(
                         color: AppColors.surface,
@@ -43,8 +41,8 @@ class AppLoadingOverlay extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           const AppLoadingIndicator(
-                            size: 40 * AppDensity.scale,
-                            strokeWidth: 4 * AppDensity.scale,
+                            size: 40,
+                            strokeWidth: 4,
                           ),
                           const SizedBox(height: AppSpacing.md),
                           Text(

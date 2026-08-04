@@ -75,7 +75,7 @@ class _KeyboardRule extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 300 * AppDensity.scale,
+      width: 300,
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: AppColors.surface,
