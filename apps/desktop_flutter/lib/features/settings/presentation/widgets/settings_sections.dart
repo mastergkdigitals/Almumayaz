@@ -1,6 +1,26 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/domain/business_values.dart';
 import '../../../../core/design/app_design_system.dart';
+import '../../../../core/services/service_failure.dart';
+import '../../../audit_log/data/demo_audit_repository.dart';
+import '../../../audit_log/domain/audit_models.dart';
+import '../../../audit_log/domain/audit_repository.dart';
+import '../../../authentication/data/demo_authentication_service.dart';
+import '../../../authentication/domain/authentication_service.dart';
+import '../../../authentication/domain/session_models.dart';
+import '../../../backup_restore/data/demo_backup_services.dart';
+import '../../../backup_restore/domain/backup_models.dart';
+import '../../../backup_restore/domain/backup_services.dart';
+import '../../../electronic_archive/data/demo_archive_services.dart';
+import '../../../electronic_archive/domain/archive_models.dart';
+import '../../../electronic_archive/domain/archive_services.dart';
+import '../../../permissions/data/demo_role_repository.dart';
+import '../../../permissions/domain/permission_models.dart';
+import '../../../permissions/domain/role_repository.dart';
+import '../../../users/data/demo_user_repository.dart';
+import '../../../users/domain/user_models.dart';
+import '../../../users/domain/user_repository.dart';
 
 const _settingsWarehouseOptions = <AppDropdownOption<String>>[
   AppDropdownOption(value: 'الرئيسي', label: 'الرئيسي'),
@@ -1285,9 +1305,15 @@ class BackupDataSettingsSection extends StatefulWidget {
   const BackupDataSettingsSection({
     required this.accentColor,
     super.key,
+    this.configurationRepository,
+    this.backupService,
+    this.googleDriveService,
   });
 
   final Color accentColor;
+  final BackupConfigurationRepository? configurationRepository;
+  final BackupService? backupService;
+  final GoogleDriveBackupService? googleDriveService;
 
   @override
   State<BackupDataSettingsSection> createState() =>
@@ -1296,6 +1322,7 @@ class BackupDataSettingsSection extends StatefulWidget {
 
 class _BackupDataSettingsSectionState
     extends State<BackupDataSettingsSection> {
+  static const _deviceId = 'desktop-demo-01';
   final _localPathController = TextEditingController(
     text: r'D:\Almumayaz\Backups',
   );
@@ -1305,7 +1332,15 @@ class _BackupDataSettingsSectionState
   var _automaticBackup = true;
   var _backupFrequency = 'يومياً';
   var _driveConnected = false;
-  var _nextBackupId = 4;
+  var _isBusy = false;
+  String? _operationMessage;
+  BackupVerification? _lastVerification;
+  late final BackupConfigurationRepository _configurationRepository;
+  late final BackupService _backupService;
+  late final GoogleDriveBackupService _googleDriveService;
+  CloudConnection _driveConnection = const CloudConnection(
+    status: CloudConnectionStatus.disconnected,
+  );
   final _history = <_BackupHistoryEntry>[
     const _BackupHistoryEntry(
       id: 1,
@@ -1334,37 +1369,188 @@ class _BackupDataSettingsSectionState
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _configurationRepository = widget.configurationRepository ??
+        DemoBackupConfigurationRepository();
+    _googleDriveService =
+        widget.googleDriveService ?? DemoGoogleDriveBackupService();
+    _backupService = widget.backupService ??
+        DemoBackupService(googleDriveService: _googleDriveService);
+    _loadBackupState();
+  }
+
+  @override
   void dispose() {
     _localPathController.dispose();
     _driveFolderController.dispose();
     super.dispose();
   }
 
-  void _toggleDriveConnection() {
-    setState(() => _driveConnected = !_driveConnected);
-    if (_driveConnected) {
-      AppToast.showSuccess(context, 'تم ربط Google Drive تجريبياً');
-    } else {
-      AppToast.showWarning(context, 'تم فصل Google Drive تجريبياً');
+  Future<void> _loadBackupState() async {
+    try {
+      final configuration = await _configurationRepository.load(_deviceId);
+      final history = await _backupService.listHistory();
+      final connection = await _googleDriveService.connection();
+      if (!mounted) return;
+      setState(() {
+        _localPathController.text = configuration.localPath;
+        _automaticBackup = configuration.schedule.isEnabled;
+        _backupFrequency = _backupFrequencyLabel(
+          configuration.schedule.frequency,
+        );
+        _driveConnection = connection;
+        _driveConnected =
+            connection.status == CloudConnectionStatus.connected;
+        if (connection.selectedFolder != null) {
+          _driveFolderController.text = connection.selectedFolder!.name;
+        }
+        _replaceHistory(history);
+      });
+    } on Object catch (error) {
+      if (mounted) {
+        AppToast.showError(context, _serviceMessage(error));
+      }
     }
   }
 
-  void _createBackup() {
-    setState(() {
-      _history.insert(
-        0,
-        _BackupHistoryEntry(
-          id: _nextBackupId++,
-          createdAt: '2026/07/29 10:30 ص',
-          destination:
-              _driveConnected ? 'محلي + Google Drive' : 'محلي',
-          size: '18.6 MB',
-          status: 'مكتملة',
-          isSuccessful: true,
+  Future<void> _toggleDriveConnection() async {
+    if (_isBusy) return;
+    setState(() => _isBusy = true);
+    try {
+      if (_driveConnected) {
+        await _googleDriveService.disconnect();
+        if (!mounted) return;
+        setState(() {
+          _driveConnected = false;
+          _driveConnection = const CloudConnection(
+            status: CloudConnectionStatus.disconnected,
+          );
+        });
+        AppToast.showWarning(context, 'تم فصل اتصال Google Drive التجريبي');
+      } else {
+        final connection = await _googleDriveService.connect();
+        if (!mounted) return;
+        setState(() {
+          _driveConnection = connection;
+          _driveConnected =
+              connection.status == CloudConnectionStatus.connected;
+          if (connection.selectedFolder != null) {
+            _driveFolderController.text = connection.selectedFolder!.name;
+          }
+        });
+        AppToast.showSuccess(
+          context,
+          'تم ربط Google Drive في الوضع التجريبي فقط',
+        );
+      }
+    } on Object catch (error) {
+      if (mounted) AppToast.showError(context, _serviceMessage(error));
+    } finally {
+      if (mounted) setState(() => _isBusy = false);
+    }
+  }
+
+  Future<BackupConfiguration?> _saveConfiguration({
+    bool showConfirmation = true,
+  }) async {
+    final localPath = _localPathController.text.trim();
+    if (localPath.isEmpty) {
+      AppToast.showWarning(context, 'اكتب مسار النسخ المحلي');
+      return null;
+    }
+    try {
+      CloudFolder? selectedFolder = _driveConnection.selectedFolder;
+      if (_driveConnected) {
+        final folders = await _googleDriveService.listFolders();
+        final folderName = _driveFolderController.text.trim();
+        selectedFolder = folders.where(
+          (folder) => folder.name.toLowerCase() == folderName.toLowerCase(),
+        ).firstOrNull;
+        if (selectedFolder == null) {
+          throw const ServiceFailure(
+            kind: ServiceFailureKind.validation,
+            message: 'اختر أحد مجلدات Google Drive التجريبية المتاحة',
+          );
+        }
+        _driveConnection =
+            await _googleDriveService.selectFolder(selectedFolder);
+      }
+      final configuration = BackupConfiguration(
+        deviceId: _deviceId,
+        localPath: localPath,
+        schedule: BackupSchedule(
+          isEnabled: _automaticBackup,
+          frequency: _automaticBackup
+              ? _backupFrequencyValue(_backupFrequency)
+              : BackupFrequency.manual,
         ),
+        googleDriveFolderId: selectedFolder?.id,
       );
+      await _configurationRepository.save(configuration);
+      if (showConfirmation && mounted) {
+        AppToast.showSuccess(context, 'تم حفظ إعدادات النسخ التجريبية');
+      }
+      return configuration;
+    } on Object catch (error) {
+      if (mounted) AppToast.showError(context, _serviceMessage(error));
+      return null;
+    }
+  }
+
+  Future<void> _createBackup() async {
+    if (_isBusy) return;
+    setState(() {
+      _isBusy = true;
+      _operationMessage = 'جارٍ إنشاء نسخة محلية مشفرة...';
     });
-    AppToast.showInfo(context, 'تم إنشاء نسخة احتياطية تجريبية');
+    try {
+      final configuration = await _saveConfiguration(
+        showConfirmation: false,
+      );
+      if (configuration == null) return;
+      final record = await _backupService.createBackup(
+        configuration: configuration,
+        uploadToGoogleDrive: _driveConnected,
+      );
+      final verification = await _backupService.verifyRestoreSource(
+        StoredBackupSource(record.id),
+      );
+      final history = await _backupService.listHistory();
+      if (!mounted) return;
+      setState(() {
+        _replaceHistory(history);
+        _lastVerification = verification;
+        _operationMessage = record.status == BackupStatus.uploadFailed
+            ? '${record.failureMessage} — النسخة المحلية قابلة للاستعادة.'
+            : 'اكتملت النسخة والتحقق من التوقيع وقيمة checksum.';
+      });
+      if (record.status == BackupStatus.uploadFailed) {
+        AppToast.showWarning(
+          context,
+          record.failureMessage ?? 'تعذر الرفع وبقيت النسخة المحلية',
+        );
+      } else {
+        AppToast.showSuccess(context, 'تم إنشاء نسخة تجريبية والتحقق منها');
+      }
+    } on Object catch (error) {
+      if (mounted) {
+        setState(() => _operationMessage = _serviceMessage(error));
+        AppToast.showError(context, _serviceMessage(error));
+      }
+    } finally {
+      if (mounted) setState(() => _isBusy = false);
+    }
+  }
+
+  void _failNextDriveUpload() {
+    final service = _googleDriveService;
+    if (service is! DemoGoogleDriveBackupService) return;
+    service.failNextUpload();
+    AppToast.showInfo(
+      context,
+      'سيُحاكى فشل الرفع التالي مع الاحتفاظ بالنسخة المحلية',
+    );
   }
 
   Future<void> _restoreBackup([_BackupHistoryEntry? entry]) async {
@@ -1380,7 +1566,55 @@ class _BackupDataSettingsSectionState
       size: AppDialogSize.medium,
     );
     if (!confirmed || !mounted) return;
-    AppToast.showWarning(context, 'تمت محاكاة استعادة النسخة الاحتياطية');
+    final source = entry?.backupId == null
+        ? ExternalBackupSource(
+            localPath: r'D:\Almumayaz\Backups\external_demo.backup',
+          )
+        : StoredBackupSource(entry!.backupId!);
+    try {
+      final verification = await _backupService.verifyRestoreSource(source);
+      if (!verification.canRestore) {
+        throw ServiceFailure(
+          kind: ServiceFailureKind.securityRejected,
+          message: verification.message ?? 'النسخة غير قابلة للاستعادة',
+        );
+      }
+      final result = await _backupService.restore(
+        RestoreRequest(source: source, confirmedByUser: true),
+      );
+      if (!mounted) return;
+      setState(() {
+        _lastVerification = verification;
+        _operationMessage = result.restartRequired
+            ? 'اكتملت الاستعادة التجريبية ويلزم إعادة تشغيل التطبيق.'
+            : 'اكتملت الاستعادة التجريبية.';
+      });
+      AppToast.showWarning(context, _operationMessage!);
+    } on Object catch (error) {
+      if (mounted) AppToast.showError(context, _serviceMessage(error));
+    }
+  }
+
+  Future<void> _verifyBackup(_BackupHistoryEntry entry) async {
+    final backupId = entry.backupId;
+    if (backupId == null) return;
+    try {
+      final verification = await _backupService.verifyRestoreSource(
+        StoredBackupSource(backupId),
+      );
+      if (!mounted) return;
+      setState(() {
+        _lastVerification = verification;
+        _operationMessage = verification.message;
+      });
+      if (verification.canRestore) {
+        AppToast.showSuccess(context, 'النسخة سليمة وقابلة للاستعادة');
+      } else {
+        AppToast.showError(context, 'فشل التحقق من النسخة');
+      }
+    } on Object catch (error) {
+      if (mounted) AppToast.showError(context, _serviceMessage(error));
+    }
   }
 
   @override
@@ -1460,13 +1694,17 @@ class _BackupDataSettingsSectionState
                     enabled: _automaticBackup,
                     options: const [
                       AppDropdownOption(
-                        value: 'عند إغلاق التطبيق',
-                        label: 'عند إغلاق التطبيق',
+                        value: 'يدوياً',
+                        label: 'يدوياً',
                       ),
                       AppDropdownOption(value: 'يومياً', label: 'يومياً'),
                       AppDropdownOption(
                         value: 'أسبوعياً',
                         label: 'أسبوعياً',
+                      ),
+                      AppDropdownOption(
+                        value: 'شهرياً',
+                        label: 'شهرياً',
                       ),
                     ],
                     useIntrinsicHeight: true,
@@ -1543,6 +1781,19 @@ class _BackupDataSettingsSectionState
                     controller: _driveFolderController,
                     label: 'مجلد Google Drive',
                     icon: Icons.drive_folder_upload_outlined,
+                    suffixIcon: _driveConnected &&
+                            _googleDriveService
+                                is DemoGoogleDriveBackupService
+                        ? AppFieldIconButton(
+                            buttonKey: const Key(
+                              'settingsFailNextDriveUploadButton',
+                            ),
+                            icon: Icons.cloud_off_outlined,
+                            tooltip: 'محاكاة فشل الرفع التالي',
+                            color: AppColors.warning,
+                            onPressed: _failNextDriveUpload,
+                          )
+                        : null,
                     accentColor: widget.accentColor,
                     enabled: _driveConnected,
                     readOnly: !_driveConnected,
@@ -1552,7 +1803,8 @@ class _BackupDataSettingsSectionState
                   const SizedBox(height: AppSpacing.md),
                   AppInfoBanner(
                     message: _driveConnected
-                        ? 'سيتم رفع النسخة المحلية الجديدة إلى المجلد المحدد.'
+                        ? '${_driveConnection.accountLabel ?? 'حساب تجريبي'} — '
+                            'سيتم رفع نسخة إضافية محاكاةً، مع بقاء النسخة المحلية عند الفشل.'
                         : 'اربط الحساب لتفعيل مجلد Google Drive والرفع السحابي.',
                     icon: Icons.info_outline_rounded,
                     foregroundColor: _driveConnected
@@ -1587,19 +1839,14 @@ class _BackupDataSettingsSectionState
                 label: 'حفظ إعدادات النسخ',
                 icon: Icons.save_outlined,
                 minWidth: 200,
-                onPressed: () {
-                  AppToast.showInfo(
-                    context,
-                    'تم حفظ إعدادات النسخ مؤقتاً',
-                  );
-                },
+                onPressed: _isBusy ? null : () => _saveConfiguration(),
               ),
               AppButton(
                 key: const Key('settingsRunBackupButton'),
                 label: 'إنشاء نسخة الآن',
                 icon: Icons.backup_rounded,
                 minWidth: 190,
-                onPressed: _createBackup,
+                onPressed: _isBusy ? null : _createBackup,
               ),
               AppButton(
                 key: const Key('settingsRestoreBackupButton'),
@@ -1607,10 +1854,27 @@ class _BackupDataSettingsSectionState
                 icon: Icons.restore_rounded,
                 variant: AppButtonVariant.warning,
                 minWidth: 190,
-                onPressed: _restoreBackup,
+                onPressed: _isBusy ? null : _restoreBackup,
               ),
             ],
           ),
+          if (_operationMessage != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            AppInfoBanner(
+              key: const Key('settingsBackupOperationState'),
+              message: _operationMessage!,
+              icon: _lastVerification?.canRestore == false
+                  ? Icons.error_outline_rounded
+                  : Icons.verified_outlined,
+              foregroundColor: _lastVerification?.canRestore == false
+                  ? AppColors.danger
+                  : widget.accentColor,
+              backgroundColor: Color.alphaBlend(
+                widget.accentColor.withAlpha(18),
+                AppColors.surface,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: AppSpacing.lg),
         SettingsTemplatePanel(
@@ -1677,16 +1941,32 @@ class _BackupDataSettingsSectionState
                           ),
                         ),
                         Center(
-                          child: AppTableActionButton(
-                            key: Key(
-                              'settingsRestoreHistory_${entry.id}',
-                            ),
-                            icon: Icons.restore_rounded,
-                            tooltip: 'استعادة هذه النسخة',
-                            variant: AppButtonVariant.warning,
-                            onPressed: entry.isSuccessful
-                                ? () => _restoreBackup(entry)
-                                : null,
+                          child: Wrap(
+                            spacing: AppSpacing.xs,
+                            children: [
+                              AppTableActionButton(
+                                key: Key(
+                                  'settingsVerifyHistory_${entry.id}',
+                                ),
+                                icon: Icons.verified_outlined,
+                                tooltip: 'التحقق من النسخة',
+                                variant: AppButtonVariant.success,
+                                onPressed: entry.isRestorable
+                                    ? () => _verifyBackup(entry)
+                                    : null,
+                              ),
+                              AppTableActionButton(
+                                key: Key(
+                                  'settingsRestoreHistory_${entry.id}',
+                                ),
+                                icon: Icons.restore_rounded,
+                                tooltip: 'استعادة هذه النسخة',
+                                variant: AppButtonVariant.warning,
+                                onPressed: entry.isRestorable
+                                    ? () => _restoreBackup(entry)
+                                    : null,
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -1706,6 +1986,12 @@ class _BackupDataSettingsSectionState
     }
     return null;
   }
+
+  void _replaceHistory(List<BackupRecord> records) {
+    _history
+      ..clear()
+      ..addAll(records.map(_backupHistoryEntry));
+  }
 }
 
 class _BackupHistoryEntry {
@@ -1716,6 +2002,8 @@ class _BackupHistoryEntry {
     required this.size,
     required this.status,
     required this.isSuccessful,
+    this.backupId,
+    this.isRestorable = false,
   });
 
   final int id;
@@ -1724,15 +2012,120 @@ class _BackupHistoryEntry {
   final String size;
   final String status;
   final bool isSuccessful;
+  final EntityId? backupId;
+  final bool isRestorable;
+}
+
+_BackupHistoryEntry _backupHistoryEntry(BackupRecord record) {
+  final sequence = int.tryParse(record.id.value.split('-').last) ??
+      record.id.value.hashCode.abs();
+  final isRestorable = record.isEncrypted &&
+      record.checksum != null &&
+      (record.status == BackupStatus.completed ||
+          record.status == BackupStatus.uploadFailed);
+  return _BackupHistoryEntry(
+    id: sequence,
+    backupId: record.id,
+    createdAt: _formatAuditTimestamp(record.createdAt),
+    destination: switch (record.destination) {
+      BackupDestination.local => 'محلي',
+      BackupDestination.googleDrive => 'Google Drive',
+      BackupDestination.localAndGoogleDrive => 'محلي + Google Drive',
+    },
+    size: _formatByteSize(record.byteSize),
+    status: switch (record.status) {
+      BackupStatus.queued => 'في الانتظار',
+      BackupStatus.creating => 'جارٍ الإنشاء',
+      BackupStatus.verifying => 'جارٍ التحقق',
+      BackupStatus.completed => 'مكتملة',
+      BackupStatus.uploadFailed => 'تعذر الرفع (المحلي سليم)',
+      BackupStatus.verificationFailed => 'فشل التحقق',
+      BackupStatus.restoreFailed => 'فشل الاستعادة',
+      BackupStatus.cancelled => 'ملغاة',
+    },
+    isSuccessful: record.status == BackupStatus.completed,
+    isRestorable: isRestorable,
+  );
+}
+
+String _backupFrequencyLabel(BackupFrequency frequency) => switch (frequency) {
+      BackupFrequency.manual => 'يدوياً',
+      BackupFrequency.daily => 'يومياً',
+      BackupFrequency.weekly => 'أسبوعياً',
+      BackupFrequency.monthly => 'شهرياً',
+    };
+
+BackupFrequency _backupFrequencyValue(String label) => switch (label) {
+      'أسبوعياً' => BackupFrequency.weekly,
+      'شهرياً' => BackupFrequency.monthly,
+      'يدوياً' => BackupFrequency.manual,
+      'عند إغلاق التطبيق' => BackupFrequency.manual,
+      _ => BackupFrequency.daily,
+    };
+
+String _formatByteSize(int bytes) {
+  if (bytes >= 1024 * 1024) {
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+  if (bytes >= 1024) return '${(bytes / 1024).toStringAsFixed(0)} KB';
+  return '$bytes B';
+}
+
+String _shortChecksum(String checksum) {
+  final prefixLength = checksum.length < 12 ? checksum.length : 12;
+  return '${checksum.substring(0, prefixLength)}…';
+}
+
+String _formatAuditTimestamp(AuditTimestamp timestamp) {
+  final local = timestamp.value.toLocal();
+  final date = '${local.year.toString().padLeft(4, '0')}/'
+      '${local.month.toString().padLeft(2, '0')}/'
+      '${local.day.toString().padLeft(2, '0')}';
+  final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
+  final minute = local.minute.toString().padLeft(2, '0');
+  final period = local.hour < 12 ? 'ص' : 'م';
+  return '$date ${hour.toString().padLeft(2, '0')}:$minute $period';
+}
+
+String _serviceMessage(Object error) =>
+    error is ServiceFailure ? error.message : 'تعذر إكمال العملية التجريبية';
+
+int _nextEntitySequence(
+  Iterable<EntityId> ids, {
+  required int fallback,
+}) {
+  var maximum = 0;
+  for (final id in ids) {
+    final sequence = int.tryParse(id.value.split('-').last);
+    if (sequence != null && sequence > maximum) maximum = sequence;
+  }
+  return maximum == 0 ? fallback : maximum + 1;
+}
+
+extension _FirstOrNull<T> on Iterable<T> {
+  T? get firstOrNull {
+    final iterator = this.iterator;
+    return iterator.moveNext() ? iterator.current : null;
+  }
 }
 
 class UsersSecuritySettingsSection extends StatefulWidget {
   const UsersSecuritySettingsSection({
     required this.accentColor,
     super.key,
+    this.userRepository,
+    this.roleRepository,
+    this.authenticationService,
+    this.sessionPolicyRepository,
+    this.auditRepository,
   });
 
   final Color accentColor;
+  final UserRepository? userRepository;
+  final RoleRepository? roleRepository;
+  final AuthenticationService? authenticationService;
+  final SessionPolicyRepository? sessionPolicyRepository;
+  final AuditRepository? auditRepository;
 
   @override
   State<UsersSecuritySettingsSection> createState() =>
@@ -1752,6 +2145,13 @@ class _UsersSecuritySettingsSectionState
   var _logType = 'الكل';
   var _nextUserId = 4;
   var _nextRoleId = 5;
+  var _nextAuditId = 6;
+  late final UserRepository _userRepository;
+  late final RoleRepository _roleRepository;
+  late final AuthenticationService _authenticationService;
+  late final SessionPolicyRepository _sessionPolicyRepository;
+  late final AuditRepository _auditRepository;
+  AppSession? _currentSession;
   final _users = <_SettingsUser>[
     const _SettingsUser(
       id: 1,
@@ -1813,7 +2213,7 @@ class _UsersSecuritySettingsSectionState
     ),
   ];
 
-  static const _auditEntries = <_SettingsAuditEntry>[
+  final _auditEntries = <_SettingsAuditEntry>[
     _SettingsAuditEntry(
       id: 1,
       createdAt: '2026/07/29 09:02 ص',
@@ -1857,6 +2257,61 @@ class _UsersSecuritySettingsSectionState
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _userRepository = widget.userRepository ?? DemoUserRepository();
+    _roleRepository = widget.roleRepository ?? DemoRoleRepository();
+    _authenticationService =
+        widget.authenticationService ?? DemoAuthenticationService();
+    _sessionPolicyRepository = widget.sessionPolicyRepository ??
+        DemoSessionPolicyRepository();
+    _auditRepository = widget.auditRepository ?? DemoAuditRepository();
+    _loadSecurityState();
+  }
+
+  Future<void> _loadSecurityState() async {
+    try {
+      final roles = await _roleRepository.getAll();
+      final users = await _userRepository.search(const UserQuery());
+      final policy = await _sessionPolicyRepository.loadAutoLockPolicy();
+      final session = await _authenticationService.currentSession();
+      final auditPage = await _auditRepository.search(AuditQuery());
+      if (!mounted) return;
+      final roleNames = {for (final role in roles) role.id: role.name};
+      setState(() {
+        _nextRoleId = _nextEntitySequence(
+          roles.map((role) => role.id),
+          fallback: 5,
+        );
+        _nextUserId = _nextEntitySequence(
+          users.map((user) => user.id),
+          fallback: 4,
+        );
+        _nextAuditId = _nextEntitySequence(
+          auditPage.records.map((record) => record.id),
+          fallback: 6,
+        );
+        _roles
+          ..clear()
+          ..addAll(roles.map(_settingsRoleFromDomain));
+        _users
+          ..clear()
+          ..addAll(
+            users.map((user) => _settingsUserFromDomain(user, roleNames)),
+          );
+        _idleLockEnabled = policy.isEnabled;
+        _idleLockDuration = '${policy.idleTimeout.inMinutes} دقيقة';
+        _currentSession = session;
+        _auditEntries
+          ..clear()
+          ..addAll(auditPage.records.map(_settingsAuditFromDomain));
+      });
+    } on Object catch (error) {
+      if (mounted) AppToast.showError(context, _serviceMessage(error));
+    }
+  }
+
+  @override
   void dispose() {
     _currentPasswordController.dispose();
     _newPasswordController.dispose();
@@ -1892,29 +2347,68 @@ class _UsersSecuritySettingsSectionState
       return;
     }
 
-    setState(() {
-      _users.add(
-        _SettingsUser(
-          id: _nextUserId++,
-          fullName: draft.fullName,
-          username: draft.username,
-          role: draft.role,
-          isEnabled: true,
-          isLocked: false,
-          lastLogin: 'لم يسجل الدخول',
-        ),
+    final role = _roles.where((entry) => entry.name == draft.role).firstOrNull;
+    if (role == null) {
+      AppToast.showError(context, 'الدور المحدد غير موجود');
+      return;
+    }
+    final user = _SettingsUser(
+      id: _nextUserId++,
+      fullName: draft.fullName,
+      username: draft.username,
+      role: draft.role,
+      isEnabled: true,
+      isLocked: false,
+      lastLogin: 'لم يسجل الدخول',
+    );
+    try {
+      await _userRepository.save(_appUserFromSettings(user, role.id));
+      if (!mounted) return;
+      setState(() => _users.add(user));
+      await _appendAudit(
+        action: AuditAction.create,
+        outcome: AuditOutcome.success,
+        summary: 'إضافة المستخدم ${user.username}',
+        entityType: 'user',
+        entityId: EntityId.demo('user', user.id),
       );
-    });
-    AppToast.showInfo(context, 'تمت إضافة مستخدم تجريبي');
+      if (mounted) AppToast.showInfo(context, 'تمت إضافة مستخدم تجريبي');
+    } on Object catch (error) {
+      if (mounted) AppToast.showError(context, _serviceMessage(error));
+    }
   }
 
-  void _toggleUserEnabled(_SettingsUser user) {
+  Future<void> _toggleUserEnabled(_SettingsUser user) async {
     final index = _users.indexWhere((entry) => entry.id == user.id);
     if (index < 0) return;
     final isEnabled = !user.isEnabled;
-    setState(() {
-      _users[index] = user.copyWith(isEnabled: isEnabled);
-    });
+    final status = _userStatusValue(
+      isEnabled: isEnabled,
+      isLocked: user.isLocked,
+    );
+    try {
+      await _userRepository.setStatus(
+        EntityId.demo('user', user.id),
+        status,
+      );
+      if (!mounted) return;
+      setState(() {
+        _users[index] = user.copyWith(isEnabled: isEnabled);
+      });
+      await _appendAudit(
+        action: AuditAction.accountStatusChange,
+        outcome: AuditOutcome.success,
+        summary: isEnabled
+            ? 'تفعيل حساب ${user.username}'
+            : 'تعطيل حساب ${user.username}',
+        entityType: 'user',
+        entityId: EntityId.demo('user', user.id),
+      );
+    } on Object catch (error) {
+      if (mounted) AppToast.showError(context, _serviceMessage(error));
+      return;
+    }
+    if (!mounted) return;
     if (isEnabled) {
       AppToast.showSuccess(context, 'تم تفعيل الحساب');
     } else {
@@ -1922,13 +2416,36 @@ class _UsersSecuritySettingsSectionState
     }
   }
 
-  void _toggleUserLock(_SettingsUser user) {
+  Future<void> _toggleUserLock(_SettingsUser user) async {
     final index = _users.indexWhere((entry) => entry.id == user.id);
     if (index < 0) return;
     final isLocked = !user.isLocked;
-    setState(() {
-      _users[index] = user.copyWith(isLocked: isLocked);
-    });
+    try {
+      await _userRepository.setStatus(
+        EntityId.demo('user', user.id),
+        _userStatusValue(
+          isEnabled: user.isEnabled,
+          isLocked: isLocked,
+        ),
+      );
+      if (!mounted) return;
+      setState(() {
+        _users[index] = user.copyWith(isLocked: isLocked);
+      });
+      await _appendAudit(
+        action: AuditAction.accountStatusChange,
+        outcome: AuditOutcome.success,
+        summary: isLocked
+            ? 'قفل حساب ${user.username}'
+            : 'فتح قفل حساب ${user.username}',
+        entityType: 'user',
+        entityId: EntityId.demo('user', user.id),
+      );
+    } on Object catch (error) {
+      if (mounted) AppToast.showError(context, _serviceMessage(error));
+      return;
+    }
+    if (!mounted) return;
     AppToast.showWarning(
       context,
       isLocked ? 'تم قفل الحساب' : 'تم فتح قفل الحساب',
@@ -1936,7 +2453,7 @@ class _UsersSecuritySettingsSectionState
   }
 
   Future<void> _openUserPasswordDialog(_SettingsUser user) async {
-    final changed = await showDialog<bool>(
+    final draft = await showDialog<_SettingsUserPasswordDraft>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => Directionality(
@@ -1947,11 +2464,30 @@ class _UsersSecuritySettingsSectionState
         ),
       ),
     );
-    if (changed != true || !mounted) return;
-    AppToast.showSuccess(
-      context,
-      'تم تغيير كلمة مرور ${user.fullName} تجريبياً',
-    );
+    if (draft == null || !mounted) return;
+    try {
+      await _authenticationService.changePassword(
+        PasswordChangeRequest(
+          userId: EntityId.demo('user', user.id),
+          currentPassword: draft.currentPassword,
+          newPassword: draft.newPassword,
+        ),
+      );
+      await _appendAudit(
+        action: AuditAction.update,
+        outcome: AuditOutcome.success,
+        summary: 'تغيير كلمة مرور ${user.username}',
+        entityType: 'user',
+        entityId: EntityId.demo('user', user.id),
+      );
+      if (!mounted) return;
+      AppToast.showSuccess(
+        context,
+        'تم تغيير كلمة مرور ${user.fullName} تجريبياً',
+      );
+    } on Object catch (error) {
+      if (mounted) AppToast.showError(context, _serviceMessage(error));
+    }
   }
 
   Future<void> _openRoleDialog({_SettingsRole? role}) async {
@@ -1984,39 +2520,65 @@ class _UsersSecuritySettingsSectionState
     }
 
     if (role == null) {
-      setState(() {
-        _roles.add(
-          _SettingsRole(
-            id: _nextRoleId++,
-            name: draft.name,
-            permissions: draft.permissions,
-          ),
+      final newRole = _SettingsRole(
+        id: _nextRoleId++,
+        name: draft.name,
+        permissions: draft.permissions,
+      );
+      try {
+        await _roleRepository.save(_appRoleFromSettings(newRole));
+        if (!mounted) return;
+        setState(() => _roles.add(newRole));
+        await _appendAudit(
+          action: AuditAction.permissionChange,
+          outcome: AuditOutcome.success,
+          summary: 'إضافة الدور ${newRole.name}',
+          entityType: 'role',
+          entityId: EntityId.demo('role', newRole.id),
         );
-      });
-      AppToast.showInfo(context, 'تمت إضافة دور تجريبي');
+        if (mounted) AppToast.showInfo(context, 'تمت إضافة دور تجريبي');
+      } on Object catch (error) {
+        if (mounted) AppToast.showError(context, _serviceMessage(error));
+      }
       return;
     }
 
     final index = _roles.indexWhere((entry) => entry.id == role.id);
     if (index < 0) return;
-    setState(() {
-      _roles[index] = _SettingsRole(
-        id: role.id,
-        name: draft.name,
-        permissions: draft.permissions,
-      );
-      if (role.name != draft.name) {
-        for (var userIndex = 0;
-            userIndex < _users.length;
-            userIndex++) {
-          final user = _users[userIndex];
-          if (user.role == role.name) {
-            _users[userIndex] = user.copyWith(role: draft.name);
+    final updatedRole = _SettingsRole(
+      id: role.id,
+      name: draft.name,
+      permissions: draft.permissions,
+    );
+    try {
+      await _roleRepository.save(_appRoleFromSettings(updatedRole));
+      if (!mounted) return;
+      setState(() {
+        _roles[index] = updatedRole;
+        if (role.name != draft.name) {
+          for (var userIndex = 0;
+              userIndex < _users.length;
+              userIndex++) {
+            final user = _users[userIndex];
+            if (user.role == role.name) {
+              _users[userIndex] = user.copyWith(role: draft.name);
+            }
           }
         }
+      });
+      await _appendAudit(
+        action: AuditAction.permissionChange,
+        outcome: AuditOutcome.success,
+        summary: 'تحديث الدور والصلاحيات: ${updatedRole.name}',
+        entityType: 'role',
+        entityId: EntityId.demo('role', updatedRole.id),
+      );
+      if (mounted) {
+        AppToast.showSuccess(context, 'تم تحديث الدور والصلاحيات');
       }
-    });
-    AppToast.showSuccess(context, 'تم تحديث الدور والصلاحيات');
+    } on Object catch (error) {
+      if (mounted) AppToast.showError(context, _serviceMessage(error));
+    }
   }
 
   int _roleUsersCount(String roleName) {
@@ -2030,7 +2592,7 @@ class _UsersSecuritySettingsSectionState
     });
   }
 
-  void _savePassword() {
+  Future<void> _savePassword() async {
     final current = _currentPasswordController.text;
     final password = _newPasswordController.text;
     final confirmation = _confirmPasswordController.text;
@@ -2042,10 +2604,143 @@ class _UsersSecuritySettingsSectionState
       AppToast.showError(context, 'كلمتا المرور الجديدتان غير متطابقتين');
       return;
     }
-    _currentPasswordController.clear();
-    _newPasswordController.clear();
-    _confirmPasswordController.clear();
-    AppToast.showSuccess(context, 'تم تغيير كلمة المرور تجريبياً');
+    final userId = _currentSession?.userId ?? EntityId.demo('user', 1);
+    try {
+      await _authenticationService.changePassword(
+        PasswordChangeRequest(
+          userId: userId,
+          currentPassword: current,
+          newPassword: password,
+        ),
+      );
+      await _appendAudit(
+        action: AuditAction.update,
+        outcome: AuditOutcome.success,
+        summary: 'تغيير كلمة مرور المستخدم الحالي',
+        entityType: 'user',
+        entityId: userId,
+      );
+      if (!mounted) return;
+      _currentPasswordController.clear();
+      _newPasswordController.clear();
+      _confirmPasswordController.clear();
+      AppToast.showSuccess(context, 'تم تغيير كلمة المرور تجريبياً');
+    } on Object catch (error) {
+      if (mounted) AppToast.showError(context, _serviceMessage(error));
+    }
+  }
+
+  Future<void> _saveIdleLock() async {
+    final minutes = int.tryParse(_idleLockDuration.split(' ').first) ?? 15;
+    try {
+      await _sessionPolicyRepository.saveAutoLockPolicy(
+        AutoLockPolicy(
+          isEnabled: _idleLockEnabled,
+          idleTimeout: Duration(minutes: minutes),
+        ),
+      );
+      await _authenticationService.recordActivity();
+      _currentSession = await _authenticationService.currentSession();
+      await _appendAudit(
+        action: AuditAction.update,
+        outcome: AuditOutcome.success,
+        summary: _idleLockEnabled
+            ? 'تفعيل القفل التلقائي بعد $minutes دقيقة'
+            : 'تعطيل القفل التلقائي',
+        entityType: 'session_policy',
+        entityId: EntityId.demo('session_policy', 1),
+      );
+      if (!mounted) return;
+      setState(() {});
+      AppToast.showSuccess(context, 'تم حفظ سياسة القفل التجريبية');
+    } on Object catch (error) {
+      if (mounted) AppToast.showError(context, _serviceMessage(error));
+    }
+  }
+
+  Future<void> _toggleCurrentSessionLock() async {
+    try {
+      final current = await _authenticationService.currentSession();
+      if (current == null) {
+        throw const ServiceFailure(
+          kind: ServiceFailureKind.authenticationRequired,
+          message: 'لا توجد جلسة تجريبية حالية',
+        );
+      }
+      final session = current.state == SessionState.locked
+          ? await _authenticationService.unlock('password')
+          : await _authenticationService.lock(SessionLockReason.idleTimeout);
+      if (!mounted) return;
+      setState(() => _currentSession = session);
+      await _appendAudit(
+        action: AuditAction.other,
+        outcome: AuditOutcome.success,
+        summary: session.state == SessionState.locked
+            ? 'قفل الجلسة التجريبية لمحاكاة الخمول'
+            : 'فتح الجلسة التجريبية',
+        entityType: 'session',
+        entityId: session.id,
+      );
+      if (mounted) {
+        AppToast.showInfo(
+          context,
+          session.state == SessionState.locked
+              ? 'تم قفل الجلسة تجريبياً'
+              : 'تم فتح الجلسة تجريبياً',
+        );
+      }
+    } on Object catch (error) {
+      if (mounted) AppToast.showError(context, _serviceMessage(error));
+    }
+  }
+
+  Future<void> _appendAudit({
+    required AuditAction action,
+    required AuditOutcome outcome,
+    required String summary,
+    String? entityType,
+    EntityId? entityId,
+  }) async {
+    final actorId = _currentSession?.userId ?? EntityId.demo('user', 1);
+    final actor = _users.where(
+      (user) => EntityId.demo('user', user.id) == actorId,
+    ).firstOrNull;
+    final record = AuditRecord(
+      id: EntityId.demo('audit', _nextAuditId++),
+      occurredAt: AuditTimestamp(
+        DateTime.utc(2026, 7, 29, 7, 30 + _nextAuditId),
+      ),
+      actorUserId: actorId,
+      actorUsername: actor?.username ?? 'admin',
+      action: action,
+      outcome: outcome,
+      summary: summary,
+      details: const {'mode': 'demo'},
+      entityType: entityType,
+      entityId: entityId,
+    );
+    await _auditRepository.append(record);
+    if (!mounted) return;
+    setState(() => _auditEntries.insert(0, _settingsAuditFromDomain(record)));
+  }
+
+  Future<void> _refreshAudit() async {
+    try {
+      final page = await _auditRepository.search(
+        AuditQuery(
+          searchText: _logSearchController.text,
+          action: _auditActionForLabel(_logType),
+        ),
+      );
+      if (!mounted) return;
+      setState(() {
+        _auditEntries
+          ..clear()
+          ..addAll(page.records.map(_settingsAuditFromDomain));
+      });
+    } on Object catch (error) {
+      if (mounted) AppToast.showError(context, _serviceMessage(error));
+    }
   }
 
   @override
@@ -2234,7 +2929,7 @@ class _UsersSecuritySettingsSectionState
         children: [
           AppInfoBanner(
             message:
-                'هذا نموذج لتجميع صلاحيات الشاشات والإضافة والتعديل والحذف والطباعة ضمن أدوار واضحة.',
+                'هذا نموذج لتجميع صلاحيات العرض والإضافة والتعديل والحذف والطباعة والتصدير والإدارة ضمن أدوار واضحة.',
             icon: Icons.verified_user_outlined,
             foregroundColor: widget.accentColor,
             backgroundColor: Color.alphaBlend(
@@ -2402,6 +3097,20 @@ class _UsersSecuritySettingsSectionState
               ),
               const SizedBox(height: AppSpacing.md),
               AppInfoBanner(
+                key: const Key('settingsCurrentSessionState'),
+                message: _currentSession == null
+                    ? 'لا توجد جلسة تجريبية حالية.'
+                    : 'الجلسة ${_sessionStateLabel(_currentSession!.state)} — '
+                        'آخر نشاط ${_formatAuditTimestamp(_currentSession!.lastActivityAt)}',
+                icon: Icons.devices_outlined,
+                foregroundColor: widget.accentColor,
+                backgroundColor: Color.alphaBlend(
+                  widget.accentColor.withAlpha(18),
+                  AppColors.surface,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              AppInfoBanner(
                 message:
                     'القفل لا يغلق التطبيق ولا يفقد العمل المحفوظ؛ يطلب تسجيل الدخول فقط.',
                 icon: Icons.security_rounded,
@@ -2413,18 +3122,27 @@ class _UsersSecuritySettingsSectionState
               ),
               const SizedBox(height: AppSpacing.md),
               Align(
+                alignment: Alignment.centerRight,
+                child: AppRegularButton(
+                  key: const Key('settingsToggleDemoSessionLockButton'),
+                  label: _currentSession?.state == SessionState.locked
+                      ? 'فتح الجلسة التجريبية'
+                      : 'محاكاة القفل الآن',
+                  icon: _currentSession?.state == SessionState.locked
+                      ? Icons.lock_open_rounded
+                      : Icons.lock_clock_outlined,
+                  onPressed: _toggleCurrentSessionLock,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Align(
                 alignment: Alignment.centerLeft,
                 child: AppButton(
                   key: const Key('settingsSaveIdleLockButton'),
                   label: 'حفظ إعداد القفل',
                   icon: Icons.save_outlined,
                   minWidth: 180,
-                  onPressed: () {
-                    AppToast.showInfo(
-                      context,
-                      'تم حفظ إعداد القفل مؤقتاً',
-                    );
-                  },
+                  onPressed: _saveIdleLock,
                 ),
               ),
             ],
@@ -2463,7 +3181,7 @@ class _UsersSecuritySettingsSectionState
                 hint: 'المستخدم أو العملية أو التفاصيل',
                 accentColor: widget.accentColor,
                 focusNode: _logSearchFocusNode,
-                onChanged: (_) => setState(() {}),
+                onChanged: (_) => _refreshAudit(),
               ),
               AppDropdownField<String>(
                 fieldKey: const Key('settingsSecurityLogTypeField'),
@@ -2486,7 +3204,9 @@ class _UsersSecuritySettingsSectionState
                 textAlign: TextAlign.right,
                 menuTextDirection: TextDirection.rtl,
                 onChanged: (value) {
-                  if (value != null) setState(() => _logType = value);
+                  if (value == null) return;
+                  setState(() => _logType = value);
+                  _refreshAudit();
                 },
               ),
             ],
@@ -2619,6 +3339,8 @@ const _settingsPermissionActions = <({String id, String label})>[
   (id: 'edit', label: 'تعديل'),
   (id: 'delete', label: 'حذف'),
   (id: 'print', label: 'طباعة'),
+  (id: 'export', label: 'تصدير'),
+  (id: 'manage', label: 'إدارة'),
 ];
 
 const _allPermissionActionIds = <String>{
@@ -2627,6 +3349,8 @@ const _allPermissionActionIds = <String>{
   'edit',
   'delete',
   'print',
+  'export',
+  'manage',
 };
 
 Map<String, Set<String>> _settingsRolePermissions({
@@ -2712,6 +3436,162 @@ class _SettingsAuditEntry {
   final String status;
 }
 
+_SettingsRole _settingsRoleFromDomain(AppRole role) {
+  final permissions = _settingsRolePermissions();
+  for (final permission in role.permissions) {
+    final action = _settingsPermissionActionId(permission.action);
+    if (action != null && permissions.containsKey(permission.module)) {
+      permissions[permission.module]!.add(action);
+    }
+  }
+  return _SettingsRole(
+    id: int.tryParse(role.id.value.split('-').last) ?? 1,
+    name: role.name,
+    permissions: permissions,
+  );
+}
+
+AppRole _appRoleFromSettings(_SettingsRole role) {
+  final permissions = <PermissionCode>{};
+  for (final entry in role.permissions.entries) {
+    for (final actionId in entry.value) {
+      final action = _permissionActionValue(actionId);
+      if (action != null) {
+        permissions.add(PermissionCode(module: entry.key, action: action));
+      }
+    }
+  }
+  return AppRole(
+    id: EntityId.demo('role', role.id),
+    name: role.name,
+    permissions: permissions,
+    isSystemRole: role.id == 1,
+  );
+}
+
+_SettingsUser _settingsUserFromDomain(
+  AppUser user,
+  Map<EntityId, String> roleNames,
+) {
+  final roleName = user.roleIds
+          .map((roleId) => roleNames[roleId])
+          .whereType<String>()
+          .firstOrNull ??
+      'دور غير معروف';
+  final (isEnabled, isLocked) = switch (user.status) {
+    UserAccountStatus.active => (true, false),
+    UserAccountStatus.disabled => (false, false),
+    UserAccountStatus.locked => (true, true),
+    UserAccountStatus.disabledAndLocked => (false, true),
+  };
+  return _SettingsUser(
+    id: int.tryParse(user.id.value.split('-').last) ?? 1,
+    fullName: user.fullName,
+    username: user.username,
+    role: roleName,
+    isEnabled: isEnabled,
+    isLocked: isLocked,
+    lastLogin: user.lastLoginAt == null
+        ? 'لم يسجل الدخول'
+        : _formatAuditTimestamp(user.lastLoginAt!),
+  );
+}
+
+AppUser _appUserFromSettings(_SettingsUser user, int roleId) {
+  return AppUser(
+    id: EntityId.demo('user', user.id),
+    fullName: user.fullName,
+    username: user.username,
+    roleIds: {EntityId.demo('role', roleId)},
+    status: _userStatusValue(
+      isEnabled: user.isEnabled,
+      isLocked: user.isLocked,
+    ),
+    isSystemUser: user.username == 'admin',
+  );
+}
+
+UserAccountStatus _userStatusValue({
+  required bool isEnabled,
+  required bool isLocked,
+}) =>
+    switch ((isEnabled, isLocked)) {
+      (true, false) => UserAccountStatus.active,
+      (false, false) => UserAccountStatus.disabled,
+      (true, true) => UserAccountStatus.locked,
+      (false, true) => UserAccountStatus.disabledAndLocked,
+    };
+
+PermissionAction? _permissionActionValue(String id) => switch (id) {
+      'view' => PermissionAction.view,
+      'add' => PermissionAction.create,
+      'edit' => PermissionAction.update,
+      'delete' => PermissionAction.delete,
+      'print' => PermissionAction.print,
+      'export' => PermissionAction.export,
+      'manage' => PermissionAction.manage,
+      _ => null,
+    };
+
+String? _settingsPermissionActionId(
+  PermissionAction action,
+) =>
+    switch (action) {
+      PermissionAction.view => 'view',
+      PermissionAction.create => 'add',
+      PermissionAction.update => 'edit',
+      PermissionAction.delete => 'delete',
+      PermissionAction.print => 'print',
+      PermissionAction.export => 'export',
+      PermissionAction.manage => 'manage',
+    };
+
+_SettingsAuditEntry _settingsAuditFromDomain(AuditRecord record) {
+  return _SettingsAuditEntry(
+    id: int.tryParse(record.id.value.split('-').last) ??
+        record.id.value.hashCode.abs(),
+    createdAt: _formatAuditTimestamp(record.occurredAt),
+    username: record.actorUsername,
+    type: _auditActionLabel(record.action),
+    details: record.summary,
+    status: switch (record.outcome) {
+      AuditOutcome.success => 'مكتمل',
+      AuditOutcome.failure => 'فشل',
+      AuditOutcome.blocked => 'محظور',
+    },
+  );
+}
+
+String _auditActionLabel(AuditAction action) => switch (action) {
+      AuditAction.signIn => 'تسجيل الدخول',
+      AuditAction.signOut => 'تسجيل الخروج',
+      AuditAction.create => 'إضافة',
+      AuditAction.update => 'تعديل',
+      AuditAction.delete => 'حذف',
+      AuditAction.restore => 'استعادة',
+      AuditAction.print => 'طباعة',
+      AuditAction.export => 'تصدير',
+      AuditAction.permissionChange => 'صلاحيات',
+      AuditAction.accountStatusChange => 'حالة حساب',
+      AuditAction.backup => 'نسخ احتياطي',
+      AuditAction.other => 'أخرى',
+    };
+
+AuditAction? _auditActionForLabel(String label) => switch (label) {
+      'تسجيل الدخول' => AuditAction.signIn,
+      'تعديل' => AuditAction.update,
+      'حذف' => AuditAction.delete,
+      'استعادة' => AuditAction.restore,
+      _ => null,
+    };
+
+String _sessionStateLabel(SessionState state) => switch (state) {
+      SessionState.active => 'نشطة',
+      SessionState.locked => 'مقفلة',
+      SessionState.expired => 'منتهية',
+      SessionState.signedOut => 'مسجل خروجها',
+    };
+
 class _SettingsUserDraft {
   const _SettingsUserDraft({
     required this.fullName,
@@ -2722,6 +3602,16 @@ class _SettingsUserDraft {
   final String fullName;
   final String username;
   final String role;
+}
+
+class _SettingsUserPasswordDraft {
+  const _SettingsUserPasswordDraft({
+    required this.currentPassword,
+    required this.newPassword,
+  });
+
+  final String currentPassword;
+  final String newPassword;
 }
 
 class _SettingsUserPasswordDialog extends StatefulWidget {
@@ -2740,6 +3630,7 @@ class _SettingsUserPasswordDialog extends StatefulWidget {
 
 class _SettingsUserPasswordDialogState
     extends State<_SettingsUserPasswordDialog> {
+  late final TextEditingController _currentPasswordController;
   final _passwordController = TextEditingController();
   final _confirmationController = TextEditingController();
 
@@ -2752,12 +3643,23 @@ class _SettingsUserPasswordDialogState
   }
 
   bool get _canSave =>
+      _currentPasswordController.text.isNotEmpty &&
       _passwordController.text.isNotEmpty &&
+      _passwordController.text.length >= 6 &&
       _confirmationController.text.isNotEmpty &&
       _confirmationError == null;
 
   @override
+  void initState() {
+    super.initState();
+    _currentPasswordController = TextEditingController(
+      text: widget.user.username == 'admin' ? 'password' : 'demo123',
+    );
+  }
+
+  @override
   void dispose() {
+    _currentPasswordController.dispose();
     _passwordController.dispose();
     _confirmationController.dispose();
     super.dispose();
@@ -2766,7 +3668,13 @@ class _SettingsUserPasswordDialogState
   void _close() => Navigator.of(context).pop();
 
   void _save() {
-    if (_canSave) Navigator.of(context).pop(true);
+    if (!_canSave) return;
+    Navigator.of(context).pop(
+      _SettingsUserPasswordDraft(
+        currentPassword: _currentPasswordController.text,
+        newPassword: _passwordController.text,
+      ),
+    );
   }
 
   @override
@@ -2775,7 +3683,7 @@ class _SettingsUserPasswordDialogState
     return AppModuleDialog(
       key: Key('settingsUserPasswordDialog_$userId'),
       title: 'تغيير كلمة مرور المستخدم',
-      subtitle: '${widget.user.fullName} — ${widget.user.username}',
+      subtitle: '${widget.user.fullName} — بيانات اعتماد تجريبية فقط',
       icon: Icons.password_rounded,
       accentColor: widget.accentColor,
       onClose: _close,
@@ -2800,6 +3708,18 @@ class _SettingsUserPasswordDialogState
       ],
       child: Column(
         children: [
+          AppTextField(
+            fieldKey: Key('settingsUserPasswordCurrentField_$userId'),
+            controller: _currentPasswordController,
+            label: 'كلمة المرور الحالية',
+            icon: Icons.lock_outline_rounded,
+            accentColor: widget.accentColor,
+            obscureText: true,
+            textDirection: TextDirection.rtl,
+            textAlign: TextAlign.right,
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: AppSpacing.md),
           AppTextField(
             fieldKey: Key('settingsUserPasswordNewField_$userId'),
             controller: _passwordController,
@@ -3039,7 +3959,7 @@ class _SettingsRoleDialogState extends State<_SettingsRoleDialog> {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: SizedBox(
-          width: 860,
+          width: 1040,
           child: Table(
             textDirection: TextDirection.rtl,
             border: TableBorder.all(color: borderColor),
@@ -3252,9 +4172,15 @@ class ElectronicArchiveSettingsSection extends StatefulWidget {
   const ElectronicArchiveSettingsSection({
     required this.accentColor,
     super.key,
+    this.securityService,
+    this.repository,
+    this.validationPolicy,
   });
 
   final Color accentColor;
+  final ArchiveSecurityService? securityService;
+  final ArchiveRepository? repository;
+  final ArchiveValidationPolicy? validationPolicy;
 
   @override
   State<ElectronicArchiveSettingsSection> createState() =>
@@ -3265,7 +4191,9 @@ class _ElectronicArchiveSettingsSectionState
     extends State<ElectronicArchiveSettingsSection> {
   final _searchController = TextEditingController();
   final _searchFocusNode = FocusNode(debugLabel: 'settingsArchiveSearch');
-  var _nextDocumentId = 4;
+  late final ArchiveSecurityService _securityService;
+  late final ArchiveRepository _repository;
+  late final ArchiveValidationPolicy _validationPolicy;
   final _documents = <_ArchiveDocument>[
     const _ArchiveDocument(
       id: 1,
@@ -3294,6 +4222,17 @@ class _ElectronicArchiveSettingsSectionState
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _securityService =
+        widget.securityService ?? DemoArchiveSecurityService();
+    _repository = widget.repository ?? DemoArchiveRepository();
+    _validationPolicy = widget.validationPolicy ??
+        ArchiveValidationPolicy(maximumByteSize: 10 * 1024 * 1024);
+    _refreshArchive();
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     _searchFocusNode.dispose();
@@ -3306,25 +4245,36 @@ class _ElectronicArchiveSettingsSectionState
       barrierDismissible: false,
       builder: (dialogContext) => Directionality(
         textDirection: TextDirection.rtl,
-        child: _ArchiveUploadDialog(accentColor: widget.accentColor),
+        child: _ArchiveUploadDialog(
+          accentColor: widget.accentColor,
+          securityService: _securityService,
+          validationPolicy: _validationPolicy,
+        ),
       ),
     );
     if (draft == null || !mounted) return;
 
-    setState(() {
-      _documents.insert(
-        0,
-        _ArchiveDocument(
-          id: _nextDocumentId++,
-          name: draft.name,
-          type: draft.type,
-          fileName: draft.fileName,
-          size: draft.type == 'PDF' ? '1.2 MB' : '720 KB',
-          createdAt: '2026/07/29',
+    try {
+      final document = await _repository.upload(
+        ArchiveUploadRequest(
+          draft: ArchiveDocumentDraft(
+            displayName: draft.name,
+            file: draft.file,
+          ),
+          securityReport: draft.securityReport,
         ),
       );
-    });
-    AppToast.showInfo(context, 'تمت إضافة ملف تجريبي إلى الأرشيف');
+      if (!mounted) return;
+      setState(() {
+        _documents.insert(0, _archiveDocumentFromDomain(document));
+      });
+      AppToast.showSuccess(
+        context,
+        'تم رفع الملف بعد نتيجة فحص خادم تجريبية نظيفة',
+      );
+    } on Object catch (error) {
+      if (mounted) AppToast.showError(context, _serviceMessage(error));
+    }
   }
 
   Future<void> _renameDocument(_ArchiveDocument document) async {
@@ -3341,13 +4291,18 @@ class _ElectronicArchiveSettingsSectionState
     );
     if (name == null || !mounted) return;
 
-    final index =
-        _documents.indexWhere((entry) => entry.id == document.id);
+    final index = _documents.indexWhere((entry) => entry.id == document.id);
     if (index < 0) return;
-    setState(() {
-      _documents[index] = document.copyWith(name: name);
-    });
-    AppToast.showSuccess(context, 'تم تعديل اسم الملف');
+    try {
+      final renamed = await _repository.rename(document.domainId, name);
+      if (!mounted) return;
+      setState(() {
+        _documents[index] = _archiveDocumentFromDomain(renamed);
+      });
+      AppToast.showSuccess(context, 'تم تعديل اسم الملف');
+    } on Object catch (error) {
+      if (mounted) AppToast.showError(context, _serviceMessage(error));
+    }
   }
 
   Future<void> _deleteDocument(_ArchiveDocument document) async {
@@ -3360,17 +4315,59 @@ class _ElectronicArchiveSettingsSectionState
     );
     if (!confirmed || !mounted) return;
 
-    setState(() {
-      _documents.removeWhere((entry) => entry.id == document.id);
-    });
-    AppToast.showDanger(context, 'تم حذف الملف التجريبي');
+    try {
+      final decision = await _repository.canDelete(document.domainId);
+      if (!decision.isAllowed) {
+        throw ServiceFailure(
+          kind: ServiceFailureKind.permissionDenied,
+          message: decision.reason ?? 'لا يمكن حذف المستند',
+        );
+      }
+      await _repository.delete(document.domainId);
+      if (!mounted) return;
+      setState(() {
+        _documents.removeWhere((entry) => entry.id == document.id);
+      });
+      AppToast.showDanger(context, 'تم حذف الملف التجريبي');
+    } on Object catch (error) {
+      if (mounted) AppToast.showError(context, _serviceMessage(error));
+    }
   }
 
-  void _viewDocument(_ArchiveDocument document) {
-    AppToast.showInfo(
-      context,
-      'معاينة ${document.fileName} (${document.type})',
-    );
+  Future<void> _viewDocument(_ArchiveDocument document) async {
+    try {
+      final source = await _repository.preparePreview(document.domainId);
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: _ArchivePreviewDialog(
+            document: document,
+            source: source,
+            accentColor: widget.accentColor,
+          ),
+        ),
+      );
+    } on Object catch (error) {
+      if (mounted) AppToast.showError(context, _serviceMessage(error));
+    }
+  }
+
+  Future<void> _refreshArchive() async {
+    try {
+      final documents = await _repository.search(
+        ArchiveQuery(searchText: _searchController.text),
+      );
+      if (!mounted) return;
+      setState(() {
+        _documents
+          ..clear()
+          ..addAll(documents.map(_archiveDocumentFromDomain));
+      });
+    } on Object catch (error) {
+      if (mounted) AppToast.showError(context, _serviceMessage(error));
+    }
   }
 
   @override
@@ -3392,7 +4389,8 @@ class _ElectronicArchiveSettingsSectionState
         AppInfoBanner(
           key: const Key('settingsArchiveInfoBanner'),
           message:
-              'الأرشيف مخصص لملفات PDF وPNG، مع التسمية والبحث والمعاينة وإعادة التسمية والحذف.',
+              'الأرشيف التجريبي يقبل PDF وPNG فقط. فحص الجهاز تمهيدي وغير حاسم؛ '
+              'لا يُتاح الرفع إلا بعد نتيجة فحص خادم موثوقة مُحاكاة بوضوح.',
           icon: Icons.inventory_2_outlined,
           foregroundColor: widget.accentColor,
           backgroundColor: Color.alphaBlend(
@@ -3426,7 +4424,7 @@ class _ElectronicArchiveSettingsSectionState
                 label: 'بحث في الأرشيف',
                 hint: 'اسم المستند أو الملف أو النوع أو التاريخ',
                 accentColor: widget.accentColor,
-                onChanged: (_) => setState(() {}),
+                onChanged: (_) => _refreshArchive(),
               ),
               const SizedBox(height: AppSpacing.md),
               AppDataTable(
@@ -3539,6 +4537,7 @@ class _ArchiveDocument {
     required this.fileName,
     required this.size,
     required this.createdAt,
+    this.checksum = 'demo-checksum',
   });
 
   final int id;
@@ -3547,6 +4546,9 @@ class _ArchiveDocument {
   final String fileName;
   final String size;
   final String createdAt;
+  final String checksum;
+
+  EntityId get domainId => EntityId.demo('archive', id);
 
   _ArchiveDocument copyWith({String? name}) {
     return _ArchiveDocument(
@@ -3556,6 +4558,94 @@ class _ArchiveDocument {
       fileName: fileName,
       size: size,
       createdAt: createdAt,
+      checksum: checksum,
+    );
+  }
+}
+
+_ArchiveDocument _archiveDocumentFromDomain(ArchiveDocument document) {
+  return _ArchiveDocument(
+    id: int.tryParse(document.id.value.split('-').last) ??
+        document.id.value.hashCode.abs(),
+    name: document.displayName,
+    type: document.fileType == ArchiveFileType.pdf ? 'PDF' : 'PNG',
+    fileName: document.originalFileName,
+    size: _formatByteSize(document.byteSize),
+    createdAt: _formatAuditTimestamp(document.createdAt),
+    checksum: document.checksumSha256,
+  );
+}
+
+class _ArchivePreviewDialog extends StatelessWidget {
+  const _ArchivePreviewDialog({
+    required this.document,
+    required this.source,
+    required this.accentColor,
+  });
+
+  final _ArchiveDocument document;
+  final ArchivePreviewSource source;
+  final Color accentColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppModuleDialog(
+      key: const Key('settingsArchivePreviewDialog'),
+      title: 'معاينة ${document.name}',
+      subtitle: 'معاينة تجريبية للنسخة المحلية المُدارة للقراءة فقط',
+      icon: Icons.preview_outlined,
+      accentColor: accentColor,
+      onClose: () => Navigator.of(context).pop(),
+      width: 720,
+      actions: [
+        AppButton(
+          key: const Key('settingsArchivePreviewCloseButton'),
+          label: 'إغلاق',
+          icon: Icons.close_rounded,
+          variant: AppButtonVariant.secondary,
+          width: 140,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            height: 220,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.neutralSurface,
+              borderRadius: BorderRadius.circular(AppRadii.md),
+              border: Border.all(color: accentColor.withAlpha(80)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  source.fileType == ArchiveFileType.pdf
+                      ? Icons.picture_as_pdf_outlined
+                      : Icons.image_outlined,
+                  size: 64,
+                  color: accentColor,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(document.fileName, style: AppTypography.fieldText),
+                const SizedBox(height: AppSpacing.xs),
+                const Text('محتوى معاينة توضيحي — لا يوجد وصول حقيقي للملف'),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            'المصدر المُدار: ${source.localPath}\n'
+            'الحجم: ${document.size}\n'
+            'checksum: ${document.checksum}',
+            key: const Key('settingsArchivePreviewMetadata'),
+            textDirection: TextDirection.ltr,
+            style: AppTypography.tableCell,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -3565,17 +4655,27 @@ class _ArchiveDocumentDraft {
     required this.name,
     required this.type,
     required this.fileName,
+    required this.file,
+    required this.securityReport,
   });
 
   final String name;
   final String type;
   final String fileName;
+  final ArchiveFileCandidate file;
+  final ArchiveSecurityReport securityReport;
 }
 
 class _ArchiveUploadDialog extends StatefulWidget {
-  const _ArchiveUploadDialog({required this.accentColor});
+  const _ArchiveUploadDialog({
+    required this.accentColor,
+    required this.securityService,
+    required this.validationPolicy,
+  });
 
   final Color accentColor;
+  final ArchiveSecurityService securityService;
+  final ArchiveValidationPolicy validationPolicy;
 
   @override
   State<_ArchiveUploadDialog> createState() =>
@@ -3588,9 +4688,17 @@ class _ArchiveUploadDialogState extends State<_ArchiveUploadDialog> {
       TextEditingController(text: 'لم يتم اختيار ملف');
   var _type = 'PDF';
   var _fileName = '';
+  ArchiveFileCandidate? _file;
+  ArchiveSecurityReport? _localReport;
+  ArchiveSecurityReport? _authoritativeReport;
+  String? _scanFailureMessage;
+  var _isScanning = false;
 
   bool get _canUpload =>
-      _nameController.text.trim().isNotEmpty && _fileName.isNotEmpty;
+      _nameController.text.trim().isNotEmpty &&
+      _fileName.isNotEmpty &&
+      _authoritativeReport?.isUploadAllowed == true &&
+      !_isScanning;
 
   @override
   void dispose() {
@@ -3601,22 +4709,61 @@ class _ArchiveUploadDialogState extends State<_ArchiveUploadDialog> {
 
   void _close() => Navigator.of(context).pop();
 
-  void _chooseFile() {
+  Future<void> _chooseFile() async {
+    final type = _type == 'PDF' ? ArchiveFileType.pdf : ArchiveFileType.png;
+    final fileName = _type == 'PDF'
+        ? 'document_example.pdf'
+        : 'image_example.png';
+    final file = ArchiveFileCandidate(
+      localPath: 'C:\\Almumayaz\\DemoUpload\\$fileName',
+      fileName: fileName,
+      byteSize: _type == 'PDF' ? 1258291 : 737280,
+      declaredMimeType: type.mimeType,
+    );
     setState(() {
-      _fileName = _type == 'PDF'
-          ? 'document_example.pdf'
-          : 'image_example.png';
+      _fileName = fileName;
       _fileController.text = _fileName;
+      _file = file;
+      _localReport = null;
+      _authoritativeReport = null;
+      _scanFailureMessage = null;
+      _isScanning = true;
     });
+    try {
+      final localReport = await widget.securityService.validateLocally(
+        file: file,
+        policy: widget.validationPolicy,
+      );
+      if (!mounted) return;
+      setState(() => _localReport = localReport);
+      if (localReport.issues.isNotEmpty) return;
+      final authoritative =
+          await widget.securityService.scanAuthoritatively(
+        file: file,
+        policy: widget.validationPolicy,
+      );
+      if (!mounted) return;
+      setState(() => _authoritativeReport = authoritative);
+    } on Object catch (error) {
+      if (mounted) {
+        setState(() => _scanFailureMessage = _serviceMessage(error));
+      }
+    } finally {
+      if (mounted) setState(() => _isScanning = false);
+    }
   }
 
   void _upload() {
     if (!_canUpload) return;
+    final file = _file!;
+    final report = _authoritativeReport!;
     Navigator.of(context).pop(
       _ArchiveDocumentDraft(
         name: _nameController.text.trim(),
         type: _type,
         fileName: _fileName,
+        file: file,
+        securityReport: report,
       ),
     );
   }
@@ -3626,7 +4773,7 @@ class _ArchiveUploadDialogState extends State<_ArchiveUploadDialog> {
     return AppModuleDialog(
       key: const Key('settingsArchiveUploadDialog'),
       title: 'رفع ملف إلى الأرشيف',
-      subtitle: 'اختر ملف PDF أو PNG واكتب اسماً واضحاً له',
+      subtitle: 'الاختيار والفحص والرفع كلها محاكاة داخل الذاكرة',
       icon: Icons.upload_file_rounded,
       accentColor: widget.accentColor,
       onClose: _close,
@@ -3681,6 +4828,10 @@ class _ArchiveUploadDialogState extends State<_ArchiveUploadDialog> {
               setState(() {
                 _type = value;
                 _fileName = '';
+                _file = null;
+                _localReport = null;
+                _authoritativeReport = null;
+                _scanFailureMessage = null;
                 _fileController.text = 'لم يتم اختيار ملف';
               });
             },
@@ -3707,8 +4858,58 @@ class _ArchiveUploadDialogState extends State<_ArchiveUploadDialog> {
               onPressed: _chooseFile,
             ),
           ),
+          if (_file != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            _buildSecurityState(),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _buildSecurityState() {
+    final report = _authoritativeReport ?? _localReport;
+    final file = _file!;
+    final checksum = report?.checksumSha256;
+    final issues = report?.issues ?? const <ArchiveValidationIssue>[];
+    final message = _scanFailureMessage != null
+        ? 'تعذر الفحص التجريبي: $_scanFailureMessage'
+        : _isScanning
+            ? 'جارٍ تنفيذ فحص الخادم التجريبي المُحاكى...'
+            : issues.isNotEmpty
+                ? issues.map((issue) => issue.message).join(' — ')
+                : _authoritativeReport?.isUploadAllowed == true
+                    ? 'نتيجة الخادم التجريبية المُحاكية: نظيف ومسموح بالرفع.'
+                    : 'نجح الفحص المحلي التمهيدي، لكنه غير موثوق للسماح بالرفع.';
+    return Column(
+      key: const Key('settingsArchiveSecurityState'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AppInfoBanner(
+          message: message,
+          icon: _authoritativeReport?.isUploadAllowed == true
+              ? Icons.verified_user_outlined
+              : issues.isNotEmpty
+                  ? Icons.gpp_bad_outlined
+                  : Icons.hourglass_top_rounded,
+          foregroundColor: issues.isNotEmpty
+              ? AppColors.danger
+              : widget.accentColor,
+          backgroundColor: Color.alphaBlend(
+            widget.accentColor.withAlpha(18),
+            AppColors.surface,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          'الحجم: ${_formatByteSize(file.byteSize)} | '
+          'التوقيع: ${report?.detectedMimeType ?? 'قيد الفحص'} | '
+          'checksum: ${checksum == null ? 'غير متاح' : _shortChecksum(checksum)}',
+          key: const Key('settingsArchiveSecurityMetadata'),
+          textDirection: TextDirection.rtl,
+          style: AppTypography.tableCell,
+        ),
+      ],
     );
   }
 }
