@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/design/app_tokens.dart';
+import '../app_tokens.dart';
 
-class DashboardCard extends StatefulWidget {
-  const DashboardCard({
+/// Shared gradient card used to enter a top-level application module.
+class AppModuleCard extends StatefulWidget {
+  const AppModuleCard({
     required this.title,
     required this.icon,
     required this.colors,
@@ -19,10 +20,10 @@ class DashboardCard extends StatefulWidget {
   final VoidCallback? onTap;
 
   @override
-  State<DashboardCard> createState() => _DashboardCardState();
+  State<AppModuleCard> createState() => _AppModuleCardState();
 }
 
-class _DashboardCardState extends State<DashboardCard> {
+class _AppModuleCardState extends State<AppModuleCard> {
   bool _hovered = false;
   bool _pressed = false;
   bool _focused = false;

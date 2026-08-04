@@ -20,6 +20,27 @@ class DesignGalleryFoundationsSection extends StatelessWidget {
             icon: Icons.straighten_rounded,
           ),
           const SizedBox(height: AppSpacing.lg),
+          const _FoundationTitle('بطاقات الوحدات المشتركة'),
+          const SizedBox(height: AppSpacing.md),
+          const Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: SizedBox(
+              key: Key('designFoundationModuleCard'),
+              width: 390,
+              height: 190,
+              child: AppModuleCard(
+                title: 'بطاقة وحدة',
+                icon: Icons.dashboard_customize_rounded,
+                colors: [
+                  Color(0xFF1E3A8A),
+                  Color(0xFF2563EB),
+                  Color(0xFF93C5FD),
+                ],
+                shadowColor: Color(0xFF2563EB),
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
           const _FoundationTitle('الاستجابة'),
           const SizedBox(height: AppSpacing.md),
           Wrap(

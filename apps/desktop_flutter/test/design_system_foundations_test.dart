@@ -66,6 +66,11 @@ void main() {
       findsOneWidget,
     );
     expect(
+      find.byKey(const Key('designFoundationModuleCard')),
+      findsOneWidget,
+    );
+    expect(find.byType(AppModuleCard), findsOneWidget);
+    expect(
       find.byKey(const Key('designFoundationMinimumWindow')),
       findsOneWidget,
     );

@@ -1,6 +1,5 @@
 import 'package:erp/app/app.dart';
 import 'package:erp/core/design/app_design_system.dart';
-import 'package:erp/features/dashboard/presentation/dashboard_card.dart';
 import 'package:erp/features/settings/presentation/widgets/settings_sections.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -82,7 +81,7 @@ void main() {
     );
     expect(thirdRowY, greaterThan(secondRowY));
 
-    DashboardCard card(String id) => tester.widget<DashboardCard>(
+    AppModuleCard card(String id) => tester.widget<AppModuleCard>(
           find.byKey(Key('settingsSectionCard_$id')),
         );
 

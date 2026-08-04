@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/design/app_design_system.dart';
-import '../../dashboard/presentation/dashboard_card.dart';
 import 'report_definition.dart';
 import 'reports_demo_data.dart';
 import 'widgets/report_section_view.dart';
@@ -131,7 +130,7 @@ class _ReportsHubRow extends StatelessWidget {
               if (index > 0) const SizedBox(width: spacing),
               SizedBox(
                 width: cardWidth,
-                child: DashboardCard(
+                child: AppModuleCard(
                   key: Key('reportSectionCard_${reports[index].id}'),
                   title: reports[index].title,
                   icon: reports[index].icon,

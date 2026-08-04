@@ -11,7 +11,6 @@ import '../../reports/presentation/reports_screen.dart';
 import '../../sales/presentation/sales_screen.dart';
 import '../../settings/presentation/settings_screen.dart';
 import '../../warehouses/presentation/warehouses_screen.dart';
-import 'dashboard_card.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({required this.username, super.key});
@@ -202,7 +201,7 @@ class DashboardScreen extends StatelessWidget {
                         final title = item.id == 'company'
                             ? configuration.companyName
                             : item.title;
-                        return DashboardCard(
+                        return AppModuleCard(
                           key: Key('dashboardCard_${item.id}'),
                           title: title,
                           icon: item.icon,

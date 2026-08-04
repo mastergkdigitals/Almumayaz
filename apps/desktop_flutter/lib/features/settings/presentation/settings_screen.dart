@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/design/app_design_system.dart';
-import '../../dashboard/presentation/dashboard_card.dart';
 import 'widgets/settings_sections.dart';
 
 const _oldDefaultsSettingsPalette = AppModulePalette(
@@ -171,7 +170,7 @@ class _SettingsHubRow extends StatelessWidget {
         for (var index = 0; index < sections.length; index++) ...[
           if (index > 0) const SizedBox(width: AppSpacing.md),
           Expanded(
-            child: DashboardCard(
+            child: AppModuleCard(
               key: Key('settingsSectionCard_${sections[index].id}'),
               title: sections[index].title,
               icon: sections[index].icon,
