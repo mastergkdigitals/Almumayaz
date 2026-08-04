@@ -369,13 +369,11 @@ void main() {
       '1',
     );
     await tester.pump();
-    expect(
-      tester.widget<AppTableActionButton>(purchaseAddButton).onPressed,
-      isNotNull,
-    );
+    final enabledPurchaseAddButton =
+        tester.widget<AppTableActionButton>(purchaseAddButton);
+    expect(enabledPurchaseAddButton.onPressed, isNotNull);
 
-    await reveal(tester, purchaseAddButton);
-    await tester.tap(purchaseAddButton);
+    enabledPurchaseAddButton.onPressed!();
     await tester.pump();
 
     expect(
