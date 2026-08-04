@@ -282,7 +282,7 @@ class _InventoryTransferDialogState
               ? _createActions()
               : _historyActions(),
           child: SizedBox(
-            height: 540 * AppDensity.scale,
+            height: 540,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [

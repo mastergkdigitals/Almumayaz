@@ -618,6 +618,7 @@ void main() {
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 250));
+    await _finishToast(tester);
 
     await tester.tap(find.byKey(const Key('purchaseDeleteButton')));
     await tester.pumpAndSettle();
