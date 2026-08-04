@@ -3,13 +3,20 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../core/design/app_design_system.dart';
+import '../../../core/printing/document_output_service.dart';
+import '../../../core/services/service_failure.dart';
 import '../domain/cashbox_voucher.dart';
 import 'cashbox_controller.dart';
 import 'widgets/cashbox_form.dart';
 import 'widgets/cashbox_table.dart';
 
 class CashboxScreen extends StatefulWidget {
-  const CashboxScreen({super.key});
+  const CashboxScreen({
+    super.key,
+    this.printService = const DemoDocumentOutputService(),
+  });
+
+  final DocumentPrintService printService;
 
   @override
   State<CashboxScreen> createState() => _CashboxScreenState();
@@ -97,6 +104,8 @@ class _CashboxScreenState extends State<CashboxScreen> {
   late _CashboxFormSnapshot _baseline;
   bool _isApplyingFormState = false;
   bool _hasUnsavedChanges = false;
+  bool _isPrinting = false;
+  Future<bool>? _pendingDiscardConfirmation;
 
   Iterable<TextEditingController> get _editableControllers => [
         _formControllers.mainAccount,
@@ -113,7 +122,6 @@ class _CashboxScreenState extends State<CashboxScreen> {
       orElse: () => _mainAccounts.first,
     );
   }
-
   List<CashboxSubaccount> get _visibleSubaccounts =>
       _selectedMainAccount.subaccounts;
 
@@ -338,7 +346,10 @@ class _CashboxScreenState extends State<CashboxScreen> {
 
   Future<bool> _confirmDiscardChanges() async {
     if (!_hasUnsavedChanges) return true;
-    return AppDialogs.confirm(
+    final pendingConfirmation = _pendingDiscardConfirmation;
+    if (pendingConfirmation != null) return pendingConfirmation;
+
+    final confirmation = AppDialogs.confirm(
       context: context,
       title: 'تغييرات غير محفوظة',
       message: 'لديك بيانات أو تعديلات غير محفوظة. هل تريد تجاهلها؟',
@@ -346,6 +357,14 @@ class _CashboxScreenState extends State<CashboxScreen> {
       cancelLabel: 'البقاء',
       isDanger: true,
     );
+    _pendingDiscardConfirmation = confirmation;
+    try {
+      return await confirmation;
+    } finally {
+      if (identical(_pendingDiscardConfirmation, confirmation)) {
+        _pendingDiscardConfirmation = null;
+      }
+    }
   }
 
   void _attemptBack() {
@@ -354,6 +373,11 @@ class _CashboxScreenState extends State<CashboxScreen> {
 
   Future<void> _leaveAfterConfirmation() async {
     if (!await _confirmDiscardChanges() || !mounted) return;
+    if (_hasUnsavedChanges) {
+      setState(() => _hasUnsavedChanges = false);
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+    }
     Navigator.of(context).pop();
   }
 
@@ -483,9 +507,78 @@ class _CashboxScreenState extends State<CashboxScreen> {
     AppToast.showWarning(context, 'تم التراجع عن التغييرات');
   }
 
-  void _print() {
+  DocumentOutputRequest _cashboxDocumentRequest() {
+    final voucherNumber = _formControllers.voucherNumber.text;
+    return DocumentOutputRequest(
+      title: 'سند ${_voucherType.label} رقم $voucherNumber',
+      subtitle: _formControllers.subaccount.text,
+      fileNameBase: 'سند صندوق $voucherNumber',
+      fields: [
+        DocumentField(
+          label: 'التاريخ',
+          value: AppFormatters.date(_voucherDateTime),
+        ),
+        DocumentField(
+          label: 'الوقت',
+          value: AppFormatters.time(TimeOfDay.fromDateTime(_voucherDateTime)),
+        ),
+        DocumentField(label: 'نوع السند', value: _voucherType.label),
+        DocumentField(
+          label: 'سعر الصرف',
+          value: _formControllers.exchangeRate.text,
+        ),
+      ],
+      columns: const [
+        DocumentColumn(label: 'الحساب الرئيسي'),
+        DocumentColumn(label: 'الحساب الفرعي'),
+        DocumentColumn(label: 'المبلغ دينار'),
+        DocumentColumn(label: 'المبلغ دولار'),
+        DocumentColumn(label: 'الرصيد بعد الحركة دينار'),
+        DocumentColumn(label: 'الرصيد بعد الحركة دولار'),
+        DocumentColumn(label: 'الملاحظات'),
+      ],
+      rows: [
+        [
+          _formControllers.mainAccount.text,
+          _formControllers.subaccount.text,
+          _formControllers.amountIqd.text.trim().isEmpty
+              ? '0'
+              : _formControllers.amountIqd.text,
+          _formControllers.amountUsd.text.trim().isEmpty
+              ? '0.00'
+              : _formControllers.amountUsd.text,
+          _formControllers.remainingBalanceIqd.text,
+          _formControllers.remainingBalanceUsd.text,
+          _formControllers.notes.text.trim().isEmpty
+              ? '—'
+              : _formControllers.notes.text.trim(),
+        ],
+      ],
+    );
+  }
+
+  Future<void> _print() async {
+    if (_isPrinting) return;
     FocusManager.instance.primaryFocus?.unfocus();
-    AppToast.showInfo(context, 'تم تجهيز معاينة طباعة الصندوق');
+    setState(() => _isPrinting = true);
+    try {
+      final result = await widget.printService.createPreview(
+        _cashboxDocumentRequest(),
+      );
+      if (!mounted) return;
+      AppToast.showInfo(context, 'تم تجهيز معاينة طباعة الصندوق');
+      await AppDocumentOutputDialog.show(
+        context,
+        result: result,
+        accentColor: AppModuleColors.cashbox,
+      );
+    } on ServiceFailure catch (failure) {
+      if (mounted) AppToast.showError(context, failure.message);
+    } catch (_) {
+      if (mounted) AppToast.showError(context, 'تعذر تجهيز سند الصندوق');
+    } finally {
+      if (mounted) setState(() => _isPrinting = false);
+    }
   }
 
   Future<void> _delete() async {
@@ -525,31 +618,36 @@ class _CashboxScreenState extends State<CashboxScreen> {
         final canMoveToNextOrLast =
             hasVisibleVouchers && selectedVisibleIndex >= 0;
 
-        return AppScreenShell(
-          key: const Key('cashboxScreen'),
-          title: 'الصندوق',
-          subtitle: 'إدارة سندات القبض والصرف وحركات الصندوق',
-          backgroundColor: Color.alphaBlend(
-            AppModuleColors.cashbox.withAlpha(12),
-            AppColors.surface,
-          ),
-          onBack: _attemptBack,
-          onSearch: _searchFocusNode.requestFocus,
-          onSave: hasSelectedVoucher
-              ? _hasUnsavedChanges
-                  ? _update
-                  : null
-              : _save,
-          actions: [
+        return PopScope(
+          canPop: !_hasUnsavedChanges,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop) _attemptBack();
+          },
+          child: AppScreenShell(
+            key: const Key('cashboxScreen'),
+            title: 'الصندوق',
+            subtitle: 'إدارة سندات القبض والصرف وحركات الصندوق',
+            backgroundColor: Color.alphaBlend(
+              AppModuleColors.cashbox.withAlpha(12),
+              AppColors.surface,
+            ),
+            onBack: _attemptBack,
+            onSearch: _searchFocusNode.requestFocus,
+            onSave: hasSelectedVoucher
+                ? _hasUnsavedChanges
+                    ? _update
+                    : null
+                : _save,
+            actions: [
             AppHeaderIconButton(
               key: const Key('cashboxPrintButton'),
               tooltipKey: const Key('cashboxPrintTooltip'),
               icon: Icons.print_rounded,
               tooltip: 'طباعة',
-              onPressed: _print,
+              onPressed: _isPrinting ? null : _print,
             ),
           ],
-          body: Padding(
+            body: Padding(
             padding: const EdgeInsets.all(AppSpacing.lg),
             child: Column(
               children: [
@@ -618,6 +716,7 @@ class _CashboxScreenState extends State<CashboxScreen> {
                   ),
                 ),
               ],
+            ),
             ),
           ),
         );

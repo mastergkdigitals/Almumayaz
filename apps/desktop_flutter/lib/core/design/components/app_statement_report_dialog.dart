@@ -1,8 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import '../../printing/document_output_service.dart';
+import '../../services/service_failure.dart';
 import '../app_formatters.dart';
 import '../app_tokens.dart';
 import 'app_button.dart';
+import 'app_document_output_dialog.dart';
+import 'app_feedback.dart';
 import 'app_module_dialog.dart';
 import 'app_statement_dialog.dart';
 import 'app_table.dart';
@@ -35,6 +41,10 @@ abstract final class AppStatementReportDialog {
     required AppStatementOptions options,
     required List<AppStatementReportEntry> entries,
     Color accentColor = AppModuleColors.parties,
+    DocumentPrintService printService =
+        const DemoDocumentOutputService(),
+    DocumentExportService exportService =
+        const DemoDocumentOutputService(),
   }) {
     return showDialog<void>(
       context: context,
@@ -46,27 +56,138 @@ abstract final class AppStatementReportDialog {
           options: options,
           entries: entries,
           accentColor: accentColor,
+          printService: printService,
+          exportService: exportService,
         ),
       ),
     );
   }
 }
 
-class _StatementReportBody extends StatelessWidget {
+class _StatementReportBody extends StatefulWidget {
   const _StatementReportBody({
     required this.partyName,
     required this.options,
     required this.entries,
     required this.accentColor,
+    required this.printService,
+    required this.exportService,
   });
 
   final String partyName;
   final AppStatementOptions options;
   final List<AppStatementReportEntry> entries;
   final Color accentColor;
+  final DocumentPrintService printService;
+  final DocumentExportService exportService;
+
+  @override
+  State<_StatementReportBody> createState() =>
+      _StatementReportBodyState();
+}
+
+class _StatementReportBodyState extends State<_StatementReportBody> {
+  DocumentOutputAction? _activeAction;
+
+  DocumentOutputRequest get _request {
+    final options = widget.options;
+    final period =
+        'من ${AppFormatters.date(options.fromDate)} '
+        'إلى ${AppFormatters.date(options.toDate)}';
+
+    return DocumentOutputRequest(
+      title: 'كشف حساب',
+      subtitle: widget.partyName,
+      fileNameBase: 'كشف حساب ${widget.partyName}',
+      fields: [
+        DocumentField(label: 'الفترة', value: period),
+        DocumentField(
+          label: 'العملة',
+          value: AppFormatters.currency(options.currencyCode),
+        ),
+      ],
+      columns: const [
+        DocumentColumn(label: 'التاريخ'),
+        DocumentColumn(label: 'الرصيد', isPrice: true),
+        DocumentColumn(label: 'دائن (له)', isPrice: true),
+        DocumentColumn(label: 'مدين (عليه)', isPrice: true),
+        DocumentColumn(label: 'النوع'),
+        DocumentColumn(label: 'الكمية'),
+        DocumentColumn(label: 'التفاصيل'),
+      ],
+      rows: [
+        for (final entry in widget.entries)
+          [
+            AppFormatters.date(entry.date),
+            _formatMoney(entry.balance, options.currencyCode),
+            _formatMoney(entry.credit, options.currencyCode),
+            _formatMoney(entry.debit, options.currencyCode),
+            entry.type,
+            entry.quantity == null
+                ? '—'
+                : AppFormatters.quantity(entry.quantity!),
+            entry.details,
+          ],
+      ],
+    );
+  }
+
+  void _print() {
+    unawaited(_runOutput(DocumentOutputAction.print));
+  }
+
+  void _export(DocumentExportFormat format) {
+    unawaited(
+      _runOutput(
+        format == DocumentExportFormat.pdf
+            ? DocumentOutputAction.pdf
+            : DocumentOutputAction.excel,
+      ),
+    );
+  }
+
+  Future<void> _runOutput(DocumentOutputAction action) async {
+    if (_activeAction != null) return;
+    setState(() => _activeAction = action);
+
+    try {
+      final result = switch (action) {
+        DocumentOutputAction.print =>
+          await widget.printService.createPreview(_request),
+        DocumentOutputAction.pdf => await widget.exportService.export(
+            _request,
+            DocumentExportFormat.pdf,
+          ),
+        DocumentOutputAction.excel => await widget.exportService.export(
+            _request,
+            DocumentExportFormat.excel,
+          ),
+        DocumentOutputAction.printWithoutPrices =>
+          await widget.printService.createPreview(
+            _request,
+            includePrices: false,
+          ),
+      };
+      if (!mounted) return;
+      await AppDocumentOutputDialog.show(
+        context,
+        result: result,
+        accentColor: widget.accentColor,
+      );
+    } on ServiceFailure catch (failure) {
+      if (mounted) AppToast.showError(context, failure.message);
+    } catch (_) {
+      if (mounted) {
+        AppToast.showError(context, 'تعذر تجهيز كشف الحساب حالياً');
+      }
+    } finally {
+      if (mounted) setState(() => _activeAction = null);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final options = widget.options;
     final period =
         'من ${AppFormatters.date(options.fromDate)} '
         'إلى ${AppFormatters.date(options.toDate)}';
@@ -74,7 +195,7 @@ class _StatementReportBody extends StatelessWidget {
     return AppModuleDialog(
       key: const Key('appStatementReportDialog'),
       title: 'كشف حساب',
-      subtitle: partyName,
+      subtitle: widget.partyName,
       subtitleStyle: const TextStyle(
         color: Color(0xFF4B5563),
         fontSize: 22,
@@ -83,7 +204,7 @@ class _StatementReportBody extends StatelessWidget {
       centerHeader: true,
       showHeaderCloseButton: true,
       icon: Icons.receipt_long_rounded,
-      accentColor: accentColor,
+      accentColor: widget.accentColor,
       width: AppDialogSizes.extraLarge,
       onClose: () => Navigator.of(context).pop(),
       actionsKey: const Key('appStatementReportActions'),
@@ -94,7 +215,10 @@ class _StatementReportBody extends StatelessWidget {
           icon: Icons.picture_as_pdf_rounded,
           variant: AppButtonVariant.danger,
           width: 132,
-          onPressed: _noop,
+          isLoading: _activeAction == DocumentOutputAction.pdf,
+          onPressed: _activeAction == null
+              ? () => _export(DocumentExportFormat.pdf)
+              : null,
         ),
         AppButton(
           key: const Key('appStatementPrint'),
@@ -102,7 +226,8 @@ class _StatementReportBody extends StatelessWidget {
           icon: Icons.print_rounded,
           width: 132,
           backgroundColor: AppColors.blue,
-          onPressed: _noop,
+          isLoading: _activeAction == DocumentOutputAction.print,
+          onPressed: _activeAction == null ? _print : null,
         ),
         AppButton(
           key: const Key('appStatementExcel'),
@@ -110,7 +235,10 @@ class _StatementReportBody extends StatelessWidget {
           icon: Icons.table_chart_rounded,
           variant: AppButtonVariant.success,
           width: 132,
-          onPressed: _noop,
+          isLoading: _activeAction == DocumentOutputAction.excel,
+          onPressed: _activeAction == null
+              ? () => _export(DocumentExportFormat.excel)
+              : null,
         ),
       ],
       child: Column(
@@ -150,7 +278,7 @@ class _StatementReportBody extends StatelessWidget {
             headerHeight: 52,
             rowHeight: 58,
             minimumColumnWidth: 132,
-            accentColor: accentColor,
+            accentColor: widget.accentColor,
             emptyState: const Text(
               'لا توجد حركات ضمن الفترة والعملة المختارة',
               textAlign: TextAlign.center,
@@ -170,7 +298,7 @@ class _StatementReportBody extends StatelessWidget {
               AppTableColumn(label: 'التفاصيل', flex: 2.5),
             ],
             rows: [
-              for (final entry in entries)
+              for (final entry in widget.entries)
                 AppTableRow(
                   cells: [
                     Text(AppFormatters.date(entry.date)),
@@ -199,5 +327,3 @@ class _StatementReportBody extends StatelessWidget {
         : AppFormatters.iqd(value);
   }
 }
-
-void _noop() {}

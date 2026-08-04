@@ -27,6 +27,7 @@ class _ItemsScreenState extends State<ItemsScreen> {
   late _ItemFormSnapshot _baseline;
   bool _isApplyingFormState = false;
   bool _hasUnsavedChanges = false;
+  Future<bool>? _pendingDiscardConfirmation;
 
   Iterable<TextEditingController> get _editableControllers => [
         _formControllers.code,
@@ -157,7 +158,10 @@ class _ItemsScreenState extends State<ItemsScreen> {
 
   Future<bool> _confirmDiscardChanges() async {
     if (!_hasUnsavedChanges) return true;
-    return AppDialogs.confirm(
+    final pendingConfirmation = _pendingDiscardConfirmation;
+    if (pendingConfirmation != null) return pendingConfirmation;
+
+    final confirmation = AppDialogs.confirm(
       context: context,
       title: 'تغييرات غير محفوظة',
       message: 'لديك بيانات أو تعديلات غير محفوظة. هل تريد تجاهلها؟',
@@ -165,6 +169,14 @@ class _ItemsScreenState extends State<ItemsScreen> {
       cancelLabel: 'البقاء',
       isDanger: true,
     );
+    _pendingDiscardConfirmation = confirmation;
+    try {
+      return await confirmation;
+    } finally {
+      if (identical(_pendingDiscardConfirmation, confirmation)) {
+        _pendingDiscardConfirmation = null;
+      }
+    }
   }
 
   void _attemptBack() {
@@ -173,6 +185,11 @@ class _ItemsScreenState extends State<ItemsScreen> {
 
   Future<void> _leaveAfterConfirmation() async {
     if (!await _confirmDiscardChanges() || !mounted) return;
+    if (_hasUnsavedChanges) {
+      setState(() => _hasUnsavedChanges = false);
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+    }
     Navigator.of(context).pop();
   }
 
@@ -330,22 +347,27 @@ class _ItemsScreenState extends State<ItemsScreen> {
         final canMoveToNextOrLast =
             hasVisibleItems && selectedVisibleIndex >= 0;
 
-        return AppScreenShell(
-          key: const Key('itemsScreen'),
-          title: 'المواد',
-          subtitle: 'إدارة المواد والمجموعات والأنواع وأسعار البيع',
-          backgroundColor: Color.alphaBlend(
-            AppModuleColors.warehouses.withAlpha(12),
-            AppColors.surface,
-          ),
-          onBack: _attemptBack,
-          onSearch: _searchFocusNode.requestFocus,
-          onSave: selected != null
-              ? _hasUnsavedChanges
-                  ? _update
-                  : null
-              : _save,
-          body: Padding(
+        return PopScope(
+          canPop: !_hasUnsavedChanges,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop) _attemptBack();
+          },
+          child: AppScreenShell(
+            key: const Key('itemsScreen'),
+            title: 'المواد',
+            subtitle: 'إدارة المواد والمجموعات والأنواع وأسعار البيع',
+            backgroundColor: Color.alphaBlend(
+              AppModuleColors.warehouses.withAlpha(12),
+              AppColors.surface,
+            ),
+            onBack: _attemptBack,
+            onSearch: _searchFocusNode.requestFocus,
+            onSave: selected != null
+                ? _hasUnsavedChanges
+                    ? _update
+                    : null
+                : _save,
+            body: Padding(
             padding: const EdgeInsets.all(AppSpacing.lg),
             child: Column(
               children: [
@@ -413,6 +435,7 @@ class _ItemsScreenState extends State<ItemsScreen> {
                   ),
                 ),
               ],
+            ),
             ),
           ),
         );

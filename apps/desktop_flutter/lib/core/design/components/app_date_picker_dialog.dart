@@ -1,9 +1,45 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../app_tokens.dart';
 import 'app_button.dart';
 import 'app_header_button.dart';
 import 'app_shortcuts.dart';
+
+const _arabicMonthNames = [
+  'كانون الثاني',
+  'شباط',
+  'آذار',
+  'نيسان',
+  'أيار',
+  'حزيران',
+  'تموز',
+  'آب',
+  'أيلول',
+  'تشرين الأول',
+  'تشرين الثاني',
+  'كانون الأول',
+];
+
+const _arabicWeekdayLabels = [
+  'السبت',
+  'الأحد',
+  'الإثنين',
+  'الثلاثاء',
+  'الأربعاء',
+  'الخميس',
+  'الجمعة',
+];
+
+const _arabicFullWeekdayNames = [
+  'الإثنين',
+  'الثلاثاء',
+  'الأربعاء',
+  'الخميس',
+  'الجمعة',
+  'السبت',
+  'الأحد',
+];
 
 abstract final class AppDatePickerDialog {
   static Future<DateTime?> show(
@@ -150,32 +186,8 @@ class _AppDatePickerBody extends StatefulWidget {
 }
 
 class _AppDatePickerBodyState extends State<_AppDatePickerBody> {
-  static const _monthNames = [
-    'كانون الثاني',
-    'شباط',
-    'آذار',
-    'نيسان',
-    'أيار',
-    'حزيران',
-    'تموز',
-    'آب',
-    'أيلول',
-    'تشرين الأول',
-    'تشرين الثاني',
-    'كانون الأول',
-  ];
-
-  static const _weekdayLabels = [
-    'السبت',
-    'الأحد',
-    'الإثنين',
-    'الثلاثاء',
-    'الأربعاء',
-    'الخميس',
-    'الجمعة',
-  ];
-
   late DateTime _visibleMonth;
+  late DateTime _focusedDate;
   DateTime? _selectionStart;
   DateTime? _selectionEnd;
 
@@ -189,9 +201,10 @@ class _AppDatePickerBodyState extends State<_AppDatePickerBody> {
     super.initState();
     _selectionStart = widget.selectionStart;
     _selectionEnd = widget.selectionEnd;
+    _focusedDate = widget.initialDate;
     _visibleMonth = DateTime(
-      widget.initialDate.year,
-      widget.initialDate.month,
+      _focusedDate.year,
+      _focusedDate.month,
     );
   }
 
@@ -207,16 +220,53 @@ class _AppDatePickerBodyState extends State<_AppDatePickerBody> {
   }
 
   void _changeMonth(int delta) {
+    final targetMonth = DateTime(
+      _visibleMonth.year,
+      _visibleMonth.month + delta,
+    );
+    final maximumDay = DateUtils.getDaysInMonth(
+      targetMonth.year,
+      targetMonth.month,
+    );
+    final targetDate = _clampDate(
+      DateTime(
+        targetMonth.year,
+        targetMonth.month,
+        _focusedDate.day > maximumDay ? maximumDay : _focusedDate.day,
+      ),
+      widget.firstDate,
+      widget.lastDate,
+    );
     setState(() {
       _visibleMonth = DateTime(
-        _visibleMonth.year,
-        _visibleMonth.month + delta,
+        targetDate.year,
+        targetDate.month,
       );
+      _focusedDate = targetDate;
+    });
+  }
+
+  void _moveFocusedDate(int dayDelta) {
+    final targetDate = _clampDate(
+      DateTime(
+        _focusedDate.year,
+        _focusedDate.month,
+        _focusedDate.day + dayDelta,
+      ),
+      widget.firstDate,
+      widget.lastDate,
+    );
+    if (DateUtils.isSameDay(targetDate, _focusedDate)) return;
+    setState(() {
+      _focusedDate = targetDate;
+      _visibleMonth = DateTime(targetDate.year, targetDate.month);
     });
   }
 
   void _selectDate(DateTime date) {
     setState(() {
+      _focusedDate = date;
+      _visibleMonth = DateTime(date.year, date.month);
       if (!_isRange) {
         _selectionStart = date;
         _selectionEnd = null;
@@ -254,93 +304,112 @@ class _AppDatePickerBodyState extends State<_AppDatePickerBody> {
 
   @override
   Widget build(BuildContext context) {
-    return AppShortcutScope(
-      onEscape: () => Navigator.of(context).pop(),
-      child: Dialog(
-        key: Key(
-          _isRange ? 'appDateRangePickerDialog' : 'appDatePickerDialog',
-        ),
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.xl,
-          vertical: AppSpacing.lg,
-        ),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 440),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              border: Border.all(color: AppColors.border),
-              borderRadius: BorderRadius.circular(AppRadii.xl),
-              boxShadow: AppShadows.soft,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    _isRange ? 'اختر نطاق التاريخ' : 'اختر التاريخ',
-                    textAlign: TextAlign.center,
-                    style: AppTypography.screenTitle,
-                  ),
-                  if (_isRange) ...[
-                    const SizedBox(height: AppSpacing.xs),
-                    const Text(
-                      'اختر تاريخ البداية ثم تاريخ النهاية',
+    return CallbackShortcuts(
+      bindings: <ShortcutActivator, VoidCallback>{
+        const SingleActivator(LogicalKeyboardKey.arrowLeft):
+            () => _moveFocusedDate(-1),
+        const SingleActivator(LogicalKeyboardKey.arrowRight):
+            () => _moveFocusedDate(1),
+        const SingleActivator(LogicalKeyboardKey.arrowUp):
+            () => _moveFocusedDate(-7),
+        const SingleActivator(LogicalKeyboardKey.arrowDown):
+            () => _moveFocusedDate(7),
+        const SingleActivator(LogicalKeyboardKey.pageUp):
+            () => _changeMonth(-1),
+        const SingleActivator(LogicalKeyboardKey.pageDown):
+            () => _changeMonth(1),
+        const SingleActivator(LogicalKeyboardKey.enter):
+            () => _selectDate(_focusedDate),
+        const SingleActivator(LogicalKeyboardKey.numpadEnter):
+            () => _selectDate(_focusedDate),
+      },
+      child: AppShortcutScope(
+        onEscape: () => Navigator.of(context).pop(),
+        child: Dialog(
+          key: Key(
+            _isRange ? 'appDateRangePickerDialog' : 'appDatePickerDialog',
+          ),
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.xl,
+            vertical: AppSpacing.lg,
+          ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 440),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                border: Border.all(color: AppColors.border),
+                borderRadius: BorderRadius.circular(AppRadii.xl),
+                boxShadow: AppShadows.soft,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      _isRange ? 'اختر نطاق التاريخ' : 'اختر التاريخ',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: AppTypography.screenTitle,
                     ),
-                  ],
-                  const SizedBox(height: AppSpacing.lg),
-                  _MonthHeader(
-                    title:
-                        '${_monthNames[_visibleMonth.month - 1]} ${_visibleMonth.year}',
-                    onPrevious: _canGoPrevious
-                        ? () => _changeMonth(-1)
-                        : null,
-                    onNext:
-                        _canGoNext ? () => _changeMonth(1) : null,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  const _WeekdayHeader(labels: _weekdayLabels),
-                  const SizedBox(height: AppSpacing.sm),
-                  _CalendarGrid(
-                    visibleMonth: _visibleMonth,
-                    selectionStart: _selectionStart,
-                    selectionEnd: _selectionEnd,
-                    accentColor: widget.accentColor,
-                    isEnabled: _isEnabled,
-                    onSelected: _selectDate,
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  Row(
-                    key: const Key('appDatePickerActions'),
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      AppButton(
-                        key: const Key('appDatePickerCancel'),
-                        label: 'إلغاء',
-                        variant: AppButtonVariant.secondary,
-                        width: 144,
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      AppButton(
-                        key: const Key('appDatePickerConfirm'),
-                        label: 'موافق',
-                        icon: Icons.check_rounded,
-                        backgroundColor: widget.accentColor,
-                        width: 144,
-                        onPressed: _canConfirm ? _confirm : null,
+                    if (_isRange) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      const Text(
+                        'اختر تاريخ البداية ثم تاريخ النهاية',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
-                  ),
-                ],
+                    const SizedBox(height: AppSpacing.lg),
+                    _MonthHeader(
+                      title:
+                          '${_arabicMonthNames[_visibleMonth.month - 1]} ${_visibleMonth.year}',
+                      onPrevious:
+                          _canGoPrevious ? () => _changeMonth(-1) : null,
+                      onNext: _canGoNext ? () => _changeMonth(1) : null,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    const _WeekdayHeader(labels: _arabicWeekdayLabels),
+                    const SizedBox(height: AppSpacing.sm),
+                    _CalendarGrid(
+                      visibleMonth: _visibleMonth,
+                      focusedDate: _focusedDate,
+                      selectionStart: _selectionStart,
+                      selectionEnd: _selectionEnd,
+                      accentColor: widget.accentColor,
+                      isEnabled: _isEnabled,
+                      onSelected: _selectDate,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    Row(
+                      key: const Key('appDatePickerActions'),
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        AppButton(
+                          key: const Key('appDatePickerCancel'),
+                          label: 'إلغاء',
+                          variant: AppButtonVariant.secondary,
+                          width: 144,
+                          onPressed: () => Navigator.of(context).pop(),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        AppButton(
+                          key: const Key('appDatePickerConfirm'),
+                          label: 'موافق',
+                          icon: Icons.check_rounded,
+                          backgroundColor: widget.accentColor,
+                          width: 144,
+                          onPressed: _canConfirm ? _confirm : null,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -423,6 +492,7 @@ class _WeekdayHeader extends StatelessWidget {
 class _CalendarGrid extends StatelessWidget {
   const _CalendarGrid({
     required this.visibleMonth,
+    required this.focusedDate,
     required this.selectionStart,
     required this.selectionEnd,
     required this.accentColor,
@@ -431,6 +501,7 @@ class _CalendarGrid extends StatelessWidget {
   });
 
   final DateTime visibleMonth;
+  final DateTime focusedDate;
   final DateTime? selectionStart;
   final DateTime? selectionEnd;
   final Color accentColor;
@@ -468,6 +539,8 @@ class _CalendarGrid extends StatelessWidget {
                           ? const SizedBox(height: 42)
                           : _DayButton(
                               date: date,
+                              focused:
+                                  DateUtils.isSameDay(date, focusedDate),
                               selected:
                                   DateUtils.isSameDay(date, selectionStart) ||
                                       DateUtils.isSameDay(
@@ -507,6 +580,7 @@ class _CalendarGrid extends StatelessWidget {
 class _DayButton extends StatelessWidget {
   const _DayButton({
     required this.date,
+    required this.focused,
     required this.selected,
     required this.inRange,
     required this.today,
@@ -516,6 +590,7 @@ class _DayButton extends StatelessWidget {
   });
 
   final DateTime date;
+  final bool focused;
   final bool selected;
   final bool inRange;
   final bool today;
@@ -539,45 +614,70 @@ class _DayButton extends StatelessWidget {
             ? AppColors.onStrong
             : AppColors.textPrimary;
 
-    return SizedBox(
-      height: 42,
-      child: OutlinedButton(
-        onPressed: enabled ? onPressed : null,
-        style: ButtonStyle(
-          padding: const WidgetStatePropertyAll<EdgeInsetsGeometry>(
-            EdgeInsets.zero,
-          ),
-          elevation: const WidgetStatePropertyAll<double>(0),
-          shadowColor:
-              const WidgetStatePropertyAll<Color>(Colors.transparent),
-          surfaceTintColor:
-              const WidgetStatePropertyAll<Color>(Colors.transparent),
-          overlayColor:
-              const WidgetStatePropertyAll<Color>(Colors.transparent),
-          splashFactory: NoSplash.splashFactory,
-          mouseCursor: WidgetStateProperty.resolveWith<MouseCursor?>(
-            (states) => states.contains(WidgetState.disabled)
-                ? SystemMouseCursors.basic
-                : SystemMouseCursors.click,
-          ),
-          backgroundColor: WidgetStatePropertyAll<Color>(background),
-          foregroundColor: WidgetStatePropertyAll<Color>(foreground),
-          side: WidgetStatePropertyAll<BorderSide>(
-            BorderSide(
-              color:
-                  selected || today ? accentColor : Colors.transparent,
-              width: today && !selected ? 1.4 : 1,
+    final semanticLabel = '${_arabicFullWeekdayNames[date.weekday - 1]}، '
+        '${date.day} ${_arabicMonthNames[date.month - 1]} ${date.year}'
+        '${today ? '، اليوم' : ''}';
+
+    return Semantics(
+      key: ValueKey<String>(
+        'appDatePickerDay_${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}',
+      ),
+      container: true,
+      excludeSemantics: true,
+      label: semanticLabel,
+      button: true,
+      focusable: true,
+      enabled: enabled,
+      selected: selected,
+      focused: focused,
+      onTap: enabled ? onPressed : null,
+      child: ExcludeFocus(
+        child: SizedBox(
+          height: 42,
+          child: OutlinedButton(
+            onPressed: enabled ? onPressed : null,
+            style: ButtonStyle(
+              padding: const WidgetStatePropertyAll<EdgeInsetsGeometry>(
+                EdgeInsets.zero,
+              ),
+              elevation: const WidgetStatePropertyAll<double>(0),
+              shadowColor:
+                  const WidgetStatePropertyAll<Color>(Colors.transparent),
+              surfaceTintColor:
+                  const WidgetStatePropertyAll<Color>(Colors.transparent),
+              overlayColor:
+                  const WidgetStatePropertyAll<Color>(Colors.transparent),
+              splashFactory: NoSplash.splashFactory,
+              mouseCursor: WidgetStateProperty.resolveWith<MouseCursor?>(
+                (states) => states.contains(WidgetState.disabled)
+                    ? SystemMouseCursors.basic
+                    : SystemMouseCursors.click,
+              ),
+              backgroundColor: WidgetStatePropertyAll<Color>(background),
+              foregroundColor: WidgetStatePropertyAll<Color>(foreground),
+              side: WidgetStatePropertyAll<BorderSide>(
+                BorderSide(
+                  color: selected || today || focused
+                      ? accentColor
+                      : Colors.transparent,
+                  width: focused
+                      ? 2
+                      : today && !selected
+                          ? 1.4
+                          : 1,
+                ),
+              ),
+              shape: WidgetStatePropertyAll<OutlinedBorder>(
+                RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadii.md),
+                ),
+              ),
+            ),
+            child: Text(
+              '${date.day}',
+              style: const TextStyle(fontWeight: FontWeight.w700),
             ),
           ),
-          shape: WidgetStatePropertyAll<OutlinedBorder>(
-            RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppRadii.md),
-            ),
-          ),
-        ),
-        child: Text(
-          '${date.day}',
-          style: const TextStyle(fontWeight: FontWeight.w700),
         ),
       ),
     );

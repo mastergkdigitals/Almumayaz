@@ -29,6 +29,7 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
   late _WarehouseFormSnapshot _baseline;
   bool _isApplyingFormState = false;
   bool _hasUnsavedChanges = false;
+  Future<bool>? _pendingDiscardConfirmation;
   String _inventoryQuery = '';
 
   Iterable<TextEditingController> get _editableControllers => [
@@ -127,7 +128,10 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
 
   Future<bool> _confirmDiscardChanges() async {
     if (!_hasUnsavedChanges) return true;
-    return AppDialogs.confirm(
+    final pendingConfirmation = _pendingDiscardConfirmation;
+    if (pendingConfirmation != null) return pendingConfirmation;
+
+    final confirmation = AppDialogs.confirm(
       context: context,
       title: 'تغييرات غير محفوظة',
       message: 'لديك بيانات أو تعديلات غير محفوظة. هل تريد تجاهلها؟',
@@ -135,6 +139,14 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
       cancelLabel: 'البقاء',
       isDanger: true,
     );
+    _pendingDiscardConfirmation = confirmation;
+    try {
+      return await confirmation;
+    } finally {
+      if (identical(_pendingDiscardConfirmation, confirmation)) {
+        _pendingDiscardConfirmation = null;
+      }
+    }
   }
 
   void _attemptBack() {
@@ -143,6 +155,11 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
 
   Future<void> _leaveAfterConfirmation() async {
     if (!await _confirmDiscardChanges() || !mounted) return;
+    if (_hasUnsavedChanges) {
+      setState(() => _hasUnsavedChanges = false);
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+    }
     Navigator.of(context).pop();
   }
 
@@ -304,22 +321,27 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
         final canMoveToNextOrLast =
             hasVisibleWarehouses && selectedVisibleIndex >= 0;
 
-        return AppScreenShell(
-          key: const Key('warehousesScreen'),
-          title: 'المخازن',
-          subtitle: 'إدارة المخازن ومتابعة أرصدة المواد',
-          backgroundColor: Color.alphaBlend(
-            AppModuleColors.warehouses.withAlpha(12),
-            AppColors.surface,
-          ),
-          onBack: _attemptBack,
-          onSearch: _searchFocusNode.requestFocus,
-          onSave: selected != null
-              ? _hasUnsavedChanges
-                  ? _update
-                  : null
-              : _save,
-          body: Padding(
+        return PopScope(
+          canPop: !_hasUnsavedChanges,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop) _attemptBack();
+          },
+          child: AppScreenShell(
+            key: const Key('warehousesScreen'),
+            title: 'المخازن',
+            subtitle: 'إدارة المخازن ومتابعة أرصدة المواد',
+            backgroundColor: Color.alphaBlend(
+              AppModuleColors.warehouses.withAlpha(12),
+              AppColors.surface,
+            ),
+            onBack: _attemptBack,
+            onSearch: _searchFocusNode.requestFocus,
+            onSave: selected != null
+                ? _hasUnsavedChanges
+                    ? _update
+                    : null
+                : _save,
+            body: Padding(
             padding: const EdgeInsets.all(AppSpacing.lg),
             child: Column(
               children: [
@@ -444,6 +466,7 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
                   ),
                 ),
               ],
+            ),
             ),
           ),
         );

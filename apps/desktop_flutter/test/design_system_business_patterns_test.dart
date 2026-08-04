@@ -1,5 +1,6 @@
 import 'package:erp/core/design/app_design_system.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'design_system_test_harness.dart';
@@ -94,6 +95,49 @@ void main() {
 
     await tester.tap(find.byKey(const Key('appDatePickerCancel')));
     await tester.pump();
+  });
+
+  testWidgets('moves and selects calendar days with the keyboard',
+      (tester) async {
+    await pumpDesignSystemGallery(tester);
+
+    final dateField = find.byKey(const Key('designGlobalDatePicker'));
+    await reveal(tester, dateField);
+    await tester.tap(dateField);
+    await tester.pump();
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
+    expect(find.text('كانون الثاني 2027'), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.pageUp);
+    await tester.pump();
+    expect(find.text('كانون الأول 2026'), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.pageDown);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+
+    final selectedDay = tester.widget<Semantics>(
+      find.byKey(const Key('appDatePickerDay_2027-01-02')),
+    );
+    expect(selectedDay.properties.selected, isTrue);
+    expect(
+      selectedDay.properties.label,
+      contains('2 كانون الثاني 2027'),
+    );
+
+    await tester.tap(find.byKey(const Key('appDatePickerConfirm')));
+    await tester.pump();
+
+    final value = tester.widget<EditableText>(
+      find.descendant(
+        of: dateField,
+        matching: find.byType(EditableText),
+      ),
+    );
+    expect(value.controller.text, '2027/01/02');
   });
 
   testWidgets('selects a range with the shared Arabic date picker',
@@ -213,6 +257,62 @@ void main() {
     );
     await tester.pump();
     expect(dialog, findsNothing);
+  });
+
+  testWidgets('highlights and activates search results with the keyboard',
+      (tester) async {
+    await pumpDesignSystemGallery(tester);
+
+    final button =
+        find.byKey(const Key('designRecordSearchDialogButton'));
+    await reveal(tester, button);
+    await tester.tap(button);
+    await tester.pump();
+
+    final firstResult = find.byKey(
+      const Key('designRecordSearchResult-0'),
+    );
+    expect(
+      tester
+          .widgetList<Semantics>(
+            find.descendant(of: firstResult, matching: find.byType(Semantics)),
+          )
+          .any((semantics) => semantics.properties.selected == true),
+      isTrue,
+    );
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+
+    final secondResult = find.byKey(
+      const Key('designRecordSearchResult-1'),
+    );
+    expect(
+      tester
+          .widgetList<Semantics>(
+            find.descendant(of: secondResult, matching: find.byType(Semantics)),
+          )
+          .any((semantics) => semantics.properties.selected == true),
+      isTrue,
+    );
+    expect(
+      tester
+          .widget<EditableText>(
+            find.descendant(
+              of: find.byKey(const Key('designRecordSearchField')),
+              matching: find.byType(EditableText),
+            ),
+          )
+          .focusNode
+          .hasFocus,
+      isTrue,
+    );
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+
+    expect(find.byKey(const Key('designRecordSearchDialog')), findsNothing);
+    expect(find.text('تم اختيار قائمة الشراء رقم 101'), findsOneWidget);
   });
 
   testWidgets('opens options then the shared statement report',

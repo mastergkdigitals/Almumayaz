@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../app_tokens.dart';
 import 'app_button.dart';
@@ -93,15 +94,113 @@ class AppDataTable extends StatefulWidget {
 class _AppDataTableState extends State<AppDataTable> {
   final _internalVerticalScrollController = ScrollController();
   final _horizontalScrollController = ScrollController();
+  final _focusNode = FocusNode(debugLabel: 'appDataTable');
+
+  int? _keyboardSelectionIndex;
 
   ScrollController get _verticalScrollController =>
       widget.verticalScrollController ?? _internalVerticalScrollController;
 
   @override
+  void initState() {
+    super.initState();
+    _keyboardSelectionIndex = _selectedRowIndex(widget.rows);
+  }
+
+  @override
+  void didUpdateWidget(covariant AppDataTable oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final oldSelectedIndex = _selectedRowIndex(oldWidget.rows);
+    final selectedIndex = _selectedRowIndex(widget.rows);
+    if (selectedIndex != oldSelectedIndex) {
+      _keyboardSelectionIndex = selectedIndex;
+    } else if (widget.rows.isEmpty) {
+      _keyboardSelectionIndex = null;
+    } else if (_keyboardSelectionIndex != null) {
+      _keyboardSelectionIndex = _keyboardSelectionIndex!.clamp(
+        0,
+        widget.rows.length - 1,
+      ).toInt();
+    }
+  }
+
+  @override
   void dispose() {
     _internalVerticalScrollController.dispose();
     _horizontalScrollController.dispose();
+    _focusNode.dispose();
     super.dispose();
+  }
+
+  KeyEventResult _handleKeyEvent(FocusNode _, KeyEvent event) {
+    if (event is! KeyDownEvent || widget.rows.isEmpty) {
+      return KeyEventResult.ignored;
+    }
+
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+      _moveKeyboardSelection(1);
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+      _moveKeyboardSelection(-1);
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.enter ||
+        event.logicalKey == LogicalKeyboardKey.numpadEnter) {
+      final index = _keyboardSelectionIndex ??
+          _selectedRowIndex(widget.rows) ??
+          0;
+      final onTap = widget.rows[index].onTap;
+      if (onTap == null) return KeyEventResult.ignored;
+      _selectAndActivate(index, onTap);
+      return KeyEventResult.handled;
+    }
+
+    return KeyEventResult.ignored;
+  }
+
+  void _moveKeyboardSelection(int delta) {
+    final currentIndex = _keyboardSelectionIndex;
+    final nextIndex = currentIndex == null
+        ? delta > 0
+            ? 0
+            : widget.rows.length - 1
+        : (currentIndex + delta)
+            .clamp(0, widget.rows.length - 1)
+            .toInt();
+    if (currentIndex != nextIndex) {
+      setState(() => _keyboardSelectionIndex = nextIndex);
+    }
+    _focusNode.requestFocus();
+    _ensureSelectionVisible(nextIndex);
+  }
+
+  void _selectAndActivate(int index, VoidCallback onTap) {
+    if (_keyboardSelectionIndex != index) {
+      setState(() => _keyboardSelectionIndex = index);
+    }
+    _focusNode.requestFocus();
+    onTap();
+    if (mounted) _focusNode.requestFocus();
+  }
+
+  void _ensureSelectionVisible(int index) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_verticalScrollController.hasClients) return;
+      final position = _verticalScrollController.position;
+      final rowStart = index * widget.rowHeight;
+      final rowEnd = rowStart + widget.rowHeight;
+      var target = position.pixels;
+      if (rowStart < target) {
+        target = rowStart;
+      } else if (rowEnd > target + position.viewportDimension) {
+        target = rowEnd - position.viewportDimension;
+      }
+      target = target.clamp(0, position.maxScrollExtent).toDouble();
+      if (target != position.pixels) {
+        _verticalScrollController.jumpTo(target);
+      }
+    });
   }
 
   @override
@@ -134,66 +233,70 @@ class _AppDataTableState extends State<AppDataTable> {
         index: FlexColumnWidth(widget.columns[index].flex),
     };
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: borderRadius,
-        boxShadow: widget.showShadow ? AppShadows.soft : null,
-      ),
-      foregroundDecoration: BoxDecoration(
-        borderRadius: borderRadius,
-        border: Border.all(color: effectiveBorderColor, width: 1.4),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final availableWidth = constraints.hasBoundedWidth
-              ? constraints.maxWidth
-              : widget.minimumColumnWidth * widget.columns.length;
-          final tableWidth = math.max(
-            availableWidth,
-            widget.minimumColumnWidth * widget.columns.length,
-          );
+    return Focus(
+      focusNode: _focusNode,
+      onKeyEvent: _handleKeyEvent,
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: borderRadius,
+          boxShadow: widget.showShadow ? AppShadows.soft : null,
+        ),
+        foregroundDecoration: BoxDecoration(
+          borderRadius: borderRadius,
+          border: Border.all(color: effectiveBorderColor, width: 1.4),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final availableWidth = constraints.hasBoundedWidth
+                ? constraints.maxWidth
+                : widget.minimumColumnWidth * widget.columns.length;
+            final tableWidth = math.max(
+              availableWidth,
+              widget.minimumColumnWidth * widget.columns.length,
+            );
 
-          return SizedBox(
-            height: widget.height,
-            child: Scrollbar(
-              controller: _horizontalScrollController,
-              thumbVisibility: true,
-              scrollbarOrientation: ScrollbarOrientation.bottom,
-              child: SingleChildScrollView(
+            return SizedBox(
+              height: widget.height,
+              child: Scrollbar(
                 controller: _horizontalScrollController,
-                scrollDirection: Axis.horizontal,
-                child: SizedBox(
-                  width: tableWidth,
-                  height: widget.height,
-                  child: Column(
-                    children: [
-                      _TableHeader(
-                        columns: widget.columns,
-                        columnWidths: columnWidths,
-                        height: widget.headerHeight,
-                        accentColor: widget.accentColor,
-                        borderColor: effectiveBorderColor,
-                        backgroundColor: widget.headerBackgroundColor,
-                        foregroundColor: widget.headerForegroundColor,
-                        horizontalPadding: widget.cellHorizontalPadding,
-                        showColumnDividers: widget.showColumnDividers,
-                      ),
-                      Expanded(
-                        child: _buildBody(
-                          columnWidths,
-                          effectiveBorderColor,
-                          effectiveSelectedRowColor,
+                thumbVisibility: true,
+                scrollbarOrientation: ScrollbarOrientation.bottom,
+                child: SingleChildScrollView(
+                  controller: _horizontalScrollController,
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width: tableWidth,
+                    height: widget.height,
+                    child: Column(
+                      children: [
+                        _TableHeader(
+                          columns: widget.columns,
+                          columnWidths: columnWidths,
+                          height: widget.headerHeight,
+                          accentColor: widget.accentColor,
+                          borderColor: effectiveBorderColor,
+                          backgroundColor: widget.headerBackgroundColor,
+                          foregroundColor: widget.headerForegroundColor,
+                          horizontalPadding: widget.cellHorizontalPadding,
+                          showColumnDividers: widget.showColumnDividers,
                         ),
-                      ),
-                    ],
+                        Expanded(
+                          child: _buildBody(
+                            columnWidths,
+                            effectiveBorderColor,
+                            effectiveSelectedRowColor,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
@@ -227,19 +330,30 @@ class _AppDataTableState extends State<AppDataTable> {
         itemCount: widget.rows.length,
         itemExtent: widget.rowHeight,
         itemBuilder: (context, index) {
-          return _TableBodyRow(
-            columns: widget.columns,
-            row: widget.rows[index],
-            columnWidths: columnWidths,
-            height: widget.rowHeight,
-            showBottomBorder: index < widget.rows.length - 1,
-            horizontalPadding: widget.cellHorizontalPadding,
-            showColumnDividers: widget.showColumnDividers,
-            backgroundColor: index.isOdd
-                ? widget.alternatingRowColor
-                : null,
-            selectedColor: selectedRowColor,
-            borderColor: borderColor,
+          final row = widget.rows[index];
+          final selected = _keyboardSelectionIndex == null
+              ? row.selected
+              : _keyboardSelectionIndex == index;
+          return Semantics(
+            container: true,
+            selected: selected,
+            child: _TableBodyRow(
+              columns: widget.columns,
+              row: row,
+              selected: selected,
+              onActivate: row.onTap == null
+                  ? null
+                  : () => _selectAndActivate(index, row.onTap!),
+              columnWidths: columnWidths,
+              height: widget.rowHeight,
+              showBottomBorder: index < widget.rows.length - 1,
+              horizontalPadding: widget.cellHorizontalPadding,
+              showColumnDividers: widget.showColumnDividers,
+              backgroundColor:
+                  index.isOdd ? widget.alternatingRowColor : null,
+              selectedColor: selectedRowColor,
+              borderColor: borderColor,
+            ),
           );
         },
       ),
@@ -345,6 +459,8 @@ class _TableBodyRow extends StatelessWidget {
   const _TableBodyRow({
     required this.columns,
     required this.row,
+    required this.selected,
+    required this.onActivate,
     required this.columnWidths,
     required this.height,
     required this.showBottomBorder,
@@ -357,6 +473,8 @@ class _TableBodyRow extends StatelessWidget {
 
   final List<AppTableColumn> columns;
   final AppTableRow row;
+  final bool selected;
+  final VoidCallback? onActivate;
   final Map<int, TableColumnWidth> columnWidths;
   final double height;
   final bool showBottomBorder;
@@ -370,12 +488,13 @@ class _TableBodyRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       key: row.rowKey,
-      color: row.selected
+      color: selected
           ? selectedColor ?? AppColors.infoSurface
           : backgroundColor ?? AppColors.surface,
       child: InkWell(
-        onTap: row.onTap,
-        mouseCursor: row.onTap == null
+        onTap: onActivate,
+        canRequestFocus: false,
+        mouseCursor: onActivate == null
             ? SystemMouseCursors.basic
             : SystemMouseCursors.click,
         splashFactory: NoSplash.splashFactory,
@@ -441,6 +560,11 @@ class _TableBodyRow extends StatelessWidget {
       ),
     );
   }
+}
+
+int? _selectedRowIndex(List<AppTableRow> rows) {
+  final index = rows.indexWhere((row) => row.selected);
+  return index < 0 ? null : index;
 }
 
 AlignmentGeometry _alignmentForTextAlign(TextAlign textAlign) {

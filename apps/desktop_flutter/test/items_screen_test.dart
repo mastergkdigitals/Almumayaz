@@ -159,6 +159,31 @@ void main() {
       );
     },
   );
+
+  testWidgets('guards unsaved item data from system back', (tester) async {
+    await _openItems(tester);
+    await tester.enterText(
+      find.byKey(const Key('itemNameField')),
+      'مادة غير محفوظة',
+    );
+    await tester.pump();
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('appConfirmDialog')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('appDialogCancelButton')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('itemsScreen')), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('appDialogConfirmButton')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('itemsScreen')), findsNothing);
+    expect(find.byKey(const Key('warehousesScreen')), findsOneWidget);
+  });
 }
 
 Future<void> _openItems(WidgetTester tester) async {

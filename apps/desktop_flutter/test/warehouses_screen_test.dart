@@ -467,6 +467,35 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('guards unsaved warehouse data from system back',
+      (tester) async {
+    await _openWarehouses(tester);
+    await tester.enterText(
+      find.byKey(const Key('warehouseNameField')),
+      'مخزن غير محفوظ',
+    );
+    await tester.pump();
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('appConfirmDialog')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('appDialogCancelButton')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('warehousesScreen')), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('appDialogConfirmButton')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('warehousesScreen')), findsNothing);
+    expect(
+      find.byKey(const Key('dashboardCard_warehouses')),
+      findsOneWidget,
+    );
+  });
 }
 
 Future<void> _openWarehouses(WidgetTester tester) async {

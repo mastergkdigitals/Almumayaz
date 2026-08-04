@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../app_tokens.dart';
 import 'app_module_dialog.dart';
@@ -97,6 +98,10 @@ class _AppRecordSearchDialogState<T extends Object>
     extends State<_AppRecordSearchDialog<T>> {
   final _searchController = TextEditingController();
   final _searchFocusNode = FocusNode(debugLabel: 'recordSearch');
+  final _resultsScrollController = ScrollController();
+
+  int _highlightedIndex = 0;
+  bool _selectionCommitted = false;
 
   List<AppSearchRecord<T>> get _matches {
     final query = _normalizeSearchText(_searchController.text);
@@ -127,14 +132,78 @@ class _AppRecordSearchDialogState<T extends Object>
   void dispose() {
     _searchController.dispose();
     _searchFocusNode.dispose();
+    _resultsScrollController.dispose();
     super.dispose();
   }
 
-  void _selectFirstMatch() {
-    final matches = _matches;
-    if (matches.isNotEmpty) {
-      Navigator.of(context).pop(matches.first.value);
+  KeyEventResult _handleKeyEvent(FocusNode _, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+      _moveHighlight(1);
+      return KeyEventResult.handled;
     }
+    if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+      _moveHighlight(-1);
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.enter ||
+        event.logicalKey == LogicalKeyboardKey.numpadEnter) {
+      _selectHighlightedMatch();
+      return KeyEventResult.handled;
+    }
+
+    return KeyEventResult.ignored;
+  }
+
+  void _moveHighlight(int delta) {
+    final matches = _matches;
+    if (matches.isEmpty) return;
+    final nextIndex = (_highlightedIndex + delta)
+        .clamp(0, matches.length - 1)
+        .toInt();
+    if (nextIndex != _highlightedIndex) {
+      setState(() => _highlightedIndex = nextIndex);
+    }
+    _searchFocusNode.requestFocus();
+    _ensureHighlightedVisible(nextIndex);
+  }
+
+  void _ensureHighlightedVisible(int index) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_resultsScrollController.hasClients) return;
+      final position = _resultsScrollController.position;
+      const resultExtent = 80.0;
+      final resultStart = index * resultExtent;
+      final resultEnd = resultStart + resultExtent;
+      var target = position.pixels;
+      if (resultStart < target) {
+        target = resultStart;
+      } else if (resultEnd > target + position.viewportDimension) {
+        target = resultEnd - position.viewportDimension;
+      }
+      target = target.clamp(0, position.maxScrollExtent).toDouble();
+      if (target != position.pixels) {
+        _resultsScrollController.jumpTo(target);
+      }
+    });
+  }
+
+  void _selectHighlightedMatch() {
+    final matches = _matches;
+    if (matches.isEmpty) return;
+    final index = _highlightedIndex.clamp(0, matches.length - 1).toInt();
+    _select(matches[index].value);
+  }
+
+  void _select(T value) {
+    if (_selectionCommitted) return;
+    _selectionCommitted = true;
+    Navigator.of(context).pop(value);
+  }
+
+  void _handleSearchChanged(String _) {
+    setState(() => _highlightedIndex = 0);
   }
 
   @override
@@ -142,78 +211,83 @@ class _AppRecordSearchDialogState<T extends Object>
     final matches = _matches;
     final hasQuery = _searchController.text.trim().isNotEmpty;
 
-    return AppModuleDialog(
-      key: widget.dialogKey,
-      title: widget.title,
-      subtitle: widget.subtitle,
-      icon: Icons.search_rounded,
-      accentColor: widget.accentColor,
-      centerHeader: true,
-      showHeaderCloseButton: true,
-      width: 760,
-      onClose: () => Navigator.of(context).pop(),
-      child: SizedBox(
-        height: 430,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            AppSearchField(
-              fieldKey: widget.searchFieldKey,
-              controller: _searchController,
-              focusNode: _searchFocusNode,
-              label: widget.searchLabel,
-              hint: widget.hint,
-              accentColor: widget.accentColor,
-              onChanged: (_) => setState(() {}),
-              onSubmitted: (_) => _selectFirstMatch(),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Expanded(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: Color.alphaBlend(
-                    widget.accentColor.withAlpha(7),
-                    AppColors.surface,
-                  ),
-                  borderRadius: BorderRadius.circular(AppRadii.lg),
-                  border: Border.all(
+    return Focus(
+      canRequestFocus: false,
+      onKeyEvent: _handleKeyEvent,
+      child: AppModuleDialog(
+        key: widget.dialogKey,
+        title: widget.title,
+        subtitle: widget.subtitle,
+        icon: Icons.search_rounded,
+        accentColor: widget.accentColor,
+        centerHeader: true,
+        showHeaderCloseButton: true,
+        width: 760,
+        onClose: () => Navigator.of(context).pop(),
+        child: SizedBox(
+          height: 430,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AppSearchField(
+                fieldKey: widget.searchFieldKey,
+                controller: _searchController,
+                focusNode: _searchFocusNode,
+                label: widget.searchLabel,
+                hint: widget.hint,
+                accentColor: widget.accentColor,
+                onChanged: _handleSearchChanged,
+                onSubmitted: (_) => _selectHighlightedMatch(),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Expanded(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
                     color: Color.alphaBlend(
-                      widget.accentColor.withAlpha(72),
-                      AppColors.border,
+                      widget.accentColor.withAlpha(7),
+                      AppColors.surface,
+                    ),
+                    borderRadius: BorderRadius.circular(AppRadii.lg),
+                    border: Border.all(
+                      color: Color.alphaBlend(
+                        widget.accentColor.withAlpha(72),
+                        AppColors.border,
+                      ),
                     ),
                   ),
+                  child: matches.isEmpty
+                      ? _SearchEmptyState(
+                          accentColor: widget.accentColor,
+                          title: widget.records.isEmpty
+                              ? widget.emptyTitle
+                              : widget.noResultsTitle,
+                          message: hasQuery && widget.records.isNotEmpty
+                              ? 'جرّب كتابة اسم أو رقم آخر'
+                              : null,
+                        )
+                      : ListView.separated(
+                          controller: _resultsScrollController,
+                          padding: const EdgeInsets.all(AppSpacing.sm),
+                          itemCount: matches.length,
+                          separatorBuilder: (context, index) =>
+                              const SizedBox(height: AppSpacing.sm),
+                          itemBuilder: (context, index) {
+                            final record = matches[index];
+                            return _SearchResultTile<T>(
+                              key: Key(
+                                '${widget.resultKeyPrefix}-$index',
+                              ),
+                              record: record,
+                              accentColor: widget.accentColor,
+                              highlighted: index == _highlightedIndex,
+                              onSelected: () => _select(record.value),
+                            );
+                          },
+                        ),
                 ),
-                child: matches.isEmpty
-                    ? _SearchEmptyState(
-                        accentColor: widget.accentColor,
-                        title: widget.records.isEmpty
-                            ? widget.emptyTitle
-                            : widget.noResultsTitle,
-                        message: hasQuery && widget.records.isNotEmpty
-                            ? 'جرّب كتابة اسم أو رقم آخر'
-                            : null,
-                      )
-                    : ListView.separated(
-                        padding: const EdgeInsets.all(AppSpacing.sm),
-                        itemCount: matches.length,
-                        separatorBuilder: (context, index) =>
-                            const SizedBox(height: AppSpacing.sm),
-                        itemBuilder: (context, index) {
-                          final record = matches[index];
-                          return _SearchResultTile<T>(
-                            key: Key(
-                              '${widget.resultKeyPrefix}-$index',
-                            ),
-                            record: record,
-                            accentColor: widget.accentColor,
-                            onSelected: () =>
-                                Navigator.of(context).pop(record.value),
-                          );
-                        },
-                      ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -224,100 +298,119 @@ class _SearchResultTile<T extends Object> extends StatelessWidget {
   const _SearchResultTile({
     required this.record,
     required this.accentColor,
+    required this.highlighted,
     required this.onSelected,
     super.key,
   });
 
   final AppSearchRecord<T> record;
   final Color accentColor;
+  final bool highlighted;
   final VoidCallback onSelected;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(AppRadii.md),
-      child: InkWell(
-        onTap: onSelected,
-        mouseCursor: SystemMouseCursors.click,
+    final backgroundColor = highlighted
+        ? Color.alphaBlend(
+            accentColor.withAlpha(20),
+            AppColors.surface,
+          )
+        : AppColors.surface;
+    final borderColor = highlighted
+        ? Color.alphaBlend(
+            accentColor.withAlpha(150),
+            AppColors.border,
+          )
+        : AppColors.border;
+
+    return Semantics(
+      container: true,
+      selected: highlighted,
+      child: Material(
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(AppRadii.md),
-        hoverColor: Color.alphaBlend(
-          accentColor.withAlpha(12),
-          AppColors.surface,
-        ),
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 72),
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.sm,
+        child: InkWell(
+          onTap: onSelected,
+          mouseCursor: SystemMouseCursors.click,
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          hoverColor: Color.alphaBlend(
+            accentColor.withAlpha(12),
+            AppColors.surface,
           ),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadii.md),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: Color.alphaBlend(
-                    accentColor.withAlpha(20),
-                    AppColors.surface,
-                  ),
-                  borderRadius: BorderRadius.circular(AppRadii.sm),
-                ),
-                child: Icon(record.icon, color: accentColor),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      record.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTypography.fieldText.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 72),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.sm,
+            ),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadii.md),
+              border: Border.all(color: borderColor),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: Color.alphaBlend(
+                      accentColor.withAlpha(20),
+                      AppColors.surface,
                     ),
-                    if (record.subtitle != null) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        record.subtitle!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                    if (record.details != null) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        record.details!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: accentColor,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ],
+                    borderRadius: BorderRadius.circular(AppRadii.sm),
+                  ),
+                  child: Icon(record.icon, color: accentColor),
                 ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Icon(
-                Icons.chevron_left_rounded,
-                color: accentColor,
-              ),
-            ],
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        record.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.fieldText.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      if (record.subtitle != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          record.subtitle!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                      if (record.details != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          record.details!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: accentColor,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Icon(
+                  Icons.chevron_left_rounded,
+                  color: accentColor,
+                ),
+              ],
+            ),
           ),
         ),
       ),

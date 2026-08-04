@@ -1,5 +1,6 @@
 import 'package:erp/core/design/app_design_system.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'design_system_test_harness.dart';
@@ -195,6 +196,76 @@ void main() {
           .any((material) => material.color == expectedSelectedColor),
       isTrue,
     );
+  });
+
+  testWidgets(
+      'selects and activates table rows by keyboard while retaining focus',
+      (tester) async {
+    int? activatedIndex;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) {
+              return AppDataTable(
+                key: const Key('keyboardDataTable'),
+                height: 220,
+                columns: const [AppTableColumn(label: 'الاسم')],
+                rows: [
+                  for (var index = 0; index < 3; index++)
+                    AppTableRow(
+                      rowKey: Key('keyboardRow_$index'),
+                      selected: activatedIndex == index,
+                      onTap: () {
+                        setState(() => activatedIndex = index);
+                      },
+                      cells: [Text('الصف ${index + 1}')],
+                    ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('keyboardRow_0')));
+    await tester.pump();
+    expect(activatedIndex, 0);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+
+    final highlightedSecondRow = find.ancestor(
+      of: find.text('الصف 2'),
+      matching: find.byWidgetPredicate(
+        (widget) =>
+            widget is Semantics && widget.properties.selected == true,
+      ),
+    );
+    expect(highlightedSecondRow, findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+    expect(activatedIndex, 1);
+
+    final table = find.byKey(const Key('keyboardDataTable'));
+    expect(
+      tester
+          .widgetList<Focus>(
+            find.descendant(of: table, matching: find.byType(Focus)),
+          )
+          .any((focus) => focus.focusNode?.hasFocus ?? false),
+      isTrue,
+    );
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+    expect(activatedIndex, 0);
   });
 
   testWidgets(

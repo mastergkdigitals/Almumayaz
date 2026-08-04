@@ -492,6 +492,43 @@ void main() {
     expect(_fieldText(tester, name), 'أحمد كريم');
   });
 
+  testWidgets('guards system back and opens only one discard confirmation',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(const AlmumayazApp());
+    await _login(tester);
+    await tester.tap(find.byKey(const Key('dashboardCard_parties')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('partyNameField')),
+      'طرف غير محفوظ',
+    );
+    await tester.pump();
+
+    final shell = tester.widget<AppScreenShell>(
+      find.byKey(const Key('partiesScreen')),
+    );
+    shell.onBack!();
+    shell.onBack!();
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('appConfirmDialog')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('appDialogCancelButton')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('partiesScreen')), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('appConfirmDialog')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('appDialogConfirmButton')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('partiesScreen')), findsNothing);
+    expect(find.byKey(const Key('dashboardCard_parties')), findsOneWidget);
+  });
+
   testWidgets('prevents duplicate party names when saving',
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(1440, 900));

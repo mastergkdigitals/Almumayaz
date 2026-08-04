@@ -470,6 +470,32 @@ void main() {
       isNotNull,
     );
   });
+
+  testWidgets('guards unsaved Cashbox data from system back',
+      (tester) async {
+    await _openCashbox(tester);
+    await tester.enterText(
+      find.byKey(const Key('cashboxNotesField')),
+      'سند غير محفوظ',
+    );
+    await tester.pump();
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('appConfirmDialog')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('appDialogCancelButton')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('cashboxScreen')), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('appDialogConfirmButton')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('cashboxScreen')), findsNothing);
+    expect(find.byKey(const Key('dashboardCard_cashbox')), findsOneWidget);
+  });
 }
 
 Future<void> _openCashbox(WidgetTester tester) async {
