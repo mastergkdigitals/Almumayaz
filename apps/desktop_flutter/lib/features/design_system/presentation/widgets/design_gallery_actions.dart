@@ -210,7 +210,7 @@ class _DesignGalleryActionsGroupState
         ),
         const SizedBox(height: AppSpacing.lg),
         DesignGallerySection(
-          title: 'أزرار الفواتير والتلميحات',
+          title: 'أزرار القوائم والتلميحات',
           child: Wrap(
             textDirection: TextDirection.rtl,
             alignment: WrapAlignment.start,

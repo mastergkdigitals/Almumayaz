@@ -251,7 +251,7 @@ void main() {
       (tester) async {
     await pumpDesignSystemGallery(tester);
 
-    expect(find.text('أزرار الفواتير والتلميحات'), findsOneWidget);
+    expect(find.text('أزرار القوائم والتلميحات'), findsOneWidget);
 
     const buttons = <String, (IconData, String)>{
       'designInvoicePrintButton': (Icons.print_rounded, 'طباعة'),

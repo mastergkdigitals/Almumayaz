@@ -130,7 +130,7 @@ class DesignGalleryTablesSection extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.xl),
           const Text(
-            'جداول إدخال الفواتير',
+            'جداول إدخال القوائم',
             style: AppTypography.sectionTitle,
           ),
           const SizedBox(height: AppSpacing.lg),

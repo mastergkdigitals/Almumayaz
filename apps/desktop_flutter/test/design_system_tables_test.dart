@@ -93,7 +93,7 @@ void main() {
       (tester) async {
     await pumpDesignSystemGallery(tester);
 
-    expect(find.text('جداول إدخال الفواتير'), findsOneWidget);
+    expect(find.text('جداول إدخال القوائم'), findsOneWidget);
     expect(find.text('جدول المبيعات'), findsOneWidget);
     expect(find.text('جدول المشتريات'), findsOneWidget);
 

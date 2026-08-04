@@ -270,7 +270,7 @@ class _BusinessPoliciesSettingsSectionState
           AppSwitchField(
             key: const Key('settingsPrintPreviewSwitch'),
             title: 'تشغيل معاينة الطباعة',
-            subtitle: 'عرض الفاتورة قبل إرسالها إلى الطابعة',
+            subtitle: 'عرض القائمة قبل إرسالها إلى الطابعة',
             icon: Icons.preview_outlined,
             accentColor: widget.accentColor,
             value: _previewEnabled,

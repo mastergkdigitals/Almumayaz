@@ -1050,7 +1050,7 @@ class _SalesScreenState extends State<SalesScreen> {
                   _SalesMoneyField(
                     fieldKey: const Key('salesInvoiceDiscountField'),
                     controller: _invoiceDiscountController,
-                    label: 'خصم الفاتورة',
+                    label: 'خصم القائمة',
                     icon: Icons.discount_rounded,
                     decimalPlaces: _currency == 'USD' ? 2 : 0,
                     onChanged: _changeInvoiceDiscount,

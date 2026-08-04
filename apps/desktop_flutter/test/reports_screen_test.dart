@@ -6,6 +6,28 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('keeps saved Sales and Purchase lists status-free', () {
+    for (final reportId in ['salesInvoices', 'purchaseInvoices']) {
+      final report = reportDefinitions.singleWhere(
+        (candidate) => candidate.id == reportId,
+      );
+      final variant = report.variants.single;
+
+      expect(
+        variant.filters.map((filter) => filter.id),
+        isNot(contains('status')),
+      );
+      expect(
+        variant.columns.map((column) => column.label),
+        isNot(contains('الحالة')),
+      );
+      for (final row in variant.rows) {
+        expect(row.filterValues.containsKey('status'), isFalse);
+        expect(row.cells, hasLength(variant.columns.length));
+      }
+    }
+  });
+
   testWidgets('opens the seven-section Reports hub', (tester) async {
     await _openReports(tester);
 
@@ -196,7 +218,7 @@ void main() {
     await tester.pump();
     expect(find.byKey(const Key('appToast')), findsOneWidget);
     expect(
-      find.text('تم تجهيز معاينة طباعة تقرير فواتير المبيعات'),
+      find.text('تم تجهيز معاينة طباعة تقرير قوائم المبيعات'),
       findsOneWidget,
     );
     await _finishToast(tester);

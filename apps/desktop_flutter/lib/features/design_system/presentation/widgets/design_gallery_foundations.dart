@@ -71,7 +71,7 @@ class DesignGalleryFoundationsSection extends StatelessWidget {
               ),
               _ControlHeightSample(
                 key: Key('designFoundationInvoiceFieldHeight'),
-                label: 'حقل جدول الفاتورة',
+                label: 'حقل جدول القائمة',
                 height: AppControlHeights.invoiceField,
               ),
               _ControlHeightSample(

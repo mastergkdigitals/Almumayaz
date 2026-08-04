@@ -7,13 +7,13 @@ final List<ReportDefinition> reportDefinitions =
     List<ReportDefinition>.unmodifiable([
   ReportDefinition(
     id: 'salesInvoices',
-    title: 'تقرير فواتير المبيعات',
+    title: 'تقرير قوائم المبيعات',
     icon: Icons.point_of_sale_rounded,
     palette: AppModulePalettes.sales,
     variants: [
       ReportVariantDefinition(
         id: 'main',
-        label: 'فواتير المبيعات',
+        label: 'قوائم المبيعات',
         icon: Icons.receipt_long_rounded,
         filters: _salesFilters,
         metrics: _salesMetrics,
@@ -24,13 +24,13 @@ final List<ReportDefinition> reportDefinitions =
   ),
   ReportDefinition(
     id: 'purchaseInvoices',
-    title: 'تقرير فواتير المشتريات',
+    title: 'تقرير قوائم المشتريات',
     icon: Icons.shopping_cart_rounded,
     palette: AppModulePalettes.purchases,
     variants: [
       ReportVariantDefinition(
         id: 'main',
-        label: 'فواتير المشتريات',
+        label: 'قوائم المشتريات',
         icon: Icons.receipt_long_rounded,
         filters: _purchaseFilters,
         metrics: _purchaseMetrics,
@@ -151,13 +151,6 @@ const List<ReportFilterOption> _warehouseOptions = [
   ReportFilterOption('rasafa', 'الرصافة'),
 ];
 
-const List<ReportFilterOption> _invoiceStatusOptions = [
-  ReportFilterOption('all', 'الكل'),
-  ReportFilterOption('posted', 'مرحل'),
-  ReportFilterOption('draft', 'مسودة'),
-  ReportFilterOption('cancelled', 'ملغاة'),
-];
-
 const List<ReportFilterDefinition> _salesFilters = [
   ReportFilterDefinition.dateRange(id: 'period', label: 'الفترة'),
   ReportFilterDefinition.dropdown(
@@ -194,12 +187,6 @@ const List<ReportFilterDefinition> _salesFilters = [
     icon: Icons.currency_exchange_rounded,
     options: _currencyOptions,
   ),
-  ReportFilterDefinition.dropdown(
-    id: 'status',
-    label: 'الحالة',
-    icon: Icons.task_alt_rounded,
-    options: _invoiceStatusOptions,
-  ),
 ];
 
 const List<ReportMetricDefinition> _salesMetrics = [
@@ -224,7 +211,6 @@ const List<ReportColumnDefinition> _salesColumns = [
   ReportColumnDefinition(label: 'الإجمالي', numeric: true),
   ReportColumnDefinition(label: 'المقبوض', numeric: true),
   ReportColumnDefinition(label: 'المتبقي', numeric: true),
-  ReportColumnDefinition(label: 'الحالة'),
   ReportColumnDefinition(label: 'عدد المواد', numeric: true),
 ];
 
@@ -238,7 +224,6 @@ final List<ReportRowDefinition> _salesRows =
       'customer': 'dijla',
       'saleType': 'cash',
       'currency': 'IQD',
-      'status': 'posted',
     },
     cells: const [
       '1',
@@ -251,7 +236,6 @@ final List<ReportRowDefinition> _salesRows =
       '310,000',
       '310,000',
       '0',
-      'مرحل',
       '3',
     ],
   ),
@@ -263,7 +247,6 @@ final List<ReportRowDefinition> _salesRows =
       'customer': 'ahmed',
       'saleType': 'installments',
       'currency': 'USD',
-      'status': 'posted',
     },
     cells: const [
       '2',
@@ -276,7 +259,6 @@ final List<ReportRowDefinition> _salesRows =
       '1,250.00',
       '250.00',
       '1,000.00',
-      'مرحل',
       '2',
     ],
   ),
@@ -288,7 +270,6 @@ final List<ReportRowDefinition> _salesRows =
       'customer': 'nakheel',
       'saleType': 'credit',
       'currency': 'IQD',
-      'status': 'posted',
     },
     cells: const [
       '3',
@@ -301,7 +282,6 @@ final List<ReportRowDefinition> _salesRows =
       '177,000',
       '0',
       '177,000',
-      'مرحل',
       '3',
     ],
   ),
@@ -353,12 +333,6 @@ const List<ReportFilterDefinition> _purchaseFilters = [
     icon: Icons.currency_exchange_rounded,
     options: _currencyOptions,
   ),
-  ReportFilterDefinition.dropdown(
-    id: 'status',
-    label: 'الحالة',
-    icon: Icons.task_alt_rounded,
-    options: _invoiceStatusOptions,
-  ),
 ];
 
 const List<ReportMetricDefinition> _purchaseMetrics = [
@@ -384,7 +358,6 @@ const List<ReportColumnDefinition> _purchaseColumns = [
   ReportColumnDefinition(label: 'الإجمالي', numeric: true),
   ReportColumnDefinition(label: 'المدفوع', numeric: true),
   ReportColumnDefinition(label: 'المتبقي', numeric: true),
-  ReportColumnDefinition(label: 'الحالة'),
   ReportColumnDefinition(label: 'عدد المواد', numeric: true),
 ];
 
@@ -399,7 +372,6 @@ final List<ReportRowDefinition> _purchaseRows =
       'purchaseType': 'return',
       'paymentType': 'cash',
       'currency': 'IQD',
-      'status': 'posted',
     },
     cells: const [
       '1',
@@ -413,7 +385,6 @@ final List<ReportRowDefinition> _purchaseRows =
       '90,000',
       '90,000',
       '0',
-      'مرحل',
       '1',
     ],
   ),
@@ -426,7 +397,6 @@ final List<ReportRowDefinition> _purchaseRows =
       'purchaseType': 'import',
       'paymentType': 'credit',
       'currency': 'USD',
-      'status': 'posted',
     },
     cells: const [
       '2',
@@ -440,7 +410,6 @@ final List<ReportRowDefinition> _purchaseRows =
       '1,500.00',
       '500.00',
       '1,000.00',
-      'مرحل',
       '2',
     ],
   ),
@@ -453,7 +422,6 @@ final List<ReportRowDefinition> _purchaseRows =
       'purchaseType': 'local',
       'paymentType': 'credit',
       'currency': 'IQD',
-      'status': 'posted',
     },
     cells: const [
       '3',
@@ -467,7 +435,6 @@ final List<ReportRowDefinition> _purchaseRows =
       '150,000',
       '0',
       '150,000',
-      'مرحل',
       '2',
     ],
   ),

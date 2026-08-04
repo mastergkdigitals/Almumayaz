@@ -1079,7 +1079,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                   _PurchaseMoneyField(
                     fieldKey: const Key('purchaseInvoiceDiscountField'),
                     controller: _invoiceDiscountController,
-                    label: 'خصم الفاتورة',
+                    label: 'خصم القائمة',
                     icon: Icons.discount_rounded,
                     decimalPlaces: _currency == 'USD' ? 2 : 0,
                     onChanged: _changeInvoiceDiscount,
