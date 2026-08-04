@@ -252,6 +252,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
   late _PurchaseFormSnapshot _baseline;
   var _isApplyingFormState = false;
   var _hasUnsavedChanges = false;
+  Future<bool>? _pendingDiscardConfirmation;
 
   Iterable<TextEditingController> get _editableControllers => [
         _exchangeRateController,
@@ -584,8 +585,17 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
           AppFormatters.moneyByCurrency(paid, _currency),
         );
       } else {
+        final maximumPaid = total;
+        final requestedPaid =
+            AppFormatters.parseNumber(_nonCashPaidText) ?? 0;
+        paid = requestedPaid > maximumPaid ? maximumPaid : requestedPaid;
+        if (paid != requestedPaid) {
+          _nonCashPaidText = AppFormatters.moneyByCurrency(
+            paid,
+            _currency,
+          );
+        }
         _setControllerText(_paidController, _nonCashPaidText);
-        paid = AppFormatters.parseNumber(_paidController.text) ?? 0;
       }
 
       final remaining = _paymentType == 'نقدي' ? 0 : total - paid;
@@ -617,7 +627,10 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
 
   Future<bool> _confirmDiscardChanges() async {
     if (!_hasUnsavedChanges) return true;
-    return AppDialogs.confirm(
+    final pendingConfirmation = _pendingDiscardConfirmation;
+    if (pendingConfirmation != null) return pendingConfirmation;
+
+    final confirmation = AppDialogs.confirm(
       context: context,
       title: 'تغييرات غير محفوظة',
       message: 'لديك بيانات أو تعديلات غير محفوظة. هل تريد تجاهلها؟',
@@ -625,6 +638,14 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
       cancelLabel: 'البقاء',
       isDanger: true,
     );
+    _pendingDiscardConfirmation = confirmation;
+    try {
+      return await confirmation;
+    } finally {
+      if (identical(_pendingDiscardConfirmation, confirmation)) {
+        _pendingDiscardConfirmation = null;
+      }
+    }
   }
 
   void _attemptBack() {
@@ -633,6 +654,11 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
 
   Future<void> _leaveAfterConfirmation() async {
     if (!await _confirmDiscardChanges() || !mounted) return;
+    if (_hasUnsavedChanges) {
+      setState(() => _hasUnsavedChanges = false);
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+    }
     Navigator.of(context).pop();
   }
 
@@ -677,9 +703,24 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
   }
 
   bool _validateForm() {
-    if (_supplierNameController.text.trim().isNotEmpty) return true;
-    AppToast.showWarning(context, 'أدخل اسم المجهز أولاً');
-    return false;
+    if (_supplierNameController.text.trim().isEmpty) {
+      AppToast.showWarning(context, 'أدخل اسم المجهز أولاً');
+      return false;
+    }
+
+    final meaningfulItems = _activeItems.where((item) => !item.isEmpty);
+    if (meaningfulItems.any((item) => !item.hasRequiredValues)) {
+      AppToast.showWarning(
+        context,
+        'أكمل بيانات سطر المادة: رمز المادة واسم المادة والكمية',
+      );
+      return false;
+    }
+    if (meaningfulItems.isEmpty) {
+      AppToast.showWarning(context, 'أضف مادة واحدة مكتملة على الأقل');
+      return false;
+    }
+    return true;
   }
 
   _DemoPurchaseInvoice _invoiceFromForm({
@@ -888,24 +929,29 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
       AppColors.surface,
     );
 
-    return AppScreenShell(
-      key: const Key('purchaseScreen'),
-      title: 'المشتريات',
-      backgroundColor: tint,
-      onBack: _attemptBack,
-      onSearch: _showPurchaseSearch,
-      onSave: hasSelectedInvoice
-          ? _hasUnsavedChanges
-              ? _update
-              : null
-          : _save,
-      body: ColoredBox(
-        key: const Key('purchaseTintBackground'),
-        color: tint,
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Column(
-            children: [
+    return PopScope(
+      canPop: !_hasUnsavedChanges,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _attemptBack();
+      },
+      child: AppScreenShell(
+        key: const Key('purchaseScreen'),
+        title: 'المشتريات',
+        backgroundColor: tint,
+        onBack: _attemptBack,
+        onSearch: _showPurchaseSearch,
+        onSave: hasSelectedInvoice
+            ? _hasUnsavedChanges
+                ? _update
+                : null
+            : _save,
+        body: ColoredBox(
+          key: const Key('purchaseTintBackground'),
+          color: tint,
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Column(
+              children: [
               _PurchaseFieldRow(
                 children: [
                   AppReadOnlyField(
@@ -1168,7 +1214,8 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                 onUndo: _hasUnsavedChanges ? _undo : null,
                 onDelete: hasSelectedInvoice ? _delete : null,
               ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

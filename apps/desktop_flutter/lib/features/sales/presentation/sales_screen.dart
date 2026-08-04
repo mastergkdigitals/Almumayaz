@@ -285,6 +285,7 @@ class _SalesScreenState extends State<SalesScreen> {
   late _SalesFormSnapshot _baseline;
   var _isApplyingFormState = false;
   var _hasUnsavedChanges = false;
+  Future<bool>? _pendingDiscardConfirmation;
 
   Iterable<TextEditingController> get _editableControllers => [
         _exchangeRateController,
@@ -579,12 +580,19 @@ class _SalesScreenState extends State<SalesScreen> {
           AppFormatters.moneyByCurrency(received, _currency),
         );
       } else {
+        final requestedReceived =
+            AppFormatters.parseNumber(_nonCashReceivedText) ?? 0;
+        received = requestedReceived > total ? total : requestedReceived;
+        if (received != requestedReceived) {
+          _nonCashReceivedText = AppFormatters.moneyByCurrency(
+            received,
+            _currency,
+          );
+        }
         _setControllerText(
           _receivedController,
           _nonCashReceivedText,
         );
-        received =
-            AppFormatters.parseNumber(_receivedController.text) ?? 0;
       }
 
       final unpaid = total - received;
@@ -617,7 +625,10 @@ class _SalesScreenState extends State<SalesScreen> {
 
   Future<bool> _confirmDiscardChanges() async {
     if (!_hasUnsavedChanges) return true;
-    return AppDialogs.confirm(
+    final pendingConfirmation = _pendingDiscardConfirmation;
+    if (pendingConfirmation != null) return pendingConfirmation;
+
+    final confirmation = AppDialogs.confirm(
       context: context,
       title: 'تغييرات غير محفوظة',
       message: 'لديك بيانات أو تعديلات غير محفوظة. هل تريد تجاهلها؟',
@@ -625,6 +636,14 @@ class _SalesScreenState extends State<SalesScreen> {
       cancelLabel: 'البقاء',
       isDanger: true,
     );
+    _pendingDiscardConfirmation = confirmation;
+    try {
+      return await confirmation;
+    } finally {
+      if (identical(_pendingDiscardConfirmation, confirmation)) {
+        _pendingDiscardConfirmation = null;
+      }
+    }
   }
 
   void _attemptBack() {
@@ -633,6 +652,11 @@ class _SalesScreenState extends State<SalesScreen> {
 
   Future<void> _leaveAfterConfirmation() async {
     if (!await _confirmDiscardChanges() || !mounted) return;
+    if (_hasUnsavedChanges) {
+      setState(() => _hasUnsavedChanges = false);
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+    }
     Navigator.of(context).pop();
   }
 
@@ -676,9 +700,24 @@ class _SalesScreenState extends State<SalesScreen> {
   }
 
   bool _validateForm() {
-    if (_customerNameController.text.trim().isNotEmpty) return true;
-    AppToast.showWarning(context, 'أدخل اسم الزبون أولاً');
-    return false;
+    if (_customerNameController.text.trim().isEmpty) {
+      AppToast.showWarning(context, 'أدخل اسم الزبون أولاً');
+      return false;
+    }
+
+    final meaningfulItems = _activeItems.where((item) => !item.isEmpty);
+    if (meaningfulItems.any((item) => !item.hasRequiredValues)) {
+      AppToast.showWarning(
+        context,
+        'أكمل بيانات سطر المادة: رمز المادة واسم المادة والكمية',
+      );
+      return false;
+    }
+    if (meaningfulItems.isEmpty) {
+      AppToast.showWarning(context, 'أضف مادة واحدة مكتملة على الأقل');
+      return false;
+    }
+    return true;
   }
 
   _DemoSalesInvoice _invoiceFromForm({
@@ -886,24 +925,29 @@ class _SalesScreenState extends State<SalesScreen> {
       AppColors.surface,
     );
 
-    return AppScreenShell(
-      key: const Key('salesScreen'),
-      title: 'المبيعات',
-      backgroundColor: tint,
-      onBack: _attemptBack,
-      onSearch: _showSalesSearch,
-      onSave: hasSelectedInvoice
-          ? _hasUnsavedChanges
-              ? _update
-              : null
-          : _save,
-      body: ColoredBox(
-        key: const Key('salesTintBackground'),
-        color: tint,
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Column(
-            children: [
+    return PopScope(
+      canPop: !_hasUnsavedChanges,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _attemptBack();
+      },
+      child: AppScreenShell(
+        key: const Key('salesScreen'),
+        title: 'المبيعات',
+        backgroundColor: tint,
+        onBack: _attemptBack,
+        onSearch: _showSalesSearch,
+        onSave: hasSelectedInvoice
+            ? _hasUnsavedChanges
+                ? _update
+                : null
+            : _save,
+        body: ColoredBox(
+          key: const Key('salesTintBackground'),
+          color: tint,
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Column(
+              children: [
               _SalesFieldRow(
                 children: [
                   AppReadOnlyField(
@@ -1137,7 +1181,8 @@ class _SalesScreenState extends State<SalesScreen> {
                 onUndo: _hasUnsavedChanges ? _undo : null,
                 onDelete: hasSelectedInvoice ? _delete : null,
               ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

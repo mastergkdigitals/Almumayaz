@@ -471,6 +471,125 @@ void main() {
     );
   });
 
+  testWidgets('caps purchase payment in IQD and USD when totals change',
+      (tester) async {
+    await _openPurchaseScreen(tester);
+
+    await tester.enterText(
+      find.byKey(const Key('purchasePaidField')),
+      '999999',
+    );
+    await tester.pump();
+    expect(_fieldValue(tester, 'purchasePaidField'), '150,000');
+    expect(_fieldValue(tester, 'purchaseRemainingField'), '0');
+
+    await tester.enterText(
+      find.byKey(const Key('purchasePaidField')),
+      '100000',
+    );
+    await tester.enterText(
+      find.byKey(const Key('purchaseInvoiceDiscountField')),
+      '100000',
+    );
+    await tester.pump();
+    expect(_fieldValue(tester, 'purchaseTotalField'), '50,000');
+    expect(_fieldValue(tester, 'purchasePaidField'), '50,000');
+
+    _dropdown(tester, 'purchaseCurrencyField').onChanged('USD');
+    await tester.pump();
+    await tester.enterText(
+      find.byKey(const Key('purchasePaidField')),
+      '999999',
+    );
+    await tester.pump();
+    expect(_fieldValue(tester, 'purchasePaidField'), '50,000.00');
+    expect(_fieldValue(tester, 'purchaseRemainingField'), '0.00');
+  });
+
+  testWidgets('guards purchase edits when Windows Back is used',
+      (tester) async {
+    await _openPurchaseScreen(tester);
+
+    await tester.enterText(
+      find.byKey(const Key('purchaseNotesField')),
+      'تعديل غير محفوظ',
+    );
+    await tester.pump();
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('appConfirmDialog')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('appDialogCancelButton')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('purchaseScreen')), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('appConfirmDialog')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('appDialogConfirmButton')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('purchaseScreen')), findsNothing);
+    expect(find.byKey(const Key('dashboardCard_purchases')), findsOneWidget);
+  });
+
+  testWidgets(
+      'requires complete purchase rows and ignores a trailing empty row',
+      (tester) async {
+    await _openPurchaseScreen(tester);
+    await _openNewPurchaseForm(tester);
+    await tester.enterText(
+      find.byKey(const Key('purchaseSupplierNameField')),
+      'مجهز اختبار',
+    );
+
+    await tester.tap(find.byKey(const Key('purchaseSaveButton')));
+    await tester.pump();
+    expect(find.text('أضف مادة واحدة مكتملة على الأقل'), findsOneWidget);
+    await _finishToast(tester);
+
+    await tester.enterText(
+      _invoiceFieldByPrefix('appPurchaseInvoiceTemplateCodeField-'),
+      'P-TEST',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('purchaseSaveButton')));
+    await tester.pump();
+    expect(
+      find.text(
+        'أكمل بيانات سطر المادة: رمز المادة واسم المادة والكمية',
+      ),
+      findsOneWidget,
+    );
+    await _finishToast(tester);
+
+    await _completeCurrentPurchaseRow(tester);
+    final addButton = tester.widget<AppTableActionButton>(
+      find.byKey(const Key('appPurchaseInvoiceTemplateAddButton')),
+    );
+    expect(addButton.onPressed, isNotNull);
+    addButton.onPressed!();
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('purchaseSaveButton')));
+    await tester.pump();
+    _expectToast(
+      tester,
+      color: AppColors.blue,
+      message: 'تم حفظ قائمة الشراء مؤقتاً',
+    );
+    await _finishToast(tester);
+
+    await tester.tap(find.byKey(const Key('purchaseSearchButton')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('purchaseRecordSearchField')),
+      'مجهز اختبار',
+    );
+    await tester.pump();
+    expect(find.textContaining('1 مواد'), findsOneWidget);
+  });
+
   testWidgets('navigates and searches complete demo purchase invoices',
       (tester) async {
     await _openPurchaseScreen(tester);
@@ -592,6 +711,7 @@ void main() {
       find.byKey(const Key('purchaseSupplierNameField')),
       'مجهز تجريبي',
     );
+    await _completeCurrentPurchaseRow(tester);
     await tester.pump();
     await tester.tap(find.byKey(const Key('purchaseSaveButton')));
     await tester.pump();
@@ -609,7 +729,7 @@ void main() {
       'مجهز تجريبي',
     );
     await tester.pump();
-    expect(find.textContaining('0 مواد'), findsOneWidget);
+    expect(find.textContaining('1 مواد'), findsOneWidget);
     await tester.tap(
       find.byKey(const Key('purchaseRecordSearchResult-0')),
     );
@@ -697,6 +817,38 @@ AppDropdownField<String> _dropdown(
 
 AppButton _actionButton(WidgetTester tester, String key) {
   return tester.widget<AppButton>(find.byKey(Key(key)));
+}
+
+Finder _invoiceFieldByPrefix(String prefix) {
+  return find.byWidgetPredicate((widget) {
+    final key = widget.key;
+    return widget is TextFormField &&
+        key is ValueKey<String> &&
+        key.value.startsWith(prefix);
+  });
+}
+
+Future<void> _openNewPurchaseForm(WidgetTester tester) async {
+  await tester.tap(find.byKey(const Key('purchaseLastButton')));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(const Key('purchaseLastButton')));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _completeCurrentPurchaseRow(WidgetTester tester) async {
+  await tester.enterText(
+    _invoiceFieldByPrefix('appPurchaseInvoiceTemplateCodeField-'),
+    'P-TEST',
+  );
+  await tester.enterText(
+    _invoiceFieldByPrefix('appPurchaseInvoiceTemplateNameField-'),
+    'مادة اختبار',
+  );
+  await tester.enterText(
+    _invoiceFieldByPrefix('appPurchaseInvoiceTemplateQuantityField-'),
+    '1',
+  );
+  await tester.pump();
 }
 
 TextField _textField(WidgetTester tester, String key) {
