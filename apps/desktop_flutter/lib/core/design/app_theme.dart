@@ -3,6 +3,32 @@ import 'package:flutter/material.dart';
 import 'app_tokens.dart';
 
 abstract final class AppTheme {
+  static TextTheme _scaleTextTheme(TextTheme theme) {
+    TextStyle? scaled(TextStyle? style) {
+      final fontSize = style?.fontSize;
+      if (style == null || fontSize == null) return style;
+      return style.copyWith(fontSize: fontSize * AppDensity.scale);
+    }
+
+    return theme.copyWith(
+      displayLarge: scaled(theme.displayLarge),
+      displayMedium: scaled(theme.displayMedium),
+      displaySmall: scaled(theme.displaySmall),
+      headlineLarge: scaled(theme.headlineLarge),
+      headlineMedium: scaled(theme.headlineMedium),
+      headlineSmall: scaled(theme.headlineSmall),
+      titleLarge: scaled(theme.titleLarge),
+      titleMedium: scaled(theme.titleMedium),
+      titleSmall: scaled(theme.titleSmall),
+      bodyLarge: scaled(theme.bodyLarge),
+      bodyMedium: scaled(theme.bodyMedium),
+      bodySmall: scaled(theme.bodySmall),
+      labelLarge: scaled(theme.labelLarge),
+      labelMedium: scaled(theme.labelMedium),
+      labelSmall: scaled(theme.labelSmall),
+    );
+  }
+
   static ThemeData light() {
     final scheme = ColorScheme.fromSeed(
       seedColor: AppColors.primary,
@@ -23,10 +49,11 @@ abstract final class AppTheme {
       textSelectionTheme: const TextSelectionThemeData(
         cursorColor: AppColors.cursor,
       ),
-      textTheme: base.textTheme.apply(
-        bodyColor: AppColors.textPrimary,
-        displayColor: AppColors.textPrimary,
-        fontSizeFactor: AppDensity.scale,
+      textTheme: _scaleTextTheme(
+        base.textTheme.apply(
+          bodyColor: AppColors.textPrimary,
+          displayColor: AppColors.textPrimary,
+        ),
       ),
       iconTheme: base.iconTheme.copyWith(size: AppIconSizes.lg),
       inputDecorationTheme: InputDecorationTheme(
