@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../../core/config/app_configuration.dart';
 import '../../../core/design/app_design_system.dart';
 import '../../about/presentation/about_screen.dart';
 import '../../auth/presentation/login_screen.dart';
@@ -153,6 +155,11 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final configuration = AppConfigurationScope.of(context);
+    final visibleModules = modules
+        .where((module) => configuration.isModuleKeyEnabled(module.id))
+        .toList(growable: false);
+
     return AppShortcutScope(
       child: Scaffold(
         backgroundColor: AppColors.surface,
@@ -183,7 +190,7 @@ class DashboardScreen extends StatelessWidget {
                     return GridView.builder(
                       clipBehavior: Clip.none,
                       physics: const NeverScrollableScrollPhysics(),
-                      itemCount: modules.length,
+                      itemCount: visibleModules.length,
                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: columns,
                         crossAxisSpacing: spacing,
@@ -191,10 +198,13 @@ class DashboardScreen extends StatelessWidget {
                         childAspectRatio: aspectRatio,
                       ),
                       itemBuilder: (context, index) {
-                        final item = modules[index];
+                        final item = visibleModules[index];
+                        final title = item.id == 'company'
+                            ? configuration.companyName
+                            : item.title;
                         return DashboardCard(
                           key: Key('dashboardCard_${item.id}'),
-                          title: item.title,
+                          title: title,
                           icon: item.icon,
                           colors: item.palette.gradient,
                           shadowColor: item.palette.shadow,

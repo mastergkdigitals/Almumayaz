@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/config/app_configuration.dart';
 import '../../../core/design/app_design_system.dart';
 import '../../design_system/presentation/design_system_gallery_screen.dart';
 
@@ -8,6 +9,8 @@ class AboutScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final configuration = AppConfigurationScope.of(context);
+
     return AppScreenShell(
       key: const Key('aboutScreen'),
       title: 'حول البرنامج',
@@ -65,25 +68,28 @@ class AboutScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: AppSpacing.xxl),
-                  AppRegularButton(
-                    key: const Key('openDesignSystemGallery'),
-                    label: 'دليل نظام التصميم',
-                    icon: Icons.design_services_rounded,
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const DesignSystemGalleryScreen(),
+                  if (configuration.showDesignSystem) ...[
+                    AppRegularButton(
+                      key: const Key('openDesignSystemGallery'),
+                      label: 'دليل نظام التصميم',
+                      icon: Icons.design_services_rounded,
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) =>
+                              const DesignSystemGalleryScreen(),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  const Text(
-                    'أداة داخلية لمراجعة عناصر الواجهة أثناء التطوير',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 14,
+                    const SizedBox(height: AppSpacing.sm),
+                    const Text(
+                      'أداة داخلية لمراجعة عناصر الواجهة أثناء التطوير',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 14,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
