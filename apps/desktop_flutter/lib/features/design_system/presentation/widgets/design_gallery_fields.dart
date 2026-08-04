@@ -126,6 +126,7 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
                   controller: _quantityController,
                   label: 'الكمية',
                   icon: Icons.numbers_rounded,
+                  accentColor: AppModuleColors.purchases,
                 ),
               ),
               SizedBox(
@@ -134,6 +135,7 @@ class _DesignGalleryFieldsGroupState extends State<DesignGalleryFieldsGroup> {
                   fieldKey: const Key('designMoneyField'),
                   controller: _moneyController,
                   label: 'المبلغ',
+                  accentColor: AppModuleColors.purchases,
                 ),
               ),
               SizedBox(

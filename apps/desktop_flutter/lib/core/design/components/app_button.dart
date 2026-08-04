@@ -115,6 +115,13 @@ class _AppButtonState extends State<AppButton> {
                     horizontal: hasLabel ? AppSpacing.xs : 0,
                   ));
 
+    final label = Text(
+      widget.label,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      softWrap: false,
+      style: widget.textStyle ?? AppTypography.buttonText,
+    );
     final content = widget.isLoading
         ? const SizedBox.square(
             dimension: 24,
@@ -129,26 +136,56 @@ class _AppButtonState extends State<AppButton> {
               ),
             ),
           )
-        : Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (icon != null &&
-                  widget.iconPosition == AppButtonIconPosition.beforeLabel) ...[
-                icon,
-                if (hasLabel) SizedBox(width: widget.iconSpacing),
-              ],
-              if (hasLabel)
-                Text(
-                  widget.label,
-                  style: widget.textStyle ?? AppTypography.buttonText,
-                ),
-              if (icon != null &&
-                  widget.iconPosition == AppButtonIconPosition.afterLabel) ...[
-                if (hasLabel) SizedBox(width: widget.iconSpacing),
-                icon,
-              ],
-            ],
+        : LayoutBuilder(
+            builder: (context, constraints) {
+              final hasBoundedWidth = constraints.hasBoundedWidth;
+              if (hasBoundedWidth &&
+                  icon != null &&
+                  constraints.maxWidth < widget.iconSize) {
+                return SizedBox(
+                  width: constraints.maxWidth,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: icon,
+                  ),
+                );
+              }
+
+              final availableAfterIcon = hasBoundedWidth && icon != null
+                  ? constraints.maxWidth - widget.iconSize
+                  : widget.iconSpacing;
+              final effectiveIconSpacing = hasLabel && icon != null
+                  ? availableAfterIcon
+                      .clamp(0.0, widget.iconSpacing)
+                      .toDouble()
+                  : 0.0;
+
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (icon != null &&
+                      widget.iconPosition ==
+                          AppButtonIconPosition.beforeLabel) ...[
+                    icon,
+                    if (hasLabel)
+                      SizedBox(width: effectiveIconSpacing),
+                  ],
+                  if (hasLabel)
+                    if (hasBoundedWidth)
+                      Flexible(child: label)
+                    else
+                      label,
+                  if (icon != null &&
+                      widget.iconPosition ==
+                          AppButtonIconPosition.afterLabel) ...[
+                    if (hasLabel)
+                      SizedBox(width: effectiveIconSpacing),
+                    icon,
+                  ],
+                ],
+              );
+            },
           );
 
     ButtonStyle withoutShadow(ButtonStyle style) {

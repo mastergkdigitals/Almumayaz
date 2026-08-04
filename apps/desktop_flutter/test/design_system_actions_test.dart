@@ -520,4 +520,33 @@ void main() {
     );
   });
 
+  testWidgets('ellipsizes long fixed-width button labels safely',
+      (tester) async {
+    const label = 'طباعة التقرير التفصيلي مع جميع البيانات';
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 140,
+              child: AppButton(
+                label: label,
+                icon: Icons.print_rounded,
+                onPressed: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    final text = tester.widget<Text>(find.text(label));
+    expect(text.maxLines, 1);
+    expect(text.softWrap, isFalse);
+    expect(text.overflow, TextOverflow.ellipsis);
+  });
+
 }

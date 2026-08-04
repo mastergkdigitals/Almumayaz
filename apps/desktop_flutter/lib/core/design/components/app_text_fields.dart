@@ -389,18 +389,32 @@ class AppIntegerField extends StatelessWidget {
     super.key,
     this.fieldKey,
     this.icon,
+    this.accentColor,
+    this.focusNode,
     this.validator,
     this.onSubmitted,
+    this.onChanged,
+    this.textInputAction = TextInputAction.next,
+    this.textDirection = TextDirection.rtl,
+    this.textAlign = TextAlign.right,
     this.enabled = true,
+    this.readOnly = false,
   });
 
   final TextEditingController controller;
   final String label;
   final Key? fieldKey;
   final IconData? icon;
+  final Color? accentColor;
+  final FocusNode? focusNode;
   final String? Function(String?)? validator;
   final ValueChanged<String>? onSubmitted;
+  final ValueChanged<String>? onChanged;
+  final TextInputAction textInputAction;
+  final TextDirection textDirection;
+  final TextAlign textAlign;
   final bool enabled;
+  final bool readOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -409,12 +423,16 @@ class AppIntegerField extends StatelessWidget {
       label: label,
       fieldKey: fieldKey,
       icon: icon,
+      accentColor: accentColor,
+      focusNode: focusNode,
       enabled: enabled,
+      readOnly: readOnly,
       validator: validator,
       onSubmitted: onSubmitted,
-      textDirection: TextDirection.rtl,
-      textAlign: TextAlign.right,
-      textInputAction: TextInputAction.next,
+      onChanged: onChanged,
+      textDirection: textDirection,
+      textAlign: textAlign,
+      textInputAction: textInputAction,
       keyboardType: TextInputType.number,
       inputFormatters: const [AppIntegerInputFormatter()],
     );
@@ -428,18 +446,34 @@ class AppMoneyField extends StatelessWidget {
     super.key,
     this.fieldKey,
     this.icon = Icons.payments_rounded,
+    this.accentColor,
+    this.focusNode,
     this.validator,
     this.onSubmitted,
+    this.onChanged,
+    this.textInputAction = TextInputAction.next,
+    this.textDirection = TextDirection.rtl,
+    this.textAlign = TextAlign.right,
     this.enabled = true,
-  });
+    this.readOnly = false,
+    this.decimalPlaces = 4,
+  }) : assert(decimalPlaces >= 0);
 
   final TextEditingController controller;
   final String label;
   final Key? fieldKey;
   final IconData icon;
+  final Color? accentColor;
+  final FocusNode? focusNode;
   final String? Function(String?)? validator;
   final ValueChanged<String>? onSubmitted;
+  final ValueChanged<String>? onChanged;
+  final TextInputAction textInputAction;
+  final TextDirection textDirection;
+  final TextAlign textAlign;
   final bool enabled;
+  final bool readOnly;
+  final int decimalPlaces;
 
   @override
   Widget build(BuildContext context) {
@@ -448,14 +482,20 @@ class AppMoneyField extends StatelessWidget {
       label: label,
       fieldKey: fieldKey,
       icon: icon,
+      accentColor: accentColor,
+      focusNode: focusNode,
       enabled: enabled,
+      readOnly: readOnly,
       validator: validator,
       onSubmitted: onSubmitted,
-      textDirection: TextDirection.rtl,
-      textAlign: TextAlign.right,
-      textInputAction: TextInputAction.next,
+      onChanged: onChanged,
+      textDirection: textDirection,
+      textAlign: textAlign,
+      textInputAction: textInputAction,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: const [AppMoneyInputFormatter()],
+      inputFormatters: [
+        AppMoneyInputFormatter(decimalPlaces: decimalPlaces),
+      ],
     );
   }
 }

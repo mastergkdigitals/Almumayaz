@@ -13,6 +13,8 @@ class AppInvoiceFieldColumn {
     this.label,
     this.width, {
     this.grow = 0,
+    this.textDirection,
+    this.textAlign,
     this.padding = const EdgeInsets.symmetric(
       horizontal: 4,
       vertical: 10,
@@ -22,19 +24,26 @@ class AppInvoiceFieldColumn {
   final String label;
   final double width;
   final double grow;
+  final TextDirection? textDirection;
+  final TextAlign? textAlign;
   final EdgeInsetsGeometry padding;
+
+  TextDirection get effectiveTextDirection =>
+      textDirection ?? TextDirection.rtl;
 
   AppInvoiceFieldColumn withWidth(double value) {
     return AppInvoiceFieldColumn(
       label,
       value,
       grow: grow,
+      textDirection: textDirection,
+      textAlign: textAlign,
       padding: padding,
     );
   }
 }
 
-class AppInvoiceFieldTable extends StatelessWidget {
+class AppInvoiceFieldTable extends StatefulWidget {
   const AppInvoiceFieldTable({
     required this.columns,
     required this.rowCount,
@@ -80,9 +89,23 @@ class AppInvoiceFieldTable extends StatelessWidget {
   final double outerRadius;
 
   @override
+  State<AppInvoiceFieldTable> createState() =>
+      _AppInvoiceFieldTableState();
+}
+
+class _AppInvoiceFieldTableState extends State<AppInvoiceFieldTable> {
+  final _horizontalScrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _horizontalScrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final headerColor = Color.lerp(
-      lightAccentColor,
+      widget.lightAccentColor,
       Colors.white,
       0.82,
     )!;
@@ -92,19 +115,20 @@ class AppInvoiceFieldTable extends StatelessWidget {
       0.48,
     )!;
     final borderColor = Color.lerp(
-      accentColor,
+      widget.accentColor,
       Colors.white,
       0.62,
     )!;
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final baseContentWidth = columns.fold<double>(
+        final baseContentWidth = widget.columns.fold<double>(
           0,
           (sum, column) => sum + column.width,
         );
-        final minimumWidth =
-            baseContentWidth + (edgeInset * 2) + widthSafetyBuffer;
+        final minimumWidth = baseContentWidth +
+            (widget.edgeInset * 2) +
+            widget.widthSafetyBuffer;
         final availableWidth = constraints.hasBoundedWidth
             ? constraints.maxWidth
             : minimumWidth;
@@ -113,78 +137,85 @@ class AppInvoiceFieldTable extends StatelessWidget {
         final tableHeight =
             constraints.hasBoundedHeight ? constraints.maxHeight : 308.0;
         final expandedColumns = _expandColumns(
-          columns,
-          tableWidth - (edgeInset * 2),
+          widget.columns,
+          tableWidth - (widget.edgeInset * 2),
         );
 
         return Container(
-          key: surfaceKey,
+          key: widget.surfaceKey,
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: AppColors.surface,
-            borderRadius: BorderRadius.circular(outerRadius),
+            borderRadius: BorderRadius.circular(widget.outerRadius),
           ),
           foregroundDecoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(outerRadius),
+            borderRadius: BorderRadius.circular(widget.outerRadius),
             border: Border.all(color: borderColor, width: 1.4),
           ),
-          child: SingleChildScrollView(
-            key: horizontalScrollKey,
-            scrollDirection: Axis.horizontal,
-            child: SizedBox(
-              width: tableWidth,
-              height: tableHeight,
-              child: Column(
-                children: [
-                  _InvoiceFieldTableHeader(
-                    key: headerKey,
-                    columns: expandedColumns,
-                    color: headerColor,
-                    borderColor: borderColor,
-                    height: headerHeight,
-                    edgeInset: edgeInset,
-                  ),
-                  Expanded(
-                    child: ColoredBox(
-                      color: AppColors.surface,
-                      child: Scrollbar(
-                        controller: verticalScrollController,
-                        child: ListView.builder(
-                          key: rowsKey,
-                          controller: verticalScrollController,
-                          padding: EdgeInsets.zero,
-                          itemCount: rowCount,
-                          itemExtent: rowHeight,
-                          itemBuilder: (context, index) {
-                            final cells = rowCellsBuilder(context, index);
-                            assert(
-                              cells.length == expandedColumns.length,
-                              'Every invoice row must contain one cell '
-                              'for each column.',
-                            );
+          child: Scrollbar(
+            controller: _horizontalScrollController,
+            thumbVisibility: true,
+            scrollbarOrientation: ScrollbarOrientation.bottom,
+            child: SingleChildScrollView(
+              key: widget.horizontalScrollKey,
+              controller: _horizontalScrollController,
+              scrollDirection: Axis.horizontal,
+              child: SizedBox(
+                width: tableWidth,
+                height: tableHeight,
+                child: Column(
+                  children: [
+                    _InvoiceFieldTableHeader(
+                      key: widget.headerKey,
+                      columns: expandedColumns,
+                      color: headerColor,
+                      borderColor: borderColor,
+                      height: widget.headerHeight,
+                      edgeInset: widget.edgeInset,
+                    ),
+                    Expanded(
+                      child: ColoredBox(
+                        color: AppColors.surface,
+                        child: Scrollbar(
+                          controller: widget.verticalScrollController,
+                          child: ListView.builder(
+                            key: widget.rowsKey,
+                            controller: widget.verticalScrollController,
+                            padding: EdgeInsets.zero,
+                            itemCount: widget.rowCount,
+                            itemExtent: widget.rowHeight,
+                            itemBuilder: (context, index) {
+                              final cells =
+                                  widget.rowCellsBuilder(context, index);
+                              assert(
+                                cells.length == expandedColumns.length,
+                                'Every invoice row must contain one cell '
+                                'for each column.',
+                              );
 
-                            return _InvoiceFieldTableRow(
-                              key: rowKeyBuilder?.call(index),
-                              columns: expandedColumns,
-                              cells: cells,
-                              borderColor: borderColor,
-                              height: rowHeight,
-                              edgeInset: edgeInset,
-                            );
-                          },
+                              return _InvoiceFieldTableRow(
+                                key: widget.rowKeyBuilder?.call(index),
+                                columns: expandedColumns,
+                                cells: cells,
+                                borderColor: borderColor,
+                                height: widget.rowHeight,
+                                edgeInset: widget.edgeInset,
+                              );
+                            },
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  _InvoiceFieldTableSummary(
-                    key: summaryKey,
-                    columns: expandedColumns,
-                    cells: summaryCells,
-                    color: summaryColor,
-                    height: summaryHeight,
-                    edgeInset: edgeInset,
-                  ),
-                ],
+                    _InvoiceFieldTableSummary(
+                      key: widget.summaryKey,
+                      columns: expandedColumns,
+                      cells: widget.summaryCells,
+                      color: summaryColor,
+                      height: widget.summaryHeight,
+                      edgeInset: widget.edgeInset,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -226,16 +257,22 @@ class _InvoiceFieldTableHeader extends StatelessWidget {
             for (final column in columns)
               SizedBox(
                 width: column.width,
-                child: Center(
-                  child: Text(
-                    column.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
+                child: Directionality(
+                  textDirection: column.effectiveTextDirection,
+                  child: Align(
+                    alignment: _invoiceAlignmentForTextAlign(
+                      column.textAlign ?? TextAlign.center,
+                    ),
+                    child: Text(
+                      column.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: column.textAlign ?? TextAlign.center,
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                 ),
@@ -282,7 +319,21 @@ class _InvoiceFieldTableRow extends StatelessWidget {
                 width: columns[index].width,
                 child: Padding(
                   padding: columns[index].padding,
-                  child: cells[index],
+                  child: Directionality(
+                    textDirection:
+                        columns[index].effectiveTextDirection,
+                    child: columns[index].textAlign == null
+                        ? cells[index]
+                        : Align(
+                            alignment: _invoiceAlignmentForTextAlign(
+                              columns[index].textAlign!,
+                            ),
+                            child: DefaultTextStyle.merge(
+                              textAlign: columns[index].textAlign,
+                              child: cells[index],
+                            ),
+                          ),
+                  ),
                 ),
               ),
             SizedBox(width: edgeInset),
@@ -324,15 +375,23 @@ class _InvoiceFieldTableSummary extends StatelessWidget {
                 width: columns[index].width,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Center(
-                    child: DefaultTextStyle(
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
+                  child: Directionality(
+                    textDirection:
+                        columns[index].effectiveTextDirection,
+                    child: Align(
+                      alignment: _invoiceAlignmentForTextAlign(
+                        columns[index].textAlign ?? TextAlign.center,
                       ),
-                      child: cells[index],
+                      child: DefaultTextStyle(
+                        textAlign:
+                            columns[index].textAlign ?? TextAlign.center,
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                        ),
+                        child: cells[index],
+                      ),
                     ),
                   ),
                 ),
@@ -343,6 +402,17 @@ class _InvoiceFieldTableSummary extends StatelessWidget {
       ),
     );
   }
+}
+
+AlignmentGeometry _invoiceAlignmentForTextAlign(TextAlign textAlign) {
+  return switch (textAlign) {
+    TextAlign.left => Alignment.centerLeft,
+    TextAlign.right => Alignment.centerRight,
+    TextAlign.start => AlignmentDirectional.centerStart,
+    TextAlign.end => AlignmentDirectional.centerEnd,
+    TextAlign.center => Alignment.center,
+    TextAlign.justify => Alignment.center,
+  };
 }
 
 List<AppInvoiceFieldColumn> _expandColumns(

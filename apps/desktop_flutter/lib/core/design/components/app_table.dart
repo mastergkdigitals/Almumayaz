@@ -12,11 +12,20 @@ class AppTableColumn {
     required this.label,
     this.numeric = false,
     this.flex = 1,
+    this.textDirection,
+    this.textAlign,
   }) : assert(flex > 0);
 
   final String label;
   final bool numeric;
   final double flex;
+  final TextDirection? textDirection;
+  final TextAlign? textAlign;
+
+  TextDirection get effectiveTextDirection =>
+      textDirection ?? (numeric ? TextDirection.ltr : TextDirection.rtl);
+
+  TextAlign get effectiveTextAlign => textAlign ?? TextAlign.center;
 }
 
 class AppTableRow {
@@ -113,6 +122,13 @@ class _AppDataTableState extends State<AppDataTable> {
                 AppColors.surface,
                 0.62,
               )!);
+    final effectiveSelectedRowColor = widget.selectedRowColor ??
+        (widget.accentColor == null
+            ? AppColors.infoSurface
+            : Color.alphaBlend(
+                widget.accentColor!.withAlpha(22),
+                AppColors.surface,
+              ));
     final columnWidths = <int, TableColumnWidth>{
       for (var index = 0; index < widget.columns.length; index++)
         index: FlexColumnWidth(widget.columns[index].flex),
@@ -143,6 +159,7 @@ class _AppDataTableState extends State<AppDataTable> {
             height: widget.height,
             child: Scrollbar(
               controller: _horizontalScrollController,
+              thumbVisibility: true,
               scrollbarOrientation: ScrollbarOrientation.bottom,
               child: SingleChildScrollView(
                 controller: _horizontalScrollController,
@@ -167,6 +184,7 @@ class _AppDataTableState extends State<AppDataTable> {
                         child: _buildBody(
                           columnWidths,
                           effectiveBorderColor,
+                          effectiveSelectedRowColor,
                         ),
                       ),
                     ],
@@ -183,6 +201,7 @@ class _AppDataTableState extends State<AppDataTable> {
   Widget _buildBody(
     Map<int, TableColumnWidth> columnWidths,
     Color borderColor,
+    Color selectedRowColor,
   ) {
     if (widget.isLoading) {
       return const Center(
@@ -219,7 +238,7 @@ class _AppDataTableState extends State<AppDataTable> {
             backgroundColor: index.isOdd
                 ? widget.alternatingRowColor
                 : null,
-            selectedColor: widget.selectedRowColor,
+            selectedColor: selectedRowColor,
             borderColor: borderColor,
           );
         },
@@ -294,12 +313,20 @@ class _TableHeader extends StatelessWidget {
                       padding: EdgeInsets.symmetric(
                         horizontal: horizontalPadding,
                       ),
-                      child: Center(
-                        child: Text(
-                          columns[index].label,
-                          textAlign: TextAlign.center,
-                          style: AppTypography.tableHeader.copyWith(
-                            color: foregroundColor,
+                      child: Directionality(
+                        textDirection:
+                            columns[index].effectiveTextDirection,
+                        child: Align(
+                          alignment: _alignmentForTextAlign(
+                            columns[index].effectiveTextAlign,
+                          ),
+                          child: Text(
+                            columns[index].label,
+                            textAlign:
+                                columns[index].effectiveTextAlign,
+                            style: AppTypography.tableHeader.copyWith(
+                              color: foregroundColor,
+                            ),
                           ),
                         ),
                       ),
@@ -388,13 +415,16 @@ class _TableBodyRow extends StatelessWidget {
                           padding: EdgeInsets.symmetric(
                             horizontal: horizontalPadding,
                           ),
-                          child: Center(
-                            child: Directionality(
-                              textDirection: columns[index].numeric
-                                  ? TextDirection.ltr
-                                  : TextDirection.rtl,
+                          child: Directionality(
+                            textDirection:
+                                columns[index].effectiveTextDirection,
+                            child: Align(
+                              alignment: _alignmentForTextAlign(
+                                columns[index].effectiveTextAlign,
+                              ),
                               child: DefaultTextStyle(
-                                textAlign: TextAlign.center,
+                                textAlign:
+                                    columns[index].effectiveTextAlign,
                                 style: AppTypography.tableCell,
                                 child: row.cells[index],
                               ),
@@ -411,6 +441,17 @@ class _TableBodyRow extends StatelessWidget {
       ),
     );
   }
+}
+
+AlignmentGeometry _alignmentForTextAlign(TextAlign textAlign) {
+  return switch (textAlign) {
+    TextAlign.left => Alignment.centerLeft,
+    TextAlign.right => Alignment.centerRight,
+    TextAlign.start => AlignmentDirectional.centerStart,
+    TextAlign.end => AlignmentDirectional.centerEnd,
+    TextAlign.center => Alignment.center,
+    TextAlign.justify => Alignment.center,
+  };
 }
 
 class AppTableActionButton extends StatelessWidget {

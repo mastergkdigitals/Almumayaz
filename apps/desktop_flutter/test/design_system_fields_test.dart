@@ -1,5 +1,7 @@
 import 'package:erp/core/design/app_design_system.dart';
+import 'package:erp/core/design/components/app_number_input_formatters.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'design_system_test_harness.dart';
@@ -107,6 +109,17 @@ void main() {
 
     final quantity = find.byKey(const Key('designQuantityField'));
     await reveal(tester, quantity);
+    expect(
+      tester
+          .widget<AppIntegerField>(
+            find.ancestor(
+              of: quantity,
+              matching: find.byType(AppIntegerField),
+            ),
+          )
+          .accentColor,
+      AppModuleColors.purchases,
+    );
     await tester.enterText(quantity, '1000000');
     await tester.pump();
 
@@ -116,6 +129,17 @@ void main() {
     );
 
     final money = find.byKey(const Key('designMoneyField'));
+    expect(
+      tester
+          .widget<AppMoneyField>(
+            find.ancestor(
+              of: money,
+              matching: find.byType(AppMoneyField),
+            ),
+          )
+          .accentColor,
+      AppModuleColors.purchases,
+    );
     await tester.enterText(money, '1000000.25');
     await tester.pump();
 
@@ -123,6 +147,163 @@ void main() {
       tester.widget<TextFormField>(money).controller?.text,
       '1,000,000.25',
     );
+  });
+
+  testWidgets(
+      'autocomplete opens on focus without mutating text and supports keys',
+      (tester) async {
+    final controller = TextEditingController(text: 'بغداد');
+    addTearDown(controller.dispose);
+    final observedValues = <String>[];
+    controller.addListener(() => observedValues.add(controller.text));
+    String? selectedCity;
+    var selectionCount = 0;
+    var submissionCount = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 320,
+              child: AppAutocompleteField<String>(
+                controller: controller,
+                fieldKey: const Key('autocompleteRegressionField'),
+                label: 'المدينة',
+                accentColor: AppModuleColors.parties,
+                options: const ['بغداد', 'البصرة', 'أربيل'],
+                displayStringForOption: (city) => city,
+                onSelected: (city) {
+                  selectedCity = city;
+                  selectionCount++;
+                },
+                onSubmitted: (_) => submissionCount++,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(
+      find.byKey(const Key('autocompleteRegressionField')),
+    );
+    await tester.pump();
+
+    expect(find.text('البصرة'), findsOneWidget);
+    expect(controller.text, 'بغداد');
+    expect(
+      observedValues.every((value) => !value.contains('\u200B')),
+      isTrue,
+    );
+
+    final expectedBorderColor = Color.lerp(
+      AppModuleColors.parties,
+      AppColors.surface,
+      0.62,
+    );
+    final popup = tester
+        .widgetList<Material>(
+          find.ancestor(
+            of: find.text('البصرة'),
+            matching: find.byType(Material),
+          ),
+        )
+        .firstWhere((material) {
+      final shape = material.shape;
+      return shape is RoundedRectangleBorder &&
+          shape.side.color == expectedBorderColor;
+    });
+    expect(
+      (popup.shape! as RoundedRectangleBorder).side.color,
+      expectedBorderColor,
+    );
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+
+    expect(selectedCity, 'بغداد');
+    expect(selectionCount, 1);
+    expect(submissionCount, 0);
+    expect(controller.text, 'بغداد');
+    expect(find.text('البصرة'), findsNothing);
+    expect(
+      observedValues.every((value) => !value.contains('\u200B')),
+      isTrue,
+    );
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+    expect(selectionCount, 1);
+    expect(submissionCount, 1);
+  });
+
+  testWidgets('integer and money fields support read-only values and precision',
+      (tester) async {
+    final integerController = TextEditingController(text: '12');
+    final moneyController = TextEditingController(text: '15.30');
+    addTearDown(integerController.dispose);
+    addTearDown(moneyController.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: Column(
+            children: [
+              AppIntegerField(
+                fieldKey: const Key('readOnlyIntegerField'),
+                controller: integerController,
+                label: 'الكمية',
+                readOnly: true,
+              ),
+              AppMoneyField(
+                fieldKey: const Key('readOnlyMoneyField'),
+                controller: moneyController,
+                label: 'المبلغ',
+                readOnly: true,
+                decimalPlaces: 2,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final integerEditable = tester.widget<EditableText>(
+      find.descendant(
+        of: find.byKey(const Key('readOnlyIntegerField')),
+        matching: find.byType(EditableText),
+      ),
+    );
+    final moneyEditable = tester.widget<EditableText>(
+      find.descendant(
+        of: find.byKey(const Key('readOnlyMoneyField')),
+        matching: find.byType(EditableText),
+      ),
+    );
+    expect(integerEditable.readOnly, isTrue);
+    expect(moneyEditable.readOnly, isTrue);
+
+    final formatter = moneyEditable.inputFormatters!
+        .whereType<AppMoneyInputFormatter>()
+        .single;
+    expect(formatter.decimalPlaces, 2);
+    const accepted = TextEditingValue(
+      text: '15.30',
+      selection: TextSelection.collapsed(offset: 5),
+    );
+    const rejected = TextEditingValue(
+      text: '15.300',
+      selection: TextSelection.collapsed(offset: 6),
+    );
+    expect(formatter.formatEditUpdate(accepted, rejected), accepted);
   });
 
   testWidgets('clears search text without leaving the field', (tester) async {

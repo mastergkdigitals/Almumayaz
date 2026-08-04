@@ -89,6 +89,210 @@ void main() {
     );
   });
 
+  testWidgets(
+      'applies column direction and theme selection with a visible scrollbar',
+      (tester) async {
+    const accentColor = AppModuleColors.warehouses;
+    final expectedSelectedColor = Color.alphaBlend(
+      accentColor.withAlpha(22),
+      AppColors.surface,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 420,
+              child: AppDataTable(
+                key: const Key('directionalDataTable'),
+                height: 180,
+                minimumColumnWidth: 260,
+                accentColor: accentColor,
+                columns: const [
+                  AppTableColumn(
+                    label: 'Code',
+                    textDirection: TextDirection.ltr,
+                    textAlign: TextAlign.left,
+                  ),
+                  AppTableColumn(label: 'الاسم'),
+                ],
+                rows: const [
+                  AppTableRow(
+                    selected: true,
+                    cells: [Text('ABC-1'), Text('مادة')],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final table = find.byKey(const Key('directionalDataTable'));
+    final horizontalScrollbar = tester
+        .widgetList<Scrollbar>(
+          find.descendant(of: table, matching: find.byType(Scrollbar)),
+        )
+        .firstWhere(
+          (scrollbar) =>
+              scrollbar.scrollbarOrientation ==
+              ScrollbarOrientation.bottom,
+        );
+    final horizontalView = tester
+        .widgetList<SingleChildScrollView>(
+          find.descendant(
+            of: table,
+            matching: find.byType(SingleChildScrollView),
+          ),
+        )
+        .firstWhere((view) => view.scrollDirection == Axis.horizontal);
+    expect(horizontalScrollbar.thumbVisibility, isTrue);
+    expect(horizontalScrollbar.controller, isNotNull);
+    expect(
+      identical(horizontalScrollbar.controller, horizontalView.controller),
+      isTrue,
+    );
+
+    final codeHeader = find.text('Code');
+    expect(tester.widget<Text>(codeHeader).textAlign, TextAlign.left);
+    expect(
+      tester
+          .widgetList<Directionality>(
+            find.ancestor(
+              of: codeHeader,
+              matching: find.byType(Directionality),
+            ),
+          )
+          .any(
+            (directionality) =>
+                directionality.textDirection == TextDirection.ltr,
+          ),
+      isTrue,
+    );
+    expect(
+      tester
+          .widgetList<DefaultTextStyle>(
+            find.ancestor(
+              of: find.text('ABC-1'),
+              matching: find.byType(DefaultTextStyle),
+            ),
+          )
+          .any((style) => style.textAlign == TextAlign.left),
+      isTrue,
+    );
+    expect(
+      tester
+          .widgetList<Material>(
+            find.ancestor(
+              of: find.text('ABC-1'),
+              matching: find.byType(Material),
+            ),
+          )
+          .any((material) => material.color == expectedSelectedColor),
+      isTrue,
+    );
+  });
+
+  testWidgets(
+      'invoice columns apply direction and keep a visible horizontal scrollbar',
+      (tester) async {
+    final verticalController = ScrollController();
+    addTearDown(verticalController.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 360,
+              height: 220,
+              child: AppInvoiceFieldTable(
+                key: const Key('directionalInvoiceTable'),
+                columns: const [
+                  AppInvoiceFieldColumn(
+                    'Code',
+                    240,
+                    textDirection: TextDirection.ltr,
+                    textAlign: TextAlign.left,
+                  ),
+                  AppInvoiceFieldColumn('الاسم', 240),
+                ],
+                rowCount: 1,
+                rowCellsBuilder: (_, __) => const [
+                  Text('ABC-2'),
+                  Text('مادة'),
+                ],
+                summaryCells: const [Text('Total'), Text('1')],
+                accentColor: AppModuleColors.sales,
+                lightAccentColor: AppModulePalettes.sales.light,
+                verticalScrollController: verticalController,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final table = find.byKey(const Key('directionalInvoiceTable'));
+    final horizontalScrollbar = tester
+        .widgetList<Scrollbar>(
+          find.descendant(of: table, matching: find.byType(Scrollbar)),
+        )
+        .firstWhere(
+          (scrollbar) =>
+              scrollbar.scrollbarOrientation ==
+              ScrollbarOrientation.bottom,
+        );
+    final horizontalView = tester
+        .widgetList<SingleChildScrollView>(
+          find.descendant(
+            of: table,
+            matching: find.byType(SingleChildScrollView),
+          ),
+        )
+        .firstWhere((view) => view.scrollDirection == Axis.horizontal);
+    expect(horizontalScrollbar.thumbVisibility, isTrue);
+    expect(horizontalScrollbar.controller, isNotNull);
+    expect(
+      identical(horizontalScrollbar.controller, horizontalView.controller),
+      isTrue,
+    );
+
+    final codeHeader = find.text('Code');
+    expect(tester.widget<Text>(codeHeader).textAlign, TextAlign.left);
+    expect(
+      tester
+          .widgetList<Directionality>(
+            find.ancestor(
+              of: find.text('ABC-2'),
+              matching: find.byType(Directionality),
+            ),
+          )
+          .any(
+            (directionality) =>
+                directionality.textDirection == TextDirection.ltr,
+          ),
+      isTrue,
+    );
+    expect(
+      tester
+          .widgetList<DefaultTextStyle>(
+            find.ancestor(
+              of: find.text('ABC-2'),
+              matching: find.byType(DefaultTextStyle),
+            ),
+          )
+          .any((style) => style.textAlign == TextAlign.left),
+      isTrue,
+    );
+  });
+
   testWidgets('shows sales and purchase tables on one shared foundation',
       (tester) async {
     await pumpDesignSystemGallery(tester);
