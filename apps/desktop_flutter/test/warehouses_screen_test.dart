@@ -1,5 +1,6 @@
 import 'package:erp/app/app.dart';
 import 'package:erp/core/design/app_design_system.dart';
+import 'package:erp/features/warehouses/domain/warehouse.dart';
 import 'package:erp/features/warehouses/presentation/warehouses_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -85,6 +86,50 @@ void main() {
           .quantity,
       15,
     );
+    expect(controller.state.transferRecords.first.number, 105);
+    expect(
+      controller.state.transferRecords.first.lines,
+      hasLength(2),
+    );
+
+    final originalId = controller.state.transferRecords.first.id;
+    expect(
+      controller.reverseTransfer(
+        originalId,
+        createdAt: DateTime(2026, 7, 28),
+      ),
+      isTrue,
+    );
+    expect(controller.state.transferRecords.first.reversalOfId, originalId);
+    expect(
+      controller
+          .inventoryFor('warehouse-001')
+          .firstWhere((item) => item.productCode == 'P-1001')
+          .quantity,
+      18,
+    );
+    expect(controller.reverseTransfer(originalId), isFalse);
+  });
+
+  test('blocks deleting warehouses referenced by stock or transfers', () {
+    final controller = WarehousesController();
+    addTearDown(controller.dispose);
+
+    controller.select('warehouse-002');
+    expect(controller.isWarehouseReferenced('warehouse-002'), isTrue);
+    expect(controller.deleteSelected(), isNull);
+    expect(controller.state.warehouses, hasLength(4));
+
+    const temporary = Warehouse(
+      id: 'warehouse-empty',
+      number: 5,
+      name: 'مخزن فارغ',
+      location: '',
+      notes: '',
+    );
+    controller.add(temporary);
+    expect(controller.isWarehouseReferenced(temporary.id), isFalse);
+    expect(controller.deleteSelected(), temporary);
   });
 
   testWidgets('opens Warehouses with old structure and shared controls',
@@ -340,6 +385,10 @@ void main() {
     expect(refreshButton.variant, AppButtonVariant.success);
     expect(refreshButton.width, isNull);
     expect(refreshButton.minWidth, 160);
+    expect(
+      find.byKey(const Key('inventoryTransferReverseButton')),
+      findsOneWidget,
+    );
     await tester.tap(
       find.byKey(const Key('inventoryTransferHistoryRefreshButton')),
     );
@@ -376,6 +425,46 @@ void main() {
     expect(
       historyTable.columns.map((column) => column.label),
       ['رقم النقل', 'التاريخ', 'من مخزن', 'إلى مخزن', 'المواد'],
+    );
+
+    await tester.tap(
+      find.byKey(const Key('inventoryTransferCreateTab')),
+    );
+    await tester.pump();
+    await tester.tap(
+      find.byKey(const Key('inventoryTransferExecuteButton')),
+    );
+    await tester.pump();
+    expect(
+      find.byKey(const Key('inventoryTransferHistory_105')),
+      findsOneWidget,
+    );
+    final reverseButton = tester.widget<AppButton>(
+      find.byKey(const Key('inventoryTransferReverseButton')),
+    );
+    expect(reverseButton.onPressed, isNotNull);
+    reverseButton.onPressed!();
+    await tester.pump();
+    expect(
+      find.byKey(const Key('inventoryTransferHistory_106')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const Key('appModuleDialogClose')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('warehouseTransferButton')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('inventoryTransferHistoryTab')),
+    );
+    await tester.pump();
+    expect(
+      find.byKey(const Key('inventoryTransferHistory_105')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('inventoryTransferHistory_106')),
+      findsOneWidget,
     );
   });
 }

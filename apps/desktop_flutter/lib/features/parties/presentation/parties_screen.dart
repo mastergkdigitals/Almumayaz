@@ -265,6 +265,13 @@ class _PartiesScreenState extends State<PartiesScreen> {
       AppToast.showWarning(context, 'اختر طرفاً من الجدول لحذفه');
       return;
     }
+    if (_partiesController.isPartyReferenced(selected.id)) {
+      AppToast.showDanger(
+        context,
+        'لا يمكن حذف هذا السجل لأنه مرتبط ببيانات أخرى',
+      );
+      return;
+    }
 
     final confirmed = await AppDialogs.confirm(
       context: context,

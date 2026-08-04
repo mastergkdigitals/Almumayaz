@@ -12,6 +12,11 @@ typedef WarehouseTransferHandler = bool Function({
   required Map<String, int> quantitiesByProductCode,
 });
 
+typedef WarehouseTransferHistoryReader =
+    List<WarehouseTransferRecord> Function();
+
+typedef WarehouseTransferReverseHandler = bool Function(String transferId);
+
 enum _InventoryTransferView { create, history }
 
 class InventoryTransferDialog extends StatefulWidget {
@@ -21,12 +26,16 @@ class InventoryTransferDialog extends StatefulWidget {
     required this.onTransfer,
     super.key,
     this.initialFromWarehouseId,
+    this.transferHistory,
+    this.onReverseTransfer,
   });
 
   final List<Warehouse> warehouses;
   final WarehouseInventoryReader inventoryFor;
   final WarehouseTransferHandler onTransfer;
   final String? initialFromWarehouseId;
+  final WarehouseTransferHistoryReader? transferHistory;
+  final WarehouseTransferReverseHandler? onReverseTransfer;
 
   static Future<bool> show(
     BuildContext context, {
@@ -34,6 +43,8 @@ class InventoryTransferDialog extends StatefulWidget {
     required WarehouseInventoryReader inventoryFor,
     required WarehouseTransferHandler onTransfer,
     String? initialFromWarehouseId,
+    WarehouseTransferHistoryReader? transferHistory,
+    WarehouseTransferReverseHandler? onReverseTransfer,
   }) async {
     final result = await showDialog<bool>(
       context: context,
@@ -45,6 +56,8 @@ class InventoryTransferDialog extends StatefulWidget {
           inventoryFor: inventoryFor,
           onTransfer: onTransfer,
           initialFromWarehouseId: initialFromWarehouseId,
+          transferHistory: transferHistory,
+          onReverseTransfer: onReverseTransfer,
         ),
       ),
     );
@@ -62,12 +75,14 @@ class _InventoryTransferDialogState
   final _quantityController = TextEditingController(text: '1');
   final _historySearchController = TextEditingController();
 
-  late final List<_TransferHistoryEntry> _history;
+  late final List<WarehouseTransferRecord> _fallbackHistory;
   _InventoryTransferView _view = _InventoryTransferView.create;
   String? _fromWarehouseId;
   String? _toWarehouseId;
   String? _selectedProductCode;
   String _historyQuery = '';
+  String? _selectedHistoryId;
+  bool _didTransfer = false;
 
   List<Warehouse> get _warehouses => widget.warehouses;
 
@@ -120,7 +135,10 @@ class _InventoryTransferDialogState
         quantity <= sourceItem.quantity;
   }
 
-  List<_TransferHistoryEntry> get _filteredHistory {
+  List<WarehouseTransferRecord> get _history =>
+      widget.transferHistory?.call() ?? _fallbackHistory;
+
+  List<WarehouseTransferRecord> get _filteredHistory {
     final query = _historyQuery.trim().toLowerCase();
     if (query.isEmpty) return _history;
     return _history
@@ -134,7 +152,7 @@ class _InventoryTransferDialogState
     _fromWarehouseId = _resolveInitialSourceId();
     _toWarehouseId = _firstOtherWarehouseId(_fromWarehouseId);
     _selectedProductCode = _firstSourceProductCode();
-    _history = _seedHistory(_warehouses);
+    _fallbackHistory = _seedHistory(_warehouses);
     _quantityController.addListener(_handleQuantityChanged);
   }
 
@@ -246,10 +264,77 @@ class _InventoryTransferDialogState
       );
       return;
     }
-    Navigator.of(context).pop(true);
+    if (widget.transferHistory == null) {
+      final createdAt = DateTime.now();
+      final nextNumber = _fallbackHistory.isEmpty
+          ? 1
+          : _fallbackHistory
+                  .map((transfer) => transfer.number)
+                  .reduce((first, second) => first > second ? first : second) +
+              1;
+      _fallbackHistory.insert(
+        0,
+        WarehouseTransferRecord(
+          id: 'preview-${createdAt.microsecondsSinceEpoch}-$nextNumber',
+          number: nextNumber,
+          createdAt: createdAt,
+          fromWarehouseId: sourceId,
+          fromWarehouseName: _warehouseName(sourceId),
+          toWarehouseId: destinationId,
+          toWarehouseName: _warehouseName(destinationId),
+          lines: List.unmodifiable([
+            WarehouseTransferLine(
+              productCode: sourceItem.productCode,
+              productName: sourceItem.productName,
+              quantity: quantity,
+            ),
+          ]),
+        ),
+      );
+    }
+    _didTransfer = true;
+    _historySearchController.clear();
+    setState(() {
+      _historyQuery = '';
+      _view = _InventoryTransferView.history;
+      _selectedProductCode = _firstSourceProductCode();
+      final history = _history;
+      _selectedHistoryId = history.isEmpty ? null : history.first.id;
+    });
+    AppToast.showInfo(
+      context,
+      'تم تنفيذ النقل المخزني مؤقتاً',
+      messenger: _dialogMessengerKey.currentState,
+    );
   }
 
-  void _close() => Navigator.of(context).pop(false);
+  void _close() => Navigator.of(context).pop(_didTransfer);
+
+  void _reverseSelectedTransfer() {
+    final selectedId = _selectedHistoryId;
+    final reverse = widget.onReverseTransfer;
+    if (selectedId == null || reverse == null) return;
+
+    if (!reverse(selectedId)) {
+      AppToast.showDanger(
+        context,
+        'تعذر عكس النقل لعدم كفاية الرصيد أو لأنه عُكس مسبقاً',
+        messenger: _dialogMessengerKey.currentState,
+      );
+      return;
+    }
+
+    _didTransfer = true;
+    setState(() {
+      final history = _history;
+      _selectedHistoryId = history.isEmpty ? null : history.first.id;
+    });
+    AppToast.showSuccess(
+      context,
+      'تم إنشاء حركة عكسية للنقل المخزني',
+      messenger: _dialogMessengerKey.currentState,
+    );
+  }
 
   void _selectView(_InventoryTransferView view) {
     if (_view == view) return;
@@ -318,7 +403,32 @@ class _InventoryTransferDialogState
   }
 
   List<Widget> _historyActions() {
+    WarehouseTransferRecord? selected;
+    for (final transfer in _history) {
+      if (transfer.id == _selectedHistoryId) {
+        selected = transfer;
+        break;
+      }
+    }
+    final selectedTransfer = selected;
+    final alreadyReversed = selectedTransfer != null &&
+        _history.any(
+          (transfer) => transfer.reversalOfId == selectedTransfer.id,
+        );
     return [
+      AppButton(
+        key: const Key('inventoryTransferReverseButton'),
+        label: 'عكس النقل',
+        icon: Icons.undo_rounded,
+        variant: AppButtonVariant.warning,
+        minWidth: 150,
+        onPressed: selectedTransfer == null ||
+                selectedTransfer.reversalOfId != null ||
+                alreadyReversed ||
+                widget.onReverseTransfer == null
+            ? null
+            : _reverseSelectedTransfer,
+      ),
       AppButton(
         key: const Key('inventoryTransferHistoryRefreshButton'),
         label: 'تحديث السجل',
@@ -518,6 +628,10 @@ class _InventoryTransferDialogState
               return _TransferHistoryTable(
                 entries: _filteredHistory,
                 height: constraints.maxHeight,
+                selectedRecordId: _selectedHistoryId,
+                onSelected: (recordId) {
+                  setState(() => _selectedHistoryId = recordId);
+                },
               );
             },
           ),
@@ -686,10 +800,14 @@ class _TransferHistoryTable extends StatefulWidget {
   const _TransferHistoryTable({
     required this.entries,
     required this.height,
+    required this.selectedRecordId,
+    required this.onSelected,
   });
 
-  final List<_TransferHistoryEntry> entries;
+  final List<WarehouseTransferRecord> entries;
   final double height;
+  final String? selectedRecordId;
+  final ValueChanged<String> onSelected;
 
   @override
   State<_TransferHistoryTable> createState() =>
@@ -726,12 +844,18 @@ class _TransferHistoryTableState extends State<_TransferHistoryTable> {
         for (final entry in widget.entries)
           AppTableRow(
             rowKey: Key('inventoryTransferHistory_${entry.number}'),
+            selected: entry.id == widget.selectedRecordId,
+            onTap: () => widget.onSelected(entry.id),
             cells: [
               Text(entry.number.toString()),
-              Text(entry.date),
-              Text(entry.fromWarehouse),
-              Text(entry.toWarehouse),
-              Text(entry.itemsSummary),
+              Text(entry.formattedDate),
+              Text(entry.fromWarehouseName),
+              Text(entry.toWarehouseName),
+              Text(
+                entry.reversalOfId == null
+                    ? entry.itemsSummary
+                    : 'عكس: ${entry.itemsSummary}',
+              ),
             ],
           ),
       ],
@@ -744,48 +868,49 @@ class _TransferHistoryTableState extends State<_TransferHistoryTable> {
   }
 }
 
-@immutable
-class _TransferHistoryEntry {
-  const _TransferHistoryEntry({
-    required this.number,
-    required this.date,
-    required this.fromWarehouse,
-    required this.toWarehouse,
-    required this.itemsSummary,
-  });
-
-  final int number;
-  final String date;
-  final String fromWarehouse;
-  final String toWarehouse;
-  final String itemsSummary;
-
-  String get searchText =>
-      '$number $date $fromWarehouse $toWarehouse $itemsSummary'
-          .toLowerCase();
-}
-
-List<_TransferHistoryEntry> _seedHistory(List<Warehouse> warehouses) {
+List<WarehouseTransferRecord> _seedHistory(List<Warehouse> warehouses) {
   if (warehouses.length < 2) return const [];
   final first = warehouses.first;
   final second = warehouses[1];
   final third = warehouses.length > 2 ? warehouses[2] : first;
 
   return [
-    _TransferHistoryEntry(
+    WarehouseTransferRecord(
+      id: 'preview-transfer-104',
       number: 104,
-      date: '2026/07/24',
-      fromWarehouse: first.name,
-      toWarehouse: second.name,
-      itemsSummary: 'P-1003 - ورق تصوير A4 (20)',
+      createdAt: DateTime(2026, 7, 24),
+      fromWarehouseId: first.id,
+      fromWarehouseName: first.name,
+      toWarehouseId: second.id,
+      toWarehouseName: second.name,
+      lines: const [
+        WarehouseTransferLine(
+          productCode: 'P-1003',
+          productName: 'ورق تصوير A4',
+          quantity: 20,
+        ),
+      ],
     ),
-    _TransferHistoryEntry(
+    WarehouseTransferRecord(
+      id: 'preview-transfer-103',
       number: 103,
-      date: '2026/07/22',
-      fromWarehouse: third.name,
-      toWarehouse: first.name,
-      itemsSummary:
-          'P-1002 - حبر طابعة أسود (5)، P-1004 - آلة حاسبة مكتبية (2)',
+      createdAt: DateTime(2026, 7, 22),
+      fromWarehouseId: third.id,
+      fromWarehouseName: third.name,
+      toWarehouseId: first.id,
+      toWarehouseName: first.name,
+      lines: const [
+        WarehouseTransferLine(
+          productCode: 'P-1002',
+          productName: 'حبر طابعة أسود',
+          quantity: 5,
+        ),
+        WarehouseTransferLine(
+          productCode: 'P-1004',
+          productName: 'آلة حاسبة مكتبية',
+          quantity: 2,
+        ),
+      ],
     ),
   ];
 }

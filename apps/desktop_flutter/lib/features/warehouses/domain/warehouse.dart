@@ -54,3 +54,61 @@ class WarehouseInventoryItem {
   String get searchText =>
       '$productCode $productName $quantity'.toLowerCase();
 }
+
+@immutable
+class WarehouseTransferLine {
+  const WarehouseTransferLine({
+    required this.productCode,
+    required this.productName,
+    required this.quantity,
+  });
+
+  final String productCode;
+  final String productName;
+  final int quantity;
+
+  String get summary => '$productCode - $productName ($quantity)';
+}
+
+/// An inventory transfer is immutable. Corrections are represented by a new
+/// record whose [reversalOfId] points to the original transfer.
+@immutable
+class WarehouseTransferRecord {
+  const WarehouseTransferRecord({
+    required this.id,
+    required this.number,
+    required this.createdAt,
+    required this.fromWarehouseId,
+    required this.fromWarehouseName,
+    required this.toWarehouseId,
+    required this.toWarehouseName,
+    required this.lines,
+    this.reversalOfId,
+  });
+
+  final String id;
+  final int number;
+  final DateTime createdAt;
+  final String fromWarehouseId;
+  final String fromWarehouseName;
+  final String toWarehouseId;
+  final String toWarehouseName;
+  final List<WarehouseTransferLine> lines;
+  final String? reversalOfId;
+
+  String get formattedDate =>
+      '${createdAt.year.toString().padLeft(4, '0')}/'
+      '${createdAt.month.toString().padLeft(2, '0')}/'
+      '${createdAt.day.toString().padLeft(2, '0')}';
+
+  String get itemsSummary => lines.map((line) => line.summary).join('، ');
+
+  String get searchText => [
+        number,
+        formattedDate,
+        fromWarehouseName,
+        toWarehouseName,
+        itemsSummary,
+        if (reversalOfId != null) 'عكس تصحيح',
+      ].join(' ').toLowerCase();
+}

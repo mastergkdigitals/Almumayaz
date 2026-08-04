@@ -41,6 +41,17 @@ class CashboxMainAccount {
 }
 
 @immutable
+class CashboxAccountBalance {
+  const CashboxAccountBalance({
+    required this.iqd,
+    required this.usd,
+  });
+
+  final num iqd;
+  final num usd;
+}
+
+@immutable
 class CashboxVoucher {
   const CashboxVoucher({
     required this.id,

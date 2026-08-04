@@ -31,6 +31,91 @@ void main() {
     expect(controller.selectedVoucher, isNull);
   });
 
+  test('recalculates demo summaries and account balances after mutations', () {
+    final first = CashboxVoucher(
+      id: 'v-1',
+      number: 1,
+      createdAt: DateTime(2026, 7, 27, 8),
+      type: CashboxVoucherType.receipt,
+      mainAccountId: 'parties',
+      mainAccountLabel: 'الأطراف',
+      subaccountId: 'party-1',
+      subaccountLabel: 'زبون',
+      exchangeRate: 1310,
+      amountIqd: 100,
+      amountUsd: 0,
+      balanceBeforeIqd: 1000,
+      balanceAfterIqd: 900,
+      balanceBeforeUsd: 0,
+      balanceAfterUsd: 0,
+      notes: '',
+    );
+    final second = first.copyWith(
+      createdAt: DateTime(2026, 7, 27, 9),
+      type: CashboxVoucherType.payment,
+      amountIqd: 40,
+    );
+    final controller = CashboxController(
+      initialVouchers: [
+        first,
+        CashboxVoucher(
+          id: 'v-2',
+          number: 2,
+          createdAt: second.createdAt,
+          type: second.type,
+          mainAccountId: second.mainAccountId,
+          mainAccountLabel: second.mainAccountLabel,
+          subaccountId: second.subaccountId,
+          subaccountLabel: second.subaccountLabel,
+          exchangeRate: second.exchangeRate,
+          amountIqd: second.amountIqd,
+          amountUsd: second.amountUsd,
+          balanceBeforeIqd: 900,
+          balanceAfterIqd: 940,
+          balanceBeforeUsd: 0,
+          balanceAfterUsd: 0,
+          notes: '',
+        ),
+      ],
+    );
+    addTearDown(controller.dispose);
+
+    expect(controller.summary.todayReceiptIqd, 100);
+    expect(controller.summary.todayPaymentIqd, 40);
+    expect(controller.accountBalance('party-1').iqd, 940);
+
+    controller.select('v-1');
+    controller.update(first.copyWith(amountIqd: 250));
+    expect(controller.accountBalance('party-1').iqd, 790);
+
+    controller.select('v-2');
+    controller.deleteSelected();
+    expect(controller.accountBalance('party-1').iqd, 750);
+    expect(controller.summary.todayPaymentIqd, 0);
+
+    controller.add(
+      CashboxVoucher(
+        id: 'v-3',
+        number: 3,
+        createdAt: DateTime(2026, 7, 27, 10),
+        type: CashboxVoucherType.payment,
+        mainAccountId: 'parties',
+        mainAccountLabel: 'الأطراف',
+        subaccountId: 'party-1',
+        subaccountLabel: 'زبون',
+        exchangeRate: 1310,
+        amountIqd: 10,
+        amountUsd: 0,
+        balanceBeforeIqd: 0,
+        balanceAfterIqd: 0,
+        balanceBeforeUsd: 0,
+        balanceAfterUsd: 0,
+        notes: '',
+      ),
+    );
+    expect(controller.accountBalance('party-1').iqd, 760);
+  });
+
   testWidgets('opens Cashbox with the old structure and shared controls',
       (tester) async {
     await _openCashbox(tester);

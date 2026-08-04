@@ -220,6 +220,13 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
       AppToast.showWarning(context, 'لا يمكن حذف المخزن الرئيسي');
       return;
     }
+    if (_warehousesController.isWarehouseReferenced(selected.id)) {
+      AppToast.showDanger(
+        context,
+        'لا يمكن حذف هذا السجل لأنه مرتبط ببيانات أخرى',
+      );
+      return;
+    }
 
     final confirmed = await AppDialogs.confirm(
       context: context,
@@ -251,6 +258,9 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
       context,
       warehouses: _warehousesController.state.warehouses,
       inventoryFor: _warehousesController.inventoryFor,
+      transferHistory: () =>
+          _warehousesController.state.transferRecords,
+      onReverseTransfer: _warehousesController.reverseTransfer,
       initialFromWarehouseId: selected.id,
       onTransfer: ({
         required String fromWarehouseId,

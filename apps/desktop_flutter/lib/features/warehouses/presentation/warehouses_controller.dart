@@ -7,18 +7,21 @@ class WarehousesState {
   const WarehousesState({
     required this.warehouses,
     required this.inventoryByWarehouse,
+    required this.transferRecords,
     this.query = '',
     this.selectedWarehouseId,
   });
 
   final List<Warehouse> warehouses;
   final Map<String, List<WarehouseInventoryItem>> inventoryByWarehouse;
+  final List<WarehouseTransferRecord> transferRecords;
   final String query;
   final String? selectedWarehouseId;
 
   WarehousesState copyWith({
     List<Warehouse>? warehouses,
     Map<String, List<WarehouseInventoryItem>>? inventoryByWarehouse,
+    List<WarehouseTransferRecord>? transferRecords,
     String? query,
     Object? selectedWarehouseId = _unchanged,
   }) {
@@ -26,6 +29,7 @@ class WarehousesState {
       warehouses: warehouses ?? this.warehouses,
       inventoryByWarehouse:
           inventoryByWarehouse ?? this.inventoryByWarehouse,
+      transferRecords: transferRecords ?? this.transferRecords,
       query: query ?? this.query,
       selectedWarehouseId: identical(selectedWarehouseId, _unchanged)
           ? this.selectedWarehouseId
@@ -40,12 +44,16 @@ class WarehousesController extends ChangeNotifier {
   WarehousesController({
     List<Warehouse>? initialWarehouses,
     Map<String, List<WarehouseInventoryItem>>? initialInventory,
+    List<WarehouseTransferRecord>? initialTransfers,
   }) : _state = WarehousesState(
           warehouses: List.unmodifiable(
             initialWarehouses ?? _demoWarehouses,
           ),
           inventoryByWarehouse: _freezeInventory(
             initialInventory ?? _demoInventory,
+          ),
+          transferRecords: List.unmodifiable(
+            initialTransfers ?? _demoTransfers,
           ),
         );
 
@@ -98,6 +106,18 @@ class WarehousesController extends ChangeNotifier {
         0,
         (total, item) => total + item.quantity,
       );
+
+  bool isWarehouseReferenced(String warehouseId) {
+    final hasInventory = inventoryFor(warehouseId).any(
+      (item) => item.quantity != 0,
+    );
+    final hasTransfer = _state.transferRecords.any(
+      (transfer) =>
+          transfer.fromWarehouseId == warehouseId ||
+          transfer.toWarehouseId == warehouseId,
+    );
+    return hasInventory || hasTransfer;
+  }
 
   void search(String value) {
     if (_state.query == value) return;
@@ -181,7 +201,11 @@ class WarehousesController extends ChangeNotifier {
 
   Warehouse? deleteSelected() {
     final selected = selectedWarehouse;
-    if (selected == null || selected.isMain) return null;
+    if (selected == null ||
+        selected.isMain ||
+        isWarehouseReferenced(selected.id)) {
+      return null;
+    }
 
     final updatedInventory = {
       for (final entry in _state.inventoryByWarehouse.entries)
@@ -204,6 +228,51 @@ class WarehousesController extends ChangeNotifier {
     required String fromWarehouseId,
     required String toWarehouseId,
     required Map<String, int> quantitiesByProductCode,
+    DateTime? createdAt,
+  }) {
+    return _performTransfer(
+      fromWarehouseId: fromWarehouseId,
+      toWarehouseId: toWarehouseId,
+      quantitiesByProductCode: quantitiesByProductCode,
+      createdAt: createdAt ?? DateTime.now(),
+    );
+  }
+
+  bool reverseTransfer(String transferId, {DateTime? createdAt}) {
+    WarehouseTransferRecord? original;
+    for (final transfer in _state.transferRecords) {
+      if (transfer.id == transferId) {
+        original = transfer;
+        break;
+      }
+    }
+    final originalTransfer = original;
+    if (originalTransfer == null ||
+        originalTransfer.reversalOfId != null ||
+        _state.transferRecords.any(
+          (transfer) => transfer.reversalOfId == originalTransfer.id,
+        )) {
+      return false;
+    }
+
+    return _performTransfer(
+      fromWarehouseId: originalTransfer.toWarehouseId,
+      toWarehouseId: originalTransfer.fromWarehouseId,
+      quantitiesByProductCode: {
+        for (final line in originalTransfer.lines)
+          line.productCode: line.quantity,
+      },
+      createdAt: createdAt ?? DateTime.now(),
+      reversalOfId: originalTransfer.id,
+    );
+  }
+
+  bool _performTransfer({
+    required String fromWarehouseId,
+    required String toWarehouseId,
+    required Map<String, int> quantitiesByProductCode,
+    required DateTime createdAt,
+    String? reversalOfId,
   }) {
     final hasSource = _state.warehouses.any(
       (warehouse) => warehouse.id == fromWarehouseId,
@@ -220,6 +289,7 @@ class WarehousesController extends ChangeNotifier {
 
     final sourceItems = [...inventoryFor(fromWarehouseId)];
     final destinationItems = [...inventoryFor(toWarehouseId)];
+    final transferLines = <WarehouseTransferLine>[];
 
     for (final entry in quantitiesByProductCode.entries) {
       final sourceIndex = sourceItems.indexWhere(
@@ -230,6 +300,14 @@ class WarehousesController extends ChangeNotifier {
           sourceItems[sourceIndex].quantity < entry.value) {
         return false;
       }
+      final sourceItem = sourceItems[sourceIndex];
+      transferLines.add(
+        WarehouseTransferLine(
+          productCode: sourceItem.productCode,
+          productName: sourceItem.productName,
+          quantity: entry.value,
+        ),
+      );
     }
 
     for (final entry in quantitiesByProductCode.entries) {
@@ -273,9 +351,39 @@ class WarehousesController extends ChangeNotifier {
         fromWarehouseId: sourceItems,
         toWarehouseId: destinationItems,
       }),
+      transferRecords: List.unmodifiable([
+        WarehouseTransferRecord(
+          id: 'transfer-${createdAt.microsecondsSinceEpoch}-'
+              '$nextTransferNumber',
+          number: nextTransferNumber,
+          createdAt: createdAt,
+          fromWarehouseId: fromWarehouseId,
+          fromWarehouseName: _warehouseName(fromWarehouseId),
+          toWarehouseId: toWarehouseId,
+          toWarehouseName: _warehouseName(toWarehouseId),
+          lines: List.unmodifiable(transferLines),
+          reversalOfId: reversalOfId,
+        ),
+        ..._state.transferRecords,
+      ]),
     );
     notifyListeners();
     return true;
+  }
+
+  int get nextTransferNumber {
+    if (_state.transferRecords.isEmpty) return 1;
+    return _state.transferRecords
+            .map((transfer) => transfer.number)
+            .reduce((first, second) => first > second ? first : second) +
+        1;
+  }
+
+  String _warehouseName(String warehouseId) {
+    for (final warehouse in _state.warehouses) {
+      if (warehouse.id == warehouseId) return warehouse.name;
+    }
+    return 'المخزن';
   }
 
   void _selectAt(int index) {
@@ -402,3 +510,43 @@ const _demoInventory = <String, List<WarehouseInventoryItem>>{
     ),
   ],
 };
+
+final _demoTransfers = <WarehouseTransferRecord>[
+  WarehouseTransferRecord(
+    id: 'transfer-104',
+    number: 104,
+    createdAt: DateTime(2026, 7, 24),
+    fromWarehouseId: 'warehouse-001',
+    fromWarehouseName: 'المخزن الرئيسي',
+    toWarehouseId: 'warehouse-002',
+    toWarehouseName: 'مخزن الكرادة',
+    lines: const [
+      WarehouseTransferLine(
+        productCode: 'P-1003',
+        productName: 'ورق تصوير A4',
+        quantity: 20,
+      ),
+    ],
+  ),
+  WarehouseTransferRecord(
+    id: 'transfer-103',
+    number: 103,
+    createdAt: DateTime(2026, 7, 22),
+    fromWarehouseId: 'warehouse-003',
+    fromWarehouseName: 'مخزن البصرة',
+    toWarehouseId: 'warehouse-001',
+    toWarehouseName: 'المخزن الرئيسي',
+    lines: const [
+      WarehouseTransferLine(
+        productCode: 'P-1002',
+        productName: 'حبر طابعة أسود',
+        quantity: 5,
+      ),
+      WarehouseTransferLine(
+        productCode: 'P-1004',
+        productName: 'آلة حاسبة مكتبية',
+        quantity: 2,
+      ),
+    ],
+  ),
+];

@@ -32,10 +32,17 @@ class ItemsState {
 const _unchanged = Object();
 
 class ItemsController extends ChangeNotifier {
-  ItemsController({List<Item>? initialItems})
-      : _state = ItemsState(
+  ItemsController({
+    List<Item>? initialItems,
+    Set<String>? referencedItemIds,
+  })  : _referencedItemIds = Set.unmodifiable(
+          referencedItemIds ?? _demoReferencedItemIds,
+        ),
+        _state = ItemsState(
           items: List.unmodifiable(initialItems ?? _demoItems),
         );
+
+  final Set<String> _referencedItemIds;
 
   static const groups = <ItemGroup>[
     ItemGroup(id: 'group-office', number: 1, name: 'أجهزة مكتبية'),
@@ -119,6 +126,9 @@ class ItemsController extends ChangeNotifier {
   ItemType typeById(String typeId) {
     return types.firstWhere((type) => type.id == typeId);
   }
+
+  bool isItemReferenced(String itemId) =>
+      _referencedItemIds.contains(itemId);
 
   bool codeExists(String code, {String? exceptItemId}) {
     final normalized = code.trim().toLowerCase();
@@ -206,7 +216,7 @@ class ItemsController extends ChangeNotifier {
 
   Item? deleteSelected() {
     final selected = selectedItem;
-    if (selected == null) return null;
+    if (selected == null || isItemReferenced(selected.id)) return null;
     _state = _state.copyWith(
       items: List.unmodifiable(
         _state.items.where((item) => item.id != selected.id),
@@ -227,6 +237,13 @@ class ItemsController extends ChangeNotifier {
     return items.indexWhere((item) => item.id == _state.selectedItemId);
   }
 }
+
+const _demoReferencedItemIds = <String>{
+  'item-001',
+  'item-002',
+  'item-003',
+  'item-004',
+};
 
 const _demoItems = <Item>[
   Item(

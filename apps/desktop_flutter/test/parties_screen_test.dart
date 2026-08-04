@@ -38,6 +38,20 @@ void main() {
     expect(controller.selectedParty, isNull);
   });
 
+  test('deletes only parties without known demo relationships', () {
+    final controller = PartiesController();
+    addTearDown(controller.dispose);
+
+    controller.select('party-001');
+    expect(controller.isPartyReferenced('party-001'), isTrue);
+    expect(controller.deleteSelected(), isNull);
+
+    controller.select('party-004');
+    expect(controller.isPartyReferenced('party-004'), isFalse);
+    expect(controller.deleteSelected()?.id, 'party-004');
+    expect(controller.state.parties, hasLength(9));
+  });
+
   testWidgets('opens the parties screen with the approved shared controls',
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(1440, 900));

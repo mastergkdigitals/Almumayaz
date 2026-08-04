@@ -548,6 +548,27 @@ void main() {
       'مجموعة اختبار معدلة',
     );
 
+    tester
+        .widget<AppTableActionButton>(
+          find.byKey(const Key('settingsItemGroupsDelete_4')),
+        )
+        .onPressed!();
+    await tester.pump();
+    expect(
+      find.text('لا يمكن حذف هذا السجل لأنه مرتبط ببيانات أخرى'),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('appConfirmDialog')), findsNothing);
+    expect(
+      tester
+          .widget<AppDataTable>(
+            find.byKey(const Key('settingsItemGroupsTable')),
+          )
+          .rows
+          .any((row) => (row.cells[1] as Text).data == 'مجموعة اختبار معدلة'),
+      isTrue,
+    );
+
     await tester.tap(
       find.byKey(
         const Key('masterDataTab_workplacesBranches'),

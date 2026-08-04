@@ -32,15 +32,25 @@ class CashboxState {
 const _unchanged = Object();
 
 class CashboxController extends ChangeNotifier {
-  CashboxController({List<CashboxVoucher>? initialVouchers})
-      : _state = CashboxState(
-          vouchers: List.unmodifiable(initialVouchers ?? _demoVouchers),
-        );
+  CashboxController({
+    List<CashboxVoucher>? initialVouchers,
+    Map<String, CashboxAccountBalance> initialAccountBalances = const {},
+  }) {
+    final vouchers = List<CashboxVoucher>.of(
+      initialVouchers ?? _demoVouchers,
+    );
+    _openingAccountBalances = _resolveOpeningBalances(
+      vouchers,
+      initialAccountBalances,
+    );
+    _state = CashboxState(vouchers: _normalizeBalances(vouchers));
+  }
 
   static const openingBalanceIqd = 9_800_000;
   static const openingBalanceUsd = 4_500;
 
-  CashboxState _state;
+  late final Map<String, CashboxAccountBalance> _openingAccountBalances;
+  late CashboxState _state;
 
   CashboxState get state => _state;
 
@@ -80,7 +90,7 @@ class CashboxController extends ChangeNotifier {
     num paymentUsd = 0;
     num balanceIqd = openingBalanceIqd;
     num balanceUsd = openingBalanceUsd;
-    final today = DateTime.now();
+    final summaryDay = _latestActivityDay;
 
     for (final voucher in _state.vouchers) {
       final sign =
@@ -88,9 +98,10 @@ class CashboxController extends ChangeNotifier {
       balanceIqd += voucher.amountIqd * sign;
       balanceUsd += voucher.amountUsd * sign;
 
-      final isToday = voucher.createdAt.year == today.year &&
-          voucher.createdAt.month == today.month &&
-          voucher.createdAt.day == today.day;
+      final isToday = summaryDay != null &&
+          voucher.createdAt.year == summaryDay.year &&
+          voucher.createdAt.month == summaryDay.month &&
+          voucher.createdAt.day == summaryDay.day;
       if (!isToday) continue;
 
       if (voucher.type == CashboxVoucherType.receipt) {
@@ -110,6 +121,41 @@ class CashboxController extends ChangeNotifier {
       todayReceiptUsd: receiptUsd,
       todayPaymentUsd: paymentUsd,
     );
+  }
+
+  /// Uses the newest demo activity day so the "today" summary remains useful
+  /// when the fixed demo dates differ from the computer clock.
+  DateTime? get _latestActivityDay {
+    DateTime? latest;
+    for (final voucher in _state.vouchers) {
+      if (latest == null || voucher.createdAt.isAfter(latest)) {
+        latest = voucher.createdAt;
+      }
+    }
+    return latest;
+  }
+
+  CashboxAccountBalance accountBalance(
+    String subaccountId, {
+    CashboxAccountBalance fallback = const CashboxAccountBalance(
+      iqd: 0,
+      usd: 0,
+    ),
+  }) {
+    CashboxVoucher? latest;
+    for (final voucher in _state.vouchers) {
+      if (voucher.subaccountId != subaccountId) continue;
+      if (latest == null || _comesBefore(latest, voucher)) {
+        latest = voucher;
+      }
+    }
+    if (latest != null) {
+      return CashboxAccountBalance(
+        iqd: latest.balanceAfterIqd,
+        usd: latest.balanceAfterUsd,
+      );
+    }
+    return _openingAccountBalances[subaccountId] ?? fallback;
   }
 
   int get selectedVisibleIndex =>
@@ -174,7 +220,7 @@ class CashboxController extends ChangeNotifier {
 
   void add(CashboxVoucher voucher) {
     _state = _state.copyWith(
-      vouchers: List.unmodifiable([..._state.vouchers, voucher]),
+      vouchers: _normalizeBalances([..._state.vouchers, voucher]),
       selectedVoucherId: voucher.id,
     );
     notifyListeners();
@@ -185,7 +231,7 @@ class CashboxController extends ChangeNotifier {
         _state.vouchers.indexWhere((item) => item.id == voucher.id);
     if (index < 0) return;
     final updated = [..._state.vouchers]..[index] = voucher;
-    _state = _state.copyWith(vouchers: List.unmodifiable(updated));
+    _state = _state.copyWith(vouchers: _normalizeBalances(updated));
     notifyListeners();
   }
 
@@ -193,8 +239,10 @@ class CashboxController extends ChangeNotifier {
     final selected = selectedVoucher;
     if (selected == null) return null;
     _state = _state.copyWith(
-      vouchers: List.unmodifiable(
-        _state.vouchers.where((voucher) => voucher.id != selected.id),
+      vouchers: _normalizeBalances(
+        _state.vouchers
+            .where((voucher) => voucher.id != selected.id)
+            .toList(growable: false),
       ),
       selectedVoucherId: null,
     );
@@ -213,6 +261,74 @@ class CashboxController extends ChangeNotifier {
       (voucher) => voucher.id == _state.selectedVoucherId,
     );
   }
+
+  Map<String, CashboxAccountBalance> _resolveOpeningBalances(
+    List<CashboxVoucher> vouchers,
+    Map<String, CashboxAccountBalance> supplied,
+  ) {
+    final openings = <String, CashboxAccountBalance>{...supplied};
+    final chronological = [...vouchers]..sort(_compareVouchers);
+    for (final voucher in chronological) {
+      openings.putIfAbsent(
+        voucher.subaccountId,
+        () => CashboxAccountBalance(
+          iqd: voucher.balanceBeforeIqd,
+          usd: voucher.balanceBeforeUsd,
+        ),
+      );
+    }
+    return Map.unmodifiable(openings);
+  }
+
+  List<CashboxVoucher> _normalizeBalances(
+    List<CashboxVoucher> vouchers,
+  ) {
+    final balances = <String, CashboxAccountBalance>{
+      ..._openingAccountBalances,
+    };
+    final chronological = [...vouchers]..sort(_compareVouchers);
+    final normalizedById = <String, CashboxVoucher>{};
+
+    for (final voucher in chronological) {
+      final before = balances[voucher.subaccountId] ??
+          CashboxAccountBalance(
+            iqd: voucher.balanceBeforeIqd,
+            usd: voucher.balanceBeforeUsd,
+          );
+      final direction =
+          voucher.type == CashboxVoucherType.receipt ? -1 : 1;
+      final after = CashboxAccountBalance(
+        iqd: before.iqd + voucher.amountIqd * direction,
+        usd: before.usd + voucher.amountUsd * direction,
+      );
+      balances[voucher.subaccountId] = after;
+      normalizedById[voucher.id] = voucher.copyWith(
+        balanceBeforeIqd: before.iqd,
+        balanceAfterIqd: after.iqd,
+        balanceBeforeUsd: before.usd,
+        balanceAfterUsd: after.usd,
+      );
+    }
+
+    return List<CashboxVoucher>.unmodifiable(
+      vouchers.map((voucher) => normalizedById[voucher.id]!),
+    );
+  }
+
+  static int _compareVouchers(
+    CashboxVoucher first,
+    CashboxVoucher second,
+  ) {
+    final byDate = first.createdAt.compareTo(second.createdAt);
+    if (byDate != 0) return byDate;
+    return first.number.compareTo(second.number);
+  }
+
+  static bool _comesBefore(
+    CashboxVoucher first,
+    CashboxVoucher second,
+  ) =>
+      _compareVouchers(first, second) < 0;
 }
 
 final _demoVouchers = <CashboxVoucher>[

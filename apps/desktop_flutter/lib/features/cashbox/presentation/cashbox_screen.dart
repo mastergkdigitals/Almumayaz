@@ -307,12 +307,19 @@ class _CashboxScreenState extends State<CashboxScreen> {
     final useStoredBalances = selectedVoucher != null &&
         selectedVoucher.mainAccountId == _mainAccountId &&
         selectedVoucher.subaccountId == _subaccountId;
+    final currentBalance = _cashboxController.accountBalance(
+      _selectedSubaccount.id,
+      fallback: CashboxAccountBalance(
+        iqd: _selectedSubaccount.balanceIqd,
+        usd: _selectedSubaccount.balanceUsd,
+      ),
+    );
     final previousIqd = useStoredBalances
         ? selectedVoucher.balanceBeforeIqd
-        : _selectedSubaccount.balanceIqd;
+        : currentBalance.iqd;
     final previousUsd = useStoredBalances
         ? selectedVoucher.balanceBeforeUsd
-        : _selectedSubaccount.balanceUsd;
+        : currentBalance.usd;
     final direction =
         _voucherType == CashboxVoucherType.receipt ? -1 : 1;
 
@@ -397,12 +404,19 @@ class _CashboxScreenState extends State<CashboxScreen> {
     final useStoredBalances = selectedVoucher != null &&
         selectedVoucher.mainAccountId == _mainAccountId &&
         selectedVoucher.subaccountId == _subaccountId;
+    final currentBalance = _cashboxController.accountBalance(
+      _selectedSubaccount.id,
+      fallback: CashboxAccountBalance(
+        iqd: _selectedSubaccount.balanceIqd,
+        usd: _selectedSubaccount.balanceUsd,
+      ),
+    );
     final previousIqd = useStoredBalances
         ? selectedVoucher.balanceBeforeIqd
-        : _selectedSubaccount.balanceIqd;
+        : currentBalance.iqd;
     final previousUsd = useStoredBalances
         ? selectedVoucher.balanceBeforeUsd
-        : _selectedSubaccount.balanceUsd;
+        : currentBalance.usd;
     final direction =
         _voucherType == CashboxVoucherType.receipt ? -1 : 1;
 

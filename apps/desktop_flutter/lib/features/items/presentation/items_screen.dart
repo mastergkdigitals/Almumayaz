@@ -293,6 +293,13 @@ class _ItemsScreenState extends State<ItemsScreen> {
       AppToast.showWarning(context, 'اختر مادة من الجدول لحذفها');
       return;
     }
+    if (_itemsController.isItemReferenced(selected.id)) {
+      AppToast.showDanger(
+        context,
+        'لا يمكن حذف هذا السجل لأنه مرتبط ببيانات أخرى',
+      );
+      return;
+    }
 
     final confirmed = await AppDialogs.confirm(
       context: context,

@@ -778,6 +778,10 @@ class _GroupsTypesTemplate extends StatelessWidget {
           icon: Icons.folder_copy_outlined,
           accentColor: accentColor,
           entries: groups,
+          referencedNames: {
+            for (final entry in types)
+              if (entry.parent != null) entry.parent!,
+          },
           onEntriesChanged: onGroupsChanged,
         ),
         _SettingsManagementPanel(
@@ -825,6 +829,10 @@ class _WorkplacesBranchesTemplate extends StatelessWidget {
           icon: Icons.business_center_outlined,
           accentColor: accentColor,
           entries: workplaces,
+          referencedNames: {
+            for (final entry in branches)
+              if (entry.parent != null) entry.parent!,
+          },
           onEntriesChanged: onWorkplacesChanged,
         ),
         _SettingsManagementPanel(
@@ -872,6 +880,10 @@ class _CashboxAccountsTemplate extends StatelessWidget {
           icon: Icons.account_balance_wallet_outlined,
           accentColor: accentColor,
           entries: mainAccounts,
+          referencedNames: {
+            for (final entry in subAccounts)
+              if (entry.parent != null) entry.parent!,
+          },
           onEntriesChanged: onMainAccountsChanged,
         ),
         _SettingsManagementPanel(
@@ -928,6 +940,7 @@ class _SettingsManagementPanel extends StatefulWidget {
     required this.onEntriesChanged,
     this.parentLabel,
     this.parentOptions = const [],
+    this.referencedNames = const {},
   });
 
   final String keyPrefix;
@@ -939,6 +952,7 @@ class _SettingsManagementPanel extends StatefulWidget {
   final ValueChanged<List<_SettingsNamedEntry>> onEntriesChanged;
   final String? parentLabel;
   final List<String> parentOptions;
+  final Set<String> referencedNames;
 
   @override
   State<_SettingsManagementPanel> createState() =>
@@ -1068,6 +1082,13 @@ class _SettingsManagementPanelState
   Future<void> _deleteEntry(_SettingsNamedEntry entry) async {
     if (entry.isProtected) {
       AppToast.showWarning(context, 'لا يمكن حذف الحساب النظامي');
+      return;
+    }
+    if (widget.referencedNames.contains(entry.name)) {
+      AppToast.showDanger(
+        context,
+        'لا يمكن حذف هذا السجل لأنه مرتبط ببيانات أخرى',
+      );
       return;
     }
 

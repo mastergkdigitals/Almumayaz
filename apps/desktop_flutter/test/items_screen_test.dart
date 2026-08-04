@@ -32,6 +32,20 @@ void main() {
     expect(controller.selectedItem, isNull);
   });
 
+  test('deletes only items without known inventory relationships', () {
+    final controller = ItemsController();
+    addTearDown(controller.dispose);
+
+    controller.select('item-001');
+    expect(controller.isItemReferenced('item-001'), isTrue);
+    expect(controller.deleteSelected(), isNull);
+
+    controller.select('item-006');
+    expect(controller.isItemReferenced('item-006'), isFalse);
+    expect(controller.deleteSelected()?.id, 'item-006');
+    expect(controller.state.items, hasLength(5));
+  });
+
   testWidgets(
     'opens Items from Warehouses with shared controls and read-only barcode',
     (tester) async {

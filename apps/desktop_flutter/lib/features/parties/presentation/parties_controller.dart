@@ -32,10 +32,17 @@ class PartiesState {
 const _unchanged = Object();
 
 class PartiesController extends ChangeNotifier {
-  PartiesController({List<Party>? initialParties})
-      : _state = PartiesState(
+  PartiesController({
+    List<Party>? initialParties,
+    Set<String>? referencedPartyIds,
+  })  : _referencedPartyIds = Set.unmodifiable(
+          referencedPartyIds ?? _demoReferencedPartyIds,
+        ),
+        _state = PartiesState(
           parties: List.unmodifiable(initialParties ?? _demoParties),
         );
+
+  final Set<String> _referencedPartyIds;
 
   PartiesState _state;
 
@@ -65,6 +72,9 @@ class PartiesController extends ChangeNotifier {
             .reduce((first, second) => first > second ? first : second) +
         1;
   }
+
+  bool isPartyReferenced(String partyId) =>
+      _referencedPartyIds.contains(partyId);
 
   void search(String value) {
     if (_state.query == value) return;
@@ -143,7 +153,7 @@ class PartiesController extends ChangeNotifier {
 
   Party? deleteSelected() {
     final selected = selectedParty;
-    if (selected == null) return null;
+    if (selected == null || isPartyReferenced(selected.id)) return null;
     final updated =
         _state.parties.where((party) => party.id != selected.id).toList();
     _state = _state.copyWith(
@@ -164,6 +174,13 @@ class PartiesController extends ChangeNotifier {
     return parties.indexWhere((party) => party.id == _state.selectedPartyId);
   }
 }
+
+const _demoReferencedPartyIds = <String>{
+  'party-001',
+  'party-002',
+  'party-003',
+  'party-005',
+};
 
 final _demoParties = <Party>[
   Party(
