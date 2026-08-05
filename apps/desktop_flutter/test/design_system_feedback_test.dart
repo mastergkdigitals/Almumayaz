@@ -1,3 +1,4 @@
+import 'package:erp/core/data/app_repository.dart';
 import 'package:erp/core/design/app_design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -69,6 +70,88 @@ void main() {
       ),
       findsOneWidget,
     );
+  });
+
+  testWidgets('documents the missing-reference state in orange',
+      (tester) async {
+    await pumpDesignSystemGallery(tester);
+
+    final missingReferenceState = find.byKey(
+      const Key('designMissingReferenceState'),
+    );
+    expect(missingReferenceState, findsOneWidget);
+    expect(
+      tester.widget<AppStatePanel>(missingReferenceState).type,
+      AppStateType.missingReference,
+    );
+
+    final icon = tester.widget<Icon>(
+      find.descendant(
+        of: missingReferenceState,
+        matching: find.byIcon(Icons.link_off_rounded),
+      ),
+    );
+    expect(icon.color, AppColors.orange);
+
+    final panelContainer = tester.widget<Container>(
+      find.descendant(
+        of: missingReferenceState,
+        matching: find.byType(Container),
+      ).first,
+    );
+    final decoration = panelContainer.decoration! as BoxDecoration;
+    expect(decoration.color, AppColors.warningSurface);
+    expect(decoration.border!.top.color, AppColors.orange.withAlpha(72));
+  });
+
+  testWidgets('maps repository data states to shared state panels',
+      (tester) async {
+    Future<void> pumpState(AppDataState<String> state) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: AppDataStateView<String>(
+            state: state,
+            dataBuilder: (context, data) => Text('جاهز: $data'),
+          ),
+        ),
+      );
+    }
+
+    await pumpState(const AppDataState<String>.loading());
+    expect(
+      tester.widget<AppStatePanel>(find.byType(AppStatePanel)).type,
+      AppStateType.loading,
+    );
+
+    await pumpState(const AppDataState<String>.empty(message: 'القائمة فارغة'));
+    expect(find.text('القائمة فارغة'), findsOneWidget);
+    expect(
+      tester.widget<AppStatePanel>(find.byType(AppStatePanel)).type,
+      AppStateType.empty,
+    );
+
+    await pumpState(
+      const AppDataState<String>.missingReference('مرجع مفقود'),
+    );
+    expect(find.text('مرجع مفقود'), findsOneWidget);
+    expect(
+      tester.widget<AppStatePanel>(find.byType(AppStatePanel)).type,
+      AppStateType.missingReference,
+    );
+
+    await pumpState(
+      const AppDataState<String>.error('تعذر الطلب', message: 'فشل التحميل'),
+    );
+    expect(find.text('فشل التحميل'), findsOneWidget);
+    expect(
+      tester.widget<AppStatePanel>(find.byType(AppStatePanel)).type,
+      AppStateType.error,
+    );
+
+    await pumpState(const AppDataState<String>.ready('بيانات'));
+    expect(find.text('جاهز: بيانات'), findsOneWidget);
+    expect(find.byType(AppStatePanel), findsNothing);
   });
 
   testWidgets('shows non-dismissible messages for two seconds', (tester) async {

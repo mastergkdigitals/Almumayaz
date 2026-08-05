@@ -69,6 +69,15 @@ class DesignGalleryFeedbackGroup extends StatelessWidget {
               const SizedBox(
                 width: 360,
                 child: AppStatePanel(
+                  key: Key('designMissingReferenceState'),
+                  type: AppStateType.missingReference,
+                  title: 'مرجع البيانات غير متاح',
+                  message: 'اختر سجلاً مرتبطاً متاحاً ثم حاول مرة أخرى.',
+                ),
+              ),
+              const SizedBox(
+                width: 360,
+                child: AppStatePanel(
                   type: AppStateType.loading,
                   title: 'جاري التحميل',
                   message: 'يرجى الانتظار قليلاً.',

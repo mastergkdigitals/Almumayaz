@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../core/data/app_repository.dart';
 import '../../../../core/design/app_design_system.dart';
 import '../report_definition.dart';
 
@@ -45,15 +46,14 @@ class ReportResultsPanel extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         if (missingReference != null) {
-          return Center(
-            child: AppStatePanel(
-              key: Key('reportMissingReferenceState_$reportId'),
-              type: AppStateType.error,
-              title: 'مرجع التصفية غير متاح',
-              message: missingReference!,
-              actionLabel: 'مسح التصفية',
-              onAction: onResetFilters,
-            ),
+          return AppDataStateView<bool>(
+            state: AppDataState<bool>.missingReference(missingReference!),
+            dataBuilder: (context, _) => const SizedBox.shrink(),
+            missingReferenceTitle: 'مرجع التصفية غير متاح',
+            missingReferenceActionLabel: 'مسح التصفية',
+            onMissingReferenceAction: onResetFilters,
+            missingReferenceStateKey:
+                Key('reportMissingReferenceState_$reportId'),
           );
         }
         if (loadError != null) {

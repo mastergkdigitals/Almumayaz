@@ -534,6 +534,17 @@ void main() {
     );
     expect(state, findsOneWidget);
     expect(
+      tester.widget<AppStatePanel>(state).type,
+      AppStateType.missingReference,
+    );
+    expect(
+      find.descendant(
+        of: state,
+        matching: find.byIcon(Icons.link_off_rounded),
+      ),
+      findsOneWidget,
+    );
+    expect(
       find.descendant(
         of: state,
         matching: find.text('مرجع التصفية غير متاح'),

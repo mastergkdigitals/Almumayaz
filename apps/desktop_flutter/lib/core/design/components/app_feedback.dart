@@ -106,7 +106,7 @@ class AppInfoBanner extends StatelessWidget {
   }
 }
 
-enum AppStateType { empty, error, loading }
+enum AppStateType { empty, missingReference, error, loading }
 
 class AppStatePanel extends StatelessWidget {
   const AppStatePanel({
@@ -126,24 +126,34 @@ class AppStatePanel extends StatelessWidget {
 
   IconData get _icon => switch (type) {
         AppStateType.empty => Icons.inbox_rounded,
+        AppStateType.missingReference => Icons.link_off_rounded,
         AppStateType.error => Icons.error_outline_rounded,
         AppStateType.loading => Icons.hourglass_top_rounded,
       };
 
   Color get _color => switch (type) {
         AppStateType.empty => AppColors.grey,
+        AppStateType.missingReference => AppColors.orange,
         AppStateType.error => AppColors.red,
         AppStateType.loading => AppColors.blue,
       };
+
+  Color get _surfaceColor => type == AppStateType.missingReference
+      ? AppColors.warningSurface
+      : AppColors.surface;
+
+  Color get _borderColor => type == AppStateType.missingReference
+      ? AppColors.orange.withAlpha(72)
+      : AppColors.border;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: _surfaceColor,
         borderRadius: BorderRadius.circular(AppRadii.lg),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: _borderColor),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
