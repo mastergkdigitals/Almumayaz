@@ -160,6 +160,22 @@ class DemoCashboxRepository extends InMemoryDemoRepository<CashboxVoucher>
   Future<CashboxBalanceSnapshot> getOpeningBalance() async => _openingBalance;
 
   @override
+  Future<List<CashboxVoucher>> getByParty(EntityId partyId) async {
+    final relatedAccountIds = (await _masterData.getByKind(
+      OperationalMasterDataKind.cashboxSubaccount,
+    ))
+        .where((account) => account.relatedEntityId == partyId)
+        .map((account) => account.id.value)
+        .toSet();
+    if (relatedAccountIds.isEmpty) return const [];
+    return List.unmodifiable(
+      (await getAll()).where(
+        (voucher) => relatedAccountIds.contains(voucher.subaccountId),
+      ),
+    );
+  }
+
+  @override
   Future<bool> referencesParty(EntityId partyId) async {
     final relatedAccounts = (await _masterData.getByKind(
       OperationalMasterDataKind.cashboxSubaccount,

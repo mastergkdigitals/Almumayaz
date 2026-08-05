@@ -36,6 +36,9 @@ abstract interface class CashboxRepository
 
   Future<CashboxBalanceSnapshot> getOpeningBalance();
 
+  /// Returns vouchers posted to the party's canonical cashbox subaccount.
+  Future<List<CashboxVoucher>> getByParty(EntityId partyId);
+
   Future<bool> referencesParty(EntityId partyId);
 
   Future<bool> referencesMasterData(EntityId masterDataId);

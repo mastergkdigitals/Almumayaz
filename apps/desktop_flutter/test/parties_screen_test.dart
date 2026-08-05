@@ -1,12 +1,17 @@
+import 'dart:async';
+
 import 'package:erp/app/app.dart';
 import 'package:erp/core/app_state/app_repositories.dart';
+import 'package:erp/core/app_state/app_store.dart';
 import 'package:erp/core/data/app_repository.dart';
 import 'package:erp/core/design/app_design_system.dart';
 import 'package:erp/core/domain/business_values.dart';
+import 'package:erp/features/parties/application/party_statement_service.dart';
 import 'package:erp/features/parties/data/demo_party_repository.dart';
 import 'package:erp/features/parties/domain/party.dart';
 import 'package:erp/features/parties/domain/party_repository.dart';
 import 'package:erp/features/parties/presentation/parties_controller.dart';
+import 'package:erp/features/parties/presentation/parties_screen.dart';
 import 'package:erp/features/settings/data/demo_operational_settings_repositories.dart';
 import 'package:erp/features/settings/domain/operational_master_data.dart';
 import 'package:flutter/material.dart';
@@ -749,8 +754,7 @@ void main() {
     );
 
     await tester.tap(find.byKey(const Key('appStatementConfirm')));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pumpAndSettle();
 
     final report = find.byKey(const Key('appStatementReportDialog'));
     expect(report, findsOneWidget);
@@ -766,6 +770,62 @@ void main() {
       findsOneWidget,
     );
     expect(find.byKey(const Key('appStatementReportTable')), findsOneWidget);
+    expect(
+      tester
+          .widget<AppDataTable>(
+            find.byKey(const Key('appStatementReportTable')),
+          )
+          .rows,
+      hasLength(2),
+    );
+    expect(find.text('قائمة بيع رقم 101 — تضاف إلى حساب الزبون'), findsOneWidget);
+    expect(find.text('سند قبض رقم 1 — دفعة على الحساب'), findsOneWidget);
+    expect(find.text('-573,000'), findsOneWidget);
+  });
+
+  testWidgets('shows loading and an error when party statement loading fails',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final store = AppStore.demo();
+    addTearDown(store.dispose);
+    final service = _ControlledPartyStatementService();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: AppStoreScope(
+            store: store,
+            child: PartiesScreen(statementService: service),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('partyStatement_party-001')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('appStatementConfirm')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump();
+
+    expect(find.byKey(const Key('partyStatementLoadingDialog')), findsOneWidget);
+    expect(find.byKey(const Key('partyStatementLoadingState')), findsOneWidget);
+
+    service.completeWithError();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump();
+
+    expect(find.byKey(const Key('partyStatementLoadingDialog')), findsNothing);
+    expect(find.byKey(const Key('appStatementReportDialog')), findsNothing);
+    expect(
+      find.text('تعذر تحميل كشف الحساب. حاول مرة أخرى.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('matches the old action-bar navigation boundaries',
@@ -801,6 +861,19 @@ void main() {
     await tester.pumpAndSettle();
     expect(_fieldText(tester, name), 'مجهز الكرادة');
   });
+}
+
+class _ControlledPartyStatementService implements PartyStatementService {
+  final Completer<PartyStatementResult> _completer = Completer();
+
+  @override
+  Future<PartyStatementResult> load(PartyStatementQuery query) {
+    return _completer.future;
+  }
+
+  void completeWithError() {
+    _completer.completeError(StateError('statement unavailable'));
+  }
 }
 
 Future<void> _login(WidgetTester tester) async {

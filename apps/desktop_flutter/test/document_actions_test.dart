@@ -133,6 +133,38 @@ void main() {
     expect(_outputFileName(tester), endsWith('.xlsx'));
   });
 
+  testWidgets('party statement output contains repository-backed movements',
+      (tester) async {
+    await _openModule(tester, 'parties', size: const Size(1440, 900));
+
+    await tester.tap(find.byKey(const Key('partyStatement_party-001')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('appStatementConfirm')));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .widget<AppDataTable>(
+            find.byKey(const Key('appStatementReportTable')),
+          )
+          .rows,
+      hasLength(2),
+    );
+
+    await tester.tap(find.byKey(const Key('appStatementPdf')));
+    await tester.pumpAndSettle();
+
+    expect(_outputFileName(tester), endsWith('.pdf'));
+    expect(
+      _documentContent(tester),
+      allOf(
+        contains('قائمة بيع رقم 101'),
+        contains('سند قبض رقم 1'),
+        contains('-573,000'),
+      ),
+    );
+  });
+
   testWidgets('cashbox print keeps its toast and opens a voucher preview',
       (tester) async {
     await _openModule(tester, 'cashbox', size: const Size(1440, 900));

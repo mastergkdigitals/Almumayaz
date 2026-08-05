@@ -5,15 +5,22 @@ import 'package:flutter/material.dart';
 import '../../../core/app_state/app_store.dart';
 import '../../../core/data/app_repository.dart';
 import '../../../core/design/app_design_system.dart';
+import '../../../core/domain/business_values.dart';
+import '../application/party_statement_service.dart';
 import '../domain/party.dart';
 import 'parties_controller.dart';
 import 'widgets/parties_table.dart';
 import 'widgets/party_form.dart';
 
 class PartiesScreen extends StatefulWidget {
-  const PartiesScreen({super.key, this.controller});
+  const PartiesScreen({
+    super.key,
+    this.controller,
+    this.statementService,
+  });
 
   final PartiesController? controller;
+  final PartyStatementService? statementService;
 
   @override
   State<PartiesScreen> createState() => _PartiesScreenState();
@@ -21,8 +28,10 @@ class PartiesScreen extends StatefulWidget {
 
 class _PartiesScreenState extends State<PartiesScreen> {
   late PartiesController _partiesController;
+  late PartyStatementService _statementService;
   bool _controllerInitialized = false;
   bool _ownsController = false;
+  bool _isStatementLoading = false;
   bool _showEditorWhenEmpty = false;
   final _formControllers = PartyFormControllers();
   final _searchController = TextEditingController();
@@ -60,6 +69,7 @@ class _PartiesScreenState extends State<PartiesScreen> {
     super.didChangeDependencies();
     if (_controllerInitialized) return;
     _setController(widget.controller);
+    _setStatementService(widget.statementService);
     _controllerInitialized = true;
     unawaited(_loadParties());
   }
@@ -67,15 +77,19 @@ class _PartiesScreenState extends State<PartiesScreen> {
   @override
   void didUpdateWidget(covariant PartiesScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (identical(oldWidget.controller, widget.controller)) return;
-    final previousController = _partiesController;
-    final disposePreviousController = _ownsController;
-    _setController(widget.controller);
-    _showEditorWhenEmpty = false;
-    _hasUnsavedChanges = false;
-    _baseline = _currentSnapshot();
-    if (disposePreviousController) previousController.dispose();
-    unawaited(_loadParties());
+    if (!identical(oldWidget.statementService, widget.statementService)) {
+      _setStatementService(widget.statementService);
+    }
+    if (!identical(oldWidget.controller, widget.controller)) {
+      final previousController = _partiesController;
+      final disposePreviousController = _ownsController;
+      _setController(widget.controller);
+      _showEditorWhenEmpty = false;
+      _hasUnsavedChanges = false;
+      _baseline = _currentSnapshot();
+      if (disposePreviousController) previousController.dispose();
+      unawaited(_loadParties());
+    }
   }
 
   void _setController(PartiesController? suppliedController) {
@@ -91,6 +105,22 @@ class _PartiesScreenState extends State<PartiesScreen> {
       );
       _ownsController = true;
     }
+  }
+
+  void _setStatementService(PartyStatementService? suppliedService) {
+    if (suppliedService != null) {
+      _statementService = suppliedService;
+      return;
+    }
+    final repositories = AppStoreScope.of(
+      context,
+      listen: false,
+    ).repositories;
+    _statementService = RepositoryPartyStatementService(
+      sales: repositories.sales,
+      purchases: repositories.purchases,
+      cashbox: repositories.cashbox,
+    );
   }
 
   Future<void> _loadParties() async {
@@ -378,6 +408,7 @@ class _PartiesScreenState extends State<PartiesScreen> {
   }
 
   Future<void> _showStatementAfterOptions(Party party) async {
+    if (_isStatementLoading) return;
     final options = await AppStatementOptionsDialog.show(
       context,
       partyName: party.name,
@@ -386,12 +417,81 @@ class _PartiesScreenState extends State<PartiesScreen> {
     );
     if (!mounted || options == null) return;
 
+    final navigator = Navigator.of(context, rootNavigator: true);
+    _isStatementLoading = true;
+    final loadingDialog = _showStatementLoading();
+    PartyStatementResult? result;
+    Object? failure;
+    try {
+      result = await _statementService.load(
+        PartyStatementQuery(
+          partyId: EntityId(party.id),
+          fromDate: BusinessDate.fromDateTime(options.fromDate),
+          toDate: BusinessDate.fromDateTime(options.toDate),
+          currency: AppCurrency.parse(options.currencyCode),
+        ),
+      );
+    } catch (error) {
+      failure = error;
+    } finally {
+      if (navigator.mounted) navigator.pop();
+      await loadingDialog;
+      _isStatementLoading = false;
+    }
+    if (!mounted) return;
+    if (failure != null || result == null) {
+      AppToast.showError(
+        context,
+        'تعذر تحميل كشف الحساب. حاول مرة أخرى.',
+      );
+      return;
+    }
+
     await AppStatementReportDialog.show(
       context,
       partyName: party.name,
       options: options,
-      entries: const <AppStatementReportEntry>[],
+      entries: [
+        for (final entry in result.entries)
+          AppStatementReportEntry(
+            date: entry.date,
+            balance: entry.balance.majorUnits,
+            credit: entry.credit.majorUnits,
+            debit: entry.debit.majorUnits,
+            type: entry.type.label,
+            quantity: entry.quantity,
+            details: entry.details,
+          ),
+      ],
       accentColor: AppModuleColors.parties,
+    );
+  }
+
+  Future<void> _showStatementLoading() {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      useRootNavigator: true,
+      builder: (dialogContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: PopScope(
+          canPop: false,
+          child: Dialog(
+            key: const Key('partyStatementLoadingDialog'),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            child: const SizedBox(
+              width: 480,
+              child: AppStatePanel(
+                key: Key('partyStatementLoadingState'),
+                type: AppStateType.loading,
+                title: 'جاري تحميل كشف الحساب',
+                message: 'يتم الآن تجميع الحركات وحساب الرصيد.',
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
