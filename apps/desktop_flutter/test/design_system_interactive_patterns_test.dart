@@ -29,6 +29,51 @@ void main() {
 
     final primaryField =
         find.byKey(const Key('designGroupsTypesDialogPrimaryField'));
+    final primaryTable = find.byKey(
+      const Key('designGroupsTypesDialogPrimaryList'),
+    );
+    final initialPrimaryCount =
+        tester.widget<AppDataTable>(primaryTable).rows.length;
+    await tester.enterText(primaryField, 'قرطاسية');
+    await tester.tap(
+      find.byKey(const Key('designGroupsTypesDialogPrimaryCommit')),
+    );
+    await tester.pump();
+    expect(find.text('هذا الاسم مستخدم مسبقاً'), findsOneWidget);
+    expect(
+      tester.widget<AppDataTable>(primaryTable).rows.length,
+      initialPrimaryCount,
+    );
+
+    tester
+        .widget<AppTableActionButton>(
+          find.byKey(
+            const Key(
+              'designGroupsTypesDialogPrimaryDelete-primary-0',
+            ),
+          ),
+        )
+        .onPressed!();
+    await tester.pump();
+    expect(find.text('لا يمكن حذف سجل نظام محمي'), findsOneWidget);
+    expect(find.byKey(const Key('appConfirmDialog')), findsNothing);
+
+    tester
+        .widget<AppTableActionButton>(
+          find.byKey(
+            const Key(
+              'designGroupsTypesDialogPrimaryDelete-primary-1',
+            ),
+          ),
+        )
+        .onPressed!();
+    await tester.pump();
+    expect(
+      find.text('لا يمكن حذف هذا السجل لأنه مرتبط ببيانات أخرى'),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('appConfirmDialog')), findsNothing);
+
     await tester.enterText(primaryField, 'أثاث مكتبي');
     await tester.tap(
       find.byKey(const Key('designGroupsTypesDialogPrimaryCommit')),
@@ -37,29 +82,23 @@ void main() {
 
     expect(tester.getSize(groupsDialog).height, initialDialogHeight);
     expect(find.text('أثاث مكتبي'), findsOneWidget);
-    expect(
-      find.byKey(
-        const Key('designGroupsTypesDialogPrimaryEdit-primary-100'),
-      ),
-      findsOneWidget,
-    );
-
     tester
-        .widget<AppTableActionButton>(
-          find.byKey(
-            const Key(
-              'designGroupsTypesDialogPrimaryEdit-primary-100',
-            ),
-          ),
+        .widget<AppDataTable>(
+          find.byKey(const Key('designGroupsTypesDialogPrimaryList')),
         )
-        .onPressed
-        ?.call();
+        .rows
+        .singleWhere(
+          (row) => (row.cells[1] as Text).data == 'أثاث مكتبي',
+        )
+        .onTap!();
     await tester.pump();
 
     await tester.enterText(primaryField, 'مفروشات مكتبية');
-    await tester.tap(
-      find.byKey(const Key('designGroupsTypesDialogPrimaryCommit')),
-    );
+    tester
+        .widget<AppButton>(
+          find.byKey(const Key('designGroupsTypesDialogPrimaryUpdate')),
+        )
+        .onPressed!();
     await tester.pump();
 
     expect(find.text('أثاث مكتبي'), findsNothing);
@@ -77,6 +116,10 @@ void main() {
         ?.call();
     await tester.pump();
 
+    expect(find.byKey(const Key('appConfirmDialog')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('appDialogConfirmButton')));
+    await tester.pumpAndSettle();
+
     expect(find.text('مفروشات مكتبية'), findsNothing);
 
     await tester.enterText(
@@ -90,6 +133,11 @@ void main() {
     );
     await tester.pump();
     expect(find.text('دفاتر'), findsOneWidget);
+
+    expect(
+      find.byType(AppManagementPanel),
+      findsNWidgets(2),
+    );
 
     await tester.tap(
       find.byKey(const Key('designGroupsTypesDialogCancel')),

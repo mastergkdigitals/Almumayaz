@@ -99,156 +99,48 @@ class _ManagementDialog extends StatefulWidget {
 }
 
 class _ManagementDialogState extends State<_ManagementDialog> {
-  final _primaryController = TextEditingController();
-  final _secondaryController = TextEditingController();
-
-  late final List<_ManagementEntry> _primaryEntries;
-  late final List<_ManagementEntry> _secondaryEntries;
+  late List<AppManagementEntry> _primaryEntries;
+  late List<AppManagementEntry> _secondaryEntries;
   late String _selectedParentId;
-
-  String? _editingPrimaryId;
-  String? _editingSecondaryId;
   var _seed = 100;
 
   DesignGalleryManagementDialogSpec get _spec => widget.spec;
-
-  List<_ManagementEntry> get _visibleSecondaryEntries {
-    return _secondaryEntries
-        .where((entry) => entry.parentId == _selectedParentId)
-        .toList(growable: false);
-  }
 
   @override
   void initState() {
     super.initState();
     _primaryEntries = [
       for (var index = 0; index < _spec.primaryValues.length; index++)
-        _ManagementEntry(
+        AppManagementEntry(
           id: 'primary-$index',
+          number: index + 1,
           name: _spec.primaryValues[index],
+          isProtected: index == 0,
         ),
     ];
     _selectedParentId = _primaryEntries.first.id;
+    final numbersByParent = <String, int>{};
     _secondaryEntries = [
       for (var index = 0; index < _spec.secondaryValues.length; index++)
-        _ManagementEntry(
-          id: 'secondary-$index',
-          name: _spec.secondaryValues[index],
-          parentId: _primaryEntries[
-                  index.clamp(0, _primaryEntries.length - 1).toInt()]
-              .id,
-        ),
+        _secondarySeedEntry(index, numbersByParent),
     ];
   }
 
-  @override
-  void dispose() {
-    _primaryController.dispose();
-    _secondaryController.dispose();
-    super.dispose();
-  }
-
-  void _commitPrimary() {
-    final value = _primaryController.text.trim();
-    if (value.isEmpty) return;
-
-    setState(() {
-      if (_editingPrimaryId == null) {
-        _primaryEntries.add(
-          _ManagementEntry(
-            id: 'primary-${_seed++}',
-            name: value,
-          ),
-        );
-      } else {
-        final index = _primaryEntries.indexWhere(
-          (entry) => entry.id == _editingPrimaryId,
-        );
-        if (index >= 0) {
-          _primaryEntries[index] =
-              _primaryEntries[index].copyWith(name: value);
-        }
-      }
-      _editingPrimaryId = null;
-      _primaryController.clear();
-    });
-  }
-
-  void _editPrimary(_ManagementEntry entry) {
-    setState(() {
-      _editingPrimaryId = entry.id;
-      _primaryController.text = entry.name;
-      _primaryController.selection = TextSelection.collapsed(
-        offset: _primaryController.text.length,
-      );
-    });
-  }
-
-  void _deletePrimary(_ManagementEntry entry) {
-    if (_primaryEntries.length == 1) return;
-
-    setState(() {
-      _primaryEntries.removeWhere((item) => item.id == entry.id);
-      _secondaryEntries.removeWhere(
-        (item) => item.parentId == entry.id,
-      );
-      if (_selectedParentId == entry.id) {
-        _selectedParentId = _primaryEntries.first.id;
-      }
-      if (_editingPrimaryId == entry.id) {
-        _editingPrimaryId = null;
-        _primaryController.clear();
-      }
-    });
-  }
-
-  void _commitSecondary() {
-    final value = _secondaryController.text.trim();
-    if (value.isEmpty) return;
-
-    setState(() {
-      if (_editingSecondaryId == null) {
-        _secondaryEntries.add(
-          _ManagementEntry(
-            id: 'secondary-${_seed++}',
-            name: value,
-            parentId: _selectedParentId,
-          ),
-        );
-      } else {
-        final index = _secondaryEntries.indexWhere(
-          (entry) => entry.id == _editingSecondaryId,
-        );
-        if (index >= 0) {
-          _secondaryEntries[index] = _secondaryEntries[index].copyWith(
-            name: value,
-            parentId: _selectedParentId,
-          );
-        }
-      }
-      _editingSecondaryId = null;
-      _secondaryController.clear();
-    });
-  }
-
-  void _editSecondary(_ManagementEntry entry) {
-    setState(() {
-      _editingSecondaryId = entry.id;
-      _secondaryController.text = entry.name;
-      _secondaryController.selection = TextSelection.collapsed(
-        offset: _secondaryController.text.length,
-      );
-    });
-  }
-
-  void _deleteSecondary(_ManagementEntry entry) {
-    setState(() {
-      _secondaryEntries.removeWhere((item) => item.id == entry.id);
-      if (_editingSecondaryId == entry.id) {
-        _editingSecondaryId = null;
-        _secondaryController.clear();
-      }
-    });
+  AppManagementEntry _secondarySeedEntry(
+    int index,
+    Map<String, int> numbersByParent,
+  ) {
+    final parentId = _primaryEntries[
+      index.clamp(0, _primaryEntries.length - 1).toInt(),
+    ].id;
+    final number = (numbersByParent[parentId] ?? 0) + 1;
+    numbersByParent[parentId] = number;
+    return AppManagementEntry(
+      id: 'secondary-$index',
+      number: number,
+      name: _spec.secondaryValues[index],
+      parentId: parentId,
+    );
   }
 
   @override
@@ -281,7 +173,7 @@ class _ManagementDialogState extends State<_ManagementDialog> {
       ],
       child: SizedBox(
         key: Key('${_spec.keyName}Content'),
-        height: 390,
+        height: 520,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -300,37 +192,34 @@ class _ManagementDialogState extends State<_ManagementDialog> {
       icon: Icons.folder_rounded,
       accentColor: _spec.accentColor,
       expandChild: true,
-      child: Column(
-        children: [
-          _ManagementEditor(
-            fieldKey: Key('${_spec.keyName}PrimaryField'),
-            buttonKey: Key('${_spec.keyName}PrimaryCommit'),
-            controller: _primaryController,
-            label: _spec.primaryFieldLabel,
-            accentColor: _spec.accentColor,
-            editing: _editingPrimaryId != null,
-            onCommit: _commitPrimary,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Expanded(
-            child: _ManagementEntries(
-              entries: _primaryEntries,
-              keyPrefix: '${_spec.keyName}Primary',
-              accentColor: _spec.accentColor,
-              selectedId: _selectedParentId,
-              onSelected: (entry) {
-                setState(() {
-                  _selectedParentId = entry.id;
-                  _editingSecondaryId = null;
-                  _secondaryController.clear();
-                });
-              },
-              onEdit: _editPrimary,
-              onDelete: _deletePrimary,
-              canDelete: _primaryEntries.length > 1,
-            ),
-          ),
-        ],
+      child: AppManagementPanel(
+        key: Key('${_spec.keyName}PrimaryPanel'),
+        keys: AppManagementPanelKeys(
+          prefix: _spec.keyName,
+          nameFieldSuffix: 'PrimaryField',
+          addButtonSuffix: 'PrimaryCommit',
+          updateButtonSuffix: 'PrimaryUpdate',
+          clearButtonSuffix: 'PrimaryClear',
+          tableSuffix: 'PrimaryList',
+          rowSeparator: 'PrimaryRow-',
+          deleteSeparator: 'PrimaryDelete-',
+        ),
+        fieldLabel: _spec.primaryFieldLabel,
+        accentColor: _spec.accentColor,
+        entries: _primaryEntries,
+        referencedEntryIds: {
+          for (final entry in _secondaryEntries) entry.parentId!,
+        },
+        selectedEntryId: _selectedParentId,
+        tableHeight: 220,
+        minimumColumnWidth: 90,
+        onSelectionChanged: (entry) {
+          if (entry == null || entry.id == _selectedParentId) return;
+          setState(() => _selectedParentId = entry.id);
+        },
+        onCreate: _createPrimary,
+        onUpdate: _updatePrimary,
+        onDelete: _deletePrimary,
       ),
     );
   }
@@ -341,254 +230,116 @@ class _ManagementDialogState extends State<_ManagementDialog> {
       icon: Icons.account_tree_rounded,
       accentColor: _spec.accentColor,
       expandChild: true,
-      child: Column(
-        children: [
-          AppDropdownField<String>(
-            fieldKey: Key('${_spec.keyName}ParentDropdown'),
-            label: _spec.primaryTitle,
-            icon: Icons.link_rounded,
-            accentColor: _spec.accentColor,
-            useIntrinsicHeight: true,
-            value: _selectedParentId,
-            options: [
-              for (final entry in _primaryEntries)
-                AppDropdownOption(value: entry.id, label: entry.name),
-            ],
-            onChanged: (value) {
-              if (value == null) return;
-              setState(() {
-                _selectedParentId = value;
-                _editingSecondaryId = null;
-                _secondaryController.clear();
-              });
-            },
-          ),
-          const SizedBox(height: AppSpacing.md),
-          _ManagementEditor(
-            fieldKey: Key('${_spec.keyName}SecondaryField'),
-            buttonKey: Key('${_spec.keyName}SecondaryCommit'),
-            controller: _secondaryController,
-            label: _spec.secondaryFieldLabel,
-            accentColor: _spec.accentColor,
-            editing: _editingSecondaryId != null,
-            onCommit: _commitSecondary,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Expanded(
-            child: _ManagementEntries(
-              entries: _visibleSecondaryEntries,
-              keyPrefix: '${_spec.keyName}Secondary',
-              accentColor: _spec.accentColor,
-              onEdit: _editSecondary,
-              onDelete: _deleteSecondary,
-            ),
-          ),
-        ],
+      child: AppManagementPanel(
+        key: Key('${_spec.keyName}SecondaryPanel'),
+        keys: AppManagementPanelKeys(
+          prefix: _spec.keyName,
+          parentFieldSuffix: 'ParentDropdown',
+          nameFieldSuffix: 'SecondaryField',
+          addButtonSuffix: 'SecondaryCommit',
+          updateButtonSuffix: 'SecondaryUpdate',
+          clearButtonSuffix: 'SecondaryClear',
+          tableSuffix: 'SecondaryList',
+          rowSeparator: 'SecondaryRow-',
+          deleteSeparator: 'SecondaryDelete-',
+        ),
+        fieldLabel: _spec.secondaryFieldLabel,
+        parentLabel: _spec.primaryTitle,
+        accentColor: _spec.accentColor,
+        entries: _secondaryEntries,
+        parentOptions: _primaryEntries,
+        selectedParentId: _selectedParentId,
+        tableHeight: 220,
+        minimumColumnWidth: 80,
+        onParentChanged: (parentId) {
+          if (parentId == _selectedParentId) return;
+          setState(() => _selectedParentId = parentId);
+        },
+        onCreate: _createSecondary,
+        onUpdate: _updateSecondary,
+        onDelete: _deleteSecondary,
       ),
     );
   }
-}
 
-class _ManagementEditor extends StatelessWidget {
-  const _ManagementEditor({
-    required this.fieldKey,
-    required this.buttonKey,
-    required this.controller,
-    required this.label,
-    required this.accentColor,
-    required this.editing,
-    required this.onCommit,
-  });
-
-  final Key fieldKey;
-  final Key buttonKey;
-  final TextEditingController controller;
-  final String label;
-  final Color accentColor;
-  final bool editing;
-  final VoidCallback onCommit;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: AppTextField(
-            fieldKey: fieldKey,
-            controller: controller,
-            label: label,
-            icon: editing ? Icons.edit_rounded : Icons.add_rounded,
-            accentColor: accentColor,
-            onSubmitted: (_) => onCommit(),
-          ),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        AppButton(
-          key: buttonKey,
-          label: editing ? 'تحديث' : 'إضافة',
-          icon: editing ? Icons.update_rounded : Icons.add_rounded,
-          width: 112,
-          backgroundColor: accentColor,
-          onPressed: onCommit,
-        ),
-      ],
+  Future<AppManagementEntry> _createPrimary(
+    AppManagementEntryDraft draft,
+  ) async {
+    final entry = AppManagementEntry(
+      id: 'primary-${_seed++}',
+      number: draft.number,
+      name: draft.name,
     );
+    setState(() => _primaryEntries = [..._primaryEntries, entry]);
+    return entry;
+  }
+
+  Future<AppManagementEntry> _updatePrimary(
+    AppManagementEntry existing,
+    AppManagementEntryDraft draft,
+  ) async {
+    final entry = existing.copyWith(name: draft.name);
+    setState(() {
+      _primaryEntries = _replaceEntry(_primaryEntries, entry);
+    });
+    return entry;
+  }
+
+  Future<void> _deletePrimary(AppManagementEntry entry) async {
+    setState(() {
+      _primaryEntries = [
+        for (final item in _primaryEntries)
+          if (item.id != entry.id) item,
+      ];
+      if (_selectedParentId == entry.id) {
+        _selectedParentId = _primaryEntries.first.id;
+      }
+    });
+  }
+
+  Future<AppManagementEntry> _createSecondary(
+    AppManagementEntryDraft draft,
+  ) async {
+    final entry = AppManagementEntry(
+      id: 'secondary-${_seed++}',
+      number: draft.number,
+      name: draft.name,
+      parentId: draft.parentId,
+    );
+    setState(() => _secondaryEntries = [..._secondaryEntries, entry]);
+    return entry;
+  }
+
+  Future<AppManagementEntry> _updateSecondary(
+    AppManagementEntry existing,
+    AppManagementEntryDraft draft,
+  ) async {
+    final entry = existing.copyWith(
+      name: draft.name,
+      parentId: draft.parentId,
+    );
+    setState(() {
+      _secondaryEntries = _replaceEntry(_secondaryEntries, entry);
+    });
+    return entry;
+  }
+
+  Future<void> _deleteSecondary(AppManagementEntry entry) async {
+    setState(() {
+      _secondaryEntries = [
+        for (final item in _secondaryEntries)
+          if (item.id != entry.id) item,
+      ];
+    });
   }
 }
 
-class _ManagementEntries extends StatelessWidget {
-  const _ManagementEntries({
-    required this.entries,
-    required this.keyPrefix,
-    required this.accentColor,
-    required this.onEdit,
-    required this.onDelete,
-    this.selectedId,
-    this.onSelected,
-    this.canDelete = true,
-  });
-
-  final List<_ManagementEntry> entries;
-  final String keyPrefix;
-  final Color accentColor;
-  final String? selectedId;
-  final ValueChanged<_ManagementEntry>? onSelected;
-  final ValueChanged<_ManagementEntry> onEdit;
-  final ValueChanged<_ManagementEntry> onDelete;
-  final bool canDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    if (entries.isEmpty) {
-      return const AppStatePanel(
-        type: AppStateType.empty,
-        title: 'لا توجد بيانات',
-        message: 'اكتب الاسم ثم اضغط إضافة.',
-      );
-    }
-
-    return ListView.separated(
-      key: Key('${keyPrefix}List'),
-      padding: EdgeInsets.zero,
-      itemCount: entries.length,
-      separatorBuilder: (_, _) =>
-          const SizedBox(height: AppSpacing.sm),
-      itemBuilder: (context, index) {
-        final entry = entries[index];
-        return _ManagementEntryTile(
-          key: Key('${keyPrefix}Row-${entry.id}'),
-          entry: entry,
-          accentColor: accentColor,
-          selected: entry.id == selectedId,
-          onSelected:
-              onSelected == null ? null : () => onSelected!(entry),
-          editKey: Key('${keyPrefix}Edit-${entry.id}'),
-          deleteKey: Key('${keyPrefix}Delete-${entry.id}'),
-          onEdit: () => onEdit(entry),
-          onDelete: canDelete ? () => onDelete(entry) : null,
-        );
-      },
-    );
-  }
-}
-
-class _ManagementEntryTile extends StatelessWidget {
-  const _ManagementEntryTile({
-    required this.entry,
-    required this.accentColor,
-    required this.selected,
-    required this.editKey,
-    required this.deleteKey,
-    required this.onEdit,
-    required this.onDelete,
-    this.onSelected,
-    super.key,
-  });
-
-  final _ManagementEntry entry;
-  final Color accentColor;
-  final bool selected;
-  final Key editKey;
-  final Key deleteKey;
-  final VoidCallback? onSelected;
-  final VoidCallback onEdit;
-  final VoidCallback? onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: selected
-          ? Color.alphaBlend(accentColor.withAlpha(18), AppColors.surface)
-          : AppColors.surface,
-      borderRadius: BorderRadius.circular(AppRadii.md),
-      child: InkWell(
-        onTap: onSelected,
-        mouseCursor: onSelected == null
-            ? SystemMouseCursors.basic
-            : SystemMouseCursors.click,
-        splashFactory: NoSplash.splashFactory,
-        overlayColor:
-            const WidgetStatePropertyAll<Color>(Colors.transparent),
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.sm,
-          ),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadii.md),
-            border: Border.all(
-              color: selected ? accentColor : AppColors.border,
-            ),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.circle, size: 9, color: accentColor),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Text(entry.name, style: AppTypography.tableCell),
-              ),
-              AppTableActionButton(
-                key: editKey,
-                icon: Icons.edit_rounded,
-                tooltip: 'تعديل',
-                onPressed: onEdit,
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              AppTableActionButton(
-                key: deleteKey,
-                icon: Icons.delete_rounded,
-                tooltip: 'حذف',
-                onPressed: onDelete,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-@immutable
-class _ManagementEntry {
-  const _ManagementEntry({
-    required this.id,
-    required this.name,
-    this.parentId,
-  });
-
-  final String id;
-  final String name;
-  final String? parentId;
-
-  _ManagementEntry copyWith({
-    String? name,
-    String? parentId,
-  }) {
-    return _ManagementEntry(
-      id: id,
-      name: name ?? this.name,
-      parentId: parentId ?? this.parentId,
-    );
-  }
+List<AppManagementEntry> _replaceEntry(
+  List<AppManagementEntry> entries,
+  AppManagementEntry replacement,
+) {
+  return [
+    for (final entry in entries)
+      if (entry.id == replacement.id) replacement else entry,
+  ];
 }

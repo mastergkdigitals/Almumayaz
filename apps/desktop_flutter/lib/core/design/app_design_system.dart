@@ -17,6 +17,7 @@ export 'components/app_record_search_dialog.dart';
 export 'components/app_sales_invoice_table_template.dart';
 export 'components/app_loading_indicator.dart';
 export 'components/app_loading_overlay.dart';
+export 'components/app_management_panel.dart';
 export 'components/app_module_card.dart';
 export 'components/app_module_dialog.dart';
 export 'components/app_screen_shell.dart';

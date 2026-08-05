@@ -475,6 +475,10 @@ void main() {
       findsOneWidget,
     );
     expect(
+      find.byType(AppManagementPanel),
+      findsNWidgets(2),
+    );
+    expect(
       tester
           .widget<AppDataTable>(
             find.byKey(const Key('settingsItemGroupsTable')),
