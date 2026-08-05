@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/app_state/app_store.dart';
 import '../core/config/app_configuration.dart';
 import '../core/design/app_theme.dart';
 import '../core/design/components/app_shortcuts.dart';
@@ -16,22 +17,24 @@ class AlmumayazApp extends StatelessWidget {
     final effectiveConfiguration =
         configuration ?? AppConfiguration.fromEnvironment();
 
-    return AppConfigurationScope(
-      configuration: effectiveConfiguration,
-      child: MaterialApp(
-        title: effectiveConfiguration.applicationTitle,
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light(),
-        locale: const Locale('ar', 'IQ'),
-        builder: (context, child) => Directionality(
-          textDirection: TextDirection.rtl,
-          child: AppKeyboardScope(
-            child: ResponsiveDesktopShell(
-              child: child ?? const SizedBox.shrink(),
+    return AppStoreProvider(
+      child: AppConfigurationScope(
+        configuration: effectiveConfiguration,
+        child: MaterialApp(
+          title: effectiveConfiguration.applicationTitle,
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light(),
+          locale: const Locale('ar', 'IQ'),
+          builder: (context, child) => Directionality(
+            textDirection: TextDirection.rtl,
+            child: AppKeyboardScope(
+              child: ResponsiveDesktopShell(
+                child: child ?? const SizedBox.shrink(),
+              ),
             ),
           ),
+          home: const LoginScreen(),
         ),
-        home: const LoginScreen(),
       ),
     );
   }
