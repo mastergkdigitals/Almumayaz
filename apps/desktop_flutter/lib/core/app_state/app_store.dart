@@ -18,6 +18,16 @@ class AppStore extends ChangeNotifier {
     );
   }
 
+  factory AppStore.desktop() {
+    final repositories = AppRepositories.demo();
+    return AppStore(
+      repositories: repositories,
+      services: AppServices.desktop(
+        deviceSettings: repositories.deviceSettings,
+      ),
+    );
+  }
+
   final AppRepositories repositories;
   final AppServices services;
   AppSession? _session;

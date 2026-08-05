@@ -1,9 +1,49 @@
 import 'package:erp/app/app.dart';
 import 'package:erp/core/design/app_design_system.dart';
+import 'package:erp/core/printing/document_output_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets('actual output result identifies the saved Windows path',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () => AppDocumentOutputDialog.show(
+              context,
+              result: const DocumentOutputResult(
+                action: DocumentOutputAction.pdf,
+                title: 'تم حفظ ملف PDF',
+                documentTitle: 'مستند فعلي',
+                content: 'المحتوى',
+                rowCount: 1,
+                fileName: 'مستند.pdf',
+                filePath: r'C:\Exports\مستند.pdf',
+                isDemo: false,
+              ),
+              accentColor: AppColors.blue,
+            ),
+            child: const Text('فتح'),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('فتح'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('تم إنشاء ملف PDF وحفظه في المسار المختار.'),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('appDocumentOutputFilePath')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('sales print and installment actions show useful results',
       (tester) async {
     await _openModule(tester, 'sales', size: const Size(1280, 720));

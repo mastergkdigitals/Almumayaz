@@ -57,11 +57,24 @@ class ReportOutputResultDialog extends StatelessWidget {
           if (result.fileName != null) ...[
             AppInfoBanner(
               key: const Key('reportOutputFileName'),
-              message: 'الملف التجريبي: ${result.fileName}',
+              message: result.isDemo
+                  ? 'الملف التجريبي: ${result.fileName}'
+                  : 'تم حفظ الملف: ${result.fileName}',
               foregroundColor: accentColor,
               backgroundColor: Color.alphaBlend(
                 accentColor.withAlpha(12),
                 AppColors.surface,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
+          if (result.filePath != null) ...[
+            SelectableText(
+              result.filePath!,
+              key: const Key('reportOutputFilePath'),
+              textDirection: TextDirection.ltr,
+              style: AppTypography.tableCell.copyWith(
+                color: AppColors.textSecondary,
               ),
             ),
             const SizedBox(height: AppSpacing.md),

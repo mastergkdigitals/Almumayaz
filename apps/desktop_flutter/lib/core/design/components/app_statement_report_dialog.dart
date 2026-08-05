@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../printing/document_output_service.dart';
+import '../../printing/document_output_scope.dart';
 import '../../services/service_failure.dart';
 import '../app_formatters.dart';
 import '../app_tokens.dart';
@@ -41,11 +42,10 @@ abstract final class AppStatementReportDialog {
     required AppStatementOptions options,
     required List<AppStatementReportEntry> entries,
     Color accentColor = AppModuleColors.parties,
-    DocumentPrintService printService =
-        const DemoDocumentOutputService(),
-    DocumentExportService exportService =
-        const DemoDocumentOutputService(),
+    DocumentPrintService? printService,
+    DocumentExportService? exportService,
   }) {
+    final outputScope = DocumentOutputScope.maybeOf(context);
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -56,8 +56,12 @@ abstract final class AppStatementReportDialog {
           options: options,
           entries: entries,
           accentColor: accentColor,
-          printService: printService,
-          exportService: exportService,
+          printService: printService ??
+              outputScope?.printService ??
+              const DemoDocumentOutputService(),
+          exportService: exportService ??
+              outputScope?.exportService ??
+              const DemoDocumentOutputService(),
         ),
       ),
     );

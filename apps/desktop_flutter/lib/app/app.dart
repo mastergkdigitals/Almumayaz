@@ -4,6 +4,7 @@ import '../core/app_state/app_store.dart';
 import '../core/config/app_configuration.dart';
 import '../core/design/app_theme.dart';
 import '../core/design/components/app_shortcuts.dart';
+import '../core/printing/document_output_scope.dart';
 import '../core/responsive/responsive_shell.dart';
 import '../features/authentication/presentation/login_screen.dart';
 
@@ -20,23 +21,35 @@ class AlmumayazApp extends StatelessWidget {
 
     return AppStoreProvider(
       store: store,
-      child: AppConfigurationScope(
-        configuration: effectiveConfiguration,
-        child: MaterialApp(
-          title: effectiveConfiguration.applicationTitle,
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.light(),
-          locale: const Locale('ar', 'IQ'),
-          builder: (context, child) => Directionality(
-            textDirection: TextDirection.rtl,
-            child: AppKeyboardScope(
-              child: ResponsiveDesktopShell(
-                child: child ?? const SizedBox.shrink(),
+      child: Builder(
+        builder: (storeContext) {
+          final output = AppStoreScope.of(
+            storeContext,
+            listen: false,
+          ).services.documentOutput;
+          return DocumentOutputScope(
+            printService: output,
+            exportService: output,
+            child: AppConfigurationScope(
+              configuration: effectiveConfiguration,
+              child: MaterialApp(
+                title: effectiveConfiguration.applicationTitle,
+                debugShowCheckedModeBanner: false,
+                theme: AppTheme.light(),
+                locale: const Locale('ar', 'IQ'),
+                builder: (context, child) => Directionality(
+                  textDirection: TextDirection.rtl,
+                  child: AppKeyboardScope(
+                    child: ResponsiveDesktopShell(
+                      child: child ?? const SizedBox.shrink(),
+                    ),
+                  ),
+                ),
+                home: const LoginScreen(),
               ),
             ),
-          ),
-          home: const LoginScreen(),
-        ),
+          );
+        },
       ),
     );
   }

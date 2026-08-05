@@ -9,6 +9,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  excel: ^4.0.6
+  file_selector: ^1.1.0
+  pdf: ^3.13.0
+  printing: ^5.15.0
   responsive_framework: ^1.5.1
 
 dev_dependencies:

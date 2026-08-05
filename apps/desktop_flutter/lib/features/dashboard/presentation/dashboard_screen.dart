@@ -79,10 +79,17 @@ class DashboardScreen extends StatelessWidget {
   ];
 
   void _openModule(BuildContext context, _ModuleItem item) {
+    final documentOutput = AppStoreScope.of(
+      context,
+      listen: false,
+    ).services.documentOutput;
     if (item.id == 'purchases') {
       Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => const PurchaseScreen(),
+          builder: (_) => PurchaseScreen(
+            printService: documentOutput,
+            exportService: documentOutput,
+          ),
         ),
       );
       return;
@@ -91,7 +98,10 @@ class DashboardScreen extends StatelessWidget {
     if (item.id == 'sales') {
       Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => const SalesScreen(),
+          builder: (_) => SalesScreen(
+            printService: documentOutput,
+            exportService: documentOutput,
+          ),
         ),
       );
       return;
@@ -109,7 +119,7 @@ class DashboardScreen extends StatelessWidget {
     if (item.id == 'cashbox') {
       Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => const CashboxScreen(),
+          builder: (_) => CashboxScreen(printService: documentOutput),
         ),
       );
       return;

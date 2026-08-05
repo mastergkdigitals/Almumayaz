@@ -9,16 +9,24 @@ import '../../features/electronic_archive/domain/archive_models.dart';
 import '../../features/electronic_archive/domain/archive_services.dart';
 import '../../features/permissions/data/demo_role_repository.dart';
 import '../../features/permissions/domain/role_repository.dart';
+import '../../features/reports/application/document_report_output_service.dart';
+import '../../features/reports/application/report_output_service.dart';
+import '../../features/settings/domain/settings_models.dart';
+import '../../features/settings/domain/settings_repository.dart';
 import '../../features/users/data/demo_user_repository.dart';
 import '../../features/users/domain/user_repository.dart';
+import '../printing/desktop_document_output_service.dart';
+import '../printing/document_output_service.dart';
+
+const almumayazWindowsDeviceId = 'demo-windows-device';
 
 /// Long-lived application services that are not ordinary business-data
 /// repositories.
 ///
-/// The Flutter-only adapters are deliberately deterministic and in-memory.
-/// Keeping them in the app composition root makes workflow state survive
-/// closing and reopening a screen, while the same interfaces can later be
-/// backed by the API, Windows file services, OAuth and malware scanning.
+/// Demo adapters are deterministic and in-memory, while the desktop
+/// composition replaces document output with native Windows adapters.
+/// Keeping both behind the same contracts lets tests stay deterministic and
+/// later API integrations replace services without changing widgets.
 class AppServices {
   const AppServices({
     required this.authentication,
@@ -32,6 +40,8 @@ class AppServices {
     required this.users,
     required this.roles,
     required this.audit,
+    this.documentOutput = const DemoDocumentOutputService(),
+    this.reportOutput = const DemoReportOutputService(),
   });
 
   factory AppServices.demo() {
@@ -55,6 +65,50 @@ class AppServices {
     );
   }
 
+  factory AppServices.desktop({
+    required DeviceSettingsRepository deviceSettings,
+  }) {
+    final googleDriveBackups = DemoGoogleDriveBackupService();
+    final documentOutput = DesktopDocumentOutputService(
+      settingsLoader: () async {
+        final settings = await deviceSettings.loadDeviceSettings(
+          almumayazWindowsDeviceId,
+        );
+        return DocumentOutputSettings(
+          defaultPrinterName: settings.defaultPrinterName,
+          paperSize: settings.paperSize == PrintPaperSize.a5
+              ? DocumentPaperSize.a5
+              : DocumentPaperSize.a4,
+          copies: settings.printCopies,
+          previewEnabled: settings.printPreviewEnabled,
+        );
+      },
+    );
+    final reportOutput = DocumentBackedReportOutputService(
+      printService: documentOutput,
+      exportService: documentOutput,
+    );
+    return AppServices(
+      authentication: DemoAuthenticationService(startsAuthenticated: false),
+      sessionPolicies: DemoSessionPolicyRepository(),
+      backupConfiguration: DemoBackupConfigurationRepository(),
+      backups: DemoBackupService(
+        googleDriveService: googleDriveBackups,
+      ),
+      googleDriveBackups: googleDriveBackups,
+      archiveSecurity: DemoArchiveSecurityService(),
+      archive: DemoArchiveRepository(),
+      archiveValidationPolicy: ArchiveValidationPolicy(
+        maximumByteSize: 10 * 1024 * 1024,
+      ),
+      users: DemoUserRepository(),
+      roles: DemoRoleRepository(),
+      audit: DemoAuditRepository(),
+      documentOutput: documentOutput,
+      reportOutput: reportOutput,
+    );
+  }
+
   final AuthenticationService authentication;
   final SessionPolicyRepository sessionPolicies;
   final BackupConfigurationRepository backupConfiguration;
@@ -66,4 +120,6 @@ class AppServices {
   final UserRepository users;
   final RoleRepository roles;
   final AuditRepository audit;
+  final DocumentOutputService documentOutput;
+  final ReportOutputService reportOutput;
 }

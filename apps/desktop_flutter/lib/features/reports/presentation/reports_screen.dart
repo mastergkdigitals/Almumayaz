@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/app_state/app_store.dart';
 import '../../../core/design/app_design_system.dart';
 import '../data/report_demo_catalog.dart';
 import 'report_definition.dart';
@@ -32,6 +33,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final reportOutput = AppStoreScope.of(
+      context,
+      listen: false,
+    ).services.reportOutput;
     final selectedReport = _selectedReport;
     final accentColor =
         selectedReport?.palette.middle ?? AppModuleColors.reports;
@@ -65,6 +70,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         definition: selectedReport,
                         definitions: reportDefinitions,
                         onDefinitionChanged: _openReport,
+                        printService: reportOutput,
+                        exportService: reportOutput,
                       ),
                     ),
             ),

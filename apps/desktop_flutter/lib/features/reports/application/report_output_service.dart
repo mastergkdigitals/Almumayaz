@@ -22,12 +22,16 @@ class ReportOutputResult {
     required this.content,
     required this.rowCount,
     this.fileName,
+    this.filePath,
+    this.isDemo = true,
   });
 
   final String title;
   final String content;
   final int rowCount;
   final String? fileName;
+  final String? filePath;
+  final bool isDemo;
 }
 
 abstract interface class ReportPrintService {
@@ -41,6 +45,9 @@ abstract interface class ReportExportService {
   );
 }
 
+abstract interface class ReportOutputService
+    implements ReportPrintService, ReportExportService {}
+
 class ReportOutputException implements Exception {
   const ReportOutputException(this.message);
 
@@ -53,10 +60,10 @@ class ReportOutputException implements Exception {
 /// Demo-only output generator.
 ///
 /// It creates a deterministic in-app representation of the filtered report.
-/// A production implementation can replace this service without changing the
-/// report screen when actual PDF, spreadsheet and printer integrations arrive.
+/// The desktop composition replaces this with the document-backed native
+/// adapter, while widget tests keep this deterministic implementation.
 class DemoReportOutputService
-    implements ReportPrintService, ReportExportService {
+    implements ReportOutputService {
   const DemoReportOutputService({
     this.delay = const Duration(milliseconds: 120),
   });

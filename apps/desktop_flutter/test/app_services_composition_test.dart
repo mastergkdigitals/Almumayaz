@@ -1,8 +1,12 @@
 import 'package:erp/app/app.dart';
 import 'package:erp/core/app_state/app_store.dart';
 import 'package:erp/core/domain/business_values.dart';
+import 'package:erp/core/printing/desktop_document_output_service.dart';
+import 'package:erp/core/printing/document_output_service.dart';
 import 'package:erp/features/authentication/domain/session_models.dart';
 import 'package:erp/features/backup_restore/domain/backup_models.dart';
+import 'package:erp/features/reports/application/document_report_output_service.dart';
+import 'package:erp/features/reports/application/report_output_service.dart';
 import 'package:erp/features/users/domain/user_models.dart';
 import 'package:erp/features/users/domain/user_repository.dart';
 import 'package:flutter/material.dart';
@@ -46,6 +50,8 @@ void main() {
     expect(store.services.users, same(services.users));
     expect(store.services.roles, same(services.roles));
     expect(store.services.audit, same(services.audit));
+    expect(services.documentOutput, isA<DemoDocumentOutputService>());
+    expect(services.reportOutput, isA<DemoReportOutputService>());
 
     await services.googleDriveBackups.connect();
     await services.users.setStatus(
@@ -62,6 +68,16 @@ void main() {
           .singleWhere((user) => user.id == EntityId.demo('user', 2))
           .status,
       UserAccountStatus.disabled,
+    );
+  });
+
+  test('desktop composition replaces only output adapters', () {
+    final store = AppStore.desktop();
+
+    expect(store.services.documentOutput, isA<DesktopDocumentOutputService>());
+    expect(
+      store.services.reportOutput,
+      isA<DocumentBackedReportOutputService>(),
     );
   });
 

@@ -4,6 +4,43 @@ enum DocumentExportFormat { pdf, excel }
 
 enum DocumentOutputAction { print, printWithoutPrices, pdf, excel }
 
+enum DocumentPaperSize { a4, a5 }
+
+class DocumentOutputSettings {
+  const DocumentOutputSettings({
+    this.defaultPrinterName,
+    this.paperSize = DocumentPaperSize.a4,
+    this.copies = 1,
+    this.previewEnabled = true,
+    this.landscape = false,
+  }) : assert(copies > 0);
+
+  final String? defaultPrinterName;
+  final DocumentPaperSize paperSize;
+  final int copies;
+  final bool previewEnabled;
+  final bool landscape;
+
+  DocumentOutputSettings copyWith({
+    String? defaultPrinterName,
+    DocumentPaperSize? paperSize,
+    int? copies,
+    bool? previewEnabled,
+    bool? landscape,
+  }) {
+    return DocumentOutputSettings(
+      defaultPrinterName: defaultPrinterName ?? this.defaultPrinterName,
+      paperSize: paperSize ?? this.paperSize,
+      copies: copies ?? this.copies,
+      previewEnabled: previewEnabled ?? this.previewEnabled,
+      landscape: landscape ?? this.landscape,
+    );
+  }
+}
+
+typedef DocumentOutputSettingsLoader =
+    Future<DocumentOutputSettings> Function();
+
 class DocumentField {
   const DocumentField({
     required this.label,
@@ -52,6 +89,8 @@ class DocumentOutputResult {
     required this.content,
     required this.rowCount,
     this.fileName,
+    this.filePath,
+    this.isDemo = true,
   });
 
   final DocumentOutputAction action;
@@ -60,6 +99,8 @@ class DocumentOutputResult {
   final String content;
   final int rowCount;
   final String? fileName;
+  final String? filePath;
+  final bool isDemo;
 }
 
 abstract interface class DocumentPrintService {

@@ -42,7 +42,19 @@ class _DocumentOutputBody extends StatelessWidget {
         DocumentOutputAction.excel => Icons.table_chart_rounded,
       };
 
-  String get _message => switch (result.action) {
+  String get _message {
+    if (!result.isDemo) {
+      return switch (result.action) {
+        DocumentOutputAction.print =>
+          'تم إرسال المستند إلى نافذة الطباعة في Windows.',
+        DocumentOutputAction.printWithoutPrices =>
+          'تم إرسال المستند بدون الأسعار إلى نافذة الطباعة في Windows.',
+        DocumentOutputAction.pdf => 'تم إنشاء ملف PDF وحفظه في المسار المختار.',
+        DocumentOutputAction.excel =>
+          'تم إنشاء ملف Excel وحفظه في المسار المختار.',
+      };
+    }
+    return switch (result.action) {
         DocumentOutputAction.print =>
           'هذه معاينة تجريبية داخل التطبيق وجاهزة للربط مع الطابعة.',
         DocumentOutputAction.printWithoutPrices =>
@@ -52,6 +64,7 @@ class _DocumentOutputBody extends StatelessWidget {
         DocumentOutputAction.excel =>
           'تم تجهيز نتيجة Excel تجريبية داخل التطبيق دون كتابة ملف فعلي.',
       };
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -104,6 +117,18 @@ class _DocumentOutputBody extends StatelessWidget {
                 ),
             ],
           ),
+          if (result.filePath != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            SelectableText(
+              result.filePath!,
+              key: const Key('appDocumentOutputFilePath'),
+              textDirection: TextDirection.ltr,
+              textAlign: TextAlign.start,
+              style: AppTypography.tableCell.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
           const SizedBox(height: AppSpacing.md),
           Container(
             constraints: const BoxConstraints(maxHeight: 320),
