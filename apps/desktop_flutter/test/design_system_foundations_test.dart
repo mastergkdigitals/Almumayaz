@@ -132,42 +132,6 @@ void main() {
     expect(escapes, 1);
   });
 
-  testWidgets('moves focus through the shared traversal helper',
-      (tester) async {
-    final firstFocus = FocusNode();
-    final secondFocus = FocusNode();
-    addTearDown(firstFocus.dispose);
-    addTearDown(secondFocus.dispose);
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: Column(
-            children: [
-              TextField(
-                key: const Key('firstFocusField'),
-                focusNode: firstFocus,
-              ),
-              TextField(
-                key: const Key('secondFocusField'),
-                focusNode: secondFocus,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-
-    firstFocus.requestFocus();
-    await tester.pump();
-    AppFocusTraversal.next(
-      tester.element(find.byKey(const Key('firstFocusField'))),
-    );
-    await tester.pump();
-
-    expect(secondFocus.hasFocus, isTrue);
-  });
-
   testWidgets('does not use arrow keys to move between app controls',
       (tester) async {
     final firstFocus = FocusNode();

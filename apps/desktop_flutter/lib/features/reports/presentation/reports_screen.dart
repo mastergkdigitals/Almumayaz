@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/design/app_design_system.dart';
+import '../data/report_demo_catalog.dart';
 import 'report_definition.dart';
-import 'reports_demo_data.dart';
 import 'widgets/report_section_view.dart';
 
 class ReportsScreen extends StatefulWidget {
