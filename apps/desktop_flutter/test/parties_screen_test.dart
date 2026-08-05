@@ -28,6 +28,15 @@ void main() {
     await controller.load();
 
     expect(controller.state.parties, hasLength(13));
+    expect(controller.state.parties.first.entityId, EntityId('party-001'));
+    expect(
+      controller.state.parties.first.iqdBalance,
+      Money.fromMajor(1250000, AppCurrency.iqd),
+    );
+    expect(
+      controller.state.parties.first.usdBalance,
+      Money.fromMajor(850, AppCurrency.usd),
+    );
 
     controller.search('مجهز الرافدين');
     expect(controller.visibleParties, hasLength(1));

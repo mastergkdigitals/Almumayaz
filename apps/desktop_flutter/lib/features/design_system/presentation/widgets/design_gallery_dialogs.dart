@@ -70,7 +70,7 @@ class DesignGalleryBusinessDialogsSection extends StatelessWidget {
     ),
   ];
 
-  static const _transferWarehouses = [
+  static final _transferWarehouses = [
     Warehouse(
       id: 'main',
       number: 1,
@@ -88,7 +88,7 @@ class DesignGalleryBusinessDialogsSection extends StatelessWidget {
     ),
   ];
 
-  static const _transferInventory = <String, List<WarehouseInventoryItem>>{
+  static final _transferInventory = <String, List<WarehouseInventoryItem>>{
     'main': [
       WarehouseInventoryItem(
         id: 'main-p001',

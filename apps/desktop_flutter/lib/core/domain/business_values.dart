@@ -51,8 +51,12 @@ class Money implements Comparable<Money> {
   final AppCurrency currency;
 
   bool get isNegative => minorUnits < 0;
+  bool get isPositive => minorUnits > 0;
   bool get isZero => minorUnits == 0;
   num get majorUnits => minorUnits / currency.scale;
+
+  Money get absolute =>
+      isNegative ? Money.fromMinorUnits(-minorUnits, currency) : this;
 
   Money clamp({Money? minimum, Money? maximum}) {
     _requireSameCurrency(minimum);
@@ -75,6 +79,8 @@ class Money implements Comparable<Money> {
   Money operator *(int multiplier) {
     return Money.fromMinorUnits(minorUnits * multiplier, currency);
   }
+
+  Money operator -() => Money.fromMinorUnits(-minorUnits, currency);
 
   Money percentage(Percentage percentage) {
     final scaled = minorUnits * percentage.basisPoints;
@@ -125,6 +131,9 @@ class Money implements Comparable<Money> {
 
 class ExchangeRate implements Comparable<ExchangeRate> {
   const ExchangeRate._(this.tenThousandths);
+
+  const ExchangeRate.fromTenThousandths(this.tenThousandths)
+      : assert(tenThousandths > 0, 'Exchange rate must be positive');
 
   factory ExchangeRate.parse(String value) {
     final scaled = _parseScaledNumber(value, decimalPlaces);
@@ -227,6 +236,17 @@ class WholeQuantity implements Comparable<WholeQuantity> {
 
   bool get isZero => value == 0;
 
+  WholeQuantity operator +(WholeQuantity other) {
+    return WholeQuantity(value + other.value);
+  }
+
+  WholeQuantity operator -(WholeQuantity other) {
+    if (other.value > value) {
+      throw StateError('Quantity cannot become negative');
+    }
+    return WholeQuantity(value - other.value);
+  }
+
   @override
   int compareTo(WholeQuantity other) => value.compareTo(other.value);
 
@@ -247,6 +267,20 @@ class BusinessDate implements Comparable<BusinessDate> {
 
   factory BusinessDate.fromDateTime(DateTime value) {
     return BusinessDate(value.year, value.month, value.day);
+  }
+
+  factory BusinessDate.parse(String value) {
+    final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$').firstMatch(
+      value.trim(),
+    );
+    if (match == null) {
+      throw FormatException('Business date must use YYYY-MM-DD: $value');
+    }
+    return BusinessDate(
+      int.parse(match.group(1)!),
+      int.parse(match.group(2)!),
+      int.parse(match.group(3)!),
+    );
   }
 
   final DateTime value;
@@ -278,6 +312,9 @@ class AuditTimestamp implements Comparable<AuditTimestamp> {
   AuditTimestamp(DateTime value) : value = value.toUtc();
 
   final DateTime value;
+
+  BusinessDate get utcDate => BusinessDate.fromDateTime(value);
+  BusinessDate get localDate => BusinessDate.fromDateTime(value.toLocal());
 
   @override
   int compareTo(AuditTimestamp other) => value.compareTo(other.value);

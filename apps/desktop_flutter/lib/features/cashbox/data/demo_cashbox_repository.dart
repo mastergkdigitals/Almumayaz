@@ -39,7 +39,7 @@ class DemoCashboxRepository extends InMemoryDemoRepository<CashboxVoucher>
 
   final OperationalMasterDataRepository _masterData;
   final CashboxBalanceSnapshot _openingBalance;
-  final Map<String, CashboxAccountBalance> _openingBalances;
+  final Map<EntityId, CashboxAccountBalance> _openingBalances;
 
   @override
   Future<List<CashboxVoucher>> search(String query) async {
@@ -61,8 +61,8 @@ class DemoCashboxRepository extends InMemoryDemoRepository<CashboxVoucher>
     );
     return Future.wait(
       mainRecords.map((record) async {
-        return CashboxMainAccount(
-          id: record.id.value,
+        return CashboxMainAccount.typed(
+          entityId: record.id,
           label: record.name,
           subaccounts: await getSubaccounts(record.id),
         );
@@ -81,11 +81,11 @@ class DemoCashboxRepository extends InMemoryDemoRepository<CashboxVoucher>
     final accounts = await Future.wait(
       records.map((record) async {
         final balance = await getBalance(record.id);
-        return CashboxSubaccount(
-          id: record.id.value,
+        return CashboxSubaccount.typed(
+          entityId: record.id,
           label: '${record.number} - ${record.name}',
-          balanceIqd: balance.iqd.majorUnits,
-          balanceUsd: balance.usd.majorUnits,
+          iqdBalance: balance.iqd,
+          usdBalance: balance.usd,
         );
       }),
     );
@@ -94,19 +94,21 @@ class DemoCashboxRepository extends InMemoryDemoRepository<CashboxVoucher>
 
   @override
   Future<CashboxVoucher> save(CashboxVoucher value) async {
-    final mainId = EntityId(value.mainAccountId);
-    final subId = EntityId(value.subaccountId);
+    final mainId = value.mainAccountEntityId;
+    final subId = value.subaccountEntityId;
     final mainExists = (await getMainAccounts()).any(
-      (account) => account.id == mainId.value,
+      (account) => account.entityId == mainId,
     );
     final subExists = (await getSubaccounts(mainId)).any(
-      (account) => account.id == subId.value,
+      (account) => account.entityId == subId,
     );
     if (!mainExists || !subExists) {
       throw StateError('حساب الصندوق المحدد غير موجود');
     }
     final values = await getAll();
-    final index = values.indexWhere((voucher) => voucher.id == value.id);
+    final index = values.indexWhere(
+      (voucher) => voucher.entityId == value.entityId,
+    );
     final updated = [...values];
     if (index < 0) {
       updated.add(value);
@@ -117,7 +119,9 @@ class DemoCashboxRepository extends InMemoryDemoRepository<CashboxVoucher>
     for (final voucher in normalized) {
       await super.save(voucher);
     }
-    return normalized.firstWhere((voucher) => voucher.id == value.id);
+    return normalized.firstWhere(
+      (voucher) => voucher.entityId == value.entityId,
+    );
   }
 
   @override
@@ -136,23 +140,24 @@ class DemoCashboxRepository extends InMemoryDemoRepository<CashboxVoucher>
         record?.kind == OperationalMasterDataKind.cashboxSubaccount;
     if (!exists) throw StateError('الحساب الفرعي غير موجود');
     final vouchers = (await getAll())
-        .where((voucher) => voucher.subaccountId == subaccountId.value)
+        .where((voucher) => voucher.subaccountEntityId == subaccountId)
         .toList()
       ..sort((first, second) {
-        final byDate = first.createdAt.compareTo(second.createdAt);
+        final byDate =
+            first.createdTimestamp.compareTo(second.createdTimestamp);
         return byDate != 0 ? byDate : first.number.compareTo(second.number);
       });
     if (vouchers.isEmpty) {
-      final opening = _openingBalances[subaccountId.value];
+      final opening = _openingBalances[subaccountId];
       return CashboxBalanceSnapshot(
-        iqd: Money.fromMajor(opening?.iqd ?? 0, AppCurrency.iqd),
-        usd: Money.fromMajor(opening?.usd ?? 0, AppCurrency.usd),
+        iqd: opening?.iqdMoney ?? Money.zero(AppCurrency.iqd),
+        usd: opening?.usdMoney ?? Money.zero(AppCurrency.usd),
       );
     }
     final latest = vouchers.last;
     return CashboxBalanceSnapshot(
-      iqd: Money.fromMajor(latest.balanceAfterIqd, AppCurrency.iqd),
-      usd: Money.fromMajor(latest.balanceAfterUsd, AppCurrency.usd),
+      iqd: latest.iqdBalanceAfter,
+      usd: latest.usdBalanceAfter,
     );
   }
 
@@ -165,12 +170,12 @@ class DemoCashboxRepository extends InMemoryDemoRepository<CashboxVoucher>
       OperationalMasterDataKind.cashboxSubaccount,
     ))
         .where((account) => account.relatedEntityId == partyId)
-        .map((account) => account.id.value)
+        .map((account) => account.id)
         .toSet();
     if (relatedAccountIds.isEmpty) return const [];
     return List.unmodifiable(
       (await getAll()).where(
-        (voucher) => relatedAccountIds.contains(voucher.subaccountId),
+        (voucher) => relatedAccountIds.contains(voucher.subaccountEntityId),
       ),
     );
   }
@@ -181,7 +186,7 @@ class DemoCashboxRepository extends InMemoryDemoRepository<CashboxVoucher>
       OperationalMasterDataKind.cashboxSubaccount,
     ))
         .where((account) => account.relatedEntityId == partyId)
-        .map((account) => account.id.value)
+        .map((account) => account.id)
         .toSet();
     return relatedAccounts.isNotEmpty;
   }
@@ -194,83 +199,123 @@ class DemoCashboxRepository extends InMemoryDemoRepository<CashboxVoucher>
       final childIds = (await _masterData.getByKind(
         OperationalMasterDataKind.cashboxSubaccount,
         parentId: record.id,
-      )).map((child) => child.id.value).toSet();
+      )).map((child) => child.id).toSet();
       return (await getAll()).any(
         (voucher) =>
-            voucher.mainAccountId == masterDataId.value ||
-            childIds.contains(voucher.subaccountId),
+            voucher.mainAccountEntityId == masterDataId ||
+            childIds.contains(voucher.subaccountEntityId),
       );
     }
     if (record.kind == OperationalMasterDataKind.cashboxSubaccount) {
       return (await getAll()).any(
-        (voucher) => voucher.subaccountId == masterDataId.value,
+        (voucher) => voucher.subaccountEntityId == masterDataId,
       );
     }
     return false;
   }
 
   List<CashboxVoucher> _normalizeBalances(List<CashboxVoucher> values) {
-    final balances = <String, CashboxAccountBalance>{..._openingBalances};
+    final balances = <EntityId, CashboxAccountBalance>{..._openingBalances};
     final chronological = [...values]..sort((first, second) {
-        final byDate = first.createdAt.compareTo(second.createdAt);
+        final byDate =
+            first.createdTimestamp.compareTo(second.createdTimestamp);
         return byDate != 0 ? byDate : first.number.compareTo(second.number);
       });
-    final normalized = <String, CashboxVoucher>{};
+    final normalized = <EntityId, CashboxVoucher>{};
     for (final voucher in chronological) {
-      final before = balances[voucher.subaccountId] ??
-          CashboxAccountBalance(
-            iqd: voucher.balanceBeforeIqd,
-            usd: voucher.balanceBeforeUsd,
+      final before = balances[voucher.subaccountEntityId] ??
+          CashboxAccountBalance.typed(
+            iqdMoney: voucher.iqdBalanceBefore,
+            usdMoney: voucher.usdBalanceBefore,
           );
       final direction =
           voucher.type == CashboxVoucherType.receipt ? -1 : 1;
-      final after = CashboxAccountBalance(
-        iqd: before.iqd + voucher.amountIqd * direction,
-        usd: before.usd + voucher.amountUsd * direction,
+      final after = CashboxAccountBalance.typed(
+        iqdMoney: before.iqdMoney + voucher.iqdAmount * direction,
+        usdMoney: before.usdMoney + voucher.usdAmount * direction,
       );
-      balances[voucher.subaccountId] = after;
-      normalized[voucher.id] = voucher.copyWith(
-        balanceBeforeIqd: before.iqd,
-        balanceAfterIqd: after.iqd,
-        balanceBeforeUsd: before.usd,
-        balanceAfterUsd: after.usd,
+      balances[voucher.subaccountEntityId] = after;
+      normalized[voucher.entityId] = voucher.copyWithTyped(
+        iqdBalanceBefore: before.iqdMoney,
+        iqdBalanceAfter: after.iqdMoney,
+        usdBalanceBefore: before.usdMoney,
+        usdBalanceAfter: after.usdMoney,
       );
     }
     return List.unmodifiable(
-      values.map((voucher) => normalized[voucher.id]!),
+      values.map((voucher) => normalized[voucher.entityId]!),
     );
   }
 }
 
-Map<String, CashboxAccountBalance> _resolveOpeningBalances(
+Map<EntityId, CashboxAccountBalance> _resolveOpeningBalances(
   Iterable<CashboxVoucher> values,
 ) {
   final chronological = values.toList()..sort((first, second) {
-      final byDate = first.createdAt.compareTo(second.createdAt);
+      final byDate =
+          first.createdTimestamp.compareTo(second.createdTimestamp);
       return byDate != 0 ? byDate : first.number.compareTo(second.number);
     });
-  final openings = <String, CashboxAccountBalance>{};
+  final openings = <EntityId, CashboxAccountBalance>{};
   for (final voucher in chronological) {
     openings.putIfAbsent(
-      voucher.subaccountId,
-      () => CashboxAccountBalance(
-        iqd: voucher.balanceBeforeIqd,
-        usd: voucher.balanceBeforeUsd,
+      voucher.subaccountEntityId,
+      () => CashboxAccountBalance.typed(
+        iqdMoney: voucher.iqdBalanceBefore,
+        usdMoney: voucher.usdBalanceBefore,
       ),
     );
   }
   return Map.unmodifiable(openings);
 }
 
+CashboxVoucher _demoCashboxVoucher({
+  required String id,
+  required int number,
+  required DateTime createdAt,
+  required CashboxVoucherType type,
+  required EntityId mainAccountId,
+  required String mainAccountLabel,
+  required EntityId subaccountId,
+  required String subaccountLabel,
+  required num exchangeRate,
+  required num amountIqd,
+  required num amountUsd,
+  required num balanceBeforeIqd,
+  required num balanceAfterIqd,
+  required num balanceBeforeUsd,
+  required num balanceAfterUsd,
+  required String notes,
+}) {
+  return CashboxVoucher.typed(
+    entityId: EntityId(id),
+    number: number,
+    createdTimestamp: AuditTimestamp(createdAt),
+    type: type,
+    mainAccountEntityId: mainAccountId,
+    mainAccountLabel: mainAccountLabel,
+    subaccountEntityId: subaccountId,
+    subaccountLabel: subaccountLabel,
+    exchangeRateValue: ExchangeRate.parse(exchangeRate.toString()),
+    iqdAmount: Money.fromMajor(amountIqd, AppCurrency.iqd),
+    usdAmount: Money.fromMajor(amountUsd, AppCurrency.usd),
+    iqdBalanceBefore: Money.fromMajor(balanceBeforeIqd, AppCurrency.iqd),
+    iqdBalanceAfter: Money.fromMajor(balanceAfterIqd, AppCurrency.iqd),
+    usdBalanceBefore: Money.fromMajor(balanceBeforeUsd, AppCurrency.usd),
+    usdBalanceAfter: Money.fromMajor(balanceAfterUsd, AppCurrency.usd),
+    notes: notes,
+  );
+}
+
 List<CashboxVoucher> demoCashboxVouchers() => [
-      CashboxVoucher(
+      _demoCashboxVoucher(
         id: 'cashbox-001',
         number: 1,
         createdAt: DateTime(2026, 7, 27, 8, 30),
         type: CashboxVoucherType.receipt,
-        mainAccountId: EntityId.demo('cashbox-main-account', 4).value,
+        mainAccountId: EntityId.demo('cashbox-main-account', 4),
         mainAccountLabel: 'الأطراف',
-        subaccountId: EntityId.demo('cashbox-subaccount', 4).value,
+        subaccountId: EntityId.demo('cashbox-subaccount', 4),
         subaccountLabel: '1 - شركة النخيل للتجارة',
         exchangeRate: 1310,
         amountIqd: 750000,
@@ -281,14 +326,14 @@ List<CashboxVoucher> demoCashboxVouchers() => [
         balanceAfterUsd: 850,
         notes: 'دفعة على الحساب',
       ),
-      CashboxVoucher(
+      _demoCashboxVoucher(
         id: 'cashbox-002',
         number: 2,
         createdAt: DateTime(2026, 7, 27, 9, 10),
         type: CashboxVoucherType.payment,
-        mainAccountId: EntityId.demo('cashbox-main-account', 5).value,
+        mainAccountId: EntityId.demo('cashbox-main-account', 5),
         mainAccountLabel: 'المصاريف',
-        subaccountId: EntityId.demo('cashbox-subaccount', 7).value,
+        subaccountId: EntityId.demo('cashbox-subaccount', 7),
         subaccountLabel: 'نقل',
         exchangeRate: 1310,
         amountIqd: 125000,
@@ -299,14 +344,14 @@ List<CashboxVoucher> demoCashboxVouchers() => [
         balanceAfterUsd: 0,
         notes: 'نقل مواد إلى المخزن',
       ),
-      CashboxVoucher(
+      _demoCashboxVoucher(
         id: 'cashbox-003',
         number: 3,
         createdAt: DateTime(2026, 7, 27, 10, 5),
         type: CashboxVoucherType.payment,
-        mainAccountId: EntityId.demo('cashbox-main-account', 4).value,
+        mainAccountId: EntityId.demo('cashbox-main-account', 4),
         mainAccountLabel: 'الأطراف',
-        subaccountId: EntityId.demo('cashbox-subaccount', 6).value,
+        subaccountId: EntityId.demo('cashbox-subaccount', 6),
         subaccountLabel: '3 - مجهز الرافدين',
         exchangeRate: 1310,
         amountIqd: 0,
@@ -317,14 +362,14 @@ List<CashboxVoucher> demoCashboxVouchers() => [
         balanceAfterUsd: -800,
         notes: 'تسديد جزء من الرصيد',
       ),
-      CashboxVoucher(
+      _demoCashboxVoucher(
         id: 'cashbox-004',
         number: 4,
         createdAt: DateTime(2026, 7, 26, 11, 40),
         type: CashboxVoucherType.receipt,
-        mainAccountId: EntityId.demo('cashbox-main-account', 6).value,
+        mainAccountId: EntityId.demo('cashbox-main-account', 6),
         mainAccountLabel: 'إيرادات أخرى',
-        subaccountId: EntityId.demo('cashbox-subaccount', 10).value,
+        subaccountId: EntityId.demo('cashbox-subaccount', 10),
         subaccountLabel: 'خدمات',
         exchangeRate: 1310,
         amountIqd: 300000,
@@ -335,14 +380,14 @@ List<CashboxVoucher> demoCashboxVouchers() => [
         balanceAfterUsd: 0,
         notes: '',
       ),
-      CashboxVoucher(
+      _demoCashboxVoucher(
         id: 'cashbox-005',
         number: 5,
         createdAt: DateTime(2026, 7, 25, 13, 15),
         type: CashboxVoucherType.payment,
-        mainAccountId: EntityId.demo('cashbox-main-account', 5).value,
+        mainAccountId: EntityId.demo('cashbox-main-account', 5),
         mainAccountLabel: 'المصاريف',
-        subaccountId: EntityId.demo('cashbox-subaccount', 8).value,
+        subaccountId: EntityId.demo('cashbox-subaccount', 8),
         subaccountLabel: 'صيانة',
         exchangeRate: 1310,
         amountIqd: 85000,
@@ -353,14 +398,14 @@ List<CashboxVoucher> demoCashboxVouchers() => [
         balanceAfterUsd: 0,
         notes: 'صيانة أجهزة المكتب',
       ),
-      CashboxVoucher(
+      _demoCashboxVoucher(
         id: 'cashbox-006',
         number: 6,
         createdAt: DateTime(2026, 7, 24, 15, 20),
         type: CashboxVoucherType.receipt,
-        mainAccountId: EntityId.demo('cashbox-main-account', 4).value,
+        mainAccountId: EntityId.demo('cashbox-main-account', 4),
         mainAccountLabel: 'الأطراف',
-        subaccountId: EntityId.demo('cashbox-subaccount', 5).value,
+        subaccountId: EntityId.demo('cashbox-subaccount', 5),
         subaccountLabel: '2 - أحمد كريم',
         exchangeRate: 1310,
         amountIqd: 475000,

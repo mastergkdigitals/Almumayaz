@@ -1,6 +1,7 @@
 import 'package:erp/app/app.dart';
 import 'package:erp/core/app_state/app_repositories.dart';
 import 'package:erp/core/design/app_design_system.dart';
+import 'package:erp/core/domain/business_values.dart';
 import 'package:erp/features/cashbox/domain/cashbox_voucher.dart';
 import 'package:erp/features/cashbox/presentation/cashbox_controller.dart';
 import 'package:flutter/material.dart';
@@ -18,6 +19,18 @@ void main() {
     await controller.load();
 
     expect(controller.state.vouchers, hasLength(6));
+    expect(
+      controller.state.vouchers.first.entityId,
+      EntityId('cashbox-001'),
+    );
+    expect(
+      controller.state.vouchers.first.exchangeRateValue,
+      ExchangeRate.parse('1310'),
+    );
+    expect(
+      controller.state.vouchers.first.iqdAmount,
+      Money.fromMajor(750000, AppCurrency.iqd),
+    );
 
     controller.search('750,000');
     expect(controller.visibleVouchers, hasLength(1));
@@ -49,6 +62,10 @@ void main() {
     expect(controller.state.vouchers, hasLength(6));
     expect(controller.summary.todayReceiptIqd, 750000);
     expect(controller.summary.todayPaymentIqd, 125000);
+    expect(
+      controller.summary.iqdTodayReceipt,
+      Money.fromMajor(750000, AppCurrency.iqd),
+    );
 
     controller.select('cashbox-003');
     final third = controller.selectedVoucher!;

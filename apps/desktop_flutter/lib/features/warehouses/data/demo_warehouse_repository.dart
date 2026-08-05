@@ -130,7 +130,7 @@ class DemoWarehouseRepository extends InMemoryDemoRepository<Warehouse>
       final source = _findBalance(draft.fromWarehouseId, line.itemId)!;
       final destination = _findBalance(draft.toWarehouseId, line.itemId);
       _inventory[source.id] = source.copyWith(
-        quantity: WholeQuantity(source.quantity.value - line.quantity.value),
+        quantity: source.quantity - line.quantity,
       );
       if (destination == null) {
         final id = EntityId(
@@ -140,13 +140,11 @@ class DemoWarehouseRepository extends InMemoryDemoRepository<Warehouse>
           id: id,
           warehouseId: draft.toWarehouseId,
           itemId: line.itemId,
-          quantity: WholeQuantity(line.quantity.value),
+          quantity: line.quantity,
         );
       } else {
         _inventory[destination.id] = destination.copyWith(
-          quantity: WholeQuantity(
-            destination.quantity.value + line.quantity.value,
-          ),
+          quantity: destination.quantity + line.quantity,
         );
       }
     }
@@ -220,30 +218,30 @@ class DemoWarehouseRepository extends InMemoryDemoRepository<Warehouse>
 Future<bool> _neverReferenced(EntityId _) async => false;
 
 List<Warehouse> demoWarehouses() => [
-      Warehouse(
-        id: 'warehouse-001',
+      Warehouse.typed(
+        entityId: EntityId('warehouse-001'),
         number: 1,
         name: 'المخزن الرئيسي',
         location: 'بغداد - الشورجة',
         notes: 'المخزن الرئيسي للشركة',
         isMain: true,
       ),
-      Warehouse(
-        id: 'warehouse-002',
+      Warehouse.typed(
+        entityId: EntityId('warehouse-002'),
         number: 2,
         name: 'مخزن الكرادة',
         location: 'بغداد - الكرادة',
         notes: '',
       ),
-      Warehouse(
-        id: 'warehouse-003',
+      Warehouse.typed(
+        entityId: EntityId('warehouse-003'),
         number: 3,
         name: 'مخزن البصرة',
         location: 'البصرة - العشار',
         notes: 'مخزن فرع البصرة',
       ),
-      Warehouse(
-        id: 'warehouse-004',
+      Warehouse.typed(
+        entityId: EntityId('warehouse-004'),
         number: 4,
         name: 'مخزن أربيل',
         location: 'أربيل - المنطقة الصناعية',

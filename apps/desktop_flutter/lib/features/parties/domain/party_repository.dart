@@ -2,10 +2,6 @@ import '../../../core/data/app_repository.dart';
 import '../../../core/domain/business_values.dart';
 import 'party.dart';
 
-extension PartyRepositoryIdentity on Party {
-  EntityId get entityId => EntityId(id);
-}
-
 class PartyMasterDataReferences {
   const PartyMasterDataReferences({
     this.workplaceId,

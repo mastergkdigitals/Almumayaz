@@ -10,14 +10,15 @@ class ItemsState {
   const ItemsState({
     this.dataState = const AppDataState.loading(),
     this.query = '',
-    this.selectedItemId,
+    this.selectedItemEntityId,
     this.groups = const [],
     this.types = const [],
   });
 
   final AppDataState<List<Item>> dataState;
   final String query;
-  final String? selectedItemId;
+  final EntityId? selectedItemEntityId;
+  String? get selectedItemId => selectedItemEntityId?.value;
   final List<ItemGroup> groups;
   final List<ItemType> types;
 
@@ -26,16 +27,16 @@ class ItemsState {
   ItemsState copyWith({
     AppDataState<List<Item>>? dataState,
     String? query,
-    Object? selectedItemId = _unchanged,
+    Object? selectedItemEntityId = _unchanged,
     List<ItemGroup>? groups,
     List<ItemType>? types,
   }) {
     return ItemsState(
       dataState: dataState ?? this.dataState,
       query: query ?? this.query,
-      selectedItemId: identical(selectedItemId, _unchanged)
-          ? this.selectedItemId
-          : selectedItemId as String?,
+      selectedItemEntityId: identical(selectedItemEntityId, _unchanged)
+          ? this.selectedItemEntityId
+          : selectedItemEntityId as EntityId?,
       groups: groups ?? this.groups,
       types: types ?? this.types,
     );
@@ -70,10 +71,10 @@ class ItemsController extends ChangeNotifier {
   }
 
   Item? get selectedItem {
-    final selectedId = _state.selectedItemId;
+    final selectedId = _state.selectedItemEntityId;
     if (selectedId == null) return null;
     for (final item in _state.items) {
-      if (item.id == selectedId) return item;
+      if (item.entityId == selectedId) return item;
     }
     return null;
   }
@@ -117,9 +118,11 @@ class ItemsController extends ChangeNotifier {
       }
       final resolved = <Item>[];
       for (final item in items) {
-        final group = _groupFrom(groups, item.groupId);
-        final type = _typeFrom(types, item.typeId);
-        if (group == null || type == null || type.groupId != group.id) {
+        final group = _groupFrom(groups, item.groupEntityId);
+        final type = _typeFrom(types, item.typeEntityId);
+        if (group == null ||
+            type == null ||
+            type.groupEntityId != group.entityId) {
           _setMissingReference(
             'مجموعة المادة أو نوعها غير متاح: ${item.name}',
             generation,
@@ -136,10 +139,10 @@ class ItemsController extends ChangeNotifier {
             : AppDataState.ready(List.unmodifiable(resolved)),
         groups: List.unmodifiable(groups),
         types: List.unmodifiable(types),
-        selectedItemId: resolved.any(
-          (item) => item.id == _state.selectedItemId,
+        selectedItemEntityId: resolved.any(
+          (item) => item.entityId == _state.selectedItemEntityId,
         )
-            ? _state.selectedItemId
+            ? _state.selectedItemEntityId
             : null,
       );
       _notifyListenersIfActive();
@@ -175,8 +178,9 @@ class ItemsController extends ChangeNotifier {
 
   void select(String? itemId) {
     if (_isDisposed) return;
-    if (_state.selectedItemId == itemId) return;
-    _state = _state.copyWith(selectedItemId: itemId);
+    final entityId = itemId == null ? null : EntityId(itemId);
+    if (_state.selectedItemEntityId == entityId) return;
+    _state = _state.copyWith(selectedItemEntityId: entityId);
     _notifyListenersIfActive();
   }
 
@@ -230,7 +234,7 @@ class ItemsController extends ChangeNotifier {
     if (_isDisposed) return saved;
     await load();
     if (_isDisposed) return saved;
-    select(saved.id);
+    select(saved.entityId.value);
     _onDataChanged?.call();
     return selectedItem ?? saved;
   }
@@ -240,7 +244,7 @@ class ItemsController extends ChangeNotifier {
     if (_isDisposed) return saved;
     await load();
     if (_isDisposed) return saved;
-    select(saved.id);
+    select(saved.entityId.value);
     _onDataChanged?.call();
     return selectedItem ?? saved;
   }
@@ -289,16 +293,16 @@ class ItemsController extends ChangeNotifier {
     super.dispose();
   }
 
-  ItemGroup? _groupFrom(List<ItemGroup> groups, String id) {
+  ItemGroup? _groupFrom(List<ItemGroup> groups, EntityId id) {
     for (final group in groups) {
-      if (group.id == id) return group;
+      if (group.entityId == id) return group;
     }
     return null;
   }
 
-  ItemType? _typeFrom(List<ItemType> types, String id) {
+  ItemType? _typeFrom(List<ItemType> types, EntityId id) {
     for (final type in types) {
-      if (type.id == id) return type;
+      if (type.entityId == id) return type;
     }
     return null;
   }
@@ -306,10 +310,12 @@ class ItemsController extends ChangeNotifier {
   void _selectAt(int index) {
     final items = visibleItems;
     if (items.isEmpty || index < 0 || index >= items.length) return;
-    select(items[index].id);
+    select(items[index].entityId.value);
   }
 
   int _selectedVisibleIndex(List<Item> items) {
-    return items.indexWhere((item) => item.id == _state.selectedItemId);
+    return items.indexWhere(
+      (item) => item.entityId == _state.selectedItemEntityId,
+    );
   }
 }

@@ -2,9 +2,9 @@ import '../../../core/domain/business_values.dart';
 
 /// Canonical persistence identity for a warehouse/item balance.
 ///
-/// The older `WarehouseInventoryItem` remains a presentation projection until
-/// the Warehouses screen is migrated; adapters must resolve its product code
-/// to this stable [itemId] rather than persisting that display-only model.
+/// `WarehouseInventoryItem` is deliberately kept as a read-only presentation
+/// projection; repositories persist this stable [itemId] instead of product
+/// codes or any display-only warehouse row.
 class InventoryBalance {
   InventoryBalance({
     required this.id,

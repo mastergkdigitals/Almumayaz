@@ -12,14 +12,15 @@ class PartiesState {
   const PartiesState({
     this.dataState = const AppDataState.loading(),
     this.query = '',
-    this.selectedPartyId,
+    this.selectedPartyEntityId,
     this.workplaces = const [],
     this.branches = const [],
   });
 
   final AppDataState<List<Party>> dataState;
   final String query;
-  final String? selectedPartyId;
+  final EntityId? selectedPartyEntityId;
+  String? get selectedPartyId => selectedPartyEntityId?.value;
   final List<OperationalMasterDataRecord> workplaces;
   final List<OperationalMasterDataRecord> branches;
 
@@ -28,16 +29,17 @@ class PartiesState {
   PartiesState copyWith({
     AppDataState<List<Party>>? dataState,
     String? query,
-    Object? selectedPartyId = _unchanged,
+    Object? selectedPartyEntityId = _unchanged,
     List<OperationalMasterDataRecord>? workplaces,
     List<OperationalMasterDataRecord>? branches,
   }) {
     return PartiesState(
       dataState: dataState ?? this.dataState,
       query: query ?? this.query,
-      selectedPartyId: identical(selectedPartyId, _unchanged)
-          ? this.selectedPartyId
-          : selectedPartyId as String?,
+      selectedPartyEntityId:
+          identical(selectedPartyEntityId, _unchanged)
+              ? this.selectedPartyEntityId
+              : selectedPartyEntityId as EntityId?,
       workplaces: workplaces ?? this.workplaces,
       branches: branches ?? this.branches,
     );
@@ -89,10 +91,10 @@ class PartiesController extends ChangeNotifier {
       );
 
   Party? get selectedParty {
-    final selectedId = _state.selectedPartyId;
+    final selectedId = _state.selectedPartyEntityId;
     if (selectedId == null) return null;
     for (final party in _state.parties) {
-      if (party.id == selectedId) return party;
+      if (party.entityId == selectedId) return party;
     }
     return null;
   }
@@ -162,10 +164,10 @@ class PartiesController extends ChangeNotifier {
             : AppDataState.ready(List.unmodifiable(resolved)),
         workplaces: List.unmodifiable(workplaces),
         branches: List.unmodifiable(branches),
-        selectedPartyId: resolved.any(
-          (party) => party.id == _state.selectedPartyId,
+        selectedPartyEntityId: resolved.any(
+          (party) => party.entityId == _state.selectedPartyEntityId,
         )
-            ? _state.selectedPartyId
+            ? _state.selectedPartyEntityId
             : null,
       );
       _notifyListenersIfActive();
@@ -190,8 +192,9 @@ class PartiesController extends ChangeNotifier {
 
   void select(String? partyId) {
     if (_isDisposed) return;
-    if (_state.selectedPartyId == partyId) return;
-    _state = _state.copyWith(selectedPartyId: partyId);
+    final entityId = partyId == null ? null : EntityId(partyId);
+    if (_state.selectedPartyEntityId == entityId) return;
+    _state = _state.copyWith(selectedPartyEntityId: entityId);
     _notifyListenersIfActive();
   }
 
@@ -246,7 +249,7 @@ class PartiesController extends ChangeNotifier {
     final normalized = normalizePartyName(name);
     return _state.parties.any(
       (party) =>
-          party.id != exceptPartyId &&
+          party.entityId.value != exceptPartyId &&
           normalizePartyName(party.name) == normalized,
     );
   }
@@ -256,7 +259,7 @@ class PartiesController extends ChangeNotifier {
     if (_isDisposed) return saved;
     await load();
     if (_isDisposed) return saved;
-    select(saved.id);
+    select(saved.entityId.value);
     _onDataChanged?.call();
     return selectedParty ?? saved;
   }
@@ -266,7 +269,7 @@ class PartiesController extends ChangeNotifier {
     if (_isDisposed) return saved;
     await load();
     if (_isDisposed) return saved;
-    select(saved.id);
+    select(saved.entityId.value);
     _onDataChanged?.call();
     return selectedParty ?? saved;
   }
@@ -364,10 +367,12 @@ class PartiesController extends ChangeNotifier {
   void _selectAt(int index) {
     final parties = visibleParties;
     if (parties.isEmpty || index < 0 || index >= parties.length) return;
-    select(parties[index].id);
+    select(parties[index].entityId.value);
   }
 
   int _selectedVisibleIndex(List<Party> parties) {
-    return parties.indexWhere((party) => party.id == _state.selectedPartyId);
+    return parties.indexWhere(
+      (party) => party.entityId == _state.selectedPartyEntityId,
+    );
   }
 }

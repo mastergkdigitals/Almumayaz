@@ -136,8 +136,42 @@ class DemoPartyRepository extends InMemoryDemoRepository<Party>
 
 Future<bool> _neverReferenced(EntityId _) async => false;
 
+Party _demoParty({
+  required String id,
+  required int number,
+  required DateTime createdAt,
+  required String name,
+  required PartyType type,
+  required String workplace,
+  required String branch,
+  required String phone,
+  required String alternatePhone,
+  required String city,
+  required String address,
+  required String notes,
+  required num balanceIqd,
+  required num balanceUsd,
+}) {
+  return Party.typed(
+    entityId: EntityId(id),
+    number: number,
+    createdTimestamp: AuditTimestamp(createdAt),
+    name: name,
+    type: type,
+    workplace: workplace,
+    branch: branch,
+    phone: phone,
+    alternatePhone: alternatePhone,
+    city: city,
+    address: address,
+    notes: notes,
+    iqdBalance: Money.fromMajor(balanceIqd, AppCurrency.iqd),
+    usdBalance: Money.fromMajor(balanceUsd, AppCurrency.usd),
+  );
+}
+
 List<Party> demoParties() => [
-      Party(
+      _demoParty(
         id: 'party-001',
         number: 1,
         createdAt: DateTime(2026, 7, 1, 9, 15),
@@ -153,7 +187,7 @@ List<Party> demoParties() => [
         balanceIqd: 1250000,
         balanceUsd: 850,
       ),
-      Party(
+      _demoParty(
         id: 'party-002',
         number: 2,
         createdAt: DateTime(2026, 7, 2, 10, 30),
@@ -169,7 +203,7 @@ List<Party> demoParties() => [
         balanceIqd: 475000,
         balanceUsd: 0,
       ),
-      Party(
+      _demoParty(
         id: 'party-003',
         number: 3,
         createdAt: DateTime(2026, 7, 3, 11),
@@ -185,7 +219,7 @@ List<Party> demoParties() => [
         balanceIqd: -3200000,
         balanceUsd: -1200,
       ),
-      Party(
+      _demoParty(
         id: 'party-004',
         number: 4,
         createdAt: DateTime(2026, 7, 4, 8, 45),
@@ -201,7 +235,7 @@ List<Party> demoParties() => [
         balanceIqd: 0,
         balanceUsd: 0,
       ),
-      Party(
+      _demoParty(
         id: 'party-005',
         number: 5,
         createdAt: DateTime(2026, 7, 5, 12, 20),
@@ -217,7 +251,7 @@ List<Party> demoParties() => [
         balanceIqd: 840000,
         balanceUsd: 300,
       ),
-      Party(
+      _demoParty(
         id: 'party-006',
         number: 6,
         createdAt: DateTime(2026, 7, 6, 9, 5),
@@ -233,7 +267,7 @@ List<Party> demoParties() => [
         balanceIqd: -950000,
         balanceUsd: -425,
       ),
-      Party(
+      _demoParty(
         id: 'party-007',
         number: 7,
         createdAt: DateTime(2026, 7, 7, 14, 10),
@@ -249,7 +283,7 @@ List<Party> demoParties() => [
         balanceIqd: 210000,
         balanceUsd: 75,
       ),
-      Party(
+      _demoParty(
         id: 'party-008',
         number: 8,
         createdAt: DateTime(2026, 7, 8, 10, 50),
@@ -265,7 +299,7 @@ List<Party> demoParties() => [
         balanceIqd: 0,
         balanceUsd: 150,
       ),
-      Party(
+      _demoParty(
         id: 'party-009',
         number: 9,
         createdAt: DateTime(2026, 7, 9, 13, 40),
@@ -281,7 +315,7 @@ List<Party> demoParties() => [
         balanceIqd: -1725000,
         balanceUsd: 0,
       ),
-      Party(
+      _demoParty(
         id: 'party-010',
         number: 10,
         createdAt: DateTime(2026, 7, 10, 8, 30),
@@ -297,7 +331,7 @@ List<Party> demoParties() => [
         balanceIqd: 0,
         balanceUsd: 0,
       ),
-      Party(
+      _demoParty(
         id: 'party-011',
         number: 11,
         createdAt: DateTime(2026, 7, 11, 9, 20),
@@ -313,7 +347,7 @@ List<Party> demoParties() => [
         balanceIqd: -450000,
         balanceUsd: 0,
       ),
-      Party(
+      _demoParty(
         id: 'party-012',
         number: 12,
         createdAt: DateTime(2026, 7, 12, 10, 15),
@@ -329,7 +363,7 @@ List<Party> demoParties() => [
         balanceIqd: 0,
         balanceUsd: -1250,
       ),
-      Party(
+      _demoParty(
         id: 'party-013',
         number: 13,
         createdAt: DateTime(2026, 7, 13, 11, 10),

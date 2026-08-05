@@ -1,9 +1,29 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/domain/business_values.dart';
+
 @immutable
 class Warehouse {
-  const Warehouse({
-    required this.id,
+  factory Warehouse({
+    required String id,
+    required int number,
+    required String name,
+    required String location,
+    required String notes,
+    bool isMain = false,
+  }) {
+    return Warehouse.typed(
+      entityId: EntityId(id),
+      number: number,
+      name: name,
+      location: location,
+      notes: notes,
+      isMain: isMain,
+    );
+  }
+
+  const Warehouse.typed({
+    required this.entityId,
     required this.number,
     required this.name,
     required this.location,
@@ -11,20 +31,22 @@ class Warehouse {
     this.isMain = false,
   });
 
-  final String id;
+  final EntityId entityId;
   final int number;
   final String name;
   final String location;
   final String notes;
   final bool isMain;
 
+  String get id => entityId.value;
+
   Warehouse copyWith({
     String? name,
     String? location,
     String? notes,
   }) {
-    return Warehouse(
-      id: id,
+    return Warehouse.typed(
+      entityId: entityId,
       number: number,
       name: name ?? this.name,
       location: location ?? this.location,
@@ -33,68 +55,127 @@ class Warehouse {
     );
   }
 
-  String get searchText =>
-      '$number $name $location $notes'.toLowerCase();
+  String get searchText => '$number $name $location $notes'.toLowerCase();
 }
 
+/// Read-only presentation projection resolved from an [InventoryBalance].
 @immutable
 class WarehouseInventoryItem {
-  const WarehouseInventoryItem({
-    required this.id,
+  factory WarehouseInventoryItem({
+    required String id,
+    required String productCode,
+    required String productName,
+    required int quantity,
+  }) {
+    return WarehouseInventoryItem.typed(
+      balanceId: EntityId(id),
+      productCode: productCode,
+      productName: productName,
+      wholeQuantity: WholeQuantity(quantity),
+    );
+  }
+
+  const WarehouseInventoryItem.typed({
+    required this.balanceId,
     required this.productCode,
     required this.productName,
-    required this.quantity,
+    required this.wholeQuantity,
   });
 
-  final String id;
+  final EntityId balanceId;
   final String productCode;
   final String productName;
-  final int quantity;
+  final WholeQuantity wholeQuantity;
 
-  String get searchText =>
-      '$productCode $productName $quantity'.toLowerCase();
+  String get id => balanceId.value;
+  int get quantity => wholeQuantity.value;
+  String get searchText => '$productCode $productName $quantity'.toLowerCase();
 }
 
+/// Read-only presentation projection resolved from an InventoryTransferLine.
 @immutable
 class WarehouseTransferLine {
-  const WarehouseTransferLine({
+  factory WarehouseTransferLine({
+    required String productCode,
+    required String productName,
+    required int quantity,
+  }) {
+    return WarehouseTransferLine.typed(
+      productCode: productCode,
+      productName: productName,
+      wholeQuantity: WholeQuantity(quantity),
+    );
+  }
+
+  const WarehouseTransferLine.typed({
     required this.productCode,
     required this.productName,
-    required this.quantity,
+    required this.wholeQuantity,
   });
 
   final String productCode;
   final String productName;
-  final int quantity;
+  final WholeQuantity wholeQuantity;
 
+  int get quantity => wholeQuantity.value;
   String get summary => '$productCode - $productName ($quantity)';
 }
 
-/// An inventory transfer is immutable. Corrections are represented by a new
-/// record whose [reversalOfId] points to the original transfer.
+/// Read-only presentation projection of the immutable inventory transfer.
 @immutable
 class WarehouseTransferRecord {
-  const WarehouseTransferRecord({
-    required this.id,
-    required this.number,
-    required this.createdAt,
-    required this.fromWarehouseId,
-    required this.fromWarehouseName,
-    required this.toWarehouseId,
-    required this.toWarehouseName,
-    required this.lines,
-    this.reversalOfId,
-  });
+  factory WarehouseTransferRecord({
+    required String id,
+    required int number,
+    required DateTime createdAt,
+    required String fromWarehouseId,
+    required String fromWarehouseName,
+    required String toWarehouseId,
+    required String toWarehouseName,
+    required List<WarehouseTransferLine> lines,
+    String? reversalOfId,
+  }) {
+    return WarehouseTransferRecord.typed(
+      entityId: EntityId(id),
+      number: number,
+      createdTimestamp: AuditTimestamp(createdAt),
+      fromWarehouseEntityId: EntityId(fromWarehouseId),
+      fromWarehouseName: fromWarehouseName,
+      toWarehouseEntityId: EntityId(toWarehouseId),
+      toWarehouseName: toWarehouseName,
+      lines: lines,
+      reversalOfEntityId:
+          reversalOfId == null ? null : EntityId(reversalOfId),
+    );
+  }
 
-  final String id;
+  WarehouseTransferRecord.typed({
+    required this.entityId,
+    required this.number,
+    required this.createdTimestamp,
+    required this.fromWarehouseEntityId,
+    required this.fromWarehouseName,
+    required this.toWarehouseEntityId,
+    required this.toWarehouseName,
+    required Iterable<WarehouseTransferLine> lines,
+    this.reversalOfEntityId,
+  }) : lines = List.unmodifiable(lines);
+
+  final EntityId entityId;
   final int number;
-  final DateTime createdAt;
-  final String fromWarehouseId;
+  final AuditTimestamp createdTimestamp;
+  final EntityId fromWarehouseEntityId;
   final String fromWarehouseName;
-  final String toWarehouseId;
+  final EntityId toWarehouseEntityId;
   final String toWarehouseName;
   final List<WarehouseTransferLine> lines;
-  final String? reversalOfId;
+  final EntityId? reversalOfEntityId;
+
+  String get id => entityId.value;
+  DateTime get createdAt => createdTimestamp.value.toLocal();
+  String get fromWarehouseId => fromWarehouseEntityId.value;
+  String get toWarehouseId => toWarehouseEntityId.value;
+  String? get reversalOfId => reversalOfEntityId?.value;
 
   String get formattedDate =>
       '${createdAt.year.toString().padLeft(4, '0')}/'
@@ -109,6 +190,6 @@ class WarehouseTransferRecord {
         fromWarehouseName,
         toWarehouseName,
         itemsSummary,
-        if (reversalOfId != null) 'عكس تصحيح',
+        if (reversalOfEntityId != null) 'عكس تصحيح',
       ].join(' ').toLowerCase();
 }

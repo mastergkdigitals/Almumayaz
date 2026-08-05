@@ -2,6 +2,7 @@ import 'package:erp/app/app.dart';
 import 'package:erp/core/app_state/app_repositories.dart';
 import 'package:erp/core/data/app_repository.dart';
 import 'package:erp/core/design/app_design_system.dart';
+import 'package:erp/core/domain/business_values.dart';
 import 'package:erp/features/items/data/demo_item_repository.dart';
 import 'package:erp/features/items/domain/item.dart';
 import 'package:erp/features/items/presentation/items_controller.dart';
@@ -17,6 +18,15 @@ void main() {
     await controller.load();
 
     expect(controller.state.items, hasLength(10));
+    expect(controller.state.items.first.entityId, EntityId('item-001'));
+    expect(
+      controller.state.items.first.iqdSalePrice,
+      Money.fromMajor(285000, AppCurrency.iqd),
+    );
+    expect(
+      controller.state.items.first.usdSalePrice,
+      Money.fromMajor(190, AppCurrency.usd),
+    );
 
     controller.search('ورق طباعة');
     expect(controller.visibleItems, hasLength(1));

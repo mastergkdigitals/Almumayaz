@@ -14,23 +14,24 @@ class WarehousesState {
     this.inventoryByWarehouse = const {},
     this.transferRecords = const [],
     this.query = '',
-    this.selectedWarehouseId,
+    this.selectedWarehouseEntityId,
   });
 
   final AppDataState<List<Warehouse>> dataState;
-  final Map<String, List<WarehouseInventoryItem>> inventoryByWarehouse;
+  final Map<EntityId, List<WarehouseInventoryItem>> inventoryByWarehouse;
   final List<WarehouseTransferRecord> transferRecords;
   final String query;
-  final String? selectedWarehouseId;
+  final EntityId? selectedWarehouseEntityId;
+  String? get selectedWarehouseId => selectedWarehouseEntityId?.value;
 
   List<Warehouse> get warehouses => dataState.data ?? const [];
 
   WarehousesState copyWith({
     AppDataState<List<Warehouse>>? dataState,
-    Map<String, List<WarehouseInventoryItem>>? inventoryByWarehouse,
+    Map<EntityId, List<WarehouseInventoryItem>>? inventoryByWarehouse,
     List<WarehouseTransferRecord>? transferRecords,
     String? query,
-    Object? selectedWarehouseId = _unchanged,
+    Object? selectedWarehouseEntityId = _unchanged,
   }) {
     return WarehousesState(
       dataState: dataState ?? this.dataState,
@@ -38,9 +39,10 @@ class WarehousesState {
           inventoryByWarehouse ?? this.inventoryByWarehouse,
       transferRecords: transferRecords ?? this.transferRecords,
       query: query ?? this.query,
-      selectedWarehouseId: identical(selectedWarehouseId, _unchanged)
-          ? this.selectedWarehouseId
-          : selectedWarehouseId as String?,
+      selectedWarehouseEntityId:
+          identical(selectedWarehouseEntityId, _unchanged)
+              ? this.selectedWarehouseEntityId
+              : selectedWarehouseEntityId as EntityId?,
     );
   }
 }
@@ -77,10 +79,10 @@ class WarehousesController extends ChangeNotifier {
   }
 
   Warehouse? get selectedWarehouse {
-    final selectedId = _state.selectedWarehouseId;
+    final selectedId = _state.selectedWarehouseEntityId;
     if (selectedId == null) return null;
     for (final warehouse in _state.warehouses) {
-      if (warehouse.id == selectedId) return warehouse;
+      if (warehouse.entityId == selectedId) return warehouse;
     }
     return null;
   }
@@ -105,7 +107,7 @@ class WarehousesController extends ChangeNotifier {
 
   List<WarehouseInventoryItem> inventoryFor(String? warehouseId) {
     if (warehouseId == null) return const [];
-    return _state.inventoryByWarehouse[warehouseId] ?? const [];
+    return _state.inventoryByWarehouse[EntityId(warehouseId)] ?? const [];
   }
 
   int materialCountFor(String warehouseId) => inventoryFor(warehouseId)
@@ -141,16 +143,16 @@ class WarehousesController extends ChangeNotifier {
       if (_loadIsStale(generation)) return;
 
       final warehousesById = {
-        for (final warehouse in warehouses) warehouse.id: warehouse,
+        for (final warehouse in warehouses) warehouse.entityId: warehouse,
       };
-      final itemsById = {for (final item in items) item.id: item};
-      final inventory = <String, List<WarehouseInventoryItem>>{};
+      final itemsById = {for (final item in items) item.entityId: item};
+      final inventory = <EntityId, List<WarehouseInventoryItem>>{};
       for (final warehouse in warehouses) {
         final balances = await _repository.getInventory(warehouse.entityId);
         if (_loadIsStale(generation)) return;
         final resolvedBalances = <WarehouseInventoryItem>[];
         for (final balance in balances) {
-          final item = itemsById[balance.itemId.value];
+          final item = itemsById[balance.itemId];
           if (item == null) {
             _setMissingReference(
               'تعذر العثور على مادة مرتبطة بمخزون ${warehouse.name}',
@@ -159,21 +161,21 @@ class WarehousesController extends ChangeNotifier {
             return;
           }
           resolvedBalances.add(
-            WarehouseInventoryItem(
-              id: balance.id.value,
+            WarehouseInventoryItem.typed(
+              balanceId: balance.id,
               productCode: item.code,
               productName: item.name,
-              quantity: balance.quantity.value,
+              wholeQuantity: balance.quantity,
             ),
           );
         }
-        inventory[warehouse.id] = List.unmodifiable(resolvedBalances);
+        inventory[warehouse.entityId] = List.unmodifiable(resolvedBalances);
       }
 
       final resolvedTransfers = <WarehouseTransferRecord>[];
       for (final transfer in transfers) {
-        final source = warehousesById[transfer.fromWarehouseId.value];
-        final destination = warehousesById[transfer.toWarehouseId.value];
+        final source = warehousesById[transfer.fromWarehouseId];
+        final destination = warehousesById[transfer.toWarehouseId];
         if (source == null || destination == null) {
           _setMissingReference(
             'تعذر العثور على مخزن مرتبط بسجل النقل رقم '
@@ -184,7 +186,7 @@ class WarehousesController extends ChangeNotifier {
         }
         final lines = <WarehouseTransferLine>[];
         for (final line in transfer.lines) {
-          final item = itemsById[line.itemId.value];
+          final item = itemsById[line.itemId];
           if (item == null) {
             _setMissingReference(
               'تعذر العثور على مادة مرتبطة بسجل النقل رقم '
@@ -194,24 +196,24 @@ class WarehousesController extends ChangeNotifier {
             return;
           }
           lines.add(
-            WarehouseTransferLine(
+            WarehouseTransferLine.typed(
               productCode: item.code,
               productName: item.name,
-              quantity: line.quantity.value,
+              wholeQuantity: line.quantity,
             ),
           );
         }
         resolvedTransfers.add(
-          WarehouseTransferRecord(
-            id: transfer.id.value,
+          WarehouseTransferRecord.typed(
+            entityId: transfer.id,
             number: transfer.documentNumber,
-            createdAt: transfer.createdAt.value,
-            fromWarehouseId: source.id,
+            createdTimestamp: transfer.createdAt,
+            fromWarehouseEntityId: source.entityId,
             fromWarehouseName: source.name,
-            toWarehouseId: destination.id,
+            toWarehouseEntityId: destination.entityId,
             toWarehouseName: destination.name,
             lines: List.unmodifiable(lines),
-            reversalOfId: transfer.reversalOfId?.value,
+            reversalOfEntityId: transfer.reversalOfId,
           ),
         );
       }
@@ -227,10 +229,11 @@ class WarehousesController extends ChangeNotifier {
             : AppDataState.ready(List.unmodifiable(warehouses)),
         inventoryByWarehouse: Map.unmodifiable(inventory),
         transferRecords: List.unmodifiable(resolvedTransfers),
-        selectedWarehouseId: warehouses.any(
-          (warehouse) => warehouse.id == _state.selectedWarehouseId,
+        selectedWarehouseEntityId: warehouses.any(
+          (warehouse) =>
+              warehouse.entityId == _state.selectedWarehouseEntityId,
         )
-            ? _state.selectedWarehouseId
+            ? _state.selectedWarehouseEntityId
             : null,
       );
       _notifyListenersIfActive();
@@ -253,8 +256,10 @@ class WarehousesController extends ChangeNotifier {
   }
 
   void select(String? warehouseId) {
-    if (_isDisposed || _state.selectedWarehouseId == warehouseId) return;
-    _state = _state.copyWith(selectedWarehouseId: warehouseId);
+    if (_isDisposed) return;
+    final entityId = warehouseId == null ? null : EntityId(warehouseId);
+    if (_state.selectedWarehouseEntityId == entityId) return;
+    _state = _state.copyWith(selectedWarehouseEntityId: entityId);
     _notifyListenersIfActive();
   }
 
@@ -430,7 +435,7 @@ class WarehousesController extends ChangeNotifier {
 
   int _selectedVisibleIndex(List<Warehouse> warehouses) {
     return warehouses.indexWhere(
-      (warehouse) => warehouse.id == _state.selectedWarehouseId,
+      (warehouse) => warehouse.entityId == _state.selectedWarehouseEntityId,
     );
   }
 

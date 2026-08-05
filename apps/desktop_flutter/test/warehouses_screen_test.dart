@@ -1,6 +1,7 @@
 import 'package:erp/app/app.dart';
 import 'package:erp/core/app_state/app_repositories.dart';
 import 'package:erp/core/design/app_design_system.dart';
+import 'package:erp/core/domain/business_values.dart';
 import 'package:erp/features/warehouses/domain/warehouse.dart';
 import 'package:erp/features/warehouses/presentation/warehouses_controller.dart';
 import 'package:flutter/material.dart';
@@ -17,6 +18,14 @@ void main() {
     await controller.load();
 
     expect(controller.state.warehouses, hasLength(4));
+    expect(
+      controller.state.warehouses.first.entityId,
+      EntityId('warehouse-001'),
+    );
+    expect(
+      controller.inventoryFor('warehouse-001').first.wholeQuantity,
+      WholeQuantity(18),
+    );
     expect(controller.materialCountFor('warehouse-001'), 4);
     expect(controller.totalQuantityFor('warehouse-001'), 227);
 
@@ -146,7 +155,7 @@ void main() {
     expect(await controller.deleteSelected(), isNull);
     expect(controller.state.warehouses, hasLength(4));
 
-    const temporary = Warehouse(
+    final temporary = Warehouse(
       id: 'warehouse-empty',
       number: 5,
       name: 'مخزن فارغ',

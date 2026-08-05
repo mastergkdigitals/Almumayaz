@@ -17,20 +17,25 @@ class CashboxState {
       usd: Money.fromMinorUnits(0, AppCurrency.usd),
     ),
     this.defaultVoucherType = CashboxVoucherType.receipt,
-    this.defaultMainAccountId,
-    this.defaultExchangeRate = 1310,
+    this.defaultMainAccountEntityId,
+    this.defaultExchangeRateValue =
+        const ExchangeRate.fromTenThousandths(13100000),
     this.query = '',
-    this.selectedVoucherId,
+    this.selectedVoucherEntityId,
   });
 
   final AppDataState<List<CashboxVoucher>> dataState;
   final List<CashboxMainAccount> accounts;
   final CashboxBalanceSnapshot openingBalance;
   final CashboxVoucherType defaultVoucherType;
-  final String? defaultMainAccountId;
-  final num defaultExchangeRate;
+  final EntityId? defaultMainAccountEntityId;
+  final ExchangeRate defaultExchangeRateValue;
   final String query;
-  final String? selectedVoucherId;
+  final EntityId? selectedVoucherEntityId;
+
+  String? get defaultMainAccountId => defaultMainAccountEntityId?.value;
+  num get defaultExchangeRate => defaultExchangeRateValue.value;
+  String? get selectedVoucherId => selectedVoucherEntityId?.value;
 
   List<CashboxVoucher> get vouchers => dataState.data ?? const [];
 
@@ -39,24 +44,27 @@ class CashboxState {
     List<CashboxMainAccount>? accounts,
     CashboxBalanceSnapshot? openingBalance,
     CashboxVoucherType? defaultVoucherType,
-    Object? defaultMainAccountId = _unchanged,
-    num? defaultExchangeRate,
+    Object? defaultMainAccountEntityId = _unchanged,
+    ExchangeRate? defaultExchangeRateValue,
     String? query,
-    Object? selectedVoucherId = _unchanged,
+    Object? selectedVoucherEntityId = _unchanged,
   }) {
     return CashboxState(
       dataState: dataState ?? this.dataState,
       accounts: accounts ?? this.accounts,
       openingBalance: openingBalance ?? this.openingBalance,
       defaultVoucherType: defaultVoucherType ?? this.defaultVoucherType,
-      defaultMainAccountId: identical(defaultMainAccountId, _unchanged)
-          ? this.defaultMainAccountId
-          : defaultMainAccountId as String?,
-      defaultExchangeRate: defaultExchangeRate ?? this.defaultExchangeRate,
+      defaultMainAccountEntityId:
+          identical(defaultMainAccountEntityId, _unchanged)
+              ? this.defaultMainAccountEntityId
+              : defaultMainAccountEntityId as EntityId?,
+      defaultExchangeRateValue:
+          defaultExchangeRateValue ?? this.defaultExchangeRateValue,
       query: query ?? this.query,
-      selectedVoucherId: identical(selectedVoucherId, _unchanged)
-          ? this.selectedVoucherId
-          : selectedVoucherId as String?,
+      selectedVoucherEntityId:
+          identical(selectedVoucherEntityId, _unchanged)
+              ? this.selectedVoucherEntityId
+              : selectedVoucherEntityId as EntityId?,
     );
   }
 }
@@ -93,10 +101,10 @@ class CashboxController extends ChangeNotifier {
   }
 
   CashboxVoucher? get selectedVoucher {
-    final selectedId = _state.selectedVoucherId;
+    final selectedId = _state.selectedVoucherEntityId;
     if (selectedId == null) return null;
     for (final voucher in _state.vouchers) {
-      if (voucher.id == selectedId) return voucher;
+      if (voucher.entityId == selectedId) return voucher;
     }
     return null;
   }
@@ -110,58 +118,53 @@ class CashboxController extends ChangeNotifier {
   }
 
   CashboxSummary get summary {
-    num receiptIqd = 0;
-    num paymentIqd = 0;
-    num receiptUsd = 0;
-    num paymentUsd = 0;
-    num balanceIqd = _state.openingBalance.iqd.majorUnits;
-    num balanceUsd = _state.openingBalance.usd.majorUnits;
+    var receiptIqd = Money.zero(AppCurrency.iqd);
+    var paymentIqd = Money.zero(AppCurrency.iqd);
+    var receiptUsd = Money.zero(AppCurrency.usd);
+    var paymentUsd = Money.zero(AppCurrency.usd);
+    var balanceIqd = _state.openingBalance.iqd;
+    var balanceUsd = _state.openingBalance.usd;
     final summaryDay = _latestActivityDay;
 
     for (final voucher in _state.vouchers) {
       final sign = voucher.type == CashboxVoucherType.receipt ? 1 : -1;
-      balanceIqd += voucher.amountIqd * sign;
-      balanceUsd += voucher.amountUsd * sign;
+      balanceIqd += voucher.iqdAmount * sign;
+      balanceUsd += voucher.usdAmount * sign;
       final isToday = summaryDay != null &&
-          voucher.createdAt.year == summaryDay.year &&
-          voucher.createdAt.month == summaryDay.month &&
-          voucher.createdAt.day == summaryDay.day;
+          voucher.createdTimestamp.localDate == summaryDay;
       if (!isToday) continue;
       if (voucher.type == CashboxVoucherType.receipt) {
-        receiptIqd += voucher.amountIqd;
-        receiptUsd += voucher.amountUsd;
+        receiptIqd += voucher.iqdAmount;
+        receiptUsd += voucher.usdAmount;
       } else {
-        paymentIqd += voucher.amountIqd;
-        paymentUsd += voucher.amountUsd;
+        paymentIqd += voucher.iqdAmount;
+        paymentUsd += voucher.usdAmount;
       }
     }
 
-    return CashboxSummary(
-      balanceIqd: balanceIqd,
-      balanceUsd: balanceUsd,
-      todayReceiptIqd: receiptIqd,
-      todayPaymentIqd: paymentIqd,
-      todayReceiptUsd: receiptUsd,
-      todayPaymentUsd: paymentUsd,
+    return CashboxSummary.typed(
+      iqdBalance: balanceIqd,
+      usdBalance: balanceUsd,
+      iqdTodayReceipt: receiptIqd,
+      iqdTodayPayment: paymentIqd,
+      usdTodayReceipt: receiptUsd,
+      usdTodayPayment: paymentUsd,
     );
   }
 
-  DateTime? get _latestActivityDay {
-    DateTime? latest;
+  BusinessDate? get _latestActivityDay {
+    AuditTimestamp? latest;
     for (final voucher in _state.vouchers) {
-      if (latest == null || voucher.createdAt.isAfter(latest)) {
-        latest = voucher.createdAt;
+      if (latest == null || voucher.createdTimestamp.compareTo(latest) > 0) {
+        latest = voucher.createdTimestamp;
       }
     }
-    return latest;
+    return latest?.localDate;
   }
 
   CashboxAccountBalance accountBalance(
     String subaccountId, {
-    CashboxAccountBalance fallback = const CashboxAccountBalance(
-      iqd: 0,
-      usd: 0,
-    ),
+    CashboxAccountBalance? fallback,
   }) {
     CashboxVoucher? latest;
     for (final voucher in _state.vouchers) {
@@ -169,22 +172,26 @@ class CashboxController extends ChangeNotifier {
       if (latest == null || _comesBefore(latest, voucher)) latest = voucher;
     }
     if (latest != null) {
-      return CashboxAccountBalance(
-        iqd: latest.balanceAfterIqd,
-        usd: latest.balanceAfterUsd,
+      return CashboxAccountBalance.typed(
+        iqdMoney: latest.iqdBalanceAfter,
+        usdMoney: latest.usdBalanceAfter,
       );
     }
     for (final main in _state.accounts) {
       for (final subaccount in main.subaccounts) {
         if (subaccount.id == subaccountId) {
-          return CashboxAccountBalance(
-            iqd: subaccount.balanceIqd,
-            usd: subaccount.balanceUsd,
+          return CashboxAccountBalance.typed(
+            iqdMoney: subaccount.iqdBalance,
+            usdMoney: subaccount.usdBalance,
           );
         }
       }
     }
-    return fallback;
+    return fallback ??
+        CashboxAccountBalance.typed(
+          iqdMoney: Money.zero(AppCurrency.iqd),
+          usdMoney: Money.zero(AppCurrency.usd),
+        );
   }
 
   int get selectedVisibleIndex => _selectedVisibleIndex(visibleVouchers);
@@ -203,9 +210,9 @@ class CashboxController extends ChangeNotifier {
       if (_loadIsStale(generation)) return;
 
       final accountsById = {
-        for (final account in accounts) account.id: account,
+        for (final account in accounts) account.entityId: account,
       };
-      final defaultAccount = accountsById[defaults.cashbox.mainAccountId.value];
+      final defaultAccount = accountsById[defaults.cashbox.mainAccountId];
       if (accounts.isEmpty ||
           defaultAccount == null ||
           defaultAccount.subaccounts.isEmpty) {
@@ -218,11 +225,11 @@ class CashboxController extends ChangeNotifier {
 
       final resolved = <CashboxVoucher>[];
       for (final voucher in vouchers) {
-        final main = accountsById[voucher.mainAccountId];
+        final main = accountsById[voucher.mainAccountEntityId];
         CashboxSubaccount? subaccount;
         if (main != null) {
           for (final candidate in main.subaccounts) {
-            if (candidate.id == voucher.subaccountId) {
+            if (candidate.entityId == voucher.subaccountEntityId) {
               subaccount = candidate;
               break;
             }
@@ -256,12 +263,12 @@ class CashboxController extends ChangeNotifier {
             defaults.cashbox.movementKind == CashboxMovementKind.receipt
                 ? CashboxVoucherType.receipt
                 : CashboxVoucherType.payment,
-        defaultMainAccountId: defaultAccount.id,
-        defaultExchangeRate: policies.defaultExchangeRate.value,
-        selectedVoucherId: resolved.any(
-          (voucher) => voucher.id == _state.selectedVoucherId,
+        defaultMainAccountEntityId: defaultAccount.entityId,
+        defaultExchangeRateValue: policies.defaultExchangeRate,
+        selectedVoucherEntityId: resolved.any(
+          (voucher) => voucher.entityId == _state.selectedVoucherEntityId,
         )
-            ? _state.selectedVoucherId
+            ? _state.selectedVoucherEntityId
             : null,
       );
       _notifyListenersIfActive();
@@ -284,8 +291,10 @@ class CashboxController extends ChangeNotifier {
   }
 
   void select(String? voucherId) {
-    if (_isDisposed || _state.selectedVoucherId == voucherId) return;
-    _state = _state.copyWith(selectedVoucherId: voucherId);
+    if (_isDisposed) return;
+    final entityId = voucherId == null ? null : EntityId(voucherId);
+    if (_state.selectedVoucherEntityId == entityId) return;
+    _state = _state.copyWith(selectedVoucherEntityId: entityId);
     _notifyListenersIfActive();
   }
 
@@ -394,12 +403,12 @@ class CashboxController extends ChangeNotifier {
   void _selectAt(int index) {
     final vouchers = visibleVouchers;
     if (vouchers.isEmpty || index < 0 || index >= vouchers.length) return;
-    select(vouchers[index].id);
+    select(vouchers[index].entityId.value);
   }
 
   int _selectedVisibleIndex(List<CashboxVoucher> vouchers) {
     return vouchers.indexWhere(
-      (voucher) => voucher.id == _state.selectedVoucherId,
+      (voucher) => voucher.entityId == _state.selectedVoucherEntityId,
     );
   }
 
@@ -407,7 +416,8 @@ class CashboxController extends ChangeNotifier {
     CashboxVoucher first,
     CashboxVoucher second,
   ) {
-    final byDate = first.createdAt.compareTo(second.createdAt);
+    final byDate =
+        first.createdTimestamp.compareTo(second.createdTimestamp);
     if (byDate != 0) return byDate;
     return first.number.compareTo(second.number);
   }

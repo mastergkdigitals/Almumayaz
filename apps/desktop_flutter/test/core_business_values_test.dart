@@ -24,15 +24,33 @@ void main() {
         () => total + Money.parse('1', AppCurrency.iqd),
         throwsArgumentError,
       );
+      expect((-discount).toPlainString(), '-15.30');
+      expect((-discount).absolute, discount);
     });
 
     test('validates exchange rates percentages and whole quantities', () {
       expect(ExchangeRate.parse('1,310').toPlainString(), '1310');
+      expect(
+        const ExchangeRate.fromTenThousandths(13100000),
+        ExchangeRate.parse('1310'),
+      );
       expect(Percentage.parse('15.30').basisPoints, 1530);
       expect(WholeQuantity.parse('٢٥').value, 25);
       expect(() => ExchangeRate.parse('0'), throwsArgumentError);
       expect(() => Percentage.parse('100.01'), throwsArgumentError);
       expect(() => WholeQuantity.parse('1.5'), throwsFormatException);
+      expect(
+        WholeQuantity(7) + WholeQuantity(5),
+        WholeQuantity(12),
+      );
+      expect(
+        WholeQuantity(7) - WholeQuantity(5),
+        WholeQuantity(2),
+      );
+      expect(
+        () => WholeQuantity(5) - WholeQuantity(7),
+        throwsStateError,
+      );
     });
 
     test('normalizes business dates and audit timestamps', () {
@@ -42,9 +60,12 @@ void main() {
       );
 
       expect(date.toString(), '2026-08-05');
+      expect(BusinessDate.parse('2026-08-05'), date);
       expect(date.atTime(hour: 9).hour, 9);
+      expect(timestamp.utcDate, BusinessDate(2026, 8, 5));
       expect(timestamp.toString(), '2026-08-05T09:00:00.000Z');
       expect(() => BusinessDate(2026, 2, 30), throwsArgumentError);
+      expect(() => BusinessDate.parse('05/08/2026'), throwsFormatException);
     });
 
     test('creates stable demo entity IDs separately from visible numbers', () {

@@ -2,18 +2,6 @@ import '../../../core/data/app_repository.dart';
 import '../../../core/domain/business_values.dart';
 import 'cashbox_voucher.dart';
 
-extension CashboxVoucherRepositoryIdentity on CashboxVoucher {
-  EntityId get entityId => EntityId(id);
-}
-
-extension CashboxMainAccountRepositoryIdentity on CashboxMainAccount {
-  EntityId get entityId => EntityId(id);
-}
-
-extension CashboxSubaccountRepositoryIdentity on CashboxSubaccount {
-  EntityId get entityId => EntityId(id);
-}
-
 class CashboxBalanceSnapshot {
   const CashboxBalanceSnapshot({
     required this.iqd,

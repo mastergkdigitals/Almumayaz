@@ -425,7 +425,7 @@ class _PartiesScreenState extends State<PartiesScreen> {
     try {
       result = await _statementService.load(
         PartyStatementQuery(
-          partyId: EntityId(party.id),
+          partyId: party.entityId,
           fromDate: BusinessDate.fromDateTime(options.fromDate),
           toDate: BusinessDate.fromDateTime(options.toDate),
           currency: AppCurrency.parse(options.currencyCode),

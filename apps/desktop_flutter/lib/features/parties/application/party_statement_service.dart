@@ -117,7 +117,7 @@ class RepositoryPartyStatementService implements PartyStatementService {
       for (final voucher in vouchers)
         if (_includes(
           query,
-          BusinessDate.fromDateTime(voucher.createdAt),
+          voucher.createdTimestamp.localDate,
         ))
           ..._cashboxMovements(voucher, query.currency),
     ]
@@ -208,10 +208,8 @@ class RepositoryPartyStatementService implements PartyStatementService {
     CashboxVoucher voucher,
     AppCurrency currency,
   ) sync* {
-    final amount = Money.fromMajor(
-      currency == AppCurrency.iqd ? voucher.amountIqd : voucher.amountUsd,
-      currency,
-    );
+    final amount =
+        currency == AppCurrency.iqd ? voucher.iqdAmount : voucher.usdAmount;
     if (amount.isZero) return;
     final isReceipt = voucher.type == CashboxVoucherType.receipt;
     yield _PartyStatementMovement(
