@@ -318,7 +318,7 @@ class CashboxForm extends StatelessWidget {
               controller: controllers.amountIqd,
               label: 'المبلغ دينار',
               icon: Icons.payments_rounded,
-              decimalPlaces: 2,
+              decimalPlaces: 0,
             ),
             AppReadOnlyField(
               fieldKey: const Key('cashboxEquivalentUsdField'),
@@ -420,7 +420,7 @@ class _CashboxMoneyField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppTextField(
+    return AppMoneyField(
       fieldKey: fieldKey,
       controller: controller,
       label: label,
@@ -429,10 +429,7 @@ class _CashboxMoneyField extends StatelessWidget {
       textDirection: TextDirection.rtl,
       textAlign: TextAlign.right,
       textInputAction: TextInputAction.next,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: [
-        AppMoneyInputFormatter(decimalPlaces: decimalPlaces),
-      ],
+      decimalPlaces: decimalPlaces,
     );
   }
 }

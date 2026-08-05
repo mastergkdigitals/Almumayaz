@@ -1,26 +1,58 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/data/app_repository.dart';
+import '../../../core/domain/business_values.dart';
+import '../../settings/domain/settings_models.dart';
+import '../../settings/domain/settings_repository.dart';
+import '../domain/cashbox_repository.dart';
 import '../domain/cashbox_voucher.dart';
 
 @immutable
 class CashboxState {
   const CashboxState({
-    required this.vouchers,
+    this.dataState = const AppDataState.loading(),
+    this.accounts = const [],
+    this.openingBalance = const CashboxBalanceSnapshot(
+      iqd: Money.fromMinorUnits(0, AppCurrency.iqd),
+      usd: Money.fromMinorUnits(0, AppCurrency.usd),
+    ),
+    this.defaultVoucherType = CashboxVoucherType.receipt,
+    this.defaultMainAccountId,
+    this.defaultExchangeRate = 1310,
     this.query = '',
     this.selectedVoucherId,
   });
 
-  final List<CashboxVoucher> vouchers;
+  final AppDataState<List<CashboxVoucher>> dataState;
+  final List<CashboxMainAccount> accounts;
+  final CashboxBalanceSnapshot openingBalance;
+  final CashboxVoucherType defaultVoucherType;
+  final String? defaultMainAccountId;
+  final num defaultExchangeRate;
   final String query;
   final String? selectedVoucherId;
 
+  List<CashboxVoucher> get vouchers => dataState.data ?? const [];
+
   CashboxState copyWith({
-    List<CashboxVoucher>? vouchers,
+    AppDataState<List<CashboxVoucher>>? dataState,
+    List<CashboxMainAccount>? accounts,
+    CashboxBalanceSnapshot? openingBalance,
+    CashboxVoucherType? defaultVoucherType,
+    Object? defaultMainAccountId = _unchanged,
+    num? defaultExchangeRate,
     String? query,
     Object? selectedVoucherId = _unchanged,
   }) {
     return CashboxState(
-      vouchers: vouchers ?? this.vouchers,
+      dataState: dataState ?? this.dataState,
+      accounts: accounts ?? this.accounts,
+      openingBalance: openingBalance ?? this.openingBalance,
+      defaultVoucherType: defaultVoucherType ?? this.defaultVoucherType,
+      defaultMainAccountId: identical(defaultMainAccountId, _unchanged)
+          ? this.defaultMainAccountId
+          : defaultMainAccountId as String?,
+      defaultExchangeRate: defaultExchangeRate ?? this.defaultExchangeRate,
       query: query ?? this.query,
       selectedVoucherId: identical(selectedVoucherId, _unchanged)
           ? this.selectedVoucherId
@@ -33,30 +65,24 @@ const _unchanged = Object();
 
 class CashboxController extends ChangeNotifier {
   CashboxController({
-    List<CashboxVoucher>? initialVouchers,
-    Map<String, CashboxAccountBalance> initialAccountBalances = const {},
-  }) {
-    final vouchers = List<CashboxVoucher>.of(
-      initialVouchers ?? _demoVouchers,
-    );
-    _openingAccountBalances = _resolveOpeningBalances(
-      vouchers,
-      initialAccountBalances,
-    );
-    _state = CashboxState(vouchers: _normalizeBalances(vouchers));
-  }
+    required CashboxRepository repository,
+    required BusinessSettingsRepository settingsRepository,
+    VoidCallback? onDataChanged,
+  })  : _repository = repository,
+        _settingsRepository = settingsRepository,
+        _onDataChanged = onDataChanged;
 
-  static const openingBalanceIqd = 9_800_000;
-  static const openingBalanceUsd = 4_500;
-
-  late final Map<String, CashboxAccountBalance> _openingAccountBalances;
-  late CashboxState _state;
+  final CashboxRepository _repository;
+  final BusinessSettingsRepository _settingsRepository;
+  final VoidCallback? _onDataChanged;
+  CashboxState _state = const CashboxState();
+  bool _isDisposed = false;
+  int _loadGeneration = 0;
 
   CashboxState get state => _state;
 
   List<CashboxVoucher> get visibleVouchers {
-    final query =
-        _state.query.trim().toLowerCase().replaceAll(',', '');
+    final query = _state.query.trim().toLowerCase().replaceAll(',', '');
     if (query.isEmpty) return _state.vouchers;
     return List.unmodifiable(
       _state.vouchers.where(
@@ -88,22 +114,19 @@ class CashboxController extends ChangeNotifier {
     num paymentIqd = 0;
     num receiptUsd = 0;
     num paymentUsd = 0;
-    num balanceIqd = openingBalanceIqd;
-    num balanceUsd = openingBalanceUsd;
+    num balanceIqd = _state.openingBalance.iqd.majorUnits;
+    num balanceUsd = _state.openingBalance.usd.majorUnits;
     final summaryDay = _latestActivityDay;
 
     for (final voucher in _state.vouchers) {
-      final sign =
-          voucher.type == CashboxVoucherType.receipt ? 1 : -1;
+      final sign = voucher.type == CashboxVoucherType.receipt ? 1 : -1;
       balanceIqd += voucher.amountIqd * sign;
       balanceUsd += voucher.amountUsd * sign;
-
       final isToday = summaryDay != null &&
           voucher.createdAt.year == summaryDay.year &&
           voucher.createdAt.month == summaryDay.month &&
           voucher.createdAt.day == summaryDay.day;
       if (!isToday) continue;
-
       if (voucher.type == CashboxVoucherType.receipt) {
         receiptIqd += voucher.amountIqd;
         receiptUsd += voucher.amountUsd;
@@ -123,8 +146,6 @@ class CashboxController extends ChangeNotifier {
     );
   }
 
-  /// Uses the newest demo activity day so the "today" summary remains useful
-  /// when the fixed demo dates differ from the computer clock.
   DateTime? get _latestActivityDay {
     DateTime? latest;
     for (final voucher in _state.vouchers) {
@@ -145,9 +166,7 @@ class CashboxController extends ChangeNotifier {
     CashboxVoucher? latest;
     for (final voucher in _state.vouchers) {
       if (voucher.subaccountId != subaccountId) continue;
-      if (latest == null || _comesBefore(latest, voucher)) {
-        latest = voucher;
-      }
+      if (latest == null || _comesBefore(latest, voucher)) latest = voucher;
     }
     if (latest != null) {
       return CashboxAccountBalance(
@@ -155,22 +174,119 @@ class CashboxController extends ChangeNotifier {
         usd: latest.balanceAfterUsd,
       );
     }
-    return _openingAccountBalances[subaccountId] ?? fallback;
+    for (final main in _state.accounts) {
+      for (final subaccount in main.subaccounts) {
+        if (subaccount.id == subaccountId) {
+          return CashboxAccountBalance(
+            iqd: subaccount.balanceIqd,
+            usd: subaccount.balanceUsd,
+          );
+        }
+      }
+    }
+    return fallback;
   }
 
-  int get selectedVisibleIndex =>
-      _selectedVisibleIndex(visibleVouchers);
+  int get selectedVisibleIndex => _selectedVisibleIndex(visibleVouchers);
+
+  Future<void> load() async {
+    if (_isDisposed) return;
+    final generation = ++_loadGeneration;
+    _state = _state.copyWith(dataState: const AppDataState.loading());
+    _notifyListenersIfActive();
+    try {
+      final vouchers = await _repository.getAll();
+      final accounts = await _repository.getMainAccounts();
+      final openingBalance = await _repository.getOpeningBalance();
+      final defaults = await _settingsRepository.loadOperationalDefaults();
+      final policies = await _settingsRepository.loadBusinessPolicies();
+      if (_loadIsStale(generation)) return;
+
+      final accountsById = {
+        for (final account in accounts) account.id: account,
+      };
+      final defaultAccount = accountsById[defaults.cashbox.mainAccountId.value];
+      if (accounts.isEmpty ||
+          defaultAccount == null ||
+          defaultAccount.subaccounts.isEmpty) {
+        _setMissingReference(
+          'حساب الصندوق الافتراضي أو حساباته الفرعية غير متاحة',
+          generation,
+        );
+        return;
+      }
+
+      final resolved = <CashboxVoucher>[];
+      for (final voucher in vouchers) {
+        final main = accountsById[voucher.mainAccountId];
+        CashboxSubaccount? subaccount;
+        if (main != null) {
+          for (final candidate in main.subaccounts) {
+            if (candidate.id == voucher.subaccountId) {
+              subaccount = candidate;
+              break;
+            }
+          }
+        }
+        if (main == null || subaccount == null) {
+          _setMissingReference(
+            'تعذر العثور على حساب مرتبط بسند الصندوق رقم '
+            '${voucher.number}',
+            generation,
+          );
+          return;
+        }
+        resolved.add(
+          voucher.copyWith(
+            mainAccountLabel: main.label,
+            subaccountLabel: subaccount.label,
+          ),
+        );
+      }
+
+      _state = _state.copyWith(
+        dataState: resolved.isEmpty
+            ? const AppDataState.empty(
+                message: 'لا توجد سندات صندوق مسجلة حالياً.',
+              )
+            : AppDataState.ready(List.unmodifiable(resolved)),
+        accounts: List.unmodifiable(accounts),
+        openingBalance: openingBalance,
+        defaultVoucherType:
+            defaults.cashbox.movementKind == CashboxMovementKind.receipt
+                ? CashboxVoucherType.receipt
+                : CashboxVoucherType.payment,
+        defaultMainAccountId: defaultAccount.id,
+        defaultExchangeRate: policies.defaultExchangeRate.value,
+        selectedVoucherId: resolved.any(
+          (voucher) => voucher.id == _state.selectedVoucherId,
+        )
+            ? _state.selectedVoucherId
+            : null,
+      );
+      _notifyListenersIfActive();
+    } catch (error) {
+      if (_loadIsStale(generation)) return;
+      _state = _state.copyWith(
+        dataState: AppDataState.error(
+          error,
+          message: 'تعذر تحميل بيانات الصندوق.',
+        ),
+      );
+      _notifyListenersIfActive();
+    }
+  }
 
   void search(String value) {
-    if (_state.query == value) return;
+    if (_isDisposed || _state.query == value) return;
     _state = _state.copyWith(query: value);
-    notifyListeners();
+    _notifyListenersIfActive();
   }
 
   void select(String? voucherId) {
-    if (_state.selectedVoucherId == voucherId) return;
+    if (_isDisposed || _state.selectedVoucherId == voucherId) return;
     _state = _state.copyWith(selectedVoucherId: voucherId);
-    notifyListeners();
+    _notifyListenersIfActive();
   }
 
   void first() => _selectAt(0);
@@ -218,36 +334,61 @@ class CashboxController extends ChangeNotifier {
     _selectAt(vouchers.length - 1);
   }
 
-  void add(CashboxVoucher voucher) {
-    _state = _state.copyWith(
-      vouchers: _normalizeBalances([..._state.vouchers, voucher]),
-      selectedVoucherId: voucher.id,
-    );
-    notifyListeners();
+  Future<CashboxVoucher> add(CashboxVoucher voucher) async {
+    final saved = await _repository.save(voucher);
+    if (_isDisposed) return saved;
+    await load();
+    if (_isDisposed) return saved;
+    select(saved.id);
+    _onDataChanged?.call();
+    return selectedVoucher ?? saved;
   }
 
-  void update(CashboxVoucher voucher) {
-    final index =
-        _state.vouchers.indexWhere((item) => item.id == voucher.id);
-    if (index < 0) return;
-    final updated = [..._state.vouchers]..[index] = voucher;
-    _state = _state.copyWith(vouchers: _normalizeBalances(updated));
-    notifyListeners();
+  Future<CashboxVoucher> update(CashboxVoucher voucher) async {
+    final saved = await _repository.save(voucher);
+    if (_isDisposed) return saved;
+    await load();
+    if (_isDisposed) return saved;
+    select(saved.id);
+    _onDataChanged?.call();
+    return selectedVoucher ?? saved;
   }
 
-  CashboxVoucher? deleteSelected() {
+  Future<DeleteDecision> canDeleteSelected() async {
+    final selected = selectedVoucher;
+    if (selected == null) {
+      return const DeleteDecision.blocked('اختر سنداً من الجدول لحذفه');
+    }
+    return _repository.canDelete(selected.entityId);
+  }
+
+  Future<CashboxVoucher?> deleteSelected() async {
     final selected = selectedVoucher;
     if (selected == null) return null;
-    _state = _state.copyWith(
-      vouchers: _normalizeBalances(
-        _state.vouchers
-            .where((voucher) => voucher.id != selected.id)
-            .toList(growable: false),
-      ),
-      selectedVoucherId: null,
-    );
-    notifyListeners();
+    final decision = await _repository.canDelete(selected.entityId);
+    if (!decision.isAllowed) return null;
+    await _repository.delete(selected.entityId);
+    if (_isDisposed) return selected;
+    await load();
+    if (_isDisposed) return selected;
+    _onDataChanged?.call();
     return selected;
+  }
+
+  void _setMissingReference(String message, int generation) {
+    if (_loadIsStale(generation)) return;
+    _state = _state.copyWith(
+      dataState: AppDataState.missingReference(message),
+    );
+    _notifyListenersIfActive();
+  }
+
+  bool _loadIsStale(int generation) {
+    return _isDisposed || generation != _loadGeneration;
+  }
+
+  void _notifyListenersIfActive() {
+    if (!_isDisposed) notifyListeners();
   }
 
   void _selectAt(int index) {
@@ -259,59 +400,6 @@ class CashboxController extends ChangeNotifier {
   int _selectedVisibleIndex(List<CashboxVoucher> vouchers) {
     return vouchers.indexWhere(
       (voucher) => voucher.id == _state.selectedVoucherId,
-    );
-  }
-
-  Map<String, CashboxAccountBalance> _resolveOpeningBalances(
-    List<CashboxVoucher> vouchers,
-    Map<String, CashboxAccountBalance> supplied,
-  ) {
-    final openings = <String, CashboxAccountBalance>{...supplied};
-    final chronological = [...vouchers]..sort(_compareVouchers);
-    for (final voucher in chronological) {
-      openings.putIfAbsent(
-        voucher.subaccountId,
-        () => CashboxAccountBalance(
-          iqd: voucher.balanceBeforeIqd,
-          usd: voucher.balanceBeforeUsd,
-        ),
-      );
-    }
-    return Map.unmodifiable(openings);
-  }
-
-  List<CashboxVoucher> _normalizeBalances(
-    List<CashboxVoucher> vouchers,
-  ) {
-    final balances = <String, CashboxAccountBalance>{
-      ..._openingAccountBalances,
-    };
-    final chronological = [...vouchers]..sort(_compareVouchers);
-    final normalizedById = <String, CashboxVoucher>{};
-
-    for (final voucher in chronological) {
-      final before = balances[voucher.subaccountId] ??
-          CashboxAccountBalance(
-            iqd: voucher.balanceBeforeIqd,
-            usd: voucher.balanceBeforeUsd,
-          );
-      final direction =
-          voucher.type == CashboxVoucherType.receipt ? -1 : 1;
-      final after = CashboxAccountBalance(
-        iqd: before.iqd + voucher.amountIqd * direction,
-        usd: before.usd + voucher.amountUsd * direction,
-      );
-      balances[voucher.subaccountId] = after;
-      normalizedById[voucher.id] = voucher.copyWith(
-        balanceBeforeIqd: before.iqd,
-        balanceAfterIqd: after.iqd,
-        balanceBeforeUsd: before.usd,
-        balanceAfterUsd: after.usd,
-      );
-    }
-
-    return List<CashboxVoucher>.unmodifiable(
-      vouchers.map((voucher) => normalizedById[voucher.id]!),
     );
   }
 
@@ -329,115 +417,11 @@ class CashboxController extends ChangeNotifier {
     CashboxVoucher second,
   ) =>
       _compareVouchers(first, second) < 0;
-}
 
-final _demoVouchers = <CashboxVoucher>[
-  CashboxVoucher(
-    id: 'cashbox-001',
-    number: 1,
-    createdAt: DateTime(2026, 7, 27, 8, 30),
-    type: CashboxVoucherType.receipt,
-    mainAccountId: 'parties',
-    mainAccountLabel: 'الأطراف',
-    subaccountId: 'party-nakheel',
-    subaccountLabel: '1 - شركة النخيل للتجارة',
-    exchangeRate: 1310,
-    amountIqd: 750000,
-    amountUsd: 0,
-    balanceBeforeIqd: 1250000,
-    balanceAfterIqd: 500000,
-    balanceBeforeUsd: 850,
-    balanceAfterUsd: 850,
-    notes: 'دفعة على الحساب',
-  ),
-  CashboxVoucher(
-    id: 'cashbox-002',
-    number: 2,
-    createdAt: DateTime(2026, 7, 27, 9, 10),
-    type: CashboxVoucherType.payment,
-    mainAccountId: 'expenses',
-    mainAccountLabel: 'المصاريف',
-    subaccountId: 'expense-transport',
-    subaccountLabel: 'نقل',
-    exchangeRate: 1310,
-    amountIqd: 125000,
-    amountUsd: 0,
-    balanceBeforeIqd: 0,
-    balanceAfterIqd: 125000,
-    balanceBeforeUsd: 0,
-    balanceAfterUsd: 0,
-    notes: 'نقل مواد إلى المخزن',
-  ),
-  CashboxVoucher(
-    id: 'cashbox-003',
-    number: 3,
-    createdAt: DateTime(2026, 7, 27, 10, 5),
-    type: CashboxVoucherType.payment,
-    mainAccountId: 'parties',
-    mainAccountLabel: 'الأطراف',
-    subaccountId: 'party-rafidain',
-    subaccountLabel: '3 - مجهز الرافدين',
-    exchangeRate: 1310,
-    amountIqd: 0,
-    amountUsd: 400,
-    balanceBeforeIqd: -3200000,
-    balanceAfterIqd: -3200000,
-    balanceBeforeUsd: -1200,
-    balanceAfterUsd: -800,
-    notes: 'تسديد جزء من الرصيد',
-  ),
-  CashboxVoucher(
-    id: 'cashbox-004',
-    number: 4,
-    createdAt: DateTime(2026, 7, 26, 11, 40),
-    type: CashboxVoucherType.receipt,
-    mainAccountId: 'other-income',
-    mainAccountLabel: 'إيرادات أخرى',
-    subaccountId: 'income-services',
-    subaccountLabel: 'خدمات',
-    exchangeRate: 1310,
-    amountIqd: 300000,
-    amountUsd: 0,
-    balanceBeforeIqd: 0,
-    balanceAfterIqd: -300000,
-    balanceBeforeUsd: 0,
-    balanceAfterUsd: 0,
-    notes: '',
-  ),
-  CashboxVoucher(
-    id: 'cashbox-005',
-    number: 5,
-    createdAt: DateTime(2026, 7, 25, 13, 15),
-    type: CashboxVoucherType.payment,
-    mainAccountId: 'expenses',
-    mainAccountLabel: 'المصاريف',
-    subaccountId: 'expense-maintenance',
-    subaccountLabel: 'صيانة',
-    exchangeRate: 1310,
-    amountIqd: 85000,
-    amountUsd: 0,
-    balanceBeforeIqd: 125000,
-    balanceAfterIqd: 210000,
-    balanceBeforeUsd: 0,
-    balanceAfterUsd: 0,
-    notes: 'صيانة أجهزة المكتب',
-  ),
-  CashboxVoucher(
-    id: 'cashbox-006',
-    number: 6,
-    createdAt: DateTime(2026, 7, 24, 15, 20),
-    type: CashboxVoucherType.receipt,
-    mainAccountId: 'parties',
-    mainAccountLabel: 'الأطراف',
-    subaccountId: 'party-ahmed',
-    subaccountLabel: '2 - أحمد كريم',
-    exchangeRate: 1310,
-    amountIqd: 475000,
-    amountUsd: 0,
-    balanceBeforeIqd: 475000,
-    balanceAfterIqd: 0,
-    balanceBeforeUsd: 0,
-    balanceAfterUsd: 0,
-    notes: 'تسديد كامل الرصيد',
-  ),
-];
+  @override
+  void dispose() {
+    _isDisposed = true;
+    _loadGeneration++;
+    super.dispose();
+  }
+}

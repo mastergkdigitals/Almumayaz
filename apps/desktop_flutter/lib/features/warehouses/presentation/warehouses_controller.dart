@@ -1,32 +1,39 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/data/app_repository.dart';
+import '../../../core/domain/business_values.dart';
+import '../../items/domain/item_repository.dart';
+import '../domain/inventory_records.dart';
 import '../domain/warehouse.dart';
+import '../domain/warehouse_repository.dart';
 
 @immutable
 class WarehousesState {
   const WarehousesState({
-    required this.warehouses,
-    required this.inventoryByWarehouse,
-    required this.transferRecords,
+    this.dataState = const AppDataState.loading(),
+    this.inventoryByWarehouse = const {},
+    this.transferRecords = const [],
     this.query = '',
     this.selectedWarehouseId,
   });
 
-  final List<Warehouse> warehouses;
+  final AppDataState<List<Warehouse>> dataState;
   final Map<String, List<WarehouseInventoryItem>> inventoryByWarehouse;
   final List<WarehouseTransferRecord> transferRecords;
   final String query;
   final String? selectedWarehouseId;
 
+  List<Warehouse> get warehouses => dataState.data ?? const [];
+
   WarehousesState copyWith({
-    List<Warehouse>? warehouses,
+    AppDataState<List<Warehouse>>? dataState,
     Map<String, List<WarehouseInventoryItem>>? inventoryByWarehouse,
     List<WarehouseTransferRecord>? transferRecords,
     String? query,
     Object? selectedWarehouseId = _unchanged,
   }) {
     return WarehousesState(
-      warehouses: warehouses ?? this.warehouses,
+      dataState: dataState ?? this.dataState,
       inventoryByWarehouse:
           inventoryByWarehouse ?? this.inventoryByWarehouse,
       transferRecords: transferRecords ?? this.transferRecords,
@@ -42,22 +49,20 @@ const _unchanged = Object();
 
 class WarehousesController extends ChangeNotifier {
   WarehousesController({
-    List<Warehouse>? initialWarehouses,
-    Map<String, List<WarehouseInventoryItem>>? initialInventory,
-    List<WarehouseTransferRecord>? initialTransfers,
-  }) : _state = WarehousesState(
-          warehouses: List.unmodifiable(
-            initialWarehouses ?? _demoWarehouses,
-          ),
-          inventoryByWarehouse: _freezeInventory(
-            initialInventory ?? _demoInventory,
-          ),
-          transferRecords: List.unmodifiable(
-            initialTransfers ?? _demoTransfers,
-          ),
-        );
+    required WarehouseRepository repository,
+    required ItemRepository itemRepository,
+    VoidCallback? onDataChanged,
+  })  : _repository = repository,
+        _itemRepository = itemRepository,
+        _onDataChanged = onDataChanged;
 
-  WarehousesState _state;
+  final WarehouseRepository _repository;
+  final ItemRepository _itemRepository;
+  final VoidCallback? _onDataChanged;
+  WarehousesState _state = const WarehousesState();
+  Map<String, EntityId> _itemIdsByProductCode = const {};
+  bool _isDisposed = false;
+  int _loadGeneration = 0;
 
   WarehousesState get state => _state;
 
@@ -88,21 +93,26 @@ class WarehousesController extends ChangeNotifier {
         1;
   }
 
-  int get selectedVisibleIndex =>
-      _selectedVisibleIndex(visibleWarehouses);
+  int get nextTransferNumber {
+    if (_state.transferRecords.isEmpty) return 1;
+    return _state.transferRecords
+            .map((transfer) => transfer.number)
+            .reduce((first, second) => first > second ? first : second) +
+        1;
+  }
+
+  int get selectedVisibleIndex => _selectedVisibleIndex(visibleWarehouses);
 
   List<WarehouseInventoryItem> inventoryFor(String? warehouseId) {
     if (warehouseId == null) return const [];
     return _state.inventoryByWarehouse[warehouseId] ?? const [];
   }
 
-  int materialCountFor(String warehouseId) =>
-      inventoryFor(warehouseId)
-          .where((item) => item.quantity != 0)
-          .length;
+  int materialCountFor(String warehouseId) => inventoryFor(warehouseId)
+      .where((item) => item.quantity != 0)
+      .length;
 
-  int totalQuantityFor(String warehouseId) =>
-      inventoryFor(warehouseId).fold(
+  int totalQuantityFor(String warehouseId) => inventoryFor(warehouseId).fold(
         0,
         (total, item) => total + item.quantity,
       );
@@ -119,16 +129,133 @@ class WarehousesController extends ChangeNotifier {
     return hasInventory || hasTransfer;
   }
 
+  Future<void> load() async {
+    if (_isDisposed) return;
+    final generation = ++_loadGeneration;
+    _state = _state.copyWith(dataState: const AppDataState.loading());
+    _notifyListenersIfActive();
+    try {
+      final warehouses = await _repository.getAll();
+      final items = await _itemRepository.getAll();
+      final transfers = await _repository.getTransfers();
+      if (_loadIsStale(generation)) return;
+
+      final warehousesById = {
+        for (final warehouse in warehouses) warehouse.id: warehouse,
+      };
+      final itemsById = {for (final item in items) item.id: item};
+      final inventory = <String, List<WarehouseInventoryItem>>{};
+      for (final warehouse in warehouses) {
+        final balances = await _repository.getInventory(warehouse.entityId);
+        if (_loadIsStale(generation)) return;
+        final resolvedBalances = <WarehouseInventoryItem>[];
+        for (final balance in balances) {
+          final item = itemsById[balance.itemId.value];
+          if (item == null) {
+            _setMissingReference(
+              'تعذر العثور على مادة مرتبطة بمخزون ${warehouse.name}',
+              generation,
+            );
+            return;
+          }
+          resolvedBalances.add(
+            WarehouseInventoryItem(
+              id: balance.id.value,
+              productCode: item.code,
+              productName: item.name,
+              quantity: balance.quantity.value,
+            ),
+          );
+        }
+        inventory[warehouse.id] = List.unmodifiable(resolvedBalances);
+      }
+
+      final resolvedTransfers = <WarehouseTransferRecord>[];
+      for (final transfer in transfers) {
+        final source = warehousesById[transfer.fromWarehouseId.value];
+        final destination = warehousesById[transfer.toWarehouseId.value];
+        if (source == null || destination == null) {
+          _setMissingReference(
+            'تعذر العثور على مخزن مرتبط بسجل النقل رقم '
+            '${transfer.documentNumber}',
+            generation,
+          );
+          return;
+        }
+        final lines = <WarehouseTransferLine>[];
+        for (final line in transfer.lines) {
+          final item = itemsById[line.itemId.value];
+          if (item == null) {
+            _setMissingReference(
+              'تعذر العثور على مادة مرتبطة بسجل النقل رقم '
+              '${transfer.documentNumber}',
+              generation,
+            );
+            return;
+          }
+          lines.add(
+            WarehouseTransferLine(
+              productCode: item.code,
+              productName: item.name,
+              quantity: line.quantity.value,
+            ),
+          );
+        }
+        resolvedTransfers.add(
+          WarehouseTransferRecord(
+            id: transfer.id.value,
+            number: transfer.documentNumber,
+            createdAt: transfer.createdAt.value,
+            fromWarehouseId: source.id,
+            fromWarehouseName: source.name,
+            toWarehouseId: destination.id,
+            toWarehouseName: destination.name,
+            lines: List.unmodifiable(lines),
+            reversalOfId: transfer.reversalOfId?.value,
+          ),
+        );
+      }
+
+      _itemIdsByProductCode = Map.unmodifiable({
+        for (final item in items) item.code: item.entityId,
+      });
+      _state = _state.copyWith(
+        dataState: warehouses.isEmpty
+            ? const AppDataState.empty(
+                message: 'لا توجد مخازن مسجلة حالياً.',
+              )
+            : AppDataState.ready(List.unmodifiable(warehouses)),
+        inventoryByWarehouse: Map.unmodifiable(inventory),
+        transferRecords: List.unmodifiable(resolvedTransfers),
+        selectedWarehouseId: warehouses.any(
+          (warehouse) => warehouse.id == _state.selectedWarehouseId,
+        )
+            ? _state.selectedWarehouseId
+            : null,
+      );
+      _notifyListenersIfActive();
+    } catch (error) {
+      if (_loadIsStale(generation)) return;
+      _state = _state.copyWith(
+        dataState: AppDataState.error(
+          error,
+          message: 'تعذر تحميل بيانات المخازن.',
+        ),
+      );
+      _notifyListenersIfActive();
+    }
+  }
+
   void search(String value) {
-    if (_state.query == value) return;
+    if (_isDisposed || _state.query == value) return;
     _state = _state.copyWith(query: value);
-    notifyListeners();
+    _notifyListenersIfActive();
   }
 
   void select(String? warehouseId) {
-    if (_state.selectedWarehouseId == warehouseId) return;
+    if (_isDisposed || _state.selectedWarehouseId == warehouseId) return;
     _state = _state.copyWith(selectedWarehouseId: warehouseId);
-    notifyListeners();
+    _notifyListenersIfActive();
   }
 
   void first() => _selectAt(0);
@@ -176,214 +303,121 @@ class WarehousesController extends ChangeNotifier {
     _selectAt(warehouses.length - 1);
   }
 
-  void add(Warehouse warehouse) {
-    final updatedInventory = {
-      ..._state.inventoryByWarehouse,
-      warehouse.id: const <WarehouseInventoryItem>[],
-    };
-    _state = _state.copyWith(
-      warehouses: List.unmodifiable([..._state.warehouses, warehouse]),
-      inventoryByWarehouse: _freezeInventory(updatedInventory),
-      selectedWarehouseId: warehouse.id,
-    );
-    notifyListeners();
+  Future<Warehouse> add(Warehouse warehouse) async {
+    final saved = await _repository.save(warehouse);
+    if (_isDisposed) return saved;
+    await load();
+    if (_isDisposed) return saved;
+    select(saved.id);
+    _onDataChanged?.call();
+    return selectedWarehouse ?? saved;
   }
 
-  void update(Warehouse warehouse) {
-    final index = _state.warehouses.indexWhere(
-      (item) => item.id == warehouse.id,
-    );
-    if (index < 0) return;
-    final updated = [..._state.warehouses]..[index] = warehouse;
-    _state = _state.copyWith(warehouses: List.unmodifiable(updated));
-    notifyListeners();
+  Future<Warehouse> update(Warehouse warehouse) async {
+    final saved = await _repository.save(warehouse);
+    if (_isDisposed) return saved;
+    await load();
+    if (_isDisposed) return saved;
+    select(saved.id);
+    _onDataChanged?.call();
+    return selectedWarehouse ?? saved;
   }
 
-  Warehouse? deleteSelected() {
+  Future<DeleteDecision> canDeleteSelected() async {
     final selected = selectedWarehouse;
-    if (selected == null ||
-        selected.isMain ||
-        isWarehouseReferenced(selected.id)) {
-      return null;
+    if (selected == null) {
+      return const DeleteDecision.blocked('اختر مخزناً من الجدول لحذفه');
     }
+    return _repository.canDelete(selected.entityId);
+  }
 
-    final updatedInventory = {
-      for (final entry in _state.inventoryByWarehouse.entries)
-        if (entry.key != selected.id) entry.key: entry.value,
-    };
-    _state = _state.copyWith(
-      warehouses: List.unmodifiable(
-        _state.warehouses.where(
-          (warehouse) => warehouse.id != selected.id,
-        ),
-      ),
-      inventoryByWarehouse: _freezeInventory(updatedInventory),
-      selectedWarehouseId: null,
-    );
-    notifyListeners();
+  Future<Warehouse?> deleteSelected() async {
+    final selected = selectedWarehouse;
+    if (selected == null) return null;
+    final decision = await _repository.canDelete(selected.entityId);
+    if (!decision.isAllowed) return null;
+    await _repository.delete(selected.entityId);
+    if (_isDisposed) return selected;
+    await load();
+    if (_isDisposed) return selected;
+    _onDataChanged?.call();
     return selected;
   }
 
-  bool transferInventory({
+  Future<bool> transferInventory({
     required String fromWarehouseId,
     required String toWarehouseId,
     required Map<String, int> quantitiesByProductCode,
     DateTime? createdAt,
-  }) {
-    return _performTransfer(
-      fromWarehouseId: fromWarehouseId,
-      toWarehouseId: toWarehouseId,
-      quantitiesByProductCode: quantitiesByProductCode,
-      createdAt: createdAt ?? DateTime.now(),
-    );
-  }
-
-  bool reverseTransfer(String transferId, {DateTime? createdAt}) {
-    WarehouseTransferRecord? original;
-    for (final transfer in _state.transferRecords) {
-      if (transfer.id == transferId) {
-        original = transfer;
-        break;
-      }
-    }
-    final originalTransfer = original;
-    if (originalTransfer == null ||
-        originalTransfer.reversalOfId != null ||
-        _state.transferRecords.any(
-          (transfer) => transfer.reversalOfId == originalTransfer.id,
-        )) {
-      return false;
-    }
-
-    return _performTransfer(
-      fromWarehouseId: originalTransfer.toWarehouseId,
-      toWarehouseId: originalTransfer.fromWarehouseId,
-      quantitiesByProductCode: {
-        for (final line in originalTransfer.lines)
-          line.productCode: line.quantity,
-      },
-      createdAt: createdAt ?? DateTime.now(),
-      reversalOfId: originalTransfer.id,
-    );
-  }
-
-  bool _performTransfer({
-    required String fromWarehouseId,
-    required String toWarehouseId,
-    required Map<String, int> quantitiesByProductCode,
-    required DateTime createdAt,
-    String? reversalOfId,
-  }) {
-    final hasSource = _state.warehouses.any(
-      (warehouse) => warehouse.id == fromWarehouseId,
-    );
-    final hasDestination = _state.warehouses.any(
-      (warehouse) => warehouse.id == toWarehouseId,
-    );
-    if (fromWarehouseId == toWarehouseId ||
-        !hasSource ||
-        !hasDestination ||
-        quantitiesByProductCode.isEmpty) {
-      return false;
-    }
-
-    final sourceItems = [...inventoryFor(fromWarehouseId)];
-    final destinationItems = [...inventoryFor(toWarehouseId)];
-    final transferLines = <WarehouseTransferLine>[];
-
-    for (final entry in quantitiesByProductCode.entries) {
-      final sourceIndex = sourceItems.indexWhere(
-        (item) => item.productCode == entry.key,
-      );
-      if (sourceIndex < 0 ||
-          entry.value <= 0 ||
-          sourceItems[sourceIndex].quantity < entry.value) {
-        return false;
-      }
-      final sourceItem = sourceItems[sourceIndex];
-      transferLines.add(
-        WarehouseTransferLine(
-          productCode: sourceItem.productCode,
-          productName: sourceItem.productName,
-          quantity: entry.value,
-        ),
-      );
-    }
-
-    for (final entry in quantitiesByProductCode.entries) {
-      final sourceIndex = sourceItems.indexWhere(
-        (item) => item.productCode == entry.key,
-      );
-      final sourceItem = sourceItems[sourceIndex];
-      sourceItems[sourceIndex] = WarehouseInventoryItem(
-        id: sourceItem.id,
-        productCode: sourceItem.productCode,
-        productName: sourceItem.productName,
-        quantity: sourceItem.quantity - entry.value,
-      );
-
-      final destinationIndex = destinationItems.indexWhere(
-        (item) => item.productCode == entry.key,
-      );
-      if (destinationIndex < 0) {
-        destinationItems.add(
-          WarehouseInventoryItem(
-            id: 'transfer-$toWarehouseId-${sourceItem.productCode}',
-            productCode: sourceItem.productCode,
-            productName: sourceItem.productName,
-            quantity: entry.value,
+  }) async {
+    if (_isDisposed || quantitiesByProductCode.isEmpty) return false;
+    try {
+      final lines = <InventoryTransferLine>[];
+      for (final entry in quantitiesByProductCode.entries) {
+        final itemId = _itemIdsByProductCode[entry.key];
+        if (itemId == null || entry.value <= 0) return false;
+        lines.add(
+          InventoryTransferLine(
+            itemId: itemId,
+            quantity: WholeQuantity(entry.value),
           ),
         );
-      } else {
-        final destinationItem = destinationItems[destinationIndex];
-        destinationItems[destinationIndex] = WarehouseInventoryItem(
-          id: destinationItem.id,
-          productCode: destinationItem.productCode,
-          productName: destinationItem.productName,
-          quantity: destinationItem.quantity + entry.value,
-        );
       }
-    }
-
-    _state = _state.copyWith(
-      inventoryByWarehouse: _freezeInventory({
-        ..._state.inventoryByWarehouse,
-        fromWarehouseId: sourceItems,
-        toWarehouseId: destinationItems,
-      }),
-      transferRecords: List.unmodifiable([
-        WarehouseTransferRecord(
-          id: 'transfer-${createdAt.microsecondsSinceEpoch}-'
-              '$nextTransferNumber',
-          number: nextTransferNumber,
-          createdAt: createdAt,
-          fromWarehouseId: fromWarehouseId,
-          fromWarehouseName: _warehouseName(fromWarehouseId),
-          toWarehouseId: toWarehouseId,
-          toWarehouseName: _warehouseName(toWarehouseId),
-          lines: List.unmodifiable(transferLines),
-          reversalOfId: reversalOfId,
+      await _repository.transfer(
+        InventoryTransferDraft(
+          fromWarehouseId: EntityId(fromWarehouseId),
+          toWarehouseId: EntityId(toWarehouseId),
+          lines: lines,
+          createdAt:
+              createdAt == null ? null : AuditTimestamp(createdAt),
         ),
-        ..._state.transferRecords,
-      ]),
-    );
-    notifyListeners();
-    return true;
-  }
-
-  int get nextTransferNumber {
-    if (_state.transferRecords.isEmpty) return 1;
-    return _state.transferRecords
-            .map((transfer) => transfer.number)
-            .reduce((first, second) => first > second ? first : second) +
-        1;
-  }
-
-  String _warehouseName(String warehouseId) {
-    for (final warehouse in _state.warehouses) {
-      if (warehouse.id == warehouseId) return warehouse.name;
+      );
+      if (_isDisposed) return true;
+      await load();
+      if (!_isDisposed) _onDataChanged?.call();
+      return true;
+    } on ArgumentError {
+      return false;
+    } on StateError {
+      return false;
     }
-    return 'المخزن';
+  }
+
+  Future<bool> reverseTransfer(
+    String transferId, {
+    DateTime? createdAt,
+  }) async {
+    if (_isDisposed) return false;
+    try {
+      await _repository.reverseTransfer(
+        EntityId(transferId),
+        createdAt: createdAt == null ? null : AuditTimestamp(createdAt),
+      );
+      if (_isDisposed) return true;
+      await load();
+      if (!_isDisposed) _onDataChanged?.call();
+      return true;
+    } on ArgumentError {
+      return false;
+    } on StateError {
+      return false;
+    }
+  }
+
+  void _setMissingReference(String message, int generation) {
+    if (_loadIsStale(generation)) return;
+    _state = _state.copyWith(
+      dataState: AppDataState.missingReference(message),
+    );
+    _notifyListenersIfActive();
+  }
+
+  bool _loadIsStale(int generation) {
+    return _isDisposed || generation != _loadGeneration;
+  }
+
+  void _notifyListenersIfActive() {
+    if (!_isDisposed) notifyListeners();
   }
 
   void _selectAt(int index) {
@@ -400,153 +434,10 @@ class WarehousesController extends ChangeNotifier {
     );
   }
 
-  static Map<String, List<WarehouseInventoryItem>> _freezeInventory(
-    Map<String, List<WarehouseInventoryItem>> source,
-  ) {
-    final frozenInventory = <String, List<WarehouseInventoryItem>>{
-      for (final entry in source.entries)
-        entry.key:
-            List<WarehouseInventoryItem>.unmodifiable(entry.value),
-    };
-    return Map<String, List<WarehouseInventoryItem>>.unmodifiable(
-      frozenInventory,
-    );
+  @override
+  void dispose() {
+    _isDisposed = true;
+    _loadGeneration++;
+    super.dispose();
   }
 }
-
-const _demoWarehouses = <Warehouse>[
-  Warehouse(
-    id: 'warehouse-001',
-    number: 1,
-    name: 'المخزن الرئيسي',
-    location: 'بغداد - الشورجة',
-    notes: 'المخزن الرئيسي للشركة',
-    isMain: true,
-  ),
-  Warehouse(
-    id: 'warehouse-002',
-    number: 2,
-    name: 'مخزن الكرادة',
-    location: 'بغداد - الكرادة',
-    notes: '',
-  ),
-  Warehouse(
-    id: 'warehouse-003',
-    number: 3,
-    name: 'مخزن البصرة',
-    location: 'البصرة - العشار',
-    notes: 'مخزن فرع البصرة',
-  ),
-  Warehouse(
-    id: 'warehouse-004',
-    number: 4,
-    name: 'مخزن أربيل',
-    location: 'أربيل - المنطقة الصناعية',
-    notes: '',
-  ),
-];
-
-const _demoInventory = <String, List<WarehouseInventoryItem>>{
-  'warehouse-001': [
-    WarehouseInventoryItem(
-      id: 'inventory-001',
-      productCode: 'P-1001',
-      productName: 'طابعة ليزر',
-      quantity: 18,
-    ),
-    WarehouseInventoryItem(
-      id: 'inventory-002',
-      productCode: 'P-1002',
-      productName: 'حبر طابعة أسود',
-      quantity: 64,
-    ),
-    WarehouseInventoryItem(
-      id: 'inventory-003',
-      productCode: 'P-1003',
-      productName: 'ورق تصوير A4',
-      quantity: 120,
-    ),
-    WarehouseInventoryItem(
-      id: 'inventory-004',
-      productCode: 'P-1004',
-      productName: 'آلة حاسبة مكتبية',
-      quantity: 25,
-    ),
-  ],
-  'warehouse-002': [
-    WarehouseInventoryItem(
-      id: 'inventory-005',
-      productCode: 'P-1001',
-      productName: 'طابعة ليزر',
-      quantity: 7,
-    ),
-    WarehouseInventoryItem(
-      id: 'inventory-006',
-      productCode: 'P-1003',
-      productName: 'ورق تصوير A4',
-      quantity: 45,
-    ),
-  ],
-  'warehouse-003': [
-    WarehouseInventoryItem(
-      id: 'inventory-007',
-      productCode: 'P-1002',
-      productName: 'حبر طابعة أسود',
-      quantity: 22,
-    ),
-    WarehouseInventoryItem(
-      id: 'inventory-008',
-      productCode: 'P-1004',
-      productName: 'آلة حاسبة مكتبية',
-      quantity: 11,
-    ),
-  ],
-  'warehouse-004': [
-    WarehouseInventoryItem(
-      id: 'inventory-009',
-      productCode: 'P-1003',
-      productName: 'ورق تصوير A4',
-      quantity: 32,
-    ),
-  ],
-};
-
-final _demoTransfers = <WarehouseTransferRecord>[
-  WarehouseTransferRecord(
-    id: 'transfer-104',
-    number: 104,
-    createdAt: DateTime(2026, 7, 24),
-    fromWarehouseId: 'warehouse-001',
-    fromWarehouseName: 'المخزن الرئيسي',
-    toWarehouseId: 'warehouse-002',
-    toWarehouseName: 'مخزن الكرادة',
-    lines: const [
-      WarehouseTransferLine(
-        productCode: 'P-1003',
-        productName: 'ورق تصوير A4',
-        quantity: 20,
-      ),
-    ],
-  ),
-  WarehouseTransferRecord(
-    id: 'transfer-103',
-    number: 103,
-    createdAt: DateTime(2026, 7, 22),
-    fromWarehouseId: 'warehouse-003',
-    fromWarehouseName: 'مخزن البصرة',
-    toWarehouseId: 'warehouse-001',
-    toWarehouseName: 'المخزن الرئيسي',
-    lines: const [
-      WarehouseTransferLine(
-        productCode: 'P-1002',
-        productName: 'حبر طابعة أسود',
-        quantity: 5,
-      ),
-      WarehouseTransferLine(
-        productCode: 'P-1004',
-        productName: 'آلة حاسبة مكتبية',
-        quantity: 2,
-      ),
-    ],
-  ),
-];

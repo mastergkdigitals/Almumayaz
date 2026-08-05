@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/app_state/app_store.dart';
+import '../../../core/data/app_repository.dart';
 import '../../../core/design/app_design_system.dart';
 import '../../../core/printing/document_output_service.dart';
 import '../../../core/services/service_failure.dart';
@@ -13,9 +15,11 @@ import 'widgets/cashbox_table.dart';
 class CashboxScreen extends StatefulWidget {
   const CashboxScreen({
     super.key,
+    this.controller,
     this.printService = const DemoDocumentOutputService(),
   });
 
+  final CashboxController? controller;
   final DocumentPrintService printService;
 
   @override
@@ -23,84 +27,18 @@ class CashboxScreen extends StatefulWidget {
 }
 
 class _CashboxScreenState extends State<CashboxScreen> {
-  static const _mainAccounts = <CashboxMainAccount>[
-    CashboxMainAccount(
-      id: 'parties',
-      label: 'الأطراف',
-      subaccounts: [
-        CashboxSubaccount(
-          id: 'party-nakheel',
-          label: '1 - شركة النخيل للتجارة',
-          balanceIqd: 1250000,
-          balanceUsd: 850,
-        ),
-        CashboxSubaccount(
-          id: 'party-ahmed',
-          label: '2 - أحمد كريم',
-          balanceIqd: 475000,
-          balanceUsd: 0,
-        ),
-        CashboxSubaccount(
-          id: 'party-rafidain',
-          label: '3 - مجهز الرافدين',
-          balanceIqd: -3200000,
-          balanceUsd: -1200,
-        ),
-      ],
-    ),
-    CashboxMainAccount(
-      id: 'expenses',
-      label: 'المصاريف',
-      subaccounts: [
-        CashboxSubaccount(
-          id: 'expense-transport',
-          label: 'نقل',
-          balanceIqd: 125000,
-          balanceUsd: 0,
-        ),
-        CashboxSubaccount(
-          id: 'expense-maintenance',
-          label: 'صيانة',
-          balanceIqd: 210000,
-          balanceUsd: 0,
-        ),
-        CashboxSubaccount(
-          id: 'expense-services',
-          label: 'خدمات',
-          balanceIqd: 80000,
-          balanceUsd: 25,
-        ),
-      ],
-    ),
-    CashboxMainAccount(
-      id: 'other-income',
-      label: 'إيرادات أخرى',
-      subaccounts: [
-        CashboxSubaccount(
-          id: 'income-services',
-          label: 'خدمات',
-          balanceIqd: -300000,
-          balanceUsd: 0,
-        ),
-        CashboxSubaccount(
-          id: 'income-other',
-          label: 'إيرادات متنوعة',
-          balanceIqd: 0,
-          balanceUsd: 0,
-        ),
-      ],
-    ),
-  ];
-
-  final _cashboxController = CashboxController();
+  late CashboxController _cashboxController;
+  bool _controllerInitialized = false;
+  bool _ownsController = false;
+  bool _showEditorWhenEmpty = false;
   final _formControllers = CashboxFormControllers();
   final _searchController = TextEditingController();
   final _searchFocusNode = FocusNode();
 
   DateTime _voucherDateTime = DateTime.now();
   CashboxVoucherType _voucherType = CashboxVoucherType.receipt;
-  String _mainAccountId = _mainAccounts.first.id;
-  String _subaccountId = _mainAccounts.first.subaccounts.first.id;
+  String _mainAccountId = '';
+  String _subaccountId = '';
   late _CashboxFormSnapshot _baseline;
   bool _isApplyingFormState = false;
   bool _hasUnsavedChanges = false;
@@ -114,7 +52,12 @@ class _CashboxScreenState extends State<CashboxScreen> {
         _formControllers.amountIqd,
         _formControllers.amountUsd,
         _formControllers.notes,
-      ];
+  ];
+
+  List<CashboxMainAccount> get _mainAccounts =>
+      _cashboxController.state.accounts
+          .where((account) => account.subaccounts.isNotEmpty)
+          .toList(growable: false);
 
   CashboxMainAccount get _selectedMainAccount {
     return _mainAccounts.firstWhere(
@@ -135,9 +78,58 @@ class _CashboxScreenState extends State<CashboxScreen> {
   @override
   void initState() {
     super.initState();
-    _setNewForm();
+    _formControllers.setNew(number: 1, exchangeRateValue: 1310);
+    _baseline = _currentSnapshot();
     for (final controller in _editableControllers) {
       controller.addListener(_refreshEditableState);
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_controllerInitialized) return;
+    _setController(widget.controller);
+    _controllerInitialized = true;
+    unawaited(_loadCashbox());
+  }
+
+  @override
+  void didUpdateWidget(covariant CashboxScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (identical(oldWidget.controller, widget.controller)) return;
+    final previousController = _cashboxController;
+    final disposePreviousController = _ownsController;
+    _setController(widget.controller);
+    _showEditorWhenEmpty = false;
+    _hasUnsavedChanges = false;
+    _baseline = _currentSnapshot();
+    if (disposePreviousController) previousController.dispose();
+    unawaited(_loadCashbox());
+  }
+
+  void _setController(CashboxController? suppliedController) {
+    if (suppliedController != null) {
+      _cashboxController = suppliedController;
+      _ownsController = false;
+    } else {
+      final store = AppStoreScope.of(context, listen: false);
+      _cashboxController = CashboxController(
+        repository: store.repositories.cashbox,
+        settingsRepository: store.repositories.businessSettings,
+        onDataChanged: store.markDataChanged,
+      );
+      _ownsController = true;
+    }
+  }
+
+  Future<void> _loadCashbox() async {
+    final controller = _cashboxController;
+    await controller.load();
+    if (!mounted || !identical(controller, _cashboxController)) return;
+    final status = controller.state.dataState.status;
+    if (status == AppDataStatus.ready || status == AppDataStatus.empty) {
+      setState(_setNewForm);
     }
   }
 
@@ -146,7 +138,9 @@ class _CashboxScreenState extends State<CashboxScreen> {
     for (final controller in _editableControllers) {
       controller.removeListener(_refreshEditableState);
     }
-    _cashboxController.dispose();
+    if (_controllerInitialized && _ownsController) {
+      _cashboxController.dispose();
+    }
     _formControllers.dispose();
     _searchController.dispose();
     _searchFocusNode.dispose();
@@ -156,14 +150,19 @@ class _CashboxScreenState extends State<CashboxScreen> {
   void _setNewForm() {
     _isApplyingFormState = true;
     _voucherDateTime = DateTime.now();
-    _voucherType = CashboxVoucherType.receipt;
-    _mainAccountId = _mainAccounts.first.id;
-    _subaccountId = _mainAccounts.first.subaccounts.first.id;
+    _voucherType = _cashboxController.state.defaultVoucherType;
+    final requestedMainId = _cashboxController.state.defaultMainAccountId;
+    final defaultMain = _mainAccounts.firstWhere(
+      (account) => account.id == requestedMainId,
+      orElse: () => _mainAccounts.first,
+    );
+    _mainAccountId = defaultMain.id;
+    _subaccountId = defaultMain.subaccounts.first.id;
     _formControllers
       ..setSummary(_cashboxController.summary)
       ..setNew(
         number: _cashboxController.nextNumber,
-        exchangeRateValue: 1310,
+        exchangeRateValue: _cashboxController.state.defaultExchangeRate,
       );
     _syncAccountFields();
     _syncCalculatedFields();
@@ -464,7 +463,7 @@ class _CashboxScreenState extends State<CashboxScreen> {
     );
   }
 
-  void _save() {
+  Future<void> _save() async {
     if (!_validateForm()) return;
     if (_cashboxController.selectedVoucher != null) {
       AppToast.showWarning(context, 'استخدم زر تحديث لتعديل السند المحدد');
@@ -475,12 +474,18 @@ class _CashboxScreenState extends State<CashboxScreen> {
       id: 'local-${DateTime.now().microsecondsSinceEpoch}',
       number: _cashboxController.nextNumber,
     );
-    _cashboxController.add(voucher);
-    _loadVoucher(voucher);
-    AppToast.showInfo(context, 'تم حفظ سند الصندوق مؤقتاً');
+    final controller = _cashboxController;
+    try {
+      final saved = await controller.add(voucher);
+      if (!mounted || !identical(controller, _cashboxController)) return;
+      _loadVoucher(saved);
+      AppToast.showInfo(context, 'تم حفظ سند الصندوق مؤقتاً');
+    } on StateError catch (error) {
+      if (mounted) AppToast.showWarning(context, _stateErrorMessage(error));
+    }
   }
 
-  void _update() {
+  Future<void> _update() async {
     final selected = _cashboxController.selectedVoucher;
     if (selected == null) {
       AppToast.showWarning(context, 'اختر سنداً من الجدول لتحديثه');
@@ -492,9 +497,15 @@ class _CashboxScreenState extends State<CashboxScreen> {
       id: selected.id,
       number: selected.number,
     );
-    _cashboxController.update(updated);
-    _loadVoucher(updated);
-    AppToast.showSuccess(context, 'تم تحديث سند الصندوق مؤقتاً');
+    final controller = _cashboxController;
+    try {
+      final saved = await controller.update(updated);
+      if (!mounted || !identical(controller, _cashboxController)) return;
+      _loadVoucher(saved);
+      AppToast.showSuccess(context, 'تم تحديث سند الصندوق مؤقتاً');
+    } on StateError catch (error) {
+      if (mounted) AppToast.showWarning(context, _stateErrorMessage(error));
+    }
   }
 
   void _undo() {
@@ -588,6 +599,17 @@ class _CashboxScreenState extends State<CashboxScreen> {
       return;
     }
 
+    final controller = _cashboxController;
+    final decision = await controller.canDeleteSelected();
+    if (!mounted || !identical(controller, _cashboxController)) return;
+    if (!decision.isAllowed) {
+      AppToast.showDanger(
+        context,
+        decision.reason ?? 'لا يمكن حذف هذا السجل لأنه مرتبط ببيانات أخرى',
+      );
+      return;
+    }
+
     final confirmed = await AppDialogs.confirm(
       context: context,
       title: 'حذف سند الصندوق',
@@ -595,9 +617,14 @@ class _CashboxScreenState extends State<CashboxScreen> {
       confirmLabel: 'حذف',
       isDanger: true,
     );
-    if (!mounted || !confirmed) return;
+    if (!mounted ||
+        !confirmed ||
+        !identical(controller, _cashboxController)) {
+      return;
+    }
 
-    _cashboxController.deleteSelected();
+    await controller.deleteSelected();
+    if (!mounted || !identical(controller, _cashboxController)) return;
     setState(_setNewForm);
     AppToast.showDanger(context, 'تم حذف سند الصندوق مؤقتاً');
   }
@@ -617,6 +644,10 @@ class _CashboxScreenState extends State<CashboxScreen> {
             hasVisibleVouchers && selectedVisibleIndex != 0;
         final canMoveToNextOrLast =
             hasVisibleVouchers && selectedVisibleIndex >= 0;
+        final dataState = _cashboxController.state.dataState;
+        final showEditor = dataState.status == AppDataStatus.ready ||
+            (dataState.status == AppDataStatus.empty &&
+                _showEditorWhenEmpty);
 
         return PopScope(
           canPop: !_hasUnsavedChanges,
@@ -648,8 +679,9 @@ class _CashboxScreenState extends State<CashboxScreen> {
             ),
           ],
             body: Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Column(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: showEditor
+                  ? Column(
               children: [
                 CashboxForm(
                   controllers: _formControllers,
@@ -716,7 +748,26 @@ class _CashboxScreenState extends State<CashboxScreen> {
                   ),
                 ),
               ],
-            ),
+                    )
+                  : AppDataStateView<List<CashboxVoucher>>(
+                      state: dataState,
+                      dataBuilder: (_, __) => const SizedBox.shrink(),
+                      loadingStateKey: const Key('cashboxLoadingState'),
+                      emptyStateKey: const Key('cashboxEmptyState'),
+                      missingReferenceStateKey:
+                          const Key('cashboxMissingReferenceState'),
+                      errorStateKey: const Key('cashboxErrorState'),
+                      emptyActionLabel: 'إضافة سند صندوق',
+                      onEmptyAction: () {
+                        setState(() {
+                          _showEditorWhenEmpty = true;
+                          _setNewForm();
+                        });
+                      },
+                      missingReferenceActionLabel: 'إعادة المحاولة',
+                      onMissingReferenceAction: _loadCashbox,
+                      onRetry: _loadCashbox,
+                    ),
             ),
           ),
         );
@@ -737,3 +788,8 @@ typedef _CashboxFormSnapshot = ({
   String amountUsd,
   String notes,
 });
+
+String _stateErrorMessage(StateError error) {
+  final message = error.message;
+  return message is String ? message : error.toString();
+}

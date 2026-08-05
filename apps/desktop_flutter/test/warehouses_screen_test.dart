@@ -1,4 +1,5 @@
 import 'package:erp/app/app.dart';
+import 'package:erp/core/app_state/app_repositories.dart';
 import 'package:erp/core/design/app_design_system.dart';
 import 'package:erp/features/warehouses/domain/warehouse.dart';
 import 'package:erp/features/warehouses/presentation/warehouses_controller.dart';
@@ -6,9 +7,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('filters and navigates the temporary warehouse list', () {
-    final controller = WarehousesController();
+  test('filters and navigates the repository warehouse list', () async {
+    final repositories = AppRepositories.demo();
+    final controller = WarehousesController(
+      repository: repositories.warehouses,
+      itemRepository: repositories.items,
+    );
     addTearDown(controller.dispose);
+    await controller.load();
 
     expect(controller.state.warehouses, hasLength(4));
     expect(controller.materialCountFor('warehouse-001'), 4);
@@ -35,11 +41,16 @@ void main() {
     expect(controller.selectedWarehouse, isNull);
   });
 
-  test('moves whole item quantities between temporary warehouses', () {
-    final controller = WarehousesController();
+  test('persists whole item transfers and immutable reversals', () async {
+    final repositories = AppRepositories.demo();
+    final controller = WarehousesController(
+      repository: repositories.warehouses,
+      itemRepository: repositories.items,
+    );
     addTearDown(controller.dispose);
+    await controller.load();
 
-    final transferred = controller.transferInventory(
+    final transferred = await controller.transferInventory(
       fromWarehouseId: 'warehouse-001',
       toWarehouseId: 'warehouse-002',
       quantitiesByProductCode: {
@@ -72,7 +83,7 @@ void main() {
     );
 
     expect(
-      controller.transferInventory(
+      await controller.transferInventory(
         fromWarehouseId: 'warehouse-001',
         toWarehouseId: 'warehouse-002',
         quantitiesByProductCode: {'P-1001': 999},
@@ -94,7 +105,7 @@ void main() {
 
     final originalId = controller.state.transferRecords.first.id;
     expect(
-      controller.reverseTransfer(
+      await controller.reverseTransfer(
         originalId,
         createdAt: DateTime(2026, 7, 28),
       ),
@@ -108,16 +119,31 @@ void main() {
           .quantity,
       18,
     );
-    expect(controller.reverseTransfer(originalId), isFalse);
+    expect(await controller.reverseTransfer(originalId), isFalse);
+
+    final reopened = WarehousesController(
+      repository: repositories.warehouses,
+      itemRepository: repositories.items,
+    );
+    addTearDown(reopened.dispose);
+    await reopened.load();
+    expect(reopened.state.transferRecords.first.number, 106);
+    expect(reopened.state.transferRecords.first.reversalOfId, originalId);
   });
 
-  test('blocks deleting warehouses referenced by stock or transfers', () {
-    final controller = WarehousesController();
+  test('blocks real references and persists deletions', () async {
+    final repositories = AppRepositories.demo();
+    final controller = WarehousesController(
+      repository: repositories.warehouses,
+      itemRepository: repositories.items,
+    );
     addTearDown(controller.dispose);
+    await controller.load();
 
     controller.select('warehouse-002');
     expect(controller.isWarehouseReferenced('warehouse-002'), isTrue);
-    expect(controller.deleteSelected(), isNull);
+    expect((await controller.canDeleteSelected()).isAllowed, isFalse);
+    expect(await controller.deleteSelected(), isNull);
     expect(controller.state.warehouses, hasLength(4));
 
     const temporary = Warehouse(
@@ -127,9 +153,17 @@ void main() {
       location: '',
       notes: '',
     );
-    controller.add(temporary);
+    await controller.add(temporary);
     expect(controller.isWarehouseReferenced(temporary.id), isFalse);
-    expect(controller.deleteSelected(), temporary);
+    expect(await controller.deleteSelected(), temporary);
+
+    final reopened = WarehousesController(
+      repository: repositories.warehouses,
+      itemRepository: repositories.items,
+    );
+    addTearDown(reopened.dispose);
+    await reopened.load();
+    expect(reopened.state.warehouses, hasLength(4));
   });
 
   testWidgets('opens Warehouses with old structure and shared controls',
@@ -434,7 +468,7 @@ void main() {
     await tester.tap(
       find.byKey(const Key('inventoryTransferExecuteButton')),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(
       find.byKey(const Key('inventoryTransferHistory_105')),
       findsOneWidget,
@@ -444,7 +478,7 @@ void main() {
     );
     expect(reverseButton.onPressed, isNotNull);
     reverseButton.onPressed!();
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(
       find.byKey(const Key('inventoryTransferHistory_106')),
       findsOneWidget,

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../../core/design/app_design_system.dart';
@@ -6,7 +8,7 @@ import '../../domain/warehouse.dart';
 typedef WarehouseInventoryReader =
     List<WarehouseInventoryItem> Function(String warehouseId);
 
-typedef WarehouseTransferHandler = bool Function({
+typedef WarehouseTransferHandler = FutureOr<bool> Function({
   required String fromWarehouseId,
   required String toWarehouseId,
   required Map<String, int> quantitiesByProductCode,
@@ -15,7 +17,9 @@ typedef WarehouseTransferHandler = bool Function({
 typedef WarehouseTransferHistoryReader =
     List<WarehouseTransferRecord> Function();
 
-typedef WarehouseTransferReverseHandler = bool Function(String transferId);
+typedef WarehouseTransferReverseHandler = FutureOr<bool> Function(
+  String transferId,
+);
 
 enum _InventoryTransferView { create, history }
 
@@ -83,6 +87,7 @@ class _InventoryTransferDialogState
   String _historyQuery = '';
   String? _selectedHistoryId;
   bool _didTransfer = false;
+  bool _isMutating = false;
 
   List<Warehouse> get _warehouses => widget.warehouses;
 
@@ -222,7 +227,8 @@ class _InventoryTransferDialogState
     setState(() => _selectedProductCode = productCode);
   }
 
-  void _executeTransfer() {
+  Future<void> _executeTransfer() async {
+    if (_isMutating) return;
     final sourceId = _fromWarehouseId;
     final destinationId = _toWarehouseId;
     final sourceItem = _selectedSourceItem;
@@ -249,13 +255,23 @@ class _InventoryTransferDialogState
       return;
     }
 
-    final transferred = widget.onTransfer(
-      fromWarehouseId: sourceId,
-      toWarehouseId: destinationId,
-      quantitiesByProductCode: {
-        sourceItem.productCode: quantity,
-      },
-    );
+    setState(() => _isMutating = true);
+    late final bool transferred;
+    try {
+      transferred = await Future<bool>.value(
+        widget.onTransfer(
+          fromWarehouseId: sourceId,
+          toWarehouseId: destinationId,
+          quantitiesByProductCode: {
+            sourceItem.productCode: quantity,
+          },
+        ),
+      );
+    } catch (_) {
+      transferred = false;
+    }
+    if (!mounted) return;
+    setState(() => _isMutating = false);
     if (!transferred) {
       AppToast.showDanger(
         context,
@@ -310,12 +326,22 @@ class _InventoryTransferDialogState
 
   void _close() => Navigator.of(context).pop(_didTransfer);
 
-  void _reverseSelectedTransfer() {
+  Future<void> _reverseSelectedTransfer() async {
+    if (_isMutating) return;
     final selectedId = _selectedHistoryId;
     final reverse = widget.onReverseTransfer;
     if (selectedId == null || reverse == null) return;
 
-    if (!reverse(selectedId)) {
+    setState(() => _isMutating = true);
+    late final bool reversed;
+    try {
+      reversed = await Future<bool>.value(reverse(selectedId));
+    } catch (_) {
+      reversed = false;
+    }
+    if (!mounted) return;
+    setState(() => _isMutating = false);
+    if (!reversed) {
       AppToast.showDanger(
         context,
         'تعذر عكس النقل لعدم كفاية الرصيد أو لأنه عُكس مسبقاً',
@@ -397,7 +423,7 @@ class _InventoryTransferDialogState
         icon: Icons.swap_horiz_rounded,
         width: 200,
         backgroundColor: AppModuleColors.warehouses,
-        onPressed: _canExecute ? _executeTransfer : null,
+        onPressed: _canExecute && !_isMutating ? _executeTransfer : null,
       ),
     ];
   }
@@ -425,7 +451,8 @@ class _InventoryTransferDialogState
         onPressed: selectedTransfer == null ||
                 selectedTransfer.reversalOfId != null ||
                 alreadyReversed ||
-                widget.onReverseTransfer == null
+                widget.onReverseTransfer == null ||
+                _isMutating
             ? null
             : _reverseSelectedTransfer,
       ),
@@ -497,7 +524,7 @@ class _InventoryTransferDialogState
                   ),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
-                    child: AppTextField(
+                    child: AppIntegerField(
                       fieldKey:
                           const Key('inventoryTransferQuantityField'),
                       controller: _quantityController,
@@ -506,10 +533,6 @@ class _InventoryTransferDialogState
                       accentColor: AppModuleColors.warehouses,
                       textDirection: TextDirection.rtl,
                       textAlign: TextAlign.right,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: const [
-                        AppIntegerInputFormatter(),
-                      ],
                     ),
                   ),
                   const SizedBox(width: AppSpacing.md),

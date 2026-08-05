@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/app_state/app_store.dart';
+import '../../../core/data/app_repository.dart';
 import '../../../core/design/app_design_system.dart';
 import '../../items/presentation/items_screen.dart';
 import '../domain/warehouse.dart';
@@ -12,14 +14,19 @@ import 'widgets/warehouse_inventory_panel.dart';
 import 'widgets/warehouses_table.dart';
 
 class WarehousesScreen extends StatefulWidget {
-  const WarehousesScreen({super.key});
+  const WarehousesScreen({super.key, this.controller});
+
+  final WarehousesController? controller;
 
   @override
   State<WarehousesScreen> createState() => _WarehousesScreenState();
 }
 
 class _WarehousesScreenState extends State<WarehousesScreen> {
-  final _warehousesController = WarehousesController();
+  late WarehousesController _warehousesController;
+  bool _controllerInitialized = false;
+  bool _ownsController = false;
+  bool _showEditorWhenEmpty = false;
   final _formControllers = WarehouseFormControllers();
   final _formKey = GlobalKey<WarehouseFormState>();
   final _searchController = TextEditingController();
@@ -41,9 +48,58 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
   @override
   void initState() {
     super.initState();
-    _setNewForm();
+    _formControllers.setNew(numberValue: 1);
+    _baseline = _currentSnapshot();
     for (final controller in _editableControllers) {
       controller.addListener(_refreshUnsavedState);
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_controllerInitialized) return;
+    _setController(widget.controller);
+    _controllerInitialized = true;
+    unawaited(_loadWarehouses());
+  }
+
+  @override
+  void didUpdateWidget(covariant WarehousesScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (identical(oldWidget.controller, widget.controller)) return;
+    final previousController = _warehousesController;
+    final disposePreviousController = _ownsController;
+    _setController(widget.controller);
+    _showEditorWhenEmpty = false;
+    _hasUnsavedChanges = false;
+    _baseline = _currentSnapshot();
+    if (disposePreviousController) previousController.dispose();
+    unawaited(_loadWarehouses());
+  }
+
+  void _setController(WarehousesController? suppliedController) {
+    if (suppliedController != null) {
+      _warehousesController = suppliedController;
+      _ownsController = false;
+    } else {
+      final store = AppStoreScope.of(context, listen: false);
+      _warehousesController = WarehousesController(
+        repository: store.repositories.warehouses,
+        itemRepository: store.repositories.items,
+        onDataChanged: store.markDataChanged,
+      );
+      _ownsController = true;
+    }
+  }
+
+  Future<void> _loadWarehouses() async {
+    final controller = _warehousesController;
+    await controller.load();
+    if (!mounted || !identical(controller, _warehousesController)) return;
+    final status = controller.state.dataState.status;
+    if (status == AppDataStatus.ready || status == AppDataStatus.empty) {
+      setState(_setNewForm);
     }
   }
 
@@ -52,7 +108,9 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
     for (final controller in _editableControllers) {
       controller.removeListener(_refreshUnsavedState);
     }
-    _warehousesController.dispose();
+    if (_controllerInitialized && _ownsController) {
+      _warehousesController.dispose();
+    }
     _formControllers.dispose();
     _searchController.dispose();
     _searchFocusNode.dispose();
@@ -187,7 +245,7 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
     );
   }
 
-  void _save() {
+  Future<void> _save() async {
     if (!_validateName()) return;
     if (_warehousesController.selectedWarehouse != null) {
       AppToast.showWarning(
@@ -198,12 +256,18 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
     }
 
     final warehouse = _newWarehouseFromForm();
-    _warehousesController.add(warehouse);
-    _loadWarehouse(warehouse);
-    AppToast.showInfo(context, 'تم حفظ المخزن مؤقتاً');
+    final controller = _warehousesController;
+    try {
+      final saved = await controller.add(warehouse);
+      if (!mounted || !identical(controller, _warehousesController)) return;
+      _loadWarehouse(saved);
+      AppToast.showInfo(context, 'تم حفظ المخزن مؤقتاً');
+    } on StateError catch (error) {
+      if (mounted) AppToast.showWarning(context, _stateErrorMessage(error));
+    }
   }
 
-  void _update() {
+  Future<void> _update() async {
     final selected = _warehousesController.selectedWarehouse;
     if (selected == null) {
       AppToast.showWarning(context, 'اختر مخزناً من الجدول لتحديثه');
@@ -212,9 +276,15 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
     if (!_validateName()) return;
 
     final updated = _updatedWarehouseFromForm(selected);
-    _warehousesController.update(updated);
-    _loadWarehouse(updated);
-    AppToast.showSuccess(context, 'تم تحديث المخزن مؤقتاً');
+    final controller = _warehousesController;
+    try {
+      final saved = await controller.update(updated);
+      if (!mounted || !identical(controller, _warehousesController)) return;
+      _loadWarehouse(saved);
+      AppToast.showSuccess(context, 'تم تحديث المخزن مؤقتاً');
+    } on StateError catch (error) {
+      if (mounted) AppToast.showWarning(context, _stateErrorMessage(error));
+    }
   }
 
   void _undo() {
@@ -233,14 +303,13 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
       AppToast.showWarning(context, 'اختر مخزناً من الجدول لحذفه');
       return;
     }
-    if (selected.isMain) {
-      AppToast.showWarning(context, 'لا يمكن حذف المخزن الرئيسي');
-      return;
-    }
-    if (_warehousesController.isWarehouseReferenced(selected.id)) {
+    final controller = _warehousesController;
+    final decision = await controller.canDeleteSelected();
+    if (!mounted || !identical(controller, _warehousesController)) return;
+    if (!decision.isAllowed) {
       AppToast.showDanger(
         context,
-        'لا يمكن حذف هذا السجل لأنه مرتبط ببيانات أخرى',
+        decision.reason ?? 'لا يمكن حذف هذا السجل لأنه مرتبط ببيانات أخرى',
       );
       return;
     }
@@ -252,46 +321,58 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
       confirmLabel: 'حذف',
       isDanger: true,
     );
-    if (!mounted || !confirmed) return;
+    if (!mounted ||
+        !confirmed ||
+        !identical(controller, _warehousesController)) {
+      return;
+    }
 
-    _warehousesController.deleteSelected();
+    await controller.deleteSelected();
+    if (!mounted || !identical(controller, _warehousesController)) return;
     setState(_setNewForm);
     AppToast.showDanger(context, 'تم حذف المخزن مؤقتاً');
   }
 
   Future<void> _openProducts() async {
+    final controller = _warehousesController;
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) => const ItemsScreen(),
       ),
     );
+    if (!mounted || !identical(controller, _warehousesController)) return;
+    await controller.load();
   }
 
   Future<void> _openTransfer() async {
-    final selected = _warehousesController.selectedWarehouse;
+    final controller = _warehousesController;
+    final selected = controller.selectedWarehouse;
     if (selected == null) return;
 
     final transferred = await InventoryTransferDialog.show(
       context,
-      warehouses: _warehousesController.state.warehouses,
-      inventoryFor: _warehousesController.inventoryFor,
-      transferHistory: () =>
-          _warehousesController.state.transferRecords,
-      onReverseTransfer: _warehousesController.reverseTransfer,
+      warehouses: controller.state.warehouses,
+      inventoryFor: controller.inventoryFor,
+      transferHistory: () => controller.state.transferRecords,
+      onReverseTransfer: controller.reverseTransfer,
       initialFromWarehouseId: selected.id,
       onTransfer: ({
         required String fromWarehouseId,
         required String toWarehouseId,
         required Map<String, int> quantitiesByProductCode,
-      }) {
-        return _warehousesController.transferInventory(
+      }) async {
+        return controller.transferInventory(
           fromWarehouseId: fromWarehouseId,
           toWarehouseId: toWarehouseId,
           quantitiesByProductCode: quantitiesByProductCode,
         );
       },
     );
-    if (!mounted || !transferred) return;
+    if (!mounted ||
+        !transferred ||
+        !identical(controller, _warehousesController)) {
+      return;
+    }
     AppToast.showInfo(context, 'تم تنفيذ النقل المخزني مؤقتاً');
   }
 
@@ -320,6 +401,10 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
             hasVisibleWarehouses && selectedVisibleIndex != 0;
         final canMoveToNextOrLast =
             hasVisibleWarehouses && selectedVisibleIndex >= 0;
+        final dataState = _warehousesController.state.dataState;
+        final showEditor = dataState.status == AppDataStatus.ready ||
+            (dataState.status == AppDataStatus.empty &&
+                _showEditorWhenEmpty);
 
         return PopScope(
           canPop: !_hasUnsavedChanges,
@@ -342,8 +427,9 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
                     : null
                 : _save,
             body: Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Column(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: showEditor
+                  ? Column(
               children: [
                 WarehouseForm(
                   key: _formKey,
@@ -466,7 +552,27 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
                   ),
                 ),
               ],
-            ),
+                    )
+                  : AppDataStateView<List<Warehouse>>(
+                      state: dataState,
+                      dataBuilder: (_, __) => const SizedBox.shrink(),
+                      loadingStateKey:
+                          const Key('warehousesLoadingState'),
+                      emptyStateKey: const Key('warehousesEmptyState'),
+                      missingReferenceStateKey:
+                          const Key('warehousesMissingReferenceState'),
+                      errorStateKey: const Key('warehousesErrorState'),
+                      emptyActionLabel: 'إضافة مخزن',
+                      onEmptyAction: () {
+                        setState(() {
+                          _showEditorWhenEmpty = true;
+                          _setNewForm();
+                        });
+                      },
+                      missingReferenceActionLabel: 'إعادة المحاولة',
+                      onMissingReferenceAction: _loadWarehouses,
+                      onRetry: _loadWarehouses,
+                    ),
             ),
           ),
         );
@@ -480,3 +586,8 @@ typedef _WarehouseFormSnapshot = ({
   String location,
   String notes,
 });
+
+String _stateErrorMessage(StateError error) {
+  final message = error.message;
+  return message is String ? message : error.toString();
+}

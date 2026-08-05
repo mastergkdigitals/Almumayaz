@@ -1,4 +1,5 @@
 import 'package:erp/app/app.dart';
+import 'package:erp/core/app_state/app_repositories.dart';
 import 'package:erp/core/design/app_design_system.dart';
 import 'package:erp/features/cashbox/domain/cashbox_voucher.dart';
 import 'package:erp/features/cashbox/presentation/cashbox_controller.dart';
@@ -7,9 +8,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('filters and navigates temporary cashbox vouchers', () {
-    final controller = CashboxController();
+  test('filters and navigates repository cashbox vouchers', () async {
+    final repositories = AppRepositories.demo();
+    final controller = CashboxController(
+      repository: repositories.cashbox,
+      settingsRepository: repositories.businessSettings,
+    );
     addTearDown(controller.dispose);
+    await controller.load();
 
     expect(controller.state.vouchers, hasLength(6));
 
@@ -31,89 +37,58 @@ void main() {
     expect(controller.selectedVoucher, isNull);
   });
 
-  test('recalculates demo summaries and account balances after mutations', () {
-    final first = CashboxVoucher(
-      id: 'v-1',
-      number: 1,
-      createdAt: DateTime(2026, 7, 27, 8),
-      type: CashboxVoucherType.receipt,
-      mainAccountId: 'parties',
-      mainAccountLabel: 'الأطراف',
-      subaccountId: 'party-1',
-      subaccountLabel: 'زبون',
-      exchangeRate: 1310,
-      amountIqd: 100,
-      amountUsd: 0,
-      balanceBeforeIqd: 1000,
-      balanceAfterIqd: 900,
-      balanceBeforeUsd: 0,
-      balanceAfterUsd: 0,
-      notes: '',
-    );
-    final second = first.copyWith(
-      createdAt: DateTime(2026, 7, 27, 9),
-      type: CashboxVoucherType.payment,
-      amountIqd: 40,
-    );
+  test('recalculates and persists cashbox balances after mutations', () async {
+    final repositories = AppRepositories.demo();
     final controller = CashboxController(
-      initialVouchers: [
-        first,
-        CashboxVoucher(
-          id: 'v-2',
-          number: 2,
-          createdAt: second.createdAt,
-          type: second.type,
-          mainAccountId: second.mainAccountId,
-          mainAccountLabel: second.mainAccountLabel,
-          subaccountId: second.subaccountId,
-          subaccountLabel: second.subaccountLabel,
-          exchangeRate: second.exchangeRate,
-          amountIqd: second.amountIqd,
-          amountUsd: second.amountUsd,
-          balanceBeforeIqd: 900,
-          balanceAfterIqd: 940,
-          balanceBeforeUsd: 0,
-          balanceAfterUsd: 0,
-          notes: '',
-        ),
-      ],
+      repository: repositories.cashbox,
+      settingsRepository: repositories.businessSettings,
     );
     addTearDown(controller.dispose);
+    await controller.load();
 
-    expect(controller.summary.todayReceiptIqd, 100);
-    expect(controller.summary.todayPaymentIqd, 40);
-    expect(controller.accountBalance('party-1').iqd, 940);
+    expect(controller.state.vouchers, hasLength(6));
+    expect(controller.summary.todayReceiptIqd, 750000);
+    expect(controller.summary.todayPaymentIqd, 125000);
 
-    controller.select('v-1');
-    controller.update(first.copyWith(amountIqd: 250));
-    expect(controller.accountBalance('party-1').iqd, 790);
+    controller.select('cashbox-003');
+    final third = controller.selectedVoucher!;
+    expect(controller.accountBalance(third.subaccountId).usd, -800);
+    await controller.update(third.copyWith(amountUsd: 500));
+    expect(controller.accountBalance(third.subaccountId).usd, -700);
 
-    controller.select('v-2');
-    controller.deleteSelected();
-    expect(controller.accountBalance('party-1').iqd, 750);
-    expect(controller.summary.todayPaymentIqd, 0);
+    await controller.deleteSelected();
+    expect(controller.accountBalance(third.subaccountId).usd, -1200);
 
-    controller.add(
+    await controller.add(
       CashboxVoucher(
-        id: 'v-3',
-        number: 3,
+        id: 'cashbox-local',
+        number: controller.nextNumber,
         createdAt: DateTime(2026, 7, 27, 10),
         type: CashboxVoucherType.payment,
-        mainAccountId: 'parties',
-        mainAccountLabel: 'الأطراف',
-        subaccountId: 'party-1',
-        subaccountLabel: 'زبون',
+        mainAccountId: third.mainAccountId,
+        mainAccountLabel: third.mainAccountLabel,
+        subaccountId: third.subaccountId,
+        subaccountLabel: third.subaccountLabel,
         exchangeRate: 1310,
-        amountIqd: 10,
-        amountUsd: 0,
-        balanceBeforeIqd: 0,
-        balanceAfterIqd: 0,
-        balanceBeforeUsd: 0,
-        balanceAfterUsd: 0,
+        amountIqd: 0,
+        amountUsd: 10,
+        balanceBeforeIqd: third.balanceBeforeIqd,
+        balanceAfterIqd: third.balanceBeforeIqd,
+        balanceBeforeUsd: -1200,
+        balanceAfterUsd: -1190,
         notes: '',
       ),
     );
-    expect(controller.accountBalance('party-1').iqd, 760);
+    expect(controller.accountBalance(third.subaccountId).usd, -1190);
+
+    final reopened = CashboxController(
+      repository: repositories.cashbox,
+      settingsRepository: repositories.businessSettings,
+    );
+    addTearDown(reopened.dispose);
+    await reopened.load();
+    expect(reopened.state.vouchers, hasLength(6));
+    expect(reopened.accountBalance(third.subaccountId).usd, -1190);
   });
 
   testWidgets('opens Cashbox with the old structure and shared controls',
@@ -203,14 +178,14 @@ void main() {
         tester,
         find.byKey(const Key('cashboxMainAccountField')),
       ).controller.text,
-      'الأطراف',
+      'الصندوق الرئيسي',
     );
     expect(
       _editableText(
         tester,
         find.byKey(const Key('cashboxSubaccountField')),
       ).controller.text,
-      '1 - شركة النخيل للتجارة',
+      '1 - النقدية اليومية',
     );
     expect(find.byKey(const Key('cashboxAmountIqdField')), findsOneWidget);
     expect(find.byKey(const Key('cashboxAmountUsdField')), findsOneWidget);
@@ -381,7 +356,7 @@ void main() {
         tester,
         find.byKey(const Key('cashboxSubaccountField')),
       ).controller.text,
-      'نقل',
+      '1 - نقل',
     );
   });
 
