@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import '../app_formatters.dart';
 import '../app_tokens.dart';
 import 'app_button.dart';
+import 'app_autocomplete_field.dart';
 import 'app_dropdown_field.dart';
 import 'app_invoice_field_table.dart';
+import 'app_invoice_item_option.dart';
 import 'app_number_input_formatters.dart';
 import 'app_table.dart';
 import 'app_text_fields.dart';
@@ -31,6 +33,8 @@ const _salesInvoiceTableColumns = <AppInvoiceFieldColumn>[
 
 class AppSalesInvoiceTableRowData {
   const AppSalesInvoiceTableRowData({
+    this.lineId,
+    this.itemId,
     this.code = '',
     this.name = '',
     this.warehouse = 'الرئيسي',
@@ -41,6 +45,8 @@ class AppSalesInvoiceTableRowData {
     this.total = '0',
   });
 
+  final String? lineId;
+  final String? itemId;
   final String code;
   final String name;
   final String warehouse;
@@ -77,6 +83,8 @@ class AppSalesInvoiceTableRowData {
     String currencyCode,
   ) {
     return AppSalesInvoiceTableRowData(
+      lineId: lineId,
+      itemId: itemId,
       code: code,
       name: name,
       warehouse: warehouse,
@@ -98,6 +106,8 @@ class _SalesInvoiceTemplateRow {
     required int index,
     required AppSalesInvoiceTableRowData data,
   })  : indexController = TextEditingController(text: '$index'),
+        lineId = data.lineId,
+        itemId = data.itemId,
         codeController = TextEditingController(text: data.code),
         nameController = TextEditingController(text: data.name),
         quantityController = TextEditingController(text: data.quantity),
@@ -109,6 +119,8 @@ class _SalesInvoiceTemplateRow {
         warehouse = data.warehouse;
 
   final String id;
+  final String? lineId;
+  String? itemId;
   final TextEditingController indexController;
   final TextEditingController codeController;
   final TextEditingController nameController;
@@ -117,6 +129,9 @@ class _SalesInvoiceTemplateRow {
   final TextEditingController discountController;
   final TextEditingController priceAfterDiscountController;
   final TextEditingController totalController;
+  final codeFocusNode = FocusNode();
+  final nameFocusNode = FocusNode();
+  final quantityFocusNode = FocusNode();
   String warehouse;
 
   void setIndex(int value) {
@@ -132,6 +147,9 @@ class _SalesInvoiceTemplateRow {
     discountController.dispose();
     priceAfterDiscountController.dispose();
     totalController.dispose();
+    codeFocusNode.dispose();
+    nameFocusNode.dispose();
+    quantityFocusNode.dispose();
   }
 }
 
@@ -144,6 +162,7 @@ class AppSalesInvoiceTableTemplate extends StatefulWidget {
     this.summaryDiscount = '0',
     this.summaryTotal = '0',
     this.currencyCode = 'IQD',
+    this.itemOptions = const [],
     this.onRowsChanged,
   });
 
@@ -153,6 +172,7 @@ class AppSalesInvoiceTableTemplate extends StatefulWidget {
   final String summaryDiscount;
   final String summaryTotal;
   final String currencyCode;
+  final List<AppInvoiceItemOption> itemOptions;
   final ValueChanged<List<AppSalesInvoiceTableRowData>>? onRowsChanged;
 
   @override
@@ -262,6 +282,26 @@ class _AppSalesInvoiceTableTemplateState
     _notifyRowsChanged();
   }
 
+  void _changeItemText(_SalesInvoiceTemplateRow row) {
+    row.itemId = null;
+    _changeRowText();
+  }
+
+  void _selectItem(
+    _SalesInvoiceTemplateRow row,
+    AppInvoiceItemOption option,
+  ) {
+    setState(() {
+      row.itemId = option.id;
+      row.codeController.text = option.code;
+      row.nameController.text = option.name;
+    });
+    _notifyRowsChanged();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) row.quantityFocusNode.requestFocus();
+    });
+  }
+
   bool _canAddRow(_SalesInvoiceTemplateRow row) {
     return AppSalesInvoiceTableRowData(
       code: row.codeController.text,
@@ -285,6 +325,8 @@ class _AppSalesInvoiceTableTemplateState
       List<AppSalesInvoiceTableRowData>.unmodifiable(
         _rows.map(
           (row) => AppSalesInvoiceTableRowData(
+            lineId: row.lineId,
+            itemId: row.itemId,
             code: row.codeController.text,
             name: row.nameController.text,
             warehouse: row.warehouse,
@@ -362,27 +404,41 @@ class _AppSalesInvoiceTableTemplateState
         showLabel: false,
         borderRadius: AppRadii.sm,
       ),
-      AppTextField(
+      AppAutocompleteField<AppInvoiceItemOption>(
         fieldKey: Key(
           'appSalesInvoiceTemplateCodeField-${row.id}',
         ),
         controller: row.codeController,
         label: 'رمز المادة',
+        options: widget.itemOptions,
+        displayStringForOption: (option) => option.code,
+        searchTermsForOption: (option) => [option.code, option.name],
+        optionSubtitle: (option) => option.name,
+        onSelected: (option) => _selectItem(row, option),
         accentColor: AppModuleColors.sales,
-        textInputAction: TextInputAction.next,
-        onChanged: (_) => _changeRowText(),
+        focusNode: row.codeFocusNode,
+        icon: null,
+        textDirection: TextDirection.rtl,
+        onChanged: (_) => _changeItemText(row),
         showLabel: false,
         borderRadius: AppRadii.sm,
       ),
-      AppTextField(
+      AppAutocompleteField<AppInvoiceItemOption>(
         fieldKey: Key(
           'appSalesInvoiceTemplateNameField-${row.id}',
         ),
         controller: row.nameController,
         label: 'اسم المادة',
+        options: widget.itemOptions,
+        displayStringForOption: (option) => option.name,
+        searchTermsForOption: (option) => [option.code, option.name],
+        optionSubtitle: (option) => option.code,
+        onSelected: (option) => _selectItem(row, option),
         accentColor: AppModuleColors.sales,
-        textInputAction: TextInputAction.next,
-        onChanged: (_) => _changeRowText(),
+        focusNode: row.nameFocusNode,
+        icon: null,
+        textDirection: TextDirection.rtl,
+        onChanged: (_) => _changeItemText(row),
         showLabel: false,
         borderRadius: AppRadii.sm,
       ),
@@ -406,6 +462,7 @@ class _AppSalesInvoiceTableTemplateState
           'appSalesInvoiceTemplateQuantityField-${row.id}',
         ),
         controller: row.quantityController,
+        focusNode: row.quantityFocusNode,
         label: 'الكمية',
         accentColor: AppModuleColors.sales,
         textAlign: TextAlign.center,

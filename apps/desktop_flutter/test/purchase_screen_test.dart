@@ -1,5 +1,8 @@
 import 'package:erp/app/app.dart';
+import 'package:erp/core/app_state/app_store.dart';
 import 'package:erp/core/design/app_design_system.dart';
+import 'package:erp/core/domain/business_values.dart';
+import 'package:erp/features/settings/domain/settings_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -132,6 +135,21 @@ void main() {
       );
       expect(textField.textDirection, TextDirection.rtl);
       expect(textField.textAlign, TextAlign.right);
+    }
+    for (final key in const [
+      'purchaseExchangeRateField',
+      'purchaseExpensesField',
+      'purchaseInvoiceDiscountField',
+      'purchaseDiscountPercentageField',
+      'purchasePaidField',
+    ]) {
+      expect(
+        find.ancestor(
+          of: find.byKey(Key(key)),
+          matching: find.byType(AppMoneyField),
+        ),
+        findsOneWidget,
+      );
     }
 
     final exchangeRate = _textField(tester, 'purchaseExchangeRateField');
@@ -545,6 +563,15 @@ void main() {
 
     await tester.tap(find.byKey(const Key('purchaseSaveButton')));
     await tester.pump();
+    expect(find.text('اختر مجهزاً موجوداً من القائمة'), findsOneWidget);
+    await _finishToast(tester);
+    await tester.enterText(
+      find.byKey(const Key('purchaseSupplierNameField')),
+      'مجهز الفرات',
+    );
+
+    await tester.tap(find.byKey(const Key('purchaseSaveButton')));
+    await tester.pump();
     expect(find.text('أضف مادة واحدة مكتملة على الأقل'), findsOneWidget);
     await _finishToast(tester);
 
@@ -563,6 +590,19 @@ void main() {
     );
     await _finishToast(tester);
 
+    await tester.enterText(
+      _invoiceFieldByPrefix('appPurchaseInvoiceTemplateNameField-'),
+      'مادة اختبار',
+    );
+    await tester.enterText(
+      _invoiceFieldByPrefix('appPurchaseInvoiceTemplateQuantityField-'),
+      '1',
+    );
+    await tester.tap(find.byKey(const Key('purchaseSaveButton')));
+    await tester.pump();
+    expect(find.text('اختر مادة موجودة لكل سطر'), findsOneWidget);
+    await _finishToast(tester);
+
     await _completeCurrentPurchaseRow(tester);
     final addButton = tester.widget<AppTableActionButton>(
       find.byKey(const Key('appPurchaseInvoiceTemplateAddButton')),
@@ -576,7 +616,7 @@ void main() {
     _expectToast(
       tester,
       color: AppColors.blue,
-      message: 'تم حفظ قائمة الشراء مؤقتاً',
+      message: 'تم حفظ قائمة الشراء',
     );
     await _finishToast(tester);
 
@@ -584,7 +624,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const Key('purchaseRecordSearchField')),
-      'مجهز اختبار',
+      '104',
     );
     await tester.pump();
     expect(find.textContaining('1 مواد'), findsOneWidget);
@@ -643,6 +683,62 @@ void main() {
     expect(_fieldValue(tester, 'purchasePaidField'), '90,000');
   });
 
+  testWidgets(
+      'uses Purchase defaults and keeps repository edits after reopen',
+      (tester) async {
+    final store = AppStore.demo();
+    final defaults =
+        await store.repositories.businessSettings.loadOperationalDefaults();
+    await store.repositories.businessSettings.saveOperationalDefaults(
+      OperationalDefaults(
+        purchases: PurchaseDefaults(
+          warehouseId: EntityId('warehouse-004'),
+          purchaseKind: PurchaseKind.imported,
+          paymentKind: PaymentKind.credit,
+          currency: AppCurrency.usd,
+        ),
+        sales: defaults.sales,
+        cashbox: defaults.cashbox,
+      ),
+    );
+
+    await _openPurchaseScreen(tester, store: store);
+    await _openNewPurchaseForm(tester);
+
+    expect(_dropdown(tester, 'purchaseWarehouseField').value, 'المنصور');
+    expect(_dropdown(tester, 'purchaseTypeField').value, 'إستيراد');
+    expect(_dropdown(tester, 'purchasePaymentTypeField').value, 'آجل');
+    expect(_dropdown(tester, 'purchaseCurrencyField').value, 'USD');
+    expect(_fieldValue(tester, 'purchaseExchangeRateField'), '1,310');
+
+    await tester.tap(find.byKey(const Key('purchaseFirstButton')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('purchaseNotesField')),
+      'تعديل محفوظ بعد إعادة الفتح',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('purchaseUpdateButton')));
+    await tester.pump();
+    _expectToast(
+      tester,
+      color: AppColors.green,
+      message: 'تم تحديث قائمة الشراء',
+    );
+    await _finishToast(tester);
+
+    await tester.tap(find.byKey(const Key('appScreenBackButton')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('dashboardCard_purchases')));
+    await tester.pumpAndSettle();
+
+    expect(_fieldValue(tester, 'purchaseInvoiceNumberField'), '101');
+    expect(
+      _fieldValue(tester, 'purchaseNotesField'),
+      'تعديل محفوظ بعد إعادة الفتح',
+    );
+  });
+
   testWidgets('shows and filters purchase supplier suggestions',
       (tester) async {
     await _openPurchaseScreen(tester);
@@ -682,7 +778,7 @@ void main() {
     _expectToast(
       tester,
       color: AppColors.green,
-      message: 'تم تحديث قائمة الشراء مؤقتاً',
+      message: 'تم تحديث قائمة الشراء',
     );
     await _finishToast(tester);
 
@@ -709,7 +805,7 @@ void main() {
 
     await tester.enterText(
       find.byKey(const Key('purchaseSupplierNameField')),
-      'مجهز تجريبي',
+      'مجهز الفرات',
     );
     await _completeCurrentPurchaseRow(tester);
     await tester.pump();
@@ -718,7 +814,7 @@ void main() {
     _expectToast(
       tester,
       color: AppColors.blue,
-      message: 'تم حفظ قائمة الشراء مؤقتاً',
+      message: 'تم حفظ قائمة الشراء',
     );
     await _finishToast(tester);
 
@@ -726,7 +822,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const Key('purchaseRecordSearchField')),
-      'مجهز تجريبي',
+      '104',
     );
     await tester.pump();
     expect(find.textContaining('1 مواد'), findsOneWidget);
@@ -744,7 +840,7 @@ void main() {
     _expectToast(
       tester,
       color: AppColors.red,
-      message: 'تم حذف قائمة الشراء مؤقتاً',
+      message: 'تم حذف قائمة الشراء',
     );
   });
 
@@ -838,11 +934,11 @@ Future<void> _openNewPurchaseForm(WidgetTester tester) async {
 Future<void> _completeCurrentPurchaseRow(WidgetTester tester) async {
   await tester.enterText(
     _invoiceFieldByPrefix('appPurchaseInvoiceTemplateCodeField-'),
-    'P-TEST',
+    'P-1001',
   );
   await tester.enterText(
     _invoiceFieldByPrefix('appPurchaseInvoiceTemplateNameField-'),
-    'مادة اختبار',
+    'طابعة ليزر',
   );
   await tester.enterText(
     _invoiceFieldByPrefix('appPurchaseInvoiceTemplateQuantityField-'),
@@ -915,11 +1011,14 @@ Future<void> _finishToast(WidgetTester tester) async {
   await tester.pump(const Duration(milliseconds: 300));
 }
 
-Future<void> _openPurchaseScreen(WidgetTester tester) async {
+Future<void> _openPurchaseScreen(
+  WidgetTester tester, {
+  AppStore? store,
+}) async {
   await tester.binding.setSurfaceSize(const Size(1280, 720));
   addTearDown(() => tester.binding.setSurfaceSize(null));
 
-  await tester.pumpWidget(const AlmumayazApp());
+  await tester.pumpWidget(AlmumayazApp(store: store));
   await tester.enterText(find.byKey(const Key('usernameField')), 'admin');
   await tester.enterText(find.byKey(const Key('passwordField')), 'password');
   await tester.tap(find.byKey(const Key('loginButton')));

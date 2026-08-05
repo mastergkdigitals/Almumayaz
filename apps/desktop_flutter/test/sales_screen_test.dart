@@ -1,5 +1,8 @@
 import 'package:erp/app/app.dart';
+import 'package:erp/core/app_state/app_store.dart';
 import 'package:erp/core/design/app_design_system.dart';
+import 'package:erp/core/domain/business_values.dart';
+import 'package:erp/features/settings/domain/settings_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -111,6 +114,20 @@ void main() {
         textField.textAlign,
         TextAlign.right,
         reason: '$key must align its value to the RTL side.',
+      );
+    }
+    for (final key in const [
+      'salesExchangeRateField',
+      'salesInvoiceDiscountField',
+      'salesDiscountPercentageField',
+      'salesReceivedField',
+    ]) {
+      expect(
+        find.ancestor(
+          of: find.byKey(Key(key)),
+          matching: find.byType(AppMoneyField),
+        ),
+        findsOneWidget,
       );
     }
 
@@ -280,6 +297,59 @@ void main() {
     );
   });
 
+  testWidgets('uses Sales defaults and keeps repository edits after reopen',
+      (tester) async {
+    final store = AppStore.demo();
+    final defaults =
+        await store.repositories.businessSettings.loadOperationalDefaults();
+    await store.repositories.businessSettings.saveOperationalDefaults(
+      OperationalDefaults(
+        purchases: defaults.purchases,
+        sales: SalesDefaults(
+          warehouseId: EntityId('warehouse-004'),
+          saleKind: SaleKind.installments,
+          currency: AppCurrency.usd,
+        ),
+        cashbox: defaults.cashbox,
+      ),
+    );
+
+    await _openSalesScreen(tester, store: store);
+    await _openNewSalesForm(tester);
+
+    expect(_dropdown(tester, 'salesWarehouseField').value, 'المنصور');
+    expect(_dropdown(tester, 'salesTypeField').value, 'أقساط');
+    expect(_dropdown(tester, 'salesCurrencyField').value, 'USD');
+    expect(_fieldValue(tester, 'salesExchangeRateField'), '1,310');
+
+    await tester.tap(find.byKey(const Key('salesFirstButton')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('salesNotesField')),
+      'تعديل محفوظ بعد إعادة الفتح',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('salesUpdateButton')));
+    await tester.pump();
+    _expectToast(
+      tester,
+      color: AppColors.green,
+      message: 'تم تحديث قائمة البيع',
+    );
+    await _finishToast(tester);
+
+    await tester.tap(find.byKey(const Key('appScreenBackButton')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('dashboardCard_sales')));
+    await tester.pumpAndSettle();
+
+    expect(_fieldValue(tester, 'salesInvoiceNumberField'), '101');
+    expect(
+      _fieldValue(tester, 'salesNotesField'),
+      'تعديل محفوظ بعد إعادة الفتح',
+    );
+  });
+
   testWidgets('shows and filters Sales customer suggestions',
       (tester) async {
     await _openSalesScreen(tester);
@@ -404,6 +474,15 @@ void main() {
 
     await tester.tap(find.byKey(const Key('salesSaveButton')));
     await tester.pump();
+    expect(find.text('اختر زبوناً موجوداً من القائمة'), findsOneWidget);
+    await _finishToast(tester);
+    await tester.enterText(
+      find.byKey(const Key('salesCustomerNameField')),
+      'علي حسن',
+    );
+
+    await tester.tap(find.byKey(const Key('salesSaveButton')));
+    await tester.pump();
     expect(find.text('أضف مادة واحدة مكتملة على الأقل'), findsOneWidget);
     await _finishToast(tester);
 
@@ -422,6 +501,19 @@ void main() {
     );
     await _finishToast(tester);
 
+    await tester.enterText(
+      _invoiceFieldByPrefix('appSalesInvoiceTemplateNameField-'),
+      'مادة اختبار',
+    );
+    await tester.enterText(
+      _invoiceFieldByPrefix('appSalesInvoiceTemplateQuantityField-'),
+      '1',
+    );
+    await tester.tap(find.byKey(const Key('salesSaveButton')));
+    await tester.pump();
+    expect(find.text('اختر مادة موجودة لكل سطر'), findsOneWidget);
+    await _finishToast(tester);
+
     await _completeCurrentSalesRow(tester);
     final addButton = tester.widget<AppTableActionButton>(
       find.byKey(const Key('appSalesInvoiceTemplateAddButton')),
@@ -435,7 +527,7 @@ void main() {
     _expectToast(
       tester,
       color: AppColors.blue,
-      message: 'تم حفظ قائمة البيع مؤقتاً',
+      message: 'تم حفظ قائمة البيع',
     );
     await _finishToast(tester);
 
@@ -443,7 +535,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const Key('salesRecordSearchField')),
-      'زبون اختبار',
+      '104',
     );
     await tester.pump();
     expect(find.textContaining('1 مواد'), findsOneWidget);
@@ -497,7 +589,7 @@ void main() {
     _expectToast(
       tester,
       color: AppColors.green,
-      message: 'تم تحديث قائمة البيع مؤقتاً',
+      message: 'تم تحديث قائمة البيع',
     );
     await _finishToast(tester);
 
@@ -524,7 +616,7 @@ void main() {
 
     await tester.enterText(
       find.byKey(const Key('salesCustomerNameField')),
-      'زبون تجريبي',
+      'علي حسن',
     );
     await _completeCurrentSalesRow(tester);
     await tester.pump();
@@ -533,7 +625,7 @@ void main() {
     _expectToast(
       tester,
       color: AppColors.blue,
-      message: 'تم حفظ قائمة البيع مؤقتاً',
+      message: 'تم حفظ قائمة البيع',
     );
     expect(_actionButton(tester, 'salesDeleteButton').onPressed, isNotNull);
     await _finishToast(tester);
@@ -542,7 +634,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const Key('salesRecordSearchField')),
-      'زبون تجريبي',
+      '104',
     );
     await tester.pump();
     expect(find.textContaining('1 مواد'), findsOneWidget);
@@ -561,7 +653,7 @@ void main() {
     _expectToast(
       tester,
       color: AppColors.red,
-      message: 'تم حذف قائمة البيع مؤقتاً',
+      message: 'تم حذف قائمة البيع',
     );
     expect(_actionButton(tester, 'salesDeleteButton').onPressed, isNull);
   });
@@ -979,11 +1071,11 @@ Future<void> _openNewSalesForm(WidgetTester tester) async {
 Future<void> _completeCurrentSalesRow(WidgetTester tester) async {
   await tester.enterText(
     _invoiceFieldByPrefix('appSalesInvoiceTemplateCodeField-'),
-    'S-TEST',
+    'P-1001',
   );
   await tester.enterText(
     _invoiceFieldByPrefix('appSalesInvoiceTemplateNameField-'),
-    'مادة اختبار',
+    'طابعة ليزر',
   );
   await tester.enterText(
     _invoiceFieldByPrefix('appSalesInvoiceTemplateQuantityField-'),
@@ -1057,11 +1149,14 @@ void _expectRightToLeftOrder(
   }
 }
 
-Future<void> _openSalesScreen(WidgetTester tester) async {
+Future<void> _openSalesScreen(
+  WidgetTester tester, {
+  AppStore? store,
+}) async {
   await tester.binding.setSurfaceSize(const Size(1280, 720));
   addTearDown(() => tester.binding.setSurfaceSize(null));
 
-  await tester.pumpWidget(const AlmumayazApp());
+  await tester.pumpWidget(AlmumayazApp(store: store));
   await tester.enterText(find.byKey(const Key('usernameField')), 'admin');
   await tester.enterText(find.byKey(const Key('passwordField')), 'password');
   await tester.tap(find.byKey(const Key('loginButton')));

@@ -10,11 +10,15 @@ class SalesInvoiceLine {
     required this.quantity,
     required this.unitPrice,
     required this.discountPerUnit,
+    this.itemCodeSnapshot = '',
+    this.itemNameSnapshot = '',
+    this.warehouseNameSnapshot = '',
   }) {
     if (quantity.isZero) {
       throw ArgumentError.value(quantity, 'quantity', 'Must be positive');
     }
-    if (discountPerUnit.currency != unitPrice.currency ||
+    if (unitPrice.isNegative ||
+        discountPerUnit.currency != unitPrice.currency ||
         discountPerUnit.isNegative ||
         discountPerUnit.compareTo(unitPrice) > 0) {
       throw ArgumentError.value(
@@ -31,6 +35,12 @@ class SalesInvoiceLine {
   final WholeQuantity quantity;
   final Money unitPrice;
   final Money discountPerUnit;
+
+  /// Document snapshots keep old invoices readable after master-data labels
+  /// change. References remain the canonical source of identity.
+  final String itemCodeSnapshot;
+  final String itemNameSnapshot;
+  final String warehouseNameSnapshot;
 
   Money get netUnitPrice => unitPrice - discountPerUnit;
 
@@ -51,6 +61,9 @@ class SalesInvoice {
     required Iterable<SalesInvoiceLine> lines,
     required this.invoiceDiscount,
     required this.received,
+    this.customerNameSnapshot = '',
+    this.searchDetailsSnapshot = '',
+    this.balanceAfterInvoice,
     this.driverName = '',
     this.notes = '',
   }) : lines = List.unmodifiable(lines) {
@@ -79,6 +92,21 @@ class SalesInvoice {
         received.compareTo(total) > 0) {
       throw ArgumentError.value(received, 'received', 'Invalid received value');
     }
+    if (settlementKind == SalesSettlementKind.cash && received != total) {
+      throw ArgumentError.value(
+        received,
+        'received',
+        'Cash invoices must be received in full',
+      );
+    }
+    if (balanceAfterInvoice != null &&
+        balanceAfterInvoice!.currency != currency) {
+      throw ArgumentError.value(
+        balanceAfterInvoice,
+        'balanceAfterInvoice',
+        'Invalid balance currency',
+      );
+    }
   }
 
   final EntityId id;
@@ -95,6 +123,9 @@ class SalesInvoice {
   final List<SalesInvoiceLine> lines;
   final Money invoiceDiscount;
   final Money received;
+  final String customerNameSnapshot;
+  final String searchDetailsSnapshot;
+  final Money? balanceAfterInvoice;
   final String driverName;
   final String notes;
 

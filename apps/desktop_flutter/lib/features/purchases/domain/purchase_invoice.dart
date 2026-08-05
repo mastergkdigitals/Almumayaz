@@ -14,11 +14,16 @@ class PurchaseInvoiceLine {
     required this.purchasePrice,
     required this.lineDiscount,
     required this.salePrice,
+    this.itemCodeSnapshot = '',
+    this.itemNameSnapshot = '',
+    this.warehouseNameSnapshot = '',
   }) {
     if (quantity.isZero) {
       throw ArgumentError.value(quantity, 'quantity', 'Must be positive');
     }
-    if (lineDiscount.currency != purchasePrice.currency ||
+    if (purchasePrice.isNegative ||
+        salePrice.isNegative ||
+        lineDiscount.currency != purchasePrice.currency ||
         salePrice.currency != purchasePrice.currency ||
         lineDiscount.isNegative) {
       throw ArgumentError('Purchase line values are invalid');
@@ -33,6 +38,9 @@ class PurchaseInvoiceLine {
   final Money purchasePrice;
   final Money lineDiscount;
   final Money salePrice;
+  final String itemCodeSnapshot;
+  final String itemNameSnapshot;
+  final String warehouseNameSnapshot;
 
   Money get grossTotal => purchasePrice * quantity.value;
 
@@ -55,6 +63,9 @@ class PurchaseInvoice {
     required this.expenses,
     required this.invoiceDiscount,
     required this.paid,
+    this.supplierNameSnapshot = '',
+    this.searchDetailsSnapshot = '',
+    this.balanceAfterInvoice,
     this.notes = '',
   }) : lines = List.unmodifiable(lines) {
     if (documentNumber < 1) {
@@ -74,7 +85,8 @@ class PurchaseInvoice {
     }
     if (expenses.currency != currency ||
         invoiceDiscount.currency != currency ||
-        expenses.isNegative) {
+        expenses.isNegative ||
+        invoiceDiscount.isNegative) {
       throw ArgumentError('Purchase adjustments are invalid');
     }
     if (paid.currency != currency) {
@@ -85,6 +97,21 @@ class PurchaseInvoice {
         : paid.isNegative || paid.compareTo(total) > 0;
     if (invalidPaid) {
       throw ArgumentError.value(paid, 'paid', 'Invalid paid value');
+    }
+    if (settlementKind == PurchaseSettlementKind.cash && paid != total) {
+      throw ArgumentError.value(
+        paid,
+        'paid',
+        'Cash invoices must be paid in full',
+      );
+    }
+    if (balanceAfterInvoice != null &&
+        balanceAfterInvoice!.currency != currency) {
+      throw ArgumentError.value(
+        balanceAfterInvoice,
+        'balanceAfterInvoice',
+        'Invalid balance currency',
+      );
     }
   }
 
@@ -104,6 +131,9 @@ class PurchaseInvoice {
   final Money expenses;
   final Money invoiceDiscount;
   final Money paid;
+  final String supplierNameSnapshot;
+  final String searchDetailsSnapshot;
+  final Money? balanceAfterInvoice;
   final String notes;
 
   Money get subtotal => lines.fold(

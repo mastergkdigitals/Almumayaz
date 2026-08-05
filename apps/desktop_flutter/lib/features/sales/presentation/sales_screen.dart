@@ -2,10 +2,19 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/app_state/app_store.dart';
+import '../../../core/application/invoice_editor_coordinator.dart';
+import '../../../core/data/app_repository.dart';
 import '../../../core/design/app_design_system.dart';
+import '../../../core/domain/business_values.dart';
 import '../../../core/printing/document_output_service.dart';
 import '../../../core/services/service_failure.dart';
+import '../../items/domain/item.dart';
+import '../../parties/domain/party.dart';
+import '../../settings/domain/settings_models.dart';
+import '../../warehouses/domain/warehouse.dart';
 import '../application/installment_schedule_builder.dart';
+import '../domain/sales_invoice.dart';
 
 const _salesWarehouseOptions = <AppDropdownOption<String>>[
   AppDropdownOption(value: 'الرئيسي', label: 'الرئيسي'),
@@ -33,178 +42,10 @@ const _salesCustomerOptions = <String>[
   'علي حسن',
 ];
 
-final _demoSalesInvoices = <_DemoSalesInvoice>[
-  _DemoSalesInvoice(
-    id: '103',
-    dateTime: DateTime(2026, 7, 27, 10, 25),
-    warehouse: 'الرئيسي',
-    saleType: 'نقدي',
-    currency: 'IQD',
-    exchangeRate: '1,310',
-    customerName: 'أسواق دجلة',
-    notes: 'تسليم الطلب إلى فرع الكرادة',
-    driverName: 'مصطفى علي',
-    invoiceDiscount: '5,000',
-    discountPercentage: '0',
-    received: '250,000',
-    total: '310,000',
-    remaining: '60,000',
-    currentBalance: '120,000',
-    searchDetails: '27/07/2026 • 3 مواد',
-    searchTerms: const [
-      '103',
-      'أسواق دجلة',
-      'دفتر ملاحظات',
-      'قلم أزرق',
-      'حاسبة مكتبية',
-    ],
-    items: const [
-      AppSalesInvoiceTableRowData(
-        code: '1001',
-        name: 'دفتر ملاحظات',
-        warehouse: 'الرئيسي',
-        quantity: '4',
-        salePrice: '35,000',
-        priceAfterDiscount: '35,000',
-        total: '140,000',
-      ),
-      AppSalesInvoiceTableRowData(
-        code: '1002',
-        name: 'قلم أزرق',
-        warehouse: 'الرئيسي',
-        quantity: '10',
-        salePrice: '5,000',
-        priceAfterDiscount: '5,000',
-        total: '50,000',
-      ),
-      AppSalesInvoiceTableRowData(
-        code: '1003',
-        name: 'حاسبة مكتبية',
-        warehouse: 'الكرادة',
-        quantity: '1',
-        salePrice: '130,000',
-        discount: '5,000',
-        priceAfterDiscount: '125,000',
-        total: '125,000',
-      ),
-    ],
-    summaryQuantity: '15',
-    summaryDiscount: '5,000',
-    summaryTotal: '315,000',
-  ),
-  _DemoSalesInvoice(
-    id: '102',
-    dateTime: DateTime(2026, 7, 26, 12, 40),
-    warehouse: 'المنصور',
-    saleType: 'أقساط',
-    currency: 'USD',
-    exchangeRate: '1,310',
-    customerName: 'أحمد كريم',
-    notes: 'تسديد القسط الأول عند التسليم',
-    driverName: 'حيدر سالم',
-    invoiceDiscount: '0',
-    discountPercentage: '0',
-    received: '250',
-    total: '1,250',
-    remaining: '1,000',
-    currentBalance: '1,500',
-    searchDetails: '26/07/2026 • مادتان • أقساط',
-    searchTerms: const [
-      '102',
-      'أحمد كريم',
-      'طابعة حرارية',
-      'ماسح باركود',
-      'أقساط',
-      'دولار',
-    ],
-    items: const [
-      AppSalesInvoiceTableRowData(
-        code: '2001',
-        name: 'طابعة حرارية',
-        warehouse: 'المنصور',
-        quantity: '1',
-        salePrice: '900',
-        discount: '50',
-        priceAfterDiscount: '850',
-        total: '850',
-      ),
-      AppSalesInvoiceTableRowData(
-        code: '2002',
-        name: 'ماسح باركود',
-        warehouse: 'المنصور',
-        quantity: '2',
-        salePrice: '200',
-        priceAfterDiscount: '200',
-        total: '400',
-      ),
-    ],
-    summaryQuantity: '3',
-    summaryDiscount: '50',
-    summaryTotal: '1,250',
-  ),
-  _DemoSalesInvoice(
-    id: '101',
-    dateTime: DateTime(2026, 7, 25, 9, 15),
-    warehouse: 'الرصافة',
-    saleType: 'آجل',
-    currency: 'IQD',
-    exchangeRate: '1,310',
-    customerName: 'شركة النخيل للتجارة',
-    notes: 'تضاف إلى حساب الزبون',
-    driverName: 'كرار مهدي',
-    invoiceDiscount: '0',
-    discountPercentage: '0',
-    received: '0',
-    total: '177,000',
-    remaining: '177,000',
-    currentBalance: '625,000',
-    searchDetails: '25/07/2026 • 3 مواد • آجل',
-    searchTerms: const [
-      '101',
-      'شركة النخيل للتجارة',
-      'ورق طباعة',
-      'حبر طابعة',
-      'دباسة',
-      'آجل',
-    ],
-    items: const [
-      AppSalesInvoiceTableRowData(
-        code: '3001',
-        name: 'ورق طباعة',
-        warehouse: 'الرصافة',
-        quantity: '5',
-        salePrice: '12,000',
-        priceAfterDiscount: '12,000',
-        total: '60,000',
-      ),
-      AppSalesInvoiceTableRowData(
-        code: '3002',
-        name: 'حبر طابعة',
-        warehouse: 'الرصافة',
-        quantity: '2',
-        salePrice: '45,000',
-        priceAfterDiscount: '45,000',
-        total: '90,000',
-      ),
-      AppSalesInvoiceTableRowData(
-        code: '3003',
-        name: 'دباسة',
-        warehouse: 'الرئيسي',
-        quantity: '3',
-        salePrice: '10,000',
-        discount: '1,000',
-        priceAfterDiscount: '9,000',
-        total: '27,000',
-      ),
-    ],
-    summaryQuantity: '10',
-    summaryDiscount: '1,000',
-    summaryTotal: '177,000',
-  ),
-].reversed.toList(growable: false);
 
 class _DemoSalesInvoice {
   const _DemoSalesInvoice({
+    required this.source,
     required this.id,
     required this.dateTime,
     required this.warehouse,
@@ -228,6 +69,7 @@ class _DemoSalesInvoice {
     required this.summaryTotal,
   });
 
+  final SalesInvoice source;
   final String id;
   final DateTime dateTime;
   final String warehouse;
@@ -278,8 +120,8 @@ class _SalesScreenState extends State<SalesScreen> {
   final _remainingIqdController = TextEditingController(text: '0');
   final _currentBalanceIqdController = TextEditingController(text: '0');
 
-  late final List<_DemoSalesInvoice> _salesInvoices;
-  late DateTime _invoiceDateTime;
+  final List<_DemoSalesInvoice> _salesInvoices = [];
+  DateTime _invoiceDateTime = DateTime.now();
   _DemoSalesInvoice? _selectedInvoice;
   List<AppSalesInvoiceTableRowData> _activeItems = const [];
   var _warehouse = 'الرئيسي';
@@ -297,6 +139,24 @@ class _SalesScreenState extends State<SalesScreen> {
   var _hasUnsavedChanges = false;
   var _isDocumentActionRunning = false;
   Future<bool>? _pendingDiscardConfirmation;
+  AppStore? _store;
+  InvoiceEditorCoordinator<_DemoSalesInvoice>? _coordinator;
+  AppDataState<List<_DemoSalesInvoice>> _invoiceState =
+      const AppDataState.loading();
+  var _didStartLoading = false;
+  var _isRepositoryBusy = false;
+  var _customerOptions = _salesCustomerOptions;
+  var _warehouseOptions = _salesWarehouseOptions;
+  var _defaultWarehouse = 'الرئيسي';
+  var _defaultSaleType = 'نقدي';
+  var _defaultCurrency = 'IQD';
+  var _defaultExchangeRate = '1,310';
+  var _repositoryNextInvoiceNumber = 1;
+  final Map<String, EntityId> _customerIdsByName = {};
+  final Map<String, EntityId> _itemIdsByLabel = {};
+  final Set<EntityId> _knownItemIds = {};
+  final Map<String, EntityId> _warehouseIdsByLabel = {};
+  List<AppInvoiceItemOption> _itemOptions = const [];
 
   Iterable<TextEditingController> get _editableControllers => [
         _exchangeRateController,
@@ -315,12 +175,7 @@ class _SalesScreenState extends State<SalesScreen> {
   }
 
   int get _nextInvoiceNumber {
-    var highestNumber = 0;
-    for (final invoice in _salesInvoices) {
-      final number = int.tryParse(invoice.id) ?? 0;
-      if (number > highestNumber) highestNumber = number;
-    }
-    return highestNumber + 1;
+    return _repositoryNextInvoiceNumber;
   }
 
   List<AppSearchRecord<String>> get _salesSearchRecords => [
@@ -338,12 +193,293 @@ class _SalesScreenState extends State<SalesScreen> {
   @override
   void initState() {
     super.initState();
-    _salesInvoices = [..._demoSalesInvoices];
-    _loadInvoice(_salesInvoices.first);
+    _baseline = _currentSnapshot();
     for (final controller in _editableControllers) {
       controller.addListener(_refreshUnsavedState);
     }
   }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didStartLoading) return;
+    _didStartLoading = true;
+    _store = AppStoreScope.of(context, listen: false);
+    _coordinator = InvoiceEditorCoordinator<_DemoSalesInvoice>(
+      loadRecords: _loadRepositoryInvoices,
+    );
+    unawaited(_loadData());
+  }
+
+  Future<void> _loadData({
+    bool showLoading = true,
+    EntityId? selectEntityId,
+  }) async {
+    final coordinator = _coordinator;
+    if (coordinator == null) return;
+    if (showLoading && mounted) {
+      setState(() => _invoiceState = const AppDataState.loading());
+    }
+    final selectedEntityId = selectEntityId ?? _selectedInvoice?.source.id;
+    final state = await coordinator.load();
+    if (!mounted) return;
+    setState(() {
+      _invoiceState = state;
+      final records = state.data;
+      if (records == null) {
+        if (state.status == AppDataStatus.empty) {
+          _salesInvoices.clear();
+          _selectedInvoice = null;
+        }
+        return;
+      }
+      _salesInvoices
+        ..clear()
+        ..addAll(records);
+      _DemoSalesInvoice? selected;
+      if (selectedEntityId != null) {
+        for (final candidate in records) {
+          if (candidate.source.id == selectedEntityId) {
+            selected = candidate;
+            break;
+          }
+        }
+      }
+      _loadInvoice(selected ?? records.first);
+    });
+  }
+
+  Future<List<_DemoSalesInvoice>> _loadRepositoryInvoices() async {
+    final repositories = _store!.repositories;
+    final parties = await repositories.parties.getAll();
+    final items = await repositories.items.getAll();
+    final warehouses = await repositories.warehouses.getAll();
+    final defaults = await repositories.businessSettings.loadOperationalDefaults();
+    final policies = await repositories.businessSettings.loadBusinessPolicies();
+    _repositoryNextInvoiceNumber =
+        await repositories.sales.nextDocumentNumber();
+    final loadedInvoices = await repositories.sales.getAll();
+    final invoices = [...loadedInvoices]
+      ..sort((left, right) => left.documentNumber.compareTo(right.documentNumber));
+
+    final partiesById = {for (final party in parties) EntityId(party.id): party};
+    final itemsById = {for (final item in items) EntityId(item.id): item};
+    final warehousesById = {
+      for (final warehouse in warehouses) EntityId(warehouse.id): warehouse,
+    };
+
+    _customerIdsByName
+      ..clear()
+      ..addEntries(
+        parties
+            .where(
+              (party) =>
+                  party.type == PartyType.customer ||
+                  party.type == PartyType.customerAndSupplier,
+            )
+            .map((party) => MapEntry(party.name, EntityId(party.id))),
+      );
+    _customerOptions = List.unmodifiable(_customerIdsByName.keys);
+    _itemIdsByLabel.clear();
+    _knownItemIds.clear();
+    for (final item in items) {
+      final itemId = EntityId(item.id);
+      _knownItemIds.add(itemId);
+      _itemIdsByLabel[_normalizedLookup(item.code)] = itemId;
+      _itemIdsByLabel[_normalizedLookup(item.name)] = itemId;
+    }
+    _itemOptions = List.unmodifiable(
+      items.map(
+        (item) => AppInvoiceItemOption(
+          id: item.id,
+          code: item.code,
+          name: item.name,
+        ),
+      ),
+    );
+    _warehouseIdsByLabel.clear();
+    final orderedWarehouses = [...warehouses]
+      ..sort(
+        (left, right) => _warehouseOrder(EntityId(left.id))
+            .compareTo(_warehouseOrder(EntityId(right.id))),
+      );
+    for (final warehouse in orderedWarehouses) {
+      _warehouseIdsByLabel[_warehouseLabel(EntityId(warehouse.id))] =
+          EntityId(warehouse.id);
+    }
+    _warehouseOptions = List.unmodifiable(
+      orderedWarehouses.map((warehouse) {
+        final label = _warehouseLabel(EntityId(warehouse.id));
+        return AppDropdownOption(value: label, label: label);
+      }),
+    );
+
+    _defaultWarehouse = _warehouseLabel(defaults.sales.warehouseId);
+    _defaultSaleType = _saleKindLabel(defaults.sales.saleKind);
+    _defaultCurrency = defaults.sales.currency.code;
+    _defaultExchangeRate = _formatExchangeRate(
+      policies.defaultExchangeRate,
+    );
+
+    final result = <_DemoSalesInvoice>[];
+    for (final invoice in invoices) {
+      final party = partiesById[invoice.customerId];
+      final warehouse = warehousesById[invoice.defaultWarehouseId];
+      if (party == null || warehouse == null) {
+        throw const InvoiceMissingReferenceException(
+          'إحدى قوائم البيع مرتبطة بزبون أو مخزن غير موجود.',
+        );
+      }
+      for (final line in invoice.lines) {
+        if (itemsById[line.itemId] == null ||
+            warehousesById[line.warehouseId] == null) {
+          throw const InvoiceMissingReferenceException(
+            'إحدى مواد قوائم البيع مرتبطة بمادة أو مخزن غير موجود.',
+          );
+        }
+      }
+      result.add(
+        _salesViewFromDomain(
+          invoice,
+          party: party,
+          itemsById: itemsById,
+          warehousesById: warehousesById,
+        ),
+      );
+    }
+    return result;
+  }
+
+  _DemoSalesInvoice _salesViewFromDomain(
+    SalesInvoice invoice, {
+    required Party party,
+    required Map<EntityId, Item> itemsById,
+    required Map<EntityId, Warehouse> warehousesById,
+  }) {
+    final currency = invoice.currency.code;
+    final rows = <AppSalesInvoiceTableRowData>[
+      for (final line in invoice.lines)
+        AppSalesInvoiceTableRowData(
+          lineId: line.id.value,
+          itemId: line.itemId.value,
+          code: line.itemCodeSnapshot.isNotEmpty
+              ? line.itemCodeSnapshot
+              : itemsById[line.itemId]!.code,
+          name: line.itemNameSnapshot.isNotEmpty
+              ? line.itemNameSnapshot
+              : itemsById[line.itemId]!.name,
+          warehouse: line.warehouseNameSnapshot.isNotEmpty
+              ? line.warehouseNameSnapshot
+              : _warehouseLabel(EntityId(warehousesById[line.warehouseId]!.id)),
+          quantity: '${line.quantity.value}',
+          salePrice: _formatMoney(line.unitPrice),
+          discount: _formatMoney(line.discountPerUnit),
+        ).withCalculatedValues(currency),
+    ];
+    final customerName = invoice.customerNameSnapshot.isNotEmpty
+        ? invoice.customerNameSnapshot
+        : party.name;
+    final remaining = invoice.total - invoice.received;
+    final dateTime = invoice.date.atTime(
+      hour: invoice.minuteOfDay ~/ 60,
+      minute: invoice.minuteOfDay % 60,
+    );
+    final date =
+        '${_twoDigits(dateTime.day)}/${_twoDigits(dateTime.month)}/${dateTime.year}';
+    return _DemoSalesInvoice(
+      source: invoice,
+      id: '${invoice.documentNumber}',
+      dateTime: dateTime,
+      warehouse: _warehouseLabel(invoice.defaultWarehouseId),
+      saleType: _salesSettlementLabel(invoice.settlementKind),
+      currency: currency,
+      exchangeRate: _formatExchangeRate(invoice.exchangeRate),
+      customerName: customerName,
+      notes: invoice.notes,
+      driverName: invoice.driverName,
+      invoiceDiscount: _formatMoney(invoice.invoiceDiscount),
+      discountPercentage: invoice.invoiceDiscountPercentage.toPlainString(),
+      received: _formatMoney(invoice.received),
+      total: _formatMoney(invoice.total),
+      remaining: _formatMoney(remaining),
+      currentBalance: _formatMoney(
+        invoice.balanceAfterInvoice ?? remaining,
+      ),
+      searchDetails: invoice.searchDetailsSnapshot.isNotEmpty
+          ? invoice.searchDetailsSnapshot
+          : '$date • ${rows.length} مواد',
+      searchTerms: List.unmodifiable([
+        '${invoice.documentNumber}',
+        customerName,
+        party.name,
+        _salesSettlementLabel(invoice.settlementKind),
+        currency,
+        AppFormatters.currency(currency),
+        for (var index = 0; index < rows.length; index++) ...[
+          rows[index].code,
+          rows[index].name,
+          itemsById[invoice.lines[index].itemId]!.code,
+          itemsById[invoice.lines[index].itemId]!.name,
+        ],
+      ]),
+      items: List.unmodifiable(rows),
+      summaryQuantity: AppFormatters.quantity(
+        rows.fold<int>(0, (total, row) => total + row.quantityValue),
+      ),
+      summaryDiscount: AppFormatters.moneyByCurrency(
+        rows.fold<num>(0, (total, row) => total + row.discountValue),
+        currency,
+      ),
+      summaryTotal: AppFormatters.moneyByCurrency(
+        rows.fold<num>(0, (total, row) => total + row.totalValue),
+        currency,
+      ),
+    );
+  }
+
+  String _normalizedLookup(String value) => value.trim().toLowerCase();
+
+  String _formatMoney(Money value) {
+    final scale = value.currency.scale;
+    final hasFraction = value.minorUnits.abs() % scale != 0;
+    return AppFormatters.money(
+      value.majorUnits,
+      decimalPlaces: hasFraction ? value.currency.decimalPlaces : 0,
+    );
+  }
+
+  String _formatExchangeRate(ExchangeRate value) => AppFormatters.money(
+        value.value,
+        decimalPlaces: value.tenThousandths % 10000 == 0 ? 0 : 4,
+      );
+
+  String _warehouseLabel(EntityId id) => switch (id.value) {
+        'warehouse-001' => 'الرئيسي',
+        'warehouse-002' => 'الكرادة',
+        'warehouse-003' => 'الرصافة',
+        'warehouse-004' => 'المنصور',
+        _ => id.value,
+      };
+
+  int _warehouseOrder(EntityId id) => switch (id.value) {
+        'warehouse-001' => 0,
+        'warehouse-003' => 1,
+        'warehouse-002' => 2,
+        'warehouse-004' => 3,
+        _ => 100,
+      };
+
+  String _saleKindLabel(SaleKind kind) => switch (kind) {
+        SaleKind.cash => 'نقدي',
+        SaleKind.credit => 'آجل',
+        SaleKind.installments => 'أقساط',
+      };
+
+  String _salesSettlementLabel(SalesSettlementKind kind) => switch (kind) {
+        SalesSettlementKind.cash => 'نقدي',
+        SalesSettlementKind.credit => 'آجل',
+        SalesSettlementKind.installments => 'أقساط',
+      };
 
   void _loadInvoice(_DemoSalesInvoice invoice) {
     _isApplyingFormState = true;
@@ -383,10 +519,10 @@ class _SalesScreenState extends State<SalesScreen> {
     _selectedInvoice = null;
     _invoiceNumberController.text = '$_nextInvoiceNumber';
     _invoiceDateTime = DateTime.now();
-    _warehouse = _salesWarehouseOptions.first.value;
-    _saleType = _salesTypeOptions.first.value;
-    _currency = _salesCurrencyOptions.first.value;
-    _exchangeRateController.text = '1,310';
+    _warehouse = _defaultWarehouse;
+    _saleType = _defaultSaleType;
+    _currency = _defaultCurrency;
+    _exchangeRateController.text = _defaultExchangeRate;
     _customerNameController.clear();
     _notesController.clear();
     _driverNameController.clear();
@@ -593,7 +729,11 @@ class _SalesScreenState extends State<SalesScreen> {
       } else {
         final requestedReceived =
             AppFormatters.parseNumber(_nonCashReceivedText) ?? 0;
-        received = requestedReceived > total ? total : requestedReceived;
+        received = requestedReceived < 0
+            ? 0
+            : requestedReceived > total
+                ? total
+                : requestedReceived;
         if (received != requestedReceived) {
           _nonCashReceivedText = AppFormatters.moneyByCurrency(
             received,
@@ -658,6 +798,7 @@ class _SalesScreenState extends State<SalesScreen> {
   }
 
   void _attemptBack() {
+    if (_isRepositoryBusy) return;
     unawaited(_leaveAfterConfirmation());
   }
 
@@ -711,12 +852,17 @@ class _SalesScreenState extends State<SalesScreen> {
   }
 
   bool _validateForm() {
-    if (_customerNameController.text.trim().isEmpty) {
+    final customerName = _customerNameController.text.trim();
+    if (customerName.isEmpty) {
       AppToast.showWarning(context, 'أدخل اسم الزبون أولاً');
       return false;
     }
+    if (_resolveCustomerId(customerName) == null) {
+      AppToast.showWarning(context, 'اختر زبوناً موجوداً من القائمة');
+      return false;
+    }
 
-    final meaningfulItems = _activeItems.where((item) => !item.isEmpty);
+    final meaningfulItems = _activeItems.where((item) => !item.isEmpty).toList();
     if (meaningfulItems.any((item) => !item.hasRequiredValues)) {
       AppToast.showWarning(
         context,
@@ -728,56 +874,121 @@ class _SalesScreenState extends State<SalesScreen> {
       AppToast.showWarning(context, 'أضف مادة واحدة مكتملة على الأقل');
       return false;
     }
+    if (meaningfulItems.any(
+      (item) => _resolveItemId(
+        item.code,
+        item.name,
+        itemId: item.itemId,
+      ) == null,
+    )) {
+      AppToast.showWarning(context, 'اختر مادة موجودة لكل سطر');
+      return false;
+    }
+    if (meaningfulItems.any(
+      (item) => !_warehouseIdsByLabel.containsKey(item.warehouse),
+    )) {
+      AppToast.showWarning(context, 'اختر مخزناً موجوداً لكل سطر');
+      return false;
+    }
     return true;
   }
 
-  _DemoSalesInvoice _invoiceFromForm({
-    required String id,
-  }) {
+  SalesInvoice _domainInvoiceFromForm({required EntityId entityId}) {
     final items = List<AppSalesInvoiceTableRowData>.unmodifiable(
       _activeItems.where((item) => !item.isEmpty),
     );
-    final meaningfulItemCount = items.length;
-    final date =
-        '${_twoDigits(_invoiceDateTime.day)}/'
-        '${_twoDigits(_invoiceDateTime.month)}/'
-        '${_invoiceDateTime.year}';
+    final currency = AppCurrency.parse(_currency);
     final customerName = _customerNameController.text.trim();
-
-    return _DemoSalesInvoice(
-      id: id,
-      dateTime: _invoiceDateTime,
-      warehouse: _warehouse,
-      saleType: _saleType,
-      currency: _currency,
-      exchangeRate: _exchangeRateController.text,
-      customerName: customerName,
-      notes: _notesController.text.trim(),
+    final lines = <SalesInvoiceLine>[];
+    final newLineNonce = DateTime.now().microsecondsSinceEpoch;
+    for (var index = 0; index < items.length; index++) {
+      final row = items[index];
+      final lineId = row.lineId == null
+          ? EntityId('${entityId.value}-line-$newLineNonce-${index + 1}')
+          : EntityId(row.lineId!);
+      lines.add(
+        SalesInvoiceLine(
+          id: lineId,
+          itemId: _resolveItemId(
+            row.code,
+            row.name,
+            itemId: row.itemId,
+          )!,
+          warehouseId: _warehouseIdsByLabel[row.warehouse]!,
+          quantity: WholeQuantity(row.quantityValue),
+          unitPrice: Money.fromMajor(row.salePriceValue, currency),
+          discountPerUnit: Money.fromMajor(row.discountValue, currency),
+          itemCodeSnapshot: row.code.trim(),
+          itemNameSnapshot: row.name.trim(),
+          warehouseNameSnapshot: row.warehouse,
+        ),
+      );
+    }
+    return SalesInvoice(
+      id: entityId,
+      documentNumber: int.parse(_invoiceNumberController.text),
+      date: BusinessDate.fromDateTime(_invoiceDateTime),
+      minuteOfDay: _invoiceDateTime.hour * 60 + _invoiceDateTime.minute,
+      customerId: _resolveCustomerId(customerName)!,
+      customerNameSnapshot: customerName,
+      defaultWarehouseId: _warehouseIdsByLabel[_warehouse]!,
+      currency: currency,
+      exchangeRate: ExchangeRate.parse(_exchangeRateController.text),
+      settlementKind: switch (_saleType) {
+        'نقدي' => SalesSettlementKind.cash,
+        'أقساط' => SalesSettlementKind.installments,
+        _ => SalesSettlementKind.credit,
+      },
+      lines: lines,
+      invoiceDiscount: Money.parse(_invoiceDiscountController.text, currency),
+      received: Money.parse(_receivedController.text, currency),
+      balanceAfterInvoice:
+          Money.parse(_currentBalanceIqdController.text, currency),
       driverName: _driverNameController.text.trim(),
-      invoiceDiscount: _invoiceDiscountController.text,
-      discountPercentage: _discountPercentageController.text,
-      received: _receivedController.text,
-      total: _totalIqdController.text,
-      remaining: _remainingIqdController.text,
-      currentBalance: _currentBalanceIqdController.text,
-      searchDetails: '$date • $meaningfulItemCount مواد',
-      searchTerms: List<String>.unmodifiable([
-        id,
-        customerName,
-        _saleType,
-        _currency == 'USD' ? 'دولار' : 'دينار',
-        for (final item in items) ...[item.code, item.name],
-      ]),
-      items: items,
-      summaryQuantity: _summaryQuantity,
-      summaryDiscount: _summaryDiscount,
-      summaryTotal: _summaryTotal,
+      notes: _notesController.text.trim(),
     );
   }
 
+  EntityId? _resolveCustomerId(String name) {
+    final normalized = normalizePartyName(name);
+    for (final entry in _customerIdsByName.entries) {
+      if (normalizePartyName(entry.key) == normalized) return entry.value;
+    }
+    return null;
+  }
+
+  EntityId? _resolveItemId(
+    String code,
+    String name, {
+    String? itemId,
+  }) {
+    if (itemId != null) {
+      final resolvedId = EntityId(itemId);
+      return _knownItemIds.contains(resolvedId) ? resolvedId : null;
+    }
+    final legacyId = _legacySalesItemId(code, name);
+    if (legacyId != null) return legacyId;
+    final codeId = _itemIdsByLabel[_normalizedLookup(code)];
+    final nameId = _itemIdsByLabel[_normalizedLookup(name)];
+    return codeId != null && codeId == nameId ? codeId : null;
+  }
+
+  EntityId? _legacySalesItemId(String code, String name) =>
+      switch ('${code.trim()}|${_normalizedLookup(name)}') {
+        '3001|ورق طباعة' => EntityId('item-003'),
+        '3002|حبر طابعة' => EntityId('item-002'),
+        '3003|دباسة' => EntityId('item-009'),
+        '2001|طابعة حرارية' => EntityId('item-007'),
+        '2002|ماسح باركود' => EntityId('item-008'),
+        '1001|دفتر ملاحظات' => EntityId('item-010'),
+        '1002|قلم أزرق' => EntityId('item-005'),
+        '1003|حاسبة مكتبية' => EntityId('item-004'),
+        _ => null,
+      };
+
   String _twoDigits(int value) => value.toString().padLeft(2, '0');
 
-  void _save() {
+  Future<void> _save() async {
     if (!_validateForm()) return;
     if (_selectedInvoice != null) {
       AppToast.showWarning(
@@ -787,17 +998,27 @@ class _SalesScreenState extends State<SalesScreen> {
       return;
     }
 
-    final invoice = _invoiceFromForm(
-      id: _invoiceNumberController.text,
+    final entityId = EntityId(
+      'sales-invoice-${_invoiceNumberController.text}-${DateTime.now().microsecondsSinceEpoch}',
     );
-    setState(() {
-      _salesInvoices.add(invoice);
-      _loadInvoice(invoice);
-    });
-    AppToast.showInfo(context, 'تم حفظ قائمة البيع مؤقتاً');
+    late final SalesInvoice invoice;
+    try {
+      invoice = _domainInvoiceFromForm(entityId: entityId);
+    } catch (_) {
+      AppToast.showError(context, 'تحقق من قيم قائمة البيع المدخلة');
+      return;
+    }
+    final saved = await _runRepositoryMutation(
+      () => _store!.repositories.sales.createInvoice(invoice),
+      failureMessage: 'تعذر حفظ قائمة البيع',
+    );
+    if (saved == null || !mounted) return;
+    await _loadData(showLoading: false, selectEntityId: saved.id);
+    if (!mounted) return;
+    AppToast.showInfo(context, 'تم حفظ قائمة البيع');
   }
 
-  void _update() {
+  Future<void> _update() async {
     final selected = _selectedInvoice;
     if (selected == null) {
       AppToast.showWarning(context, 'اختر قائمة بيع لتحديثها');
@@ -805,17 +1026,21 @@ class _SalesScreenState extends State<SalesScreen> {
     }
     if (!_validateForm()) return;
 
-    final updated = _invoiceFromForm(id: selected.id);
-    final index = _salesInvoices.indexWhere(
-      (invoice) => invoice.id == selected.id,
+    late final SalesInvoice updated;
+    try {
+      updated = _domainInvoiceFromForm(entityId: selected.source.id);
+    } catch (_) {
+      AppToast.showError(context, 'تحقق من قيم قائمة البيع المدخلة');
+      return;
+    }
+    final saved = await _runRepositoryMutation(
+      () => _store!.repositories.sales.replaceInvoice(updated),
+      failureMessage: 'تعذر تحديث قائمة البيع',
     );
-    if (index < 0) return;
-
-    setState(() {
-      _salesInvoices[index] = updated;
-      _loadInvoice(updated);
-    });
-    AppToast.showSuccess(context, 'تم تحديث قائمة البيع مؤقتاً');
+    if (saved == null || !mounted) return;
+    await _loadData(showLoading: false, selectEntityId: saved.id);
+    if (!mounted) return;
+    AppToast.showSuccess(context, 'تم تحديث قائمة البيع');
   }
 
   void _undo() {
@@ -849,11 +1074,48 @@ class _SalesScreenState extends State<SalesScreen> {
     );
     if (!mounted || !confirmed) return;
 
-    setState(() {
-      _salesInvoices.removeWhere((invoice) => invoice.id == selected.id);
-      _setNewForm();
-    });
-    AppToast.showDanger(context, 'تم حذف قائمة البيع مؤقتاً');
+    final deleted = await _runRepositoryMutation(
+      () async {
+        await _store!.repositories.sales
+            .deleteInvoicePermanently(selected.source.id);
+        return true;
+      },
+      failureMessage: 'تعذر حذف قائمة البيع',
+    );
+    if (deleted == null || !mounted) return;
+    await _loadData(showLoading: false);
+    if (!mounted) return;
+    setState(_setNewForm);
+    AppToast.showDanger(context, 'تم حذف قائمة البيع');
+  }
+
+  Future<T?> _runRepositoryMutation<T>(
+    Future<T> Function() operation, {
+    required String failureMessage,
+  }) async {
+    final coordinator = _coordinator;
+    if (coordinator == null || _isRepositoryBusy) return null;
+    setState(() => _isRepositoryBusy = true);
+    try {
+      final result = await coordinator.mutate(operation);
+      _store!.markDataChanged();
+      return result;
+    } on StateError catch (error) {
+      if (mounted) {
+        final message = '${error.message}';
+        AppToast.showError(
+          context,
+          message.isEmpty ? failureMessage : message,
+        );
+      }
+    } on FormatException {
+      if (mounted) AppToast.showError(context, 'تحقق من القيم الرقمية المدخلة');
+    } catch (_) {
+      if (mounted) AppToast.showError(context, failureMessage);
+    } finally {
+      if (mounted) setState(() => _isRepositoryBusy = false);
+    }
+    return null;
   }
 
   Future<void> _showSalesSearch() async {
@@ -1092,6 +1354,13 @@ class _SalesScreenState extends State<SalesScreen> {
     );
   }
 
+  void _openEmptyEditor() {
+    setState(() {
+      _invoiceState = AppDataState.ready(_salesInvoices);
+      _setNewForm();
+    });
+  }
+
   @override
   void dispose() {
     for (final controller in _editableControllers) {
@@ -1121,28 +1390,36 @@ class _SalesScreenState extends State<SalesScreen> {
     final canMoveToNextOrLast =
         hasInvoices && selectedInvoiceIndex >= 0;
     final currencyName = _currency == 'USD' ? 'دولار' : 'دينار';
+    final isEditorReady = _invoiceState.status == AppDataStatus.ready;
     final tint = Color.alphaBlend(
       AppModuleColors.sales.withAlpha(12),
       AppColors.surface,
     );
 
     return PopScope(
-      canPop: !_hasUnsavedChanges,
+      canPop: !_hasUnsavedChanges && !_isRepositoryBusy,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _attemptBack();
+        if (!didPop && !_isRepositoryBusy) _attemptBack();
       },
       child: AppScreenShell(
         key: const Key('salesScreen'),
         title: 'المبيعات',
         backgroundColor: tint,
         onBack: _attemptBack,
-        onSearch: _showSalesSearch,
-        onSave: hasSelectedInvoice
+        onSearch: !isEditorReady || _isRepositoryBusy
+            ? null
+            : _showSalesSearch,
+        onSave: !isEditorReady || _isRepositoryBusy
+            ? null
+            : hasSelectedInvoice
             ? _hasUnsavedChanges
                 ? _update
                 : null
             : _save,
-        body: ColoredBox(
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+        ColoredBox(
           key: const Key('salesTintBackground'),
           color: tint,
           child: Padding(
@@ -1184,7 +1461,7 @@ class _SalesScreenState extends State<SalesScreen> {
                     textAlign: TextAlign.right,
                     menuTextDirection: TextDirection.rtl,
                     value: _warehouse,
-                    options: _salesWarehouseOptions,
+                    options: _warehouseOptions,
                     onChanged: (value) {
                       if (value == null) return;
                       _changeWarehouse(value);
@@ -1222,7 +1499,7 @@ class _SalesScreenState extends State<SalesScreen> {
                       _changeCurrency(value);
                     },
                   ),
-                  AppTextField(
+                  AppMoneyField(
                     fieldKey: const Key('salesExchangeRateField'),
                     controller: _exchangeRateController,
                     label: 'سعر الصرف',
@@ -1230,11 +1507,7 @@ class _SalesScreenState extends State<SalesScreen> {
                     accentColor: AppModuleColors.sales,
                     textDirection: TextDirection.rtl,
                     textAlign: TextAlign.right,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                    inputFormatters: const [
-                      AppMoneyInputFormatter(decimalPlaces: 4),
-                    ],
+                    decimalPlaces: 4,
                     textInputAction: TextInputAction.next,
                   ),
                 ],
@@ -1248,7 +1521,7 @@ class _SalesScreenState extends State<SalesScreen> {
                     label: 'اسم الزبون',
                     icon: Icons.person_rounded,
                     accentColor: AppModuleColors.sales,
-                    options: _salesCustomerOptions,
+                    options: _customerOptions,
                     displayStringForOption: (value) => value,
                     onSelected: (_) {},
                     textDirection: TextDirection.rtl,
@@ -1276,6 +1549,7 @@ class _SalesScreenState extends State<SalesScreen> {
                   summaryDiscount: _summaryDiscount,
                   summaryTotal: _summaryTotal,
                   currencyCode: _currency,
+                  itemOptions: _itemOptions,
                   onRowsChanged: _changeItems,
                 ),
               ),
@@ -1350,13 +1624,18 @@ class _SalesScreenState extends State<SalesScreen> {
               AppActionBar(
                 key: const Key('salesActionBar'),
                 middle: _SalesInvoiceButtons(
-                  onSearch: _showSalesSearch,
-                  onPrint: _isDocumentActionRunning
+                  onSearch: !isEditorReady || _isRepositoryBusy
+                      ? null
+                      : _showSalesSearch,
+                  onPrint: !isEditorReady || _isDocumentActionRunning
                       ? null
                       : _printSalesInvoice,
                   onInstallments:
-                      _saleType == 'أقساط' ? _openInstallments : null,
-                  onStatement: _showSalesStatement,
+                      isEditorReady && _saleType == 'أقساط'
+                          ? _openInstallments
+                          : null,
+                  onStatement:
+                      isEditorReady ? _showSalesStatement : null,
                 ),
                 firstButtonKey: const Key('salesFirstButton'),
                 previousButtonKey: const Key('salesPreviousButton'),
@@ -1379,16 +1658,57 @@ class _SalesScreenState extends State<SalesScreen> {
                 onLast: canMoveToNextOrLast
                     ? () => _navigate(_SalesNavigation.last)
                     : null,
-                onSave: hasSelectedInvoice ? null : _save,
-                onUpdate: hasSelectedInvoice && _hasUnsavedChanges
+                onSave: !isEditorReady ||
+                        _isRepositoryBusy ||
+                        hasSelectedInvoice
+                    ? null
+                    : _save,
+                onUpdate: isEditorReady &&
+                        hasSelectedInvoice &&
+                        _hasUnsavedChanges &&
+                        !_isRepositoryBusy
                     ? _update
                     : null,
-                onUndo: _hasUnsavedChanges ? _undo : null,
-                onDelete: hasSelectedInvoice ? _delete : null,
+                onUndo:
+                    isEditorReady && _hasUnsavedChanges ? _undo : null,
+                onDelete: isEditorReady &&
+                        hasSelectedInvoice &&
+                        !_isRepositoryBusy
+                    ? _delete
+                    : null,
               ),
               ],
             ),
           ),
+        ),
+            if (_invoiceState.status != AppDataStatus.ready)
+              ColoredBox(
+                color: tint,
+                child: AppDataStateView<List<_DemoSalesInvoice>>(
+                  state: _invoiceState,
+                  dataBuilder: (_, __) => const SizedBox.shrink(),
+                  emptyTitle: 'لا توجد قوائم بيع',
+                  emptyActionLabel: 'قائمة بيع جديدة',
+                  onEmptyAction: _openEmptyEditor,
+                  missingReferenceActionLabel: 'إعادة المحاولة',
+                  onMissingReferenceAction: () => unawaited(_loadData()),
+                  onRetry: () => unawaited(_loadData()),
+                  loadingStateKey: const Key('salesLoadingState'),
+                  emptyStateKey: const Key('salesEmptyState'),
+                  missingReferenceStateKey:
+                      const Key('salesMissingReferenceState'),
+                  errorStateKey: const Key('salesErrorState'),
+                ),
+              ),
+            if (_isRepositoryBusy)
+              AbsorbPointer(
+                child: ColoredBox(
+                  key: const Key('salesBusyOverlay'),
+                  color: AppColors.textPrimary.withAlpha(20),
+                  child: const Center(child: CircularProgressIndicator()),
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -1403,10 +1723,10 @@ class _SalesInvoiceButtons extends StatelessWidget {
     required this.onStatement,
   });
 
-  final VoidCallback onSearch;
+  final VoidCallback? onSearch;
   final VoidCallback? onPrint;
   final VoidCallback? onInstallments;
-  final VoidCallback onStatement;
+  final VoidCallback? onStatement;
 
   @override
   Widget build(BuildContext context) {
@@ -1492,7 +1812,7 @@ class _SalesMoneyField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppTextField(
+    return AppMoneyField(
       fieldKey: fieldKey,
       controller: controller,
       label: label,
@@ -1500,10 +1820,7 @@ class _SalesMoneyField extends StatelessWidget {
       accentColor: AppModuleColors.sales,
       textDirection: TextDirection.rtl,
       textAlign: TextAlign.right,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: [
-        AppMoneyInputFormatter(decimalPlaces: decimalPlaces),
-      ],
+      decimalPlaces: decimalPlaces,
       enabled: enabled,
       readOnly: !enabled,
       onChanged: onChanged,

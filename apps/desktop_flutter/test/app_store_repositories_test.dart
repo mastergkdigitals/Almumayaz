@@ -15,8 +15,16 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('demo repositories expose resolvable cross-module references', () async {
     final repositories = AppRepositories.demo();
-    final sale = (await repositories.sales.getAll()).single;
-    final purchase = (await repositories.purchases.getAll()).single;
+    final sale = (await repositories.sales.getAll()).first;
+    final purchase = (await repositories.purchases.getAll()).first;
+
+    expect((await repositories.sales.getAll()).map((entry) => entry.documentNumber),
+        [101, 102, 103]);
+    expect(
+      (await repositories.purchases.getAll())
+          .map((entry) => entry.documentNumber),
+      [101, 102, 103],
+    );
 
     expect(await repositories.parties.getById(sale.customerId), isNotNull);
     expect(await repositories.parties.getById(purchase.supplierId), isNotNull);
@@ -362,14 +370,14 @@ void main() {
 
   test('invoice numbers remain reserved after permanent deletion', () async {
     final repositories = AppRepositories.demo();
-    final sale = (await repositories.sales.getAll()).single;
-    final purchase = (await repositories.purchases.getAll()).single;
+    final sale = (await repositories.sales.getAll()).first;
+    final purchase = (await repositories.purchases.getAll()).first;
 
     await repositories.sales.deleteInvoicePermanently(sale.id);
     await repositories.purchases.deleteInvoicePermanently(purchase.id);
 
-    expect(await repositories.sales.nextDocumentNumber(), 1002);
-    expect(await repositories.purchases.nextDocumentNumber(), 2002);
+    expect(await repositories.sales.nextDocumentNumber(), 104);
+    expect(await repositories.purchases.nextDocumentNumber(), 104);
     expect(
       () => repositories.sales.createInvoice(
         _copySale(sale, id: EntityId.demo('sale', 99)),
@@ -381,6 +389,50 @@ void main() {
         _copyPurchase(purchase, id: EntityId.demo('purchase', 99)),
       ),
       throwsStateError,
+    );
+  });
+
+  test('invoice repositories search resolved and historical labels', () async {
+    final repositories = AppRepositories.demo();
+
+    expect(
+      (await repositories.sales.search('شركة النخيل')).single.documentNumber,
+      101,
+    );
+    expect(
+      (await repositories.sales.search('ورق تصوير A4'))
+          .map((invoice) => invoice.documentNumber),
+      contains(101),
+    );
+    expect(
+      (await repositories.purchases.search('شركة التجارة العالمية'))
+          .single
+          .documentNumber,
+      102,
+    );
+    expect(
+      (await repositories.purchases.search('طابعة حرارية'))
+          .map((invoice) => invoice.documentNumber),
+      contains(102),
+    );
+  });
+
+  test('invoice repository changes persist through shared handles', () async {
+    final repositories = AppRepositories.demo();
+    final salesHandle = repositories.sales;
+    final purchaseHandle = repositories.purchases;
+    final sale = (await salesHandle.getAll()).first;
+    final purchase = (await purchaseHandle.getAll()).first;
+
+    await salesHandle.replaceInvoice(_copySale(sale, notes: 'بيع محفوظ'));
+    await purchaseHandle.replaceInvoice(
+      _copyPurchase(purchase, notes: 'شراء محفوظ'),
+    );
+
+    expect((await repositories.sales.getById(sale.id))?.notes, 'بيع محفوظ');
+    expect(
+      (await repositories.purchases.getById(purchase.id))?.notes,
+      'شراء محفوظ',
     );
   });
 
@@ -412,9 +464,13 @@ void main() {
   });
 }
 
-SalesInvoice _copySale(SalesInvoice source, {required EntityId id}) {
+SalesInvoice _copySale(
+  SalesInvoice source, {
+  EntityId? id,
+  String? notes,
+}) {
   return SalesInvoice(
-    id: id,
+    id: id ?? source.id,
     documentNumber: source.documentNumber,
     date: source.date,
     minuteOfDay: source.minuteOfDay,
@@ -426,17 +482,21 @@ SalesInvoice _copySale(SalesInvoice source, {required EntityId id}) {
     lines: source.lines,
     invoiceDiscount: source.invoiceDiscount,
     received: source.received,
+    customerNameSnapshot: source.customerNameSnapshot,
+    searchDetailsSnapshot: source.searchDetailsSnapshot,
+    balanceAfterInvoice: source.balanceAfterInvoice,
     driverName: source.driverName,
-    notes: source.notes,
+    notes: notes ?? source.notes,
   );
 }
 
 PurchaseInvoice _copyPurchase(
   PurchaseInvoice source, {
-  required EntityId id,
+  EntityId? id,
+  String? notes,
 }) {
   return PurchaseInvoice(
-    id: id,
+    id: id ?? source.id,
     documentNumber: source.documentNumber,
     date: source.date,
     minuteOfDay: source.minuteOfDay,
@@ -450,6 +510,9 @@ PurchaseInvoice _copyPurchase(
     expenses: source.expenses,
     invoiceDiscount: source.invoiceDiscount,
     paid: source.paid,
-    notes: source.notes,
+    supplierNameSnapshot: source.supplierNameSnapshot,
+    searchDetailsSnapshot: source.searchDetailsSnapshot,
+    balanceAfterInvoice: source.balanceAfterInvoice,
+    notes: notes ?? source.notes,
   );
 }

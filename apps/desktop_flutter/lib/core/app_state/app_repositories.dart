@@ -148,11 +148,15 @@ class AppRepositories {
       partyExists: partyExists,
       itemExists: itemExists,
       warehouseExists: warehouseExists,
+      partyLabelOf: (id) async => (await parties.getById(id))?.name,
+      itemLabelOf: (id) async => (await items.getById(id))?.name,
     );
     purchases = DemoPurchaseRepository(
       partyExists: partyExists,
       itemExists: itemExists,
       warehouseExists: warehouseExists,
+      partyLabelOf: (id) async => (await parties.getById(id))?.name,
+      itemLabelOf: (id) async => (await items.getById(id))?.name,
     );
 
     businessSettings = DemoBusinessSettingsRepository(

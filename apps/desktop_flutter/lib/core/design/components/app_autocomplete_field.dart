@@ -26,6 +26,8 @@ class AppAutocompleteField<T extends Object> extends StatefulWidget {
     this.textDirection,
     this.textAlign = TextAlign.start,
     this.showOptionsOnFocus = true,
+    this.showLabel = true,
+    this.borderRadius,
   });
 
   final TextEditingController controller;
@@ -34,7 +36,7 @@ class AppAutocompleteField<T extends Object> extends StatefulWidget {
   final String Function(T option) displayStringForOption;
   final ValueChanged<T> onSelected;
   final Key? fieldKey;
-  final IconData icon;
+  final IconData? icon;
   final String? hint;
   final FocusNode? focusNode;
   final ValueChanged<String>? onSubmitted;
@@ -47,6 +49,8 @@ class AppAutocompleteField<T extends Object> extends StatefulWidget {
   final TextDirection? textDirection;
   final TextAlign textAlign;
   final bool showOptionsOnFocus;
+  final bool showLabel;
+  final double? borderRadius;
 
   @override
   State<AppAutocompleteField<T>> createState() =>
@@ -322,6 +326,8 @@ class _AppAutocompleteFieldState<T extends Object>
               onChanged: widget.onChanged,
               onTap: _showAllOptionsOnFocus,
               onSubmitted: _handleFieldSubmitted,
+              showLabel: widget.showLabel,
+              borderRadius: widget.borderRadius,
             ),
           ),
         );

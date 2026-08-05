@@ -33,16 +33,19 @@ void main() {
       'مستلزمات طباعة',
       'قرطاسية',
     ]);
-    expect(types, hasLength(6));
+    expect(types, hasLength(9));
     expect(types.map((record) => record.name), [
       'طابعات',
       'آلات حاسبة',
+      'ماسحات باركود',
       'أحبار',
       'ورق طباعة',
       'أقلام',
       'ملفات',
+      'دباسات',
+      'دفاتر',
     ]);
-    expect(types.map((record) => record.number), [1, 2, 1, 2, 1, 2]);
+    expect(types.map((record) => record.number), [1, 2, 3, 1, 2, 1, 2, 3, 4]);
     for (final type in types) {
       expect(groups.any((group) => group.id == type.parentId), isTrue);
     }

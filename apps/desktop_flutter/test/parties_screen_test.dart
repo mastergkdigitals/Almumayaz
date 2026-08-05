@@ -22,9 +22,9 @@ void main() {
     addTearDown(controller.dispose);
     await controller.load();
 
-    expect(controller.state.parties, hasLength(10));
+    expect(controller.state.parties, hasLength(13));
 
-    controller.search('الرافدين');
+    controller.search('مجهز الرافدين');
     expect(controller.visibleParties, hasLength(1));
 
     controller.first();
@@ -38,13 +38,13 @@ void main() {
     expect(controller.selectedParty?.name, 'أحمد كريم');
 
     controller.last();
-    expect(controller.selectedParty?.name, 'نور فاضل');
+    expect(controller.selectedParty?.name, 'مجهز الكرادة');
 
     controller.next();
     expect(controller.selectedParty, isNull);
 
     controller.previous();
-    expect(controller.selectedParty?.name, 'نور فاضل');
+    expect(controller.selectedParty?.name, 'مجهز الكرادة');
 
     controller.last();
     expect(controller.selectedParty, isNull);
@@ -66,7 +66,7 @@ void main() {
     controller.select('party-004');
     expect((await controller.canDeleteSelected()).isAllowed, isTrue);
     expect((await controller.deleteSelected())?.id, 'party-004');
-    expect(controller.state.parties, hasLength(9));
+    expect(controller.state.parties, hasLength(12));
   });
 
   test('persists parties across controllers and reports missing references',
@@ -678,7 +678,7 @@ void main() {
             find.byKey(const Key('partiesTable')),
           )
           .rows,
-      hasLength(10),
+      hasLength(13),
     );
   });
 
@@ -785,7 +785,7 @@ void main() {
 
     await tester.tap(find.byKey(const Key('partiesLastButton')));
     await tester.pumpAndSettle();
-    expect(_fieldText(tester, name), 'نور فاضل');
+    expect(_fieldText(tester, name), 'مجهز الكرادة');
 
     await tester.tap(find.byKey(const Key('partiesNextButton')));
     await tester.pumpAndSettle();
@@ -799,7 +799,7 @@ void main() {
 
     await tester.tap(find.byKey(const Key('partiesPreviousButton')));
     await tester.pumpAndSettle();
-    expect(_fieldText(tester, name), 'نور فاضل');
+    expect(_fieldText(tester, name), 'مجهز الكرادة');
   });
 }
 

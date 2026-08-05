@@ -244,6 +244,13 @@ List<OperationalMasterDataRecord> demoOperationalMasterData() => [
         parentId: EntityId.demo('item-group', 1),
       ),
       OperationalMasterDataRecord(
+        id: EntityId.demo('item-type', 7),
+        kind: OperationalMasterDataKind.itemType,
+        number: 3,
+        name: 'ماسحات باركود',
+        parentId: EntityId.demo('item-group', 1),
+      ),
+      OperationalMasterDataRecord(
         id: EntityId.demo('item-group', 2),
         kind: OperationalMasterDataKind.itemGroup,
         number: 2,
@@ -281,6 +288,20 @@ List<OperationalMasterDataRecord> demoOperationalMasterData() => [
         kind: OperationalMasterDataKind.itemType,
         number: 2,
         name: 'ملفات',
+        parentId: EntityId.demo('item-group', 3),
+      ),
+      OperationalMasterDataRecord(
+        id: EntityId.demo('item-type', 8),
+        kind: OperationalMasterDataKind.itemType,
+        number: 3,
+        name: 'دباسات',
+        parentId: EntityId.demo('item-group', 3),
+      ),
+      OperationalMasterDataRecord(
+        id: EntityId.demo('item-type', 9),
+        kind: OperationalMasterDataKind.itemType,
+        number: 4,
+        name: 'دفاتر',
         parentId: EntityId.demo('item-group', 3),
       ),
       OperationalMasterDataRecord(

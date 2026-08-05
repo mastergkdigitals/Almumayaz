@@ -16,7 +16,7 @@ void main() {
     addTearDown(controller.dispose);
     await controller.load();
 
-    expect(controller.state.items, hasLength(6));
+    expect(controller.state.items, hasLength(10));
 
     controller.search('ورق طباعة');
     expect(controller.visibleItems, hasLength(1));
@@ -33,7 +33,7 @@ void main() {
     expect(controller.selectedItem?.name, 'حبر طابعة أسود');
 
     controller.last();
-    expect(controller.selectedItem?.name, 'ملف حفظ مستندات');
+    expect(controller.selectedItem?.name, 'دفتر ملاحظات');
 
     controller.next();
     expect(controller.selectedItem, isNull);
@@ -50,9 +50,32 @@ void main() {
     expect(await controller.deleteSelected(), isNull);
 
     controller.select('item-006');
+    expect((await controller.canDeleteSelected()).isAllowed, isFalse);
+
+    final group = controller.state.groups.first;
+    final type = controller.typesFor(group.id).first;
+    await controller.add(
+      Item(
+        id: 'item-unreferenced-test',
+        code: 'P-DELETE',
+        name: 'مادة غير مرتبطة',
+        barcode: '9999999999999',
+        groupId: group.id,
+        groupName: group.name,
+        typeId: type.id,
+        typeName: type.name,
+        salePriceIqd: 1000,
+        salePriceUsd: 1,
+        notes: '',
+      ),
+    );
+    controller.select('item-unreferenced-test');
     expect((await controller.canDeleteSelected()).isAllowed, isTrue);
-    expect((await controller.deleteSelected())?.id, 'item-006');
-    expect(controller.state.items, hasLength(5));
+    expect(
+      (await controller.deleteSelected())?.id,
+      'item-unreferenced-test',
+    );
+    expect(controller.state.items, hasLength(10));
   });
 
   test('persists items across controllers and reports missing references',
@@ -180,7 +203,7 @@ void main() {
           AppColors.surface,
         ),
       );
-      expect(table.rows, hasLength(6));
+      expect(table.rows, hasLength(10));
       expect(
         table.columns.map((column) => column.label),
         [

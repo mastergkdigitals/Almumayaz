@@ -11,6 +11,7 @@ export 'components/app_feedback.dart';
 export 'components/app_fields.dart';
 export 'components/app_header_button.dart';
 export 'components/app_invoice_field_table.dart';
+export 'components/app_invoice_item_option.dart';
 export 'components/app_installment_schedule_dialog.dart';
 export 'components/app_purchase_invoice_table_template.dart';
 export 'components/app_record_search_dialog.dart';

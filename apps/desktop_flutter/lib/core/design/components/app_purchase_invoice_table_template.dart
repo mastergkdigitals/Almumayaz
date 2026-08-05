@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import '../app_formatters.dart';
 import '../app_tokens.dart';
 import 'app_button.dart';
+import 'app_autocomplete_field.dart';
 import 'app_dropdown_field.dart';
 import 'app_invoice_field_table.dart';
+import 'app_invoice_item_option.dart';
 import 'app_number_input_formatters.dart';
 import 'app_table.dart';
 import 'app_text_fields.dart';
@@ -35,6 +37,8 @@ const _purchaseInvoiceTableColumns = <AppInvoiceFieldColumn>[
 
 class AppPurchaseInvoiceTableRowData {
   const AppPurchaseInvoiceTableRowData({
+    this.lineId,
+    this.itemId,
     this.code = '',
     this.name = '',
     this.warehouse = 'الرئيسي',
@@ -49,6 +53,8 @@ class AppPurchaseInvoiceTableRowData {
     this.salePrice = '0',
   });
 
+  final String? lineId;
+  final String? itemId;
   final String code;
   final String name;
   final String warehouse;
@@ -119,6 +125,8 @@ class AppPurchaseInvoiceTableRowData {
       invoiceAdjustment: invoiceAdjustment,
     );
     return AppPurchaseInvoiceTableRowData(
+      lineId: lineId,
+      itemId: itemId,
       code: code,
       name: name,
       warehouse: warehouse,
@@ -153,6 +161,8 @@ class _PurchaseInvoiceTemplateRow {
     required int index,
     required AppPurchaseInvoiceTableRowData data,
   })  : indexController = TextEditingController(text: '$index'),
+        lineId = data.lineId,
+        itemId = data.itemId,
         codeController = TextEditingController(text: data.code),
         nameController = TextEditingController(text: data.name),
         quantityController = TextEditingController(text: data.quantity),
@@ -169,6 +179,8 @@ class _PurchaseInvoiceTemplateRow {
         warehouse = data.warehouse;
 
   final String id;
+  final String? lineId;
+  String? itemId;
   final TextEditingController indexController;
   final TextEditingController codeController;
   final TextEditingController nameController;
@@ -181,6 +193,9 @@ class _PurchaseInvoiceTemplateRow {
   final TextEditingController costController;
   final TextEditingController totalCostController;
   final TextEditingController salePriceController;
+  final codeFocusNode = FocusNode();
+  final nameFocusNode = FocusNode();
+  final quantityFocusNode = FocusNode();
   String warehouse;
 
   void setIndex(int value) {
@@ -200,6 +215,9 @@ class _PurchaseInvoiceTemplateRow {
     costController.dispose();
     totalCostController.dispose();
     salePriceController.dispose();
+    codeFocusNode.dispose();
+    nameFocusNode.dispose();
+    quantityFocusNode.dispose();
   }
 }
 
@@ -215,6 +233,7 @@ class AppPurchaseInvoiceTableTemplate extends StatefulWidget {
     this.currencyCode = 'IQD',
     this.lineBaseTotal = 0,
     this.invoiceAdjustment = 0,
+    this.itemOptions = const [],
     this.onRowsChanged,
   });
 
@@ -227,6 +246,7 @@ class AppPurchaseInvoiceTableTemplate extends StatefulWidget {
   final String currencyCode;
   final num lineBaseTotal;
   final num invoiceAdjustment;
+  final List<AppInvoiceItemOption> itemOptions;
   final ValueChanged<List<AppPurchaseInvoiceTableRowData>>? onRowsChanged;
 
   @override
@@ -342,6 +362,26 @@ class _AppPurchaseInvoiceTableTemplateState
     _notifyRowsChanged();
   }
 
+  void _changeItemText(_PurchaseInvoiceTemplateRow row) {
+    row.itemId = null;
+    _changeRowText();
+  }
+
+  void _selectItem(
+    _PurchaseInvoiceTemplateRow row,
+    AppInvoiceItemOption option,
+  ) {
+    setState(() {
+      row.itemId = option.id;
+      row.codeController.text = option.code;
+      row.nameController.text = option.name;
+    });
+    _notifyRowsChanged();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) row.quantityFocusNode.requestFocus();
+    });
+  }
+
   bool _canAddRow(_PurchaseInvoiceTemplateRow row) {
     return AppPurchaseInvoiceTableRowData(
       code: row.codeController.text,
@@ -373,6 +413,8 @@ class _AppPurchaseInvoiceTableTemplateState
       List<AppPurchaseInvoiceTableRowData>.unmodifiable(
         _rows.map(
           (row) => AppPurchaseInvoiceTableRowData(
+            lineId: row.lineId,
+            itemId: row.itemId,
             code: row.codeController.text,
             name: row.nameController.text,
             warehouse: row.warehouse,
@@ -452,17 +494,19 @@ class _AppPurchaseInvoiceTableTemplateState
         controller: row.indexController,
         label: 'ت',
       ),
-      _editableField(
+      _itemField(
         keyName: 'Code',
         row: row,
         controller: row.codeController,
         label: 'رمز المادة',
+        showsCode: true,
       ),
-      _editableField(
+      _itemField(
         keyName: 'Name',
         row: row,
         controller: row.nameController,
         label: 'اسم المادة',
+        showsCode: false,
       ),
       AppDropdownField<String>(
         fieldKey: Key(
@@ -486,6 +530,7 @@ class _AppPurchaseInvoiceTableTemplateState
         label: 'الكمية',
         wholeNumber: true,
         recalculates: true,
+        focusNode: row.quantityFocusNode,
       ),
       _editableField(
         keyName: 'Container',
@@ -581,12 +626,14 @@ class _AppPurchaseInvoiceTableTemplateState
     bool numeric = false,
     bool wholeNumber = false,
     bool recalculates = false,
+    FocusNode? focusNode,
   }) {
     return AppTextField(
       fieldKey: Key(
         'appPurchaseInvoiceTemplate${keyName}Field-${row.id}',
       ),
       controller: controller,
+      focusNode: focusNode,
       label: label,
       accentColor: AppModuleColors.purchases,
       textAlign: numeric || wholeNumber
@@ -616,6 +663,36 @@ class _AppPurchaseInvoiceTableTemplateState
           _changeRowText();
         }
       },
+      showLabel: false,
+      borderRadius: AppRadii.sm,
+    );
+  }
+
+  Widget _itemField({
+    required String keyName,
+    required _PurchaseInvoiceTemplateRow row,
+    required TextEditingController controller,
+    required String label,
+    required bool showsCode,
+  }) {
+    return AppAutocompleteField<AppInvoiceItemOption>(
+      fieldKey: Key(
+        'appPurchaseInvoiceTemplate${keyName}Field-${row.id}',
+      ),
+      controller: controller,
+      focusNode: showsCode ? row.codeFocusNode : row.nameFocusNode,
+      label: label,
+      options: widget.itemOptions,
+      displayStringForOption:
+          showsCode ? (option) => option.code : (option) => option.name,
+      searchTermsForOption: (option) => [option.code, option.name],
+      optionSubtitle:
+          showsCode ? (option) => option.name : (option) => option.code,
+      onSelected: (option) => _selectItem(row, option),
+      onChanged: (_) => _changeItemText(row),
+      icon: null,
+      accentColor: AppModuleColors.purchases,
+      textDirection: TextDirection.rtl,
       showLabel: false,
       borderRadius: AppRadii.sm,
     );

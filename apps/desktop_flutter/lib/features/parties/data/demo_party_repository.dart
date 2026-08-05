@@ -18,7 +18,7 @@ class DemoPartyRepository extends InMemoryDemoRepository<Party>
   })  : _masterData = masterData,
         _isReferenced = isReferenced ?? _neverReferenced,
         _initiallyReferencedIds = Set.unmodifiable(
-          initiallyReferencedIds ?? demoReferencedPartyIds,
+          initiallyReferencedIds ?? const <EntityId>{},
         ),
         _masterDataReferences = Map.of(
           initialMasterDataReferences ?? demoPartyMasterDataReferences(),
@@ -297,6 +297,54 @@ List<Party> demoParties() => [
         balanceIqd: 0,
         balanceUsd: 0,
       ),
+      Party(
+        id: 'party-011',
+        number: 11,
+        createdAt: DateTime(2026, 7, 11, 9, 20),
+        name: 'شركة الرافدين للتجهيز',
+        type: PartyType.supplier,
+        workplace: 'تجهيز المواد',
+        branch: 'البصرة',
+        phone: '07709990011',
+        alternatePhone: '',
+        city: 'البصرة',
+        address: 'العشار',
+        notes: '',
+        balanceIqd: -450000,
+        balanceUsd: 0,
+      ),
+      Party(
+        id: 'party-012',
+        number: 12,
+        createdAt: DateTime(2026, 7, 12, 10, 15),
+        name: 'شركة التجارة العالمية',
+        type: PartyType.supplier,
+        workplace: 'الأجهزة المكتبية',
+        branch: 'الموصل',
+        phone: '07705550012',
+        alternatePhone: '',
+        city: 'الموصل',
+        address: 'المجموعة الثقافية',
+        notes: '',
+        balanceIqd: 0,
+        balanceUsd: -1250,
+      ),
+      Party(
+        id: 'party-013',
+        number: 13,
+        createdAt: DateTime(2026, 7, 13, 11, 10),
+        name: 'مجهز الكرادة',
+        type: PartyType.supplier,
+        workplace: 'التجارة العامة',
+        branch: 'بغداد',
+        phone: '07701230013',
+        alternatePhone: '',
+        city: 'بغداد',
+        address: 'الكرادة',
+        notes: '',
+        balanceIqd: -80000,
+        balanceUsd: 0,
+      ),
     ];
 
 Map<EntityId, PartyMasterDataReferences> demoPartyMasterDataReferences() => {
@@ -340,11 +388,16 @@ Map<EntityId, PartyMasterDataReferences> demoPartyMasterDataReferences() => {
         workplaceId: EntityId.demo('workplace', 8),
         branchId: EntityId.demo('branch', 10),
       ),
+      EntityId('party-011'): PartyMasterDataReferences(
+        workplaceId: EntityId.demo('workplace', 3),
+        branchId: EntityId.demo('branch', 3),
+      ),
+      EntityId('party-012'): PartyMasterDataReferences(
+        workplaceId: EntityId.demo('workplace', 6),
+        branchId: EntityId.demo('branch', 6),
+      ),
+      EntityId('party-013'): PartyMasterDataReferences(
+        workplaceId: EntityId.demo('workplace', 1),
+        branchId: EntityId.demo('branch', 1),
+      ),
     };
-
-final demoReferencedPartyIds = <EntityId>{
-  EntityId('party-001'),
-  EntityId('party-002'),
-  EntityId('party-003'),
-  EntityId('party-005'),
-};
