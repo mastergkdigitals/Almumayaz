@@ -25,6 +25,8 @@ class _ElectronicArchiveSettingsSectionState
   late final ArchiveSecurityService _securityService;
   late final ArchiveRepository _repository;
   late final ArchiveValidationPolicy _validationPolicy;
+  var _isLoading = true;
+  String? _loadError;
   final _documents = <_ArchiveDocument>[
     const _ArchiveDocument(
       id: 1,
@@ -60,7 +62,7 @@ class _ElectronicArchiveSettingsSectionState
     _repository = widget.repository ?? DemoArchiveRepository();
     _validationPolicy = widget.validationPolicy ??
         ArchiveValidationPolicy(maximumByteSize: 10 * 1024 * 1024);
-    _refreshArchive();
+    _refreshArchive(showLoading: true);
   }
 
   @override
@@ -185,7 +187,13 @@ class _ElectronicArchiveSettingsSectionState
     }
   }
 
-  Future<void> _refreshArchive() async {
+  Future<void> _refreshArchive({bool showLoading = false}) async {
+    if (showLoading && mounted) {
+      setState(() {
+        _isLoading = true;
+        _loadError = null;
+      });
+    }
     try {
       final documents = await _repository.search(
         ArchiveQuery(searchText: _searchController.text),
@@ -195,9 +203,18 @@ class _ElectronicArchiveSettingsSectionState
         _documents
           ..clear()
           ..addAll(documents.map(_archiveDocumentFromDomain));
+        _isLoading = false;
+        _loadError = null;
       });
     } on Object catch (error) {
-      if (mounted) AppToast.showError(context, _serviceMessage(error));
+      if (mounted) {
+        final message = _serviceMessage(error);
+        setState(() {
+          _isLoading = false;
+          _loadError = message;
+        });
+        AppToast.showError(context, message);
+      }
     }
   }
 
@@ -217,6 +234,17 @@ class _ElectronicArchiveSettingsSectionState
       primary: false,
       padding: const EdgeInsets.all(AppSpacing.md),
       children: [
+        if (_loadError != null) ...[
+          AppStatePanel(
+            key: const Key('settingsArchiveLoadError'),
+            type: AppStateType.error,
+            title: 'تعذر تحميل الأرشيف',
+            message: _loadError!,
+            actionLabel: 'إعادة المحاولة',
+            onAction: () => _refreshArchive(showLoading: true),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+        ],
         AppInfoBanner(
           key: const Key('settingsArchiveInfoBanner'),
           message:
@@ -355,7 +383,12 @@ class _ElectronicArchiveSettingsSectionState
     );
     return AppShortcutScope(
       onSearch: _searchFocusNode.requestFocus,
-      child: content,
+      child: AppLoadingOverlay(
+        key: const Key('settingsArchiveLoadingOverlay'),
+        isLoading: _isLoading,
+        message: 'جاري تحميل الأرشيف',
+        child: content,
+      ),
     );
   }
 }

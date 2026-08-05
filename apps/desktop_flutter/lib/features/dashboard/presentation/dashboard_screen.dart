@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/app_state/app_store.dart';
 import '../../../core/config/app_configuration.dart';
 import '../../../core/design/app_design_system.dart';
+import '../../../core/services/service_failure.dart';
 import '../../about/presentation/about_screen.dart';
-import '../../auth/presentation/login_screen.dart';
+import '../../authentication/presentation/login_screen.dart';
 import '../../cashbox/presentation/cashbox_screen.dart';
 import '../../parties/presentation/parties_screen.dart';
 import '../../purchases/presentation/purchase_screen.dart';
@@ -152,6 +154,24 @@ class DashboardScreen extends StatelessWidget {
     AppToast.showInfo(context, 'سيتم تصميم شاشة ${item.title} في مرحلتها');
   }
 
+  Future<void> _logout(BuildContext context) async {
+    try {
+      await AppStoreScope.of(context, listen: false).signOut();
+      if (!context.mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
+      );
+    } on Object catch (error) {
+      if (!context.mounted) return;
+      AppToast.showError(
+        context,
+        error is ServiceFailure
+            ? error.message
+            : 'تعذر تسجيل الخروج. حاول مرة أخرى.',
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final configuration = AppConfigurationScope.of(context);
@@ -166,9 +186,7 @@ class DashboardScreen extends StatelessWidget {
           children: [
             _DashboardHeader(
               username: username,
-              onLogout: () => Navigator.of(context).pushReplacement(
-                MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
-              ),
+              onLogout: () => _logout(context),
             ),
             Expanded(
               child: Padding(

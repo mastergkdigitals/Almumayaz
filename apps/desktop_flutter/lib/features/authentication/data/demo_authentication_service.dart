@@ -5,16 +5,21 @@ import '../domain/authentication_service.dart';
 import '../domain/session_models.dart';
 
 class DemoAuthenticationService implements AuthenticationService {
-  DemoAuthenticationService({AuditTimestamp Function()? clock})
-      : _clock = clock ?? _DemoAuthenticationClock().call,
-        _session = AppSession(
-          id: EntityId.demo('session', 1),
-          userId: EntityId.demo('user', 1),
-          issuedAt: AuditTimestamp(DateTime.utc(2026, 7, 29, 6, 2)),
-          lastActivityAt: AuditTimestamp(DateTime.utc(2026, 7, 29, 7, 10)),
-          state: SessionState.active,
-          permissions: _administratorPermissions(),
-        );
+  DemoAuthenticationService({
+    AuditTimestamp Function()? clock,
+    bool startsAuthenticated = true,
+  })  : _clock = clock ?? _DemoAuthenticationClock().call,
+        _session = startsAuthenticated
+            ? AppSession(
+                id: EntityId.demo('session', 1),
+                userId: EntityId.demo('user', 1),
+                issuedAt: AuditTimestamp(DateTime.utc(2026, 7, 29, 6, 2)),
+                lastActivityAt:
+                    AuditTimestamp(DateTime.utc(2026, 7, 29, 7, 10)),
+                state: SessionState.active,
+                permissions: _administratorPermissions(),
+              )
+            : null;
 
   final AuditTimestamp Function() _clock;
   final Map<EntityId, String> _passwords = {

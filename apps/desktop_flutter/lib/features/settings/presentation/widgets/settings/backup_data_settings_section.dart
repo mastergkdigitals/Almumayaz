@@ -31,6 +31,8 @@ class _BackupDataSettingsSectionState
   var _backupFrequency = 'يومياً';
   var _driveConnected = false;
   var _isBusy = false;
+  var _isLoading = true;
+  String? _loadError;
   String? _operationMessage;
   BackupVerification? _lastVerification;
   late final BackupConfigurationRepository _configurationRepository;
@@ -86,6 +88,12 @@ class _BackupDataSettingsSectionState
   }
 
   Future<void> _loadBackupState() async {
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _loadError = null;
+      });
+    }
     try {
       final configuration = await _configurationRepository.load(_deviceId);
       final history = await _backupService.listHistory();
@@ -104,10 +112,16 @@ class _BackupDataSettingsSectionState
           _driveFolderController.text = connection.selectedFolder!.name;
         }
         _replaceHistory(history);
+        _isLoading = false;
       });
     } on Object catch (error) {
       if (mounted) {
-        AppToast.showError(context, _serviceMessage(error));
+        final message = _serviceMessage(error);
+        setState(() {
+          _isLoading = false;
+          _loadError = message;
+        });
+        AppToast.showError(context, message);
       }
     }
   }
@@ -317,11 +331,26 @@ class _BackupDataSettingsSectionState
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      key: const Key('backupDataSettingsContent'),
-      primary: false,
-      padding: const EdgeInsets.all(AppSpacing.md),
-      children: [
+    return AppLoadingOverlay(
+      key: const Key('settingsBackupLoadingOverlay'),
+      isLoading: _isLoading,
+      message: 'جاري تحميل إعدادات النسخ',
+      child: ListView(
+        key: const Key('backupDataSettingsContent'),
+        primary: false,
+        padding: const EdgeInsets.all(AppSpacing.md),
+        children: [
+          if (_loadError != null) ...[
+            AppStatePanel(
+              key: const Key('settingsBackupLoadError'),
+              type: AppStateType.error,
+              title: 'تعذر تحميل إعدادات النسخ',
+              message: _loadError!,
+              actionLabel: 'إعادة المحاولة',
+              onAction: _loadBackupState,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+          ],
         AppInfoBanner(
           key: const Key('settingsBackupPolicyBanner'),
           message:
@@ -615,6 +644,11 @@ class _BackupDataSettingsSectionState
                 minimumColumnWidth: 150,
                 accentColor: widget.accentColor,
                 showShadow: false,
+                emptyState: const AppStatePanel(
+                  type: AppStateType.empty,
+                  title: 'لا توجد نسخ احتياطية',
+                  message: 'أنشئ نسخة جديدة لتظهر في السجل.',
+                ),
                 columns: const [
                   AppTableColumn(label: 'التاريخ والوقت', flex: 1.5),
                   AppTableColumn(label: 'الوجهة', flex: 1.3),
@@ -673,8 +707,9 @@ class _BackupDataSettingsSectionState
               ),
             ],
           ),
-        ),
-      ],
+          ),
+        ],
+      ),
     );
   }
 

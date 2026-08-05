@@ -5,12 +5,13 @@ import '../core/config/app_configuration.dart';
 import '../core/design/app_theme.dart';
 import '../core/design/components/app_shortcuts.dart';
 import '../core/responsive/responsive_shell.dart';
-import '../features/auth/presentation/login_screen.dart';
+import '../features/authentication/presentation/login_screen.dart';
 
 class AlmumayazApp extends StatelessWidget {
-  const AlmumayazApp({super.key, this.configuration});
+  const AlmumayazApp({super.key, this.configuration, this.store});
 
   final AppConfiguration? configuration;
+  final AppStore? store;
 
   @override
   Widget build(BuildContext context) {
@@ -18,6 +19,7 @@ class AlmumayazApp extends StatelessWidget {
         configuration ?? AppConfiguration.fromEnvironment();
 
     return AppStoreProvider(
+      store: store,
       child: AppConfigurationScope(
         configuration: effectiveConfiguration,
         child: MaterialApp(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/app_state/app_store.dart';
 import '../../../core/design/app_design_system.dart';
 import 'widgets/settings_sections.dart';
 
@@ -83,6 +84,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildSection(_SettingsSection section) {
+    final services = AppStoreScope.of(context, listen: false).services;
     return switch (section) {
       _SettingsSection.businessPolicies =>
         BusinessPoliciesSettingsSection(
@@ -97,14 +99,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       _SettingsSection.backup => BackupDataSettingsSection(
           accentColor: section.palette.middle,
+          configurationRepository: services.backupConfiguration,
+          backupService: services.backups,
+          googleDriveService: services.googleDriveBackups,
         ),
       _SettingsSection.usersSecurity =>
         UsersSecuritySettingsSection(
           accentColor: section.palette.middle,
+          userRepository: services.users,
+          roleRepository: services.roles,
+          authenticationService: services.authentication,
+          sessionPolicyRepository: services.sessionPolicies,
+          auditRepository: services.audit,
         ),
       _SettingsSection.archive =>
         ElectronicArchiveSettingsSection(
           accentColor: section.palette.middle,
+          securityService: services.archiveSecurity,
+          repository: services.archive,
+          validationPolicy: services.archiveValidationPolicy,
         ),
     };
   }

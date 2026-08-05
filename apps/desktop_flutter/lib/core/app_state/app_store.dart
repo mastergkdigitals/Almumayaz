@@ -1,19 +1,43 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../features/authentication/domain/session_models.dart';
 import 'app_repositories.dart';
+import 'app_services.dart';
 
 class AppStore extends ChangeNotifier {
-  AppStore({required this.repositories});
+  AppStore({
+    required this.repositories,
+    AppServices? services,
+  }) : services = services ?? AppServices.demo();
 
   factory AppStore.demo() {
-    return AppStore(repositories: AppRepositories.demo());
+    return AppStore(
+      repositories: AppRepositories.demo(),
+      services: AppServices.demo(),
+    );
   }
 
   final AppRepositories repositories;
+  final AppServices services;
+  AppSession? _session;
   int _revision = 0;
 
+  AppSession? get session => _session;
   int get revision => _revision;
+
+  Future<AppSession> signIn(SignInCredentials credentials) async {
+    final session = await services.authentication.signIn(credentials);
+    _session = session;
+    notifyListeners();
+    return session;
+  }
+
+  Future<void> signOut() async {
+    await services.authentication.signOut();
+    _session = null;
+    notifyListeners();
+  }
 
   /// Feature controllers call this after a repository mutation when they are
   /// migrated. It gives cross-module listeners one lightweight invalidation

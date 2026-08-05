@@ -37,6 +37,8 @@ class _UsersSecuritySettingsSectionState
   var _nextUserId = 4;
   var _nextRoleId = 5;
   var _nextAuditId = 6;
+  var _isLoading = true;
+  String? _loadError;
   late final UserRepository _userRepository;
   late final RoleRepository _roleRepository;
   late final AuthenticationService _authenticationService;
@@ -161,6 +163,12 @@ class _UsersSecuritySettingsSectionState
   }
 
   Future<void> _loadSecurityState() async {
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _loadError = null;
+      });
+    }
     try {
       final roles = await _roleRepository.getAll();
       final users = await _userRepository.search(const UserQuery());
@@ -196,9 +204,17 @@ class _UsersSecuritySettingsSectionState
         _auditEntries
           ..clear()
           ..addAll(auditPage.records.map(_settingsAuditFromDomain));
+        _isLoading = false;
       });
     } on Object catch (error) {
-      if (mounted) AppToast.showError(context, _serviceMessage(error));
+      if (mounted) {
+        final message = _serviceMessage(error);
+        setState(() {
+          _isLoading = false;
+          _loadError = message;
+        });
+        AppToast.showError(context, message);
+      }
     }
   }
 
@@ -647,6 +663,17 @@ class _UsersSecuritySettingsSectionState
       primary: false,
       padding: const EdgeInsets.all(AppSpacing.md),
       children: [
+        if (_loadError != null) ...[
+          AppStatePanel(
+            key: const Key('settingsUsersSecurityLoadError'),
+            type: AppStateType.error,
+            title: 'تعذر تحميل بيانات المستخدمين والأمان',
+            message: _loadError!,
+            actionLabel: 'إعادة المحاولة',
+            onAction: _loadSecurityState,
+          ),
+          const SizedBox(height: AppSpacing.lg),
+        ],
         SettingsTemplateTabs<String>(
           keyPrefix: 'usersSecurityTab_',
           accentColor: widget.accentColor,
@@ -690,7 +717,12 @@ class _UsersSecuritySettingsSectionState
     );
     return AppShortcutScope(
       onSearch: _focusLogSearch,
-      child: content,
+      child: AppLoadingOverlay(
+        key: const Key('settingsUsersSecurityLoadingOverlay'),
+        isLoading: _isLoading,
+        message: 'جاري تحميل المستخدمين والأمان',
+        child: content,
+      ),
     );
   }
 
@@ -729,6 +761,11 @@ class _UsersSecuritySettingsSectionState
             minimumColumnWidth: 150,
             accentColor: widget.accentColor,
             showShadow: false,
+            emptyState: const AppStatePanel(
+              type: AppStateType.empty,
+              title: 'لا يوجد مستخدمون',
+              message: 'أضف مستخدماً جديداً لبدء إدارة الحسابات.',
+            ),
             columns: const [
               AppTableColumn(label: 'الاسم الكامل', flex: 1.3),
               AppTableColumn(label: 'اسم المستخدم', flex: 1),
@@ -836,6 +873,11 @@ class _UsersSecuritySettingsSectionState
             minimumColumnWidth: 160,
             accentColor: widget.accentColor,
             showShadow: false,
+            emptyState: const AppStatePanel(
+              type: AppStateType.empty,
+              title: 'لا توجد أدوار',
+              message: 'أضف دوراً جديداً وحدد صلاحياته.',
+            ),
             columns: const [
               AppTableColumn(label: 'ت', flex: 0.4, numeric: true),
               AppTableColumn(label: 'الدور', flex: 1.1),

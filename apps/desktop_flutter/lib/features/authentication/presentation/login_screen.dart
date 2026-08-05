@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/app_state/app_store.dart';
 import '../../../core/design/app_design_system.dart';
+import '../../../core/services/service_failure.dart';
 import '../../dashboard/presentation/dashboard_screen.dart';
+import '../domain/session_models.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -24,6 +27,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordFocusNode = FocusNode();
   final _keyHoldGuard = AppKeyHoldGuard();
   bool _hidePassword = true;
+  bool _isAuthenticating = false;
+  String? _authenticationError;
 
   @override
   void dispose() {
@@ -35,13 +40,38 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _login() {
-    if (!_formKey.currentState!.validate()) return;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(
-        builder: (_) => DashboardScreen(username: _username.text.trim()),
-      ),
-    );
+  Future<void> _login() async {
+    if (_isAuthenticating || !_formKey.currentState!.validate()) return;
+    setState(() {
+      _isAuthenticating = true;
+      _authenticationError = null;
+    });
+    final username = _username.text.trim();
+    try {
+      await AppStoreScope.of(context, listen: false).signIn(
+        SignInCredentials(
+          username: username,
+          password: _password.text,
+        ),
+      );
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute<void>(
+          builder: (_) => DashboardScreen(username: username),
+        ),
+      );
+    } on Object catch (error) {
+      if (!mounted) return;
+      setState(() => _authenticationError = _loginFailureMessage(error));
+      _passwordFocusNode.requestFocus();
+    } finally {
+      if (mounted) setState(() => _isAuthenticating = false);
+    }
+  }
+
+  void _clearAuthenticationError() {
+    if (_authenticationError == null) return;
+    setState(() => _authenticationError = null);
   }
 
   void _focusNextField() {
@@ -80,7 +110,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void _submitPassword() {
     _keyHoldGuard.runOnce(
       keys: _enterKeys,
-      action: _login,
+      action: () => _login(),
     );
   }
 
@@ -151,6 +181,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   focusNode: _usernameFocusNode,
                   autofocus: true,
                   textInputAction: TextInputAction.next,
+                  enabled: !_isAuthenticating,
+                  onChanged: (_) => _clearAuthenticationError(),
                   onSubmitted: (_) => _submitUsername(),
                   validator: (value) =>
                       value == null || value.trim().isEmpty
@@ -168,6 +200,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   icon: Icons.lock_outline_rounded,
                   focusNode: _passwordFocusNode,
                   obscureText: _hidePassword,
+                  enabled: !_isAuthenticating,
+                  onChanged: (_) => _clearAuthenticationError(),
                   textInputAction: TextInputAction.done,
                   onSubmitted: (_) => _submitPassword(),
                   suffixIcon: AppFieldIconButton(
@@ -183,6 +217,17 @@ class _LoginScreenState extends State<LoginScreen> {
                       : null,
                 ),
               ),
+              if (_authenticationError != null) ...[
+                const SizedBox(height: AppSpacing.md),
+                AppInfoBanner(
+                  key: const Key('loginAuthenticationError'),
+                  message: _authenticationError!,
+                  icon: Icons.error_outline_rounded,
+                  foregroundColor: AppColors.danger,
+                  backgroundColor: AppColors.dangerSurface,
+                  textAlign: TextAlign.center,
+                ),
+              ],
               const SizedBox(height: AppSpacing.lg),
               ExcludeFocus(
                 child: AppButton(
@@ -190,12 +235,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   label: 'دخول',
                   icon: Icons.login_rounded,
                   width: double.infinity,
-                  onPressed: _login,
+                  isLoading: _isAuthenticating,
+                  onPressed: _isAuthenticating ? null : _login,
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
               const AppInfoBanner(
-                message: 'نسخة تصميمية: استخدم أي اسم وكلمة مرور غير فارغين.',
+                message: 'نسخة تصميمية: admin / password',
                 icon: null,
                 textAlign: TextAlign.center,
               ),
@@ -205,6 +251,11 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
+}
+
+String _loginFailureMessage(Object error) {
+  if (error is ServiceFailure) return error.message;
+  return 'تعذر تسجيل الدخول. حاول مرة أخرى.';
 }
 
 class _BrandPanel extends StatelessWidget {
