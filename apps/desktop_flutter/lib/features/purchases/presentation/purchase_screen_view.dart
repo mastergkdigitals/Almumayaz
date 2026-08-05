@@ -1,0 +1,364 @@
+part of 'purchase_screen.dart';
+
+extension _PurchaseViewState on _PurchaseScreenState {
+  Widget _buildPurchaseScreen(BuildContext context) {
+    final hasSelectedInvoice = _selectedInvoice != null;
+    final selectedInvoiceIndex = _selectedInvoiceIndex;
+    final hasInvoices = _purchaseInvoices.isNotEmpty;
+    final canMoveToFirstOrPrevious =
+        hasInvoices && selectedInvoiceIndex != 0;
+    final canMoveToNextOrLast =
+        hasInvoices && selectedInvoiceIndex >= 0;
+    final currencyName = _currency == 'USD' ? 'دولار' : 'دينار';
+    final isEditorReady = _invoiceState.status == AppDataStatus.ready;
+    final tint = Color.alphaBlend(
+      AppModuleColors.purchases.withAlpha(12),
+      AppColors.surface,
+    );
+
+    return PopScope(
+      canPop: !_hasUnsavedChanges && !_isRepositoryBusy,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && !_isRepositoryBusy) _attemptBack();
+      },
+      child: AppScreenShell(
+        key: const Key('purchaseScreen'),
+        title: 'المشتريات',
+        backgroundColor: tint,
+        onBack: _attemptBack,
+        onSearch: !isEditorReady || _isRepositoryBusy
+            ? null
+            : _showPurchaseSearch,
+        onSave: !isEditorReady || _isRepositoryBusy
+            ? null
+            : hasSelectedInvoice
+            ? _hasUnsavedChanges
+                ? _update
+                : null
+            : _save,
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+        ColoredBox(
+          key: const Key('purchaseTintBackground'),
+          color: tint,
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Column(
+              children: [
+              _PurchaseFieldRow(
+                children: [
+                  AppReadOnlyField(
+                    fieldKey: const Key('purchaseInvoiceNumberField'),
+                    controller: _invoiceNumberController,
+                    label: 'رقم القائمة',
+                    icon: Icons.receipt_long_rounded,
+                    accentColor: AppModuleColors.purchases,
+                    textDirection: TextDirection.rtl,
+                    textAlign: TextAlign.right,
+                  ),
+                  AppDateField(
+                    fieldKey: const Key('purchaseDateField'),
+                    label: 'التاريخ',
+                    value: _invoiceDateTime,
+                    accentColor: AppModuleColors.purchases,
+                    textDirection: TextDirection.rtl,
+                    onChanged: _changeDate,
+                  ),
+                  AppTimeField(
+                    fieldKey: const Key('purchaseTimeField'),
+                    label: 'الوقت',
+                    value: TimeOfDay.fromDateTime(_invoiceDateTime),
+                    accentColor: AppModuleColors.purchases,
+                  ),
+                  AppDropdownField<String>(
+                    fieldKey: const Key('purchaseWarehouseField'),
+                    label: 'المخزن',
+                    icon: Icons.warehouse_rounded,
+                    accentColor: AppModuleColors.purchases,
+                    useIntrinsicHeight: true,
+                    textDirection: TextDirection.rtl,
+                    textAlign: TextAlign.right,
+                    menuTextDirection: TextDirection.rtl,
+                    value: _warehouse,
+                    options: _warehouseOptions,
+                    onChanged: (value) {
+                      if (value == null) return;
+                      _changeWarehouse(value);
+                    },
+                  ),
+                  AppDropdownField<String>(
+                    fieldKey: const Key('purchaseTypeField'),
+                    label: 'نوع الشراء',
+                    icon: Icons.shopping_cart_checkout_rounded,
+                    accentColor: AppModuleColors.purchases,
+                    useIntrinsicHeight: true,
+                    textDirection: TextDirection.rtl,
+                    textAlign: TextAlign.right,
+                    menuTextDirection: TextDirection.rtl,
+                    value: _purchaseType,
+                    options: _purchaseTypeOptions,
+                    onChanged: (value) {
+                      if (value == null) return;
+                      _changePurchaseType(value);
+                    },
+                  ),
+                  AppDropdownField<String>(
+                    fieldKey: const Key('purchasePaymentTypeField'),
+                    label: 'نوع الدفع',
+                    icon: Icons.payments_rounded,
+                    accentColor: AppModuleColors.purchases,
+                    useIntrinsicHeight: true,
+                    textDirection: TextDirection.rtl,
+                    textAlign: TextAlign.right,
+                    menuTextDirection: TextDirection.rtl,
+                    value: _paymentType,
+                    options: _purchasePaymentTypeOptions,
+                    onChanged: (value) {
+                      if (value == null) return;
+                      _changePaymentType(value);
+                    },
+                  ),
+                  AppDropdownField<String>(
+                    fieldKey: const Key('purchaseCurrencyField'),
+                    label: 'العملة',
+                    icon: Icons.currency_exchange_rounded,
+                    accentColor: AppModuleColors.purchases,
+                    useIntrinsicHeight: true,
+                    textDirection: TextDirection.rtl,
+                    textAlign: TextAlign.right,
+                    menuTextDirection: TextDirection.rtl,
+                    value: _currency,
+                    options: _purchaseCurrencyOptions,
+                    onChanged: (value) {
+                      if (value == null) return;
+                      _changeCurrency(value);
+                    },
+                  ),
+                  AppMoneyField(
+                    fieldKey: const Key('purchaseExchangeRateField'),
+                    controller: _exchangeRateController,
+                    label: 'سعر الصرف',
+                    icon: Icons.currency_exchange_rounded,
+                    accentColor: AppModuleColors.purchases,
+                    textDirection: TextDirection.rtl,
+                    textAlign: TextAlign.right,
+                    enabled: _currency == 'USD',
+                    readOnly: _currency != 'USD',
+                    decimalPlaces: 4,
+                    textInputAction: TextInputAction.next,
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _PurchaseFieldRow(
+                children: [
+                  AppAutocompleteField<String>(
+                    fieldKey: const Key('purchaseSupplierNameField'),
+                    controller: _supplierNameController,
+                    label: 'اسم المجهز',
+                    icon: Icons.person_search_rounded,
+                    accentColor: AppModuleColors.purchases,
+                    options: _supplierOptions,
+                    displayStringForOption: (value) => value,
+                    onSelected: (_) {},
+                    textDirection: TextDirection.rtl,
+                    textAlign: TextAlign.right,
+                  ),
+                  AppTextField(
+                    fieldKey: const Key('purchaseNotesField'),
+                    controller: _notesController,
+                    label: 'الملاحظات',
+                    icon: Icons.notes_rounded,
+                    accentColor: AppModuleColors.purchases,
+                    textDirection: TextDirection.rtl,
+                    textAlign: TextAlign.right,
+                    textInputAction: TextInputAction.next,
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Expanded(
+                child: AppPurchaseInvoiceTableTemplate(
+                  key: const Key('purchaseItemsTable'),
+                  initialRows: _activeItems,
+                  dataVersion: _tableDataVersion,
+                  summaryQuantity: _summaryQuantity,
+                  summaryDiscount: _summaryDiscount,
+                  summaryTotal: _summaryTotal,
+                  summaryTotalCost: _summaryTotalCost,
+                  currencyCode: _currency,
+                  lineBaseTotal: _lineBaseTotal,
+                  invoiceAdjustment: _invoiceAdjustment,
+                  itemOptions: _itemOptions,
+                  onRowsChanged: _changeItems,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _PurchaseFieldRow(
+                flexes: const [5, 4, 4, 4, 4, 4, 4, 4],
+                children: [
+                  AppRegularButton(
+                    key: const Key('purchaseExpensesButton'),
+                    label: 'المصاريف',
+                    icon: Icons.receipt_long_rounded,
+                    onPressed: () => _expensesFocusNode.requestFocus(),
+                  ),
+                  _PurchaseMoneyField(
+                    fieldKey: const Key('purchaseExpensesField'),
+                    controller: _expensesController,
+                    focusNode: _expensesFocusNode,
+                    label: 'المصاريف',
+                    icon: Icons.payments_rounded,
+                    decimalPlaces: _currency == 'USD' ? 2 : 0,
+                    onChanged: _changeExpenses,
+                  ),
+                  _PurchaseMoneyField(
+                    fieldKey: const Key('purchaseInvoiceDiscountField'),
+                    controller: _invoiceDiscountController,
+                    label: 'خصم القائمة',
+                    icon: Icons.discount_rounded,
+                    decimalPlaces: _currency == 'USD' ? 2 : 0,
+                    onChanged: _changeInvoiceDiscount,
+                  ),
+                  _PurchaseMoneyField(
+                    fieldKey: const Key('purchaseDiscountPercentageField'),
+                    controller: _discountPercentageController,
+                    label: 'نسبة الخصم',
+                    icon: Icons.percent_rounded,
+                    decimalPlaces: 2,
+                    onChanged: _changeDiscountPercentage,
+                  ),
+                  _PurchaseMoneyField(
+                    fieldKey: const Key('purchasePaidField'),
+                    controller: _paidController,
+                    label: 'المدفوع',
+                    icon: Icons.payments_rounded,
+                    decimalPlaces: _currency == 'USD' ? 2 : 0,
+                    enabled: _paymentType != 'نقدي',
+                    onChanged: _changePaid,
+                  ),
+                  AppReadOnlyField(
+                    fieldKey: const Key('purchaseTotalField'),
+                    controller: _totalController,
+                    label: 'المجموع $currencyName',
+                    icon: Icons.calculate_rounded,
+                    accentColor: AppModuleColors.purchases,
+                    textDirection: TextDirection.rtl,
+                    textAlign: TextAlign.right,
+                  ),
+                  AppReadOnlyField(
+                    fieldKey: const Key('purchaseRemainingField'),
+                    controller: _remainingController,
+                    label: 'المتبقي $currencyName',
+                    icon: Icons.pending_actions_rounded,
+                    accentColor: AppModuleColors.purchases,
+                    textDirection: TextDirection.rtl,
+                    textAlign: TextAlign.right,
+                  ),
+                  AppReadOnlyField(
+                    fieldKey: const Key('purchaseCurrentBalanceField'),
+                    controller: _currentBalanceController,
+                    label: 'الرصيد الحالي $currencyName',
+                    icon: Icons.account_balance_wallet_rounded,
+                    accentColor: AppModuleColors.purchases,
+                    textDirection: TextDirection.rtl,
+                    textAlign: TextAlign.right,
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              AppActionBar(
+                key: const Key('purchaseActionBar'),
+                middle: _PurchaseInvoiceButtons(
+                  onSearch: !isEditorReady || _isRepositoryBusy
+                      ? null
+                      : _showPurchaseSearch,
+                  onPrint: !isEditorReady || _isDocumentActionRunning
+                      ? null
+                      : () => _printPurchaseInvoice(),
+                  onPrintWithoutPrices: isEditorReady &&
+                          hasSelectedInvoice &&
+                          !_isDocumentActionRunning
+                      ? () => _printPurchaseInvoice(includePrices: false)
+                      : null,
+                  onStatement:
+                      isEditorReady ? _showPurchaseStatement : null,
+                ),
+                firstButtonKey: const Key('purchaseFirstButton'),
+                previousButtonKey: const Key('purchasePreviousButton'),
+                nextButtonKey: const Key('purchaseNextButton'),
+                lastButtonKey: const Key('purchaseLastButton'),
+                saveButtonKey: const Key('purchaseSaveButton'),
+                updateButtonKey: const Key('purchaseUpdateButton'),
+                undoButtonKey: const Key('purchaseUndoButton'),
+                deleteButtonKey: const Key('purchaseDeleteButton'),
+                accentColor: AppModuleColors.purchases,
+                onFirst: canMoveToFirstOrPrevious
+                    ? () => _navigate(_PurchaseNavigation.first)
+                    : null,
+                onPrevious: canMoveToFirstOrPrevious
+                    ? () => _navigate(_PurchaseNavigation.previous)
+                    : null,
+                onNext: canMoveToNextOrLast
+                    ? () => _navigate(_PurchaseNavigation.next)
+                    : null,
+                onLast: canMoveToNextOrLast
+                    ? () => _navigate(_PurchaseNavigation.last)
+                    : null,
+                onSave: !isEditorReady ||
+                        _isRepositoryBusy ||
+                        hasSelectedInvoice
+                    ? null
+                    : _save,
+                onUpdate: isEditorReady &&
+                        hasSelectedInvoice &&
+                        _hasUnsavedChanges &&
+                        !_isRepositoryBusy
+                    ? _update
+                    : null,
+                onUndo:
+                    isEditorReady && _hasUnsavedChanges ? _undo : null,
+                onDelete: isEditorReady &&
+                        hasSelectedInvoice &&
+                        !_isRepositoryBusy
+                    ? _delete
+                    : null,
+              ),
+              ],
+            ),
+          ),
+        ),
+            if (_invoiceState.status != AppDataStatus.ready)
+              ColoredBox(
+                color: tint,
+                child: AppDataStateView<List<_DemoPurchaseInvoice>>(
+                  state: _invoiceState,
+                  dataBuilder: (_, __) => const SizedBox.shrink(),
+                  emptyTitle: 'لا توجد قوائم شراء',
+                  emptyActionLabel: 'قائمة شراء جديدة',
+                  onEmptyAction: _openEmptyEditor,
+                  missingReferenceActionLabel: 'إعادة المحاولة',
+                  onMissingReferenceAction: () => unawaited(_loadData()),
+                  onRetry: () => unawaited(_loadData()),
+                  loadingStateKey: const Key('purchaseLoadingState'),
+                  emptyStateKey: const Key('purchaseEmptyState'),
+                  missingReferenceStateKey:
+                      const Key('purchaseMissingReferenceState'),
+                  errorStateKey: const Key('purchaseErrorState'),
+                ),
+              ),
+            if (_isRepositoryBusy)
+              AbsorbPointer(
+                child: ColoredBox(
+                  key: const Key('purchaseBusyOverlay'),
+                  color: AppColors.textPrimary.withAlpha(20),
+                  child: const Center(child: CircularProgressIndicator()),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
