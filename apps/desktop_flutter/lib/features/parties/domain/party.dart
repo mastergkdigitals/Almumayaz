@@ -88,3 +88,20 @@ class Party {
     );
   }
 }
+
+/// Canonical comparison form for party names.
+///
+/// Keeping this rule in the domain layer ensures UI validation and every
+/// repository adapter reject the same Arabic spelling variants.
+String normalizePartyName(String value) {
+  return value
+      .trim()
+      .toLowerCase()
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .replaceAll(RegExp(r'[\u064B-\u065F\u0670]'), '')
+      .replaceAll(RegExp('[أإآ]'), 'ا')
+      .replaceAll('ى', 'ي')
+      .replaceAll('ؤ', 'و')
+      .replaceAll('ئ', 'ي')
+      .replaceAll('ة', 'ه');
+}

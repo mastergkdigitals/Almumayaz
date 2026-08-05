@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/app_state/app_store.dart';
+import '../../../core/data/app_repository.dart';
 import '../../../core/design/app_design_system.dart';
 import '../domain/item.dart';
 import 'items_controller.dart';
@@ -9,21 +11,26 @@ import 'widgets/item_form.dart';
 import 'widgets/items_table.dart';
 
 class ItemsScreen extends StatefulWidget {
-  const ItemsScreen({super.key});
+  const ItemsScreen({super.key, this.controller});
+
+  final ItemsController? controller;
 
   @override
   State<ItemsScreen> createState() => _ItemsScreenState();
 }
 
 class _ItemsScreenState extends State<ItemsScreen> {
-  final _itemsController = ItemsController();
+  late ItemsController _itemsController;
+  bool _controllerInitialized = false;
+  bool _ownsController = false;
+  bool _showEditorWhenEmpty = false;
   final _formControllers = ItemFormControllers();
   final _formKey = GlobalKey<ItemFormState>();
   final _searchController = TextEditingController();
   final _searchFocusNode = FocusNode();
 
-  late String _groupId;
-  late String _typeId;
+  String _groupId = '';
+  String _typeId = '';
   late _ItemFormSnapshot _baseline;
   bool _isApplyingFormState = false;
   bool _hasUnsavedChanges = false;
@@ -41,17 +48,65 @@ class _ItemsScreenState extends State<ItemsScreen> {
       _itemsController.typesFor(_groupId);
 
   ItemGroup get _selectedGroup =>
-      _itemsController.groupById(_groupId);
+      _itemsController.groupById(_groupId)!;
 
   ItemType get _selectedType =>
-      _itemsController.typeById(_typeId);
+      _itemsController.typeById(_typeId)!;
 
   @override
   void initState() {
     super.initState();
-    _setNewForm();
+    _formControllers.setNew();
+    _baseline = _currentSnapshot();
     for (final controller in _editableControllers) {
       controller.addListener(_refreshUnsavedState);
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_controllerInitialized) return;
+    _setController(widget.controller);
+    _controllerInitialized = true;
+    unawaited(_loadItems());
+  }
+
+  @override
+  void didUpdateWidget(covariant ItemsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (identical(oldWidget.controller, widget.controller)) return;
+    final previousController = _itemsController;
+    final disposePreviousController = _ownsController;
+    _setController(widget.controller);
+    _showEditorWhenEmpty = false;
+    _hasUnsavedChanges = false;
+    _baseline = _currentSnapshot();
+    if (disposePreviousController) previousController.dispose();
+    unawaited(_loadItems());
+  }
+
+  void _setController(ItemsController? suppliedController) {
+    if (suppliedController != null) {
+      _itemsController = suppliedController;
+      _ownsController = false;
+    } else {
+      final store = AppStoreScope.of(context, listen: false);
+      _itemsController = ItemsController(
+        repository: store.repositories.items,
+        onDataChanged: store.markDataChanged,
+      );
+      _ownsController = true;
+    }
+  }
+
+  Future<void> _loadItems() async {
+    final controller = _itemsController;
+    await controller.load();
+    if (!mounted || !identical(controller, _itemsController)) return;
+    final status = controller.state.dataState.status;
+    if (status == AppDataStatus.ready || status == AppDataStatus.empty) {
+      setState(_setNewForm);
     }
   }
 
@@ -60,7 +115,9 @@ class _ItemsScreenState extends State<ItemsScreen> {
     for (final controller in _editableControllers) {
       controller.removeListener(_refreshUnsavedState);
     }
-    _itemsController.dispose();
+    if (_controllerInitialized && _ownsController) {
+      _itemsController.dispose();
+    }
     _formControllers.dispose();
     _searchController.dispose();
     _searchFocusNode.dispose();
@@ -69,8 +126,12 @@ class _ItemsScreenState extends State<ItemsScreen> {
 
   void _setNewForm() {
     _isApplyingFormState = true;
-    _groupId = ItemsController.groups.first.id;
-    _typeId = _itemsController.typesFor(_groupId).first.id;
+    final groups = _itemsController.state.groups;
+    _groupId = groups.isEmpty ? '' : groups.first.id;
+    final types = _groupId.isEmpty
+        ? const <ItemType>[]
+        : _itemsController.typesFor(_groupId);
+    _typeId = types.isEmpty ? '' : types.first.id;
     _formControllers.setNew();
     _isApplyingFormState = false;
     _baseline = _currentSnapshot();
@@ -122,7 +183,8 @@ class _ItemsScreenState extends State<ItemsScreen> {
     if (value == null || value == _groupId) return;
     setState(() {
       _groupId = value;
-      _typeId = _itemsController.typesFor(value).first.id;
+      final types = _itemsController.typesFor(value);
+      _typeId = types.isEmpty ? '' : types.first.id;
       _refreshSelectionState();
     });
   }
@@ -264,7 +326,7 @@ class _ItemsScreenState extends State<ItemsScreen> {
     );
   }
 
-  void _save() {
+  Future<void> _save() async {
     if (!_validateForm()) return;
     if (_itemsController.selectedItem != null) {
       AppToast.showWarning(
@@ -274,13 +336,17 @@ class _ItemsScreenState extends State<ItemsScreen> {
       return;
     }
 
-    final item = _newItemFromForm();
-    _itemsController.add(item);
-    _loadItem(item);
-    AppToast.showInfo(context, 'تم حفظ المادة مؤقتاً');
+    try {
+      final item = await _itemsController.add(_newItemFromForm());
+      if (!mounted) return;
+      _loadItem(item);
+      AppToast.showInfo(context, 'تم حفظ المادة مؤقتاً');
+    } on StateError catch (error) {
+      if (mounted) AppToast.showWarning(context, _stateErrorMessage(error));
+    }
   }
 
-  void _update() {
+  Future<void> _update() async {
     final selected = _itemsController.selectedItem;
     if (selected == null) {
       AppToast.showWarning(context, 'اختر مادة من الجدول لتحديثها');
@@ -288,10 +354,16 @@ class _ItemsScreenState extends State<ItemsScreen> {
     }
     if (!_validateForm()) return;
 
-    final updated = _updatedItemFromForm(selected);
-    _itemsController.update(updated);
-    _loadItem(updated);
-    AppToast.showSuccess(context, 'تم تحديث المادة مؤقتاً');
+    try {
+      final updated = await _itemsController.update(
+        _updatedItemFromForm(selected),
+      );
+      if (!mounted) return;
+      _loadItem(updated);
+      AppToast.showSuccess(context, 'تم تحديث المادة مؤقتاً');
+    } on StateError catch (error) {
+      if (mounted) AppToast.showWarning(context, _stateErrorMessage(error));
+    }
   }
 
   void _undo() {
@@ -310,10 +382,12 @@ class _ItemsScreenState extends State<ItemsScreen> {
       AppToast.showWarning(context, 'اختر مادة من الجدول لحذفها');
       return;
     }
-    if (_itemsController.isItemReferenced(selected.id)) {
+    final decision = await _itemsController.canDeleteSelected();
+    if (!mounted) return;
+    if (!decision.isAllowed) {
       AppToast.showDanger(
         context,
-        'لا يمكن حذف هذا السجل لأنه مرتبط ببيانات أخرى',
+        decision.reason ?? 'لا يمكن حذف هذا السجل لأنه مرتبط ببيانات أخرى',
       );
       return;
     }
@@ -327,7 +401,8 @@ class _ItemsScreenState extends State<ItemsScreen> {
     );
     if (!mounted || !confirmed) return;
 
-    _itemsController.deleteSelected();
+    await _itemsController.deleteSelected();
+    if (!mounted) return;
     setState(_setNewForm);
     AppToast.showDanger(context, 'تم حذف المادة مؤقتاً');
   }
@@ -346,6 +421,10 @@ class _ItemsScreenState extends State<ItemsScreen> {
             hasVisibleItems && selectedVisibleIndex != 0;
         final canMoveToNextOrLast =
             hasVisibleItems && selectedVisibleIndex >= 0;
+        final dataState = _itemsController.state.dataState;
+        final showEditor = dataState.status == AppDataStatus.ready ||
+            (dataState.status == AppDataStatus.empty &&
+                _showEditorWhenEmpty);
 
         return PopScope(
           canPop: !_hasUnsavedChanges,
@@ -368,13 +447,14 @@ class _ItemsScreenState extends State<ItemsScreen> {
                     : null
                 : _save,
             body: Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Column(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: showEditor
+                  ? Column(
               children: [
                 ItemForm(
                   key: _formKey,
                   controllers: _formControllers,
-                  groups: ItemsController.groups,
+                  groups: _itemsController.state.groups,
                   types: _visibleTypes,
                   groupId: _groupId,
                   typeId: _typeId,
@@ -435,7 +515,26 @@ class _ItemsScreenState extends State<ItemsScreen> {
                   ),
                 ),
               ],
-            ),
+                    )
+                  : AppDataStateView<List<Item>>(
+                      state: dataState,
+                      dataBuilder: (_, __) => const SizedBox.shrink(),
+                      loadingStateKey: const Key('itemsLoadingState'),
+                      emptyStateKey: const Key('itemsEmptyState'),
+                      missingReferenceStateKey:
+                          const Key('itemsMissingReferenceState'),
+                      errorStateKey: const Key('itemsErrorState'),
+                      emptyActionLabel: 'إضافة مادة',
+                      onEmptyAction: () {
+                        setState(() {
+                          _showEditorWhenEmpty = true;
+                          _setNewForm();
+                        });
+                      },
+                      missingReferenceActionLabel: 'إعادة المحاولة',
+                      onMissingReferenceAction: _loadItems,
+                      onRetry: _loadItems,
+                    ),
             ),
           ),
         );
@@ -453,3 +552,8 @@ typedef _ItemFormSnapshot = ({
   String salePriceUsd,
   String notes,
 });
+
+String _stateErrorMessage(StateError error) {
+  final message = error.message;
+  return message is String ? message : error.toString();
+}

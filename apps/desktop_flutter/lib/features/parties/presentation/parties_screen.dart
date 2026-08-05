@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/app_state/app_store.dart';
+import '../../../core/data/app_repository.dart';
 import '../../../core/design/app_design_system.dart';
 import '../domain/party.dart';
 import 'parties_controller.dart';
@@ -9,14 +11,19 @@ import 'widgets/parties_table.dart';
 import 'widgets/party_form.dart';
 
 class PartiesScreen extends StatefulWidget {
-  const PartiesScreen({super.key});
+  const PartiesScreen({super.key, this.controller});
+
+  final PartiesController? controller;
 
   @override
   State<PartiesScreen> createState() => _PartiesScreenState();
 }
 
 class _PartiesScreenState extends State<PartiesScreen> {
-  final _partiesController = PartiesController();
+  late PartiesController _partiesController;
+  bool _controllerInitialized = false;
+  bool _ownsController = false;
+  bool _showEditorWhenEmpty = false;
   final _formControllers = PartyFormControllers();
   final _searchController = TextEditingController();
   final _searchFocusNode = FocusNode();
@@ -49,11 +56,61 @@ class _PartiesScreenState extends State<PartiesScreen> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_controllerInitialized) return;
+    _setController(widget.controller);
+    _controllerInitialized = true;
+    unawaited(_loadParties());
+  }
+
+  @override
+  void didUpdateWidget(covariant PartiesScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (identical(oldWidget.controller, widget.controller)) return;
+    final previousController = _partiesController;
+    final disposePreviousController = _ownsController;
+    _setController(widget.controller);
+    _showEditorWhenEmpty = false;
+    _hasUnsavedChanges = false;
+    _baseline = _currentSnapshot();
+    if (disposePreviousController) previousController.dispose();
+    unawaited(_loadParties());
+  }
+
+  void _setController(PartiesController? suppliedController) {
+    if (suppliedController != null) {
+      _partiesController = suppliedController;
+      _ownsController = false;
+    } else {
+      final store = AppStoreScope.of(context, listen: false);
+      _partiesController = PartiesController(
+        repository: store.repositories.parties,
+        masterData: store.repositories.operationalMasterData,
+        onDataChanged: store.markDataChanged,
+      );
+      _ownsController = true;
+    }
+  }
+
+  Future<void> _loadParties() async {
+    final controller = _partiesController;
+    await controller.load();
+    if (!mounted || !identical(controller, _partiesController)) return;
+    final status = controller.state.dataState.status;
+    if (status == AppDataStatus.ready || status == AppDataStatus.empty) {
+      setState(_setNewForm);
+    }
+  }
+
+  @override
   void dispose() {
     for (final controller in _editableControllers) {
       controller.removeListener(_refreshUnsavedState);
     }
-    _partiesController.dispose();
+    if (_controllerInitialized && _ownsController) {
+      _partiesController.dispose();
+    }
     _formControllers.dispose();
     _searchController.dispose();
     _searchFocusNode.dispose();
@@ -65,7 +122,8 @@ class _PartiesScreenState extends State<PartiesScreen> {
     _createdAt = DateTime.now();
     _partyType = PartyType.customer;
     _formControllers.setNew(
-      numberValue: _partiesController.nextNumber,
+      numberValue:
+          _controllerInitialized ? _partiesController.nextNumber : 1,
       createdAt: _createdAt,
     );
     _isApplyingFormState = false;
@@ -185,11 +243,9 @@ class _PartiesScreenState extends State<PartiesScreen> {
   }
 
   bool _hasDuplicatePartyName({String? excludingPartyId}) {
-    final candidate = _normalizePartyName(_formControllers.name.text);
-    return _partiesController.state.parties.any(
-      (party) =>
-          party.id != excludingPartyId &&
-          _normalizePartyName(party.name) == candidate,
+    return _partiesController.nameExists(
+      _formControllers.name.text,
+      exceptPartyId: excludingPartyId,
     );
   }
 
@@ -231,7 +287,7 @@ class _PartiesScreenState extends State<PartiesScreen> {
     );
   }
 
-  void _save() {
+  Future<void> _save() async {
     if (!_validateName()) return;
     if (_partiesController.selectedParty != null) {
       AppToast.showWarning(context, 'استخدم زر تحديث لتعديل الطرف المحدد');
@@ -242,13 +298,17 @@ class _PartiesScreenState extends State<PartiesScreen> {
       return;
     }
 
-    final party = _newPartyFromForm();
-    _partiesController.add(party);
-    _loadParty(party);
-    AppToast.showInfo(context, 'تم حفظ الطرف مؤقتاً');
+    try {
+      final party = await _partiesController.add(_newPartyFromForm());
+      if (!mounted) return;
+      _loadParty(party);
+      AppToast.showInfo(context, 'تم حفظ الطرف مؤقتاً');
+    } on StateError catch (error) {
+      if (mounted) AppToast.showWarning(context, _stateErrorMessage(error));
+    }
   }
 
-  void _update() {
+  Future<void> _update() async {
     final selected = _partiesController.selectedParty;
     if (selected == null) {
       AppToast.showWarning(context, 'اختر طرفاً من الجدول لتحديثه');
@@ -260,10 +320,16 @@ class _PartiesScreenState extends State<PartiesScreen> {
       return;
     }
 
-    final updated = _updatedPartyFromForm(selected);
-    _partiesController.update(updated);
-    _loadParty(updated);
-    AppToast.showSuccess(context, 'تم تحديث الطرف مؤقتاً');
+    try {
+      final updated = await _partiesController.update(
+        _updatedPartyFromForm(selected),
+      );
+      if (!mounted) return;
+      _loadParty(updated);
+      AppToast.showSuccess(context, 'تم تحديث الطرف مؤقتاً');
+    } on StateError catch (error) {
+      if (mounted) AppToast.showWarning(context, _stateErrorMessage(error));
+    }
   }
 
   void _undo() {
@@ -282,10 +348,12 @@ class _PartiesScreenState extends State<PartiesScreen> {
       AppToast.showWarning(context, 'اختر طرفاً من الجدول لحذفه');
       return;
     }
-    if (_partiesController.isPartyReferenced(selected.id)) {
+    final decision = await _partiesController.canDeleteSelected();
+    if (!mounted) return;
+    if (!decision.isAllowed) {
       AppToast.showDanger(
         context,
-        'لا يمكن حذف هذا السجل لأنه مرتبط ببيانات أخرى',
+        decision.reason ?? 'لا يمكن حذف هذا السجل لأنه مرتبط ببيانات أخرى',
       );
       return;
     }
@@ -299,7 +367,8 @@ class _PartiesScreenState extends State<PartiesScreen> {
     );
     if (!mounted || !confirmed) return;
 
-    _partiesController.deleteSelected();
+    await _partiesController.deleteSelected();
+    if (!mounted) return;
     setState(_setNewForm);
     AppToast.showDanger(context, 'تم حذف الطرف مؤقتاً');
   }
@@ -340,6 +409,10 @@ class _PartiesScreenState extends State<PartiesScreen> {
             hasVisibleParties && selectedVisibleIndex != 0;
         final canMoveToNextOrLast =
             hasVisibleParties && selectedVisibleIndex >= 0;
+        final dataState = _partiesController.state.dataState;
+        final showEditor = dataState.status == AppDataStatus.ready ||
+            (dataState.status == AppDataStatus.empty &&
+                _showEditorWhenEmpty);
 
         return PopScope(
           canPop: !_hasUnsavedChanges,
@@ -358,13 +431,17 @@ class _PartiesScreenState extends State<PartiesScreen> {
                     : null
                 : _save,
             body: Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Column(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: showEditor
+                  ? Column(
               children: [
                 PartyForm(
                   controllers: _formControllers,
                   createdAt: _createdAt,
                   partyType: _partyType,
+                  workplaces: _partiesController.workplaceSuggestions,
+                  branches: _partiesController.branchSuggestions,
+                  cities: _partiesController.citySuggestions,
                   onPartyTypeChanged: (value) {
                     if (value == null) return;
                     _changePartyType(value);
@@ -422,7 +499,26 @@ class _PartiesScreenState extends State<PartiesScreen> {
                   ),
                 ),
               ],
-            ),
+                    )
+                  : AppDataStateView<List<Party>>(
+                      state: dataState,
+                      dataBuilder: (_, __) => const SizedBox.shrink(),
+                      loadingStateKey: const Key('partiesLoadingState'),
+                      emptyStateKey: const Key('partiesEmptyState'),
+                      missingReferenceStateKey:
+                          const Key('partiesMissingReferenceState'),
+                      errorStateKey: const Key('partiesErrorState'),
+                      emptyActionLabel: 'إضافة طرف',
+                      onEmptyAction: () {
+                        setState(() {
+                          _showEditorWhenEmpty = true;
+                          _setNewForm();
+                        });
+                      },
+                      missingReferenceActionLabel: 'إعادة المحاولة',
+                      onMissingReferenceAction: _loadParties,
+                      onRetry: _loadParties,
+                    ),
             ),
           ),
         );
@@ -443,15 +539,7 @@ typedef _PartyFormSnapshot = ({
   String notes,
 });
 
-String _normalizePartyName(String value) {
-  return value
-      .trim()
-      .toLowerCase()
-      .replaceAll(RegExp(r'\s+'), ' ')
-      .replaceAll(RegExp(r'[\u064B-\u065F\u0670]'), '')
-      .replaceAll(RegExp('[أإآ]'), 'ا')
-      .replaceAll('ى', 'ي')
-      .replaceAll('ؤ', 'و')
-      .replaceAll('ئ', 'ي')
-      .replaceAll('ة', 'ه');
+String _stateErrorMessage(StateError error) {
+  final message = error.message;
+  return message is String ? message : error.toString();
 }

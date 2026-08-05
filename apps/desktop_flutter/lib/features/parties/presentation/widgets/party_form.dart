@@ -72,45 +72,19 @@ class PartyForm extends StatefulWidget {
     required this.controllers,
     required this.createdAt,
     required this.partyType,
+    required this.workplaces,
+    required this.branches,
+    required this.cities,
     required this.onPartyTypeChanged,
     super.key,
   });
 
-  static const _workplaces = [
-    'التجارة العامة',
-    'تجارة الجملة',
-    'تجارة المفرد',
-    'تجهيز المواد',
-    'الأجهزة المكتبية',
-    'الخدمات',
-    'الإدارة',
-    'المبيعات',
-  ];
-
-  static const _branches = [
-    'الرئيسي',
-    'بغداد',
-    'المنصور',
-    'الكاظمية',
-    'البصرة',
-    'أربيل',
-    'النجف',
-    'الموصل',
-    'كربلاء',
-  ];
-
-  static const _cities = [
-    'بغداد',
-    'البصرة',
-    'أربيل',
-    'النجف',
-    'الموصل',
-    'كربلاء',
-  ];
-
   final PartyFormControllers controllers;
   final DateTime createdAt;
   final PartyType partyType;
+  final List<String> workplaces;
+  final List<String> branches;
+  final List<String> cities;
   final ValueChanged<PartyType?> onPartyTypeChanged;
 
   @override
@@ -140,9 +114,6 @@ class _PartyFormState extends State<PartyForm> {
   PartyType get partyType => widget.partyType;
   ValueChanged<PartyType?> get onPartyTypeChanged =>
       widget.onPartyTypeChanged;
-  List<String> get _workplaces => PartyForm._workplaces;
-  List<String> get _branches => PartyForm._branches;
-  List<String> get _cities => PartyForm._cities;
 
   List<FocusNode> get _orderedFocusNodes => [
         _nameFocusNode,
@@ -358,7 +329,7 @@ class _PartyFormState extends State<PartyForm> {
                               icon: Icons.business_rounded,
                               accentColor: accentColor,
                               focusNode: _workplaceFocusNode,
-                              options: _workplaces,
+                              options: widget.workplaces,
                               displayStringForOption: (value) => value,
                               onSelected: (_) {},
                               onSubmitted: (_) =>
@@ -374,7 +345,7 @@ class _PartyFormState extends State<PartyForm> {
                               icon: Icons.account_tree_rounded,
                               accentColor: accentColor,
                               focusNode: _branchFocusNode,
-                              options: _branches,
+                              options: widget.branches,
                               displayStringForOption: (value) => value,
                               onSelected: (_) {},
                               onSubmitted: (_) =>
@@ -430,7 +401,7 @@ class _PartyFormState extends State<PartyForm> {
                               icon: Icons.location_city_rounded,
                               accentColor: accentColor,
                               focusNode: _cityFocusNode,
-                              options: _cities,
+                              options: widget.cities,
                               displayStringForOption: (value) => value,
                               onSelected: (_) {},
                               onSubmitted: (_) =>

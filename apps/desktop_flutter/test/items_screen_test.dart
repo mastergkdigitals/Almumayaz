@@ -1,13 +1,20 @@
 import 'package:erp/app/app.dart';
+import 'package:erp/core/app_state/app_repositories.dart';
+import 'package:erp/core/data/app_repository.dart';
 import 'package:erp/core/design/app_design_system.dart';
+import 'package:erp/features/items/data/demo_item_repository.dart';
+import 'package:erp/features/items/domain/item.dart';
 import 'package:erp/features/items/presentation/items_controller.dart';
+import 'package:erp/features/settings/data/demo_operational_settings_repositories.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('filters and navigates the temporary items list', () {
-    final controller = ItemsController();
+  test('filters and navigates the repository-backed items list', () async {
+    final repositories = AppRepositories.demo();
+    final controller = ItemsController(repository: repositories.items);
     addTearDown(controller.dispose);
+    await controller.load();
 
     expect(controller.state.items, hasLength(6));
 
@@ -32,18 +39,65 @@ void main() {
     expect(controller.selectedItem, isNull);
   });
 
-  test('deletes only items without known inventory relationships', () {
-    final controller = ItemsController();
+  test('deletes only items without known inventory relationships', () async {
+    final repositories = AppRepositories.demo();
+    final controller = ItemsController(repository: repositories.items);
     addTearDown(controller.dispose);
+    await controller.load();
 
     controller.select('item-001');
-    expect(controller.isItemReferenced('item-001'), isTrue);
-    expect(controller.deleteSelected(), isNull);
+    expect((await controller.canDeleteSelected()).isAllowed, isFalse);
+    expect(await controller.deleteSelected(), isNull);
 
     controller.select('item-006');
-    expect(controller.isItemReferenced('item-006'), isFalse);
-    expect(controller.deleteSelected()?.id, 'item-006');
+    expect((await controller.canDeleteSelected()).isAllowed, isTrue);
+    expect((await controller.deleteSelected())?.id, 'item-006');
     expect(controller.state.items, hasLength(5));
+  });
+
+  test('persists items across controllers and reports missing references',
+      () async {
+    final repositories = AppRepositories.demo();
+    final first = ItemsController(repository: repositories.items);
+    addTearDown(first.dispose);
+    await first.load();
+    final group = first.state.groups.first;
+    final type = first.typesFor(group.id).first;
+    await first.add(
+      Item(
+        id: 'item-persistence-test',
+        code: 'P-9000',
+        name: 'مادة مستمرة',
+        barcode: '9000000000000',
+        groupId: group.id,
+        groupName: group.name,
+        typeId: type.id,
+        typeName: type.name,
+        salePriceIqd: 1000,
+        salePriceUsd: 0.75,
+        notes: '',
+      ),
+    );
+
+    final reopened = ItemsController(repository: repositories.items);
+    addTearDown(reopened.dispose);
+    await reopened.load();
+    expect(
+      reopened.state.items.any((item) => item.id == 'item-persistence-test'),
+      isTrue,
+    );
+
+    final masterData = DemoOperationalMasterDataRepository();
+    final brokenRepository = DemoItemRepository(
+      masterData: masterData,
+      initialValues: [
+        demoItems().first.copyWith(typeId: 'missing-item-type'),
+      ],
+    );
+    final broken = ItemsController(repository: brokenRepository);
+    addTearDown(broken.dispose);
+    await broken.load();
+    expect(broken.state.dataState.status, AppDataStatus.missingReference);
   });
 
   testWidgets(

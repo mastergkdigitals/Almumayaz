@@ -13,9 +13,13 @@ class DemoPartyRepository extends InMemoryDemoRepository<Party>
     Iterable<Party>? initialValues,
     required OperationalMasterDataRepository masterData,
     Map<EntityId, PartyMasterDataReferences>? initialMasterDataReferences,
+    Set<EntityId>? initiallyReferencedIds,
     PartyReferenceLookup? isReferenced,
   })  : _masterData = masterData,
         _isReferenced = isReferenced ?? _neverReferenced,
+        _initiallyReferencedIds = Set.unmodifiable(
+          initiallyReferencedIds ?? demoReferencedPartyIds,
+        ),
         _masterDataReferences = Map.of(
           initialMasterDataReferences ?? demoPartyMasterDataReferences(),
         ),
@@ -25,6 +29,7 @@ class DemoPartyRepository extends InMemoryDemoRepository<Party>
         );
 
   final PartyReferenceLookup _isReferenced;
+  final Set<EntityId> _initiallyReferencedIds;
   final OperationalMasterDataRepository _masterData;
   final Map<EntityId, PartyMasterDataReferences> _masterDataReferences;
 
@@ -40,10 +45,10 @@ class DemoPartyRepository extends InMemoryDemoRepository<Party>
 
   @override
   Future<Party?> findByName(String name) async {
-    final normalized = name.trim().toLowerCase();
+    final normalized = normalizePartyName(name);
     if (normalized.isEmpty) return null;
     for (final party in await getAll()) {
-      if (party.name.trim().toLowerCase() == normalized) return party;
+      if (normalizePartyName(party.name) == normalized) return party;
     }
     return null;
   }
@@ -53,7 +58,7 @@ class DemoPartyRepository extends InMemoryDemoRepository<Party>
     final duplicate = (await getAll()).any(
       (party) =>
           party.entityId != value.entityId &&
-          party.name.trim().toLowerCase() == value.name.trim().toLowerCase(),
+          normalizePartyName(party.name) == normalizePartyName(value.name),
     );
     if (duplicate) {
       throw StateError('يوجد طرف آخر بالاسم نفسه');
@@ -68,6 +73,9 @@ class DemoPartyRepository extends InMemoryDemoRepository<Party>
   ) async {
     final workplaceId = references.workplaceId;
     final branchId = references.branchId;
+    if ((workplaceId == null) != (branchId == null)) {
+      throw StateError('اختر جهة العمل والفرع معاً');
+    }
     final workplace = workplaceId == null
         ? null
         : await _masterData.getById(workplaceId);
@@ -111,7 +119,7 @@ class DemoPartyRepository extends InMemoryDemoRepository<Party>
     if (await getById(id) == null) {
       return const DeleteDecision.blocked('السجل غير موجود');
     }
-    if (await _isReferenced(id)) {
+    if (_initiallyReferencedIds.contains(id) || await _isReferenced(id)) {
       return const DeleteDecision.blocked(
         'لا يمكن حذف هذا السجل لأنه مرتبط ببيانات أخرى',
       );
@@ -130,7 +138,7 @@ Future<bool> _neverReferenced(EntityId _) async => false;
 
 List<Party> demoParties() => [
       Party(
-        id: EntityId.demo('party', 1).value,
+        id: 'party-001',
         number: 1,
         createdAt: DateTime(2026, 7, 1, 9, 15),
         name: 'شركة النخيل للتجارة',
@@ -146,7 +154,7 @@ List<Party> demoParties() => [
         balanceUsd: 850,
       ),
       Party(
-        id: EntityId.demo('party', 2).value,
+        id: 'party-002',
         number: 2,
         createdAt: DateTime(2026, 7, 2, 10, 30),
         name: 'أحمد كريم',
@@ -162,7 +170,7 @@ List<Party> demoParties() => [
         balanceUsd: 0,
       ),
       Party(
-        id: EntityId.demo('party', 3).value,
+        id: 'party-003',
         number: 3,
         createdAt: DateTime(2026, 7, 3, 11),
         name: 'مجهز الرافدين',
@@ -177,19 +185,166 @@ List<Party> demoParties() => [
         balanceIqd: -3200000,
         balanceUsd: -1200,
       ),
+      Party(
+        id: 'party-004',
+        number: 4,
+        createdAt: DateTime(2026, 7, 4, 8, 45),
+        name: 'سارة محمود',
+        type: PartyType.employee,
+        workplace: 'الإدارة',
+        branch: 'الرئيسي',
+        phone: '07501231234',
+        alternatePhone: '',
+        city: 'أربيل',
+        address: 'عينكاوة',
+        notes: '',
+        balanceIqd: 0,
+        balanceUsd: 0,
+      ),
+      Party(
+        id: 'party-005',
+        number: 5,
+        createdAt: DateTime(2026, 7, 5, 12, 20),
+        name: 'أسواق دجلة',
+        type: PartyType.customer,
+        workplace: 'تجارة الجملة',
+        branch: 'النجف',
+        phone: '07601110000',
+        alternatePhone: '',
+        city: 'النجف',
+        address: 'حي الأمير',
+        notes: '',
+        balanceIqd: 840000,
+        balanceUsd: 300,
+      ),
+      Party(
+        id: 'party-006',
+        number: 6,
+        createdAt: DateTime(2026, 7, 6, 9, 5),
+        name: 'شركة الموصل الحديثة',
+        type: PartyType.supplier,
+        workplace: 'الأجهزة المكتبية',
+        branch: 'الموصل',
+        phone: '07705554433',
+        alternatePhone: '',
+        city: 'الموصل',
+        address: 'المجموعة الثقافية',
+        notes: '',
+        balanceIqd: -950000,
+        balanceUsd: -425,
+      ),
+      Party(
+        id: 'party-007',
+        number: 7,
+        createdAt: DateTime(2026, 7, 7, 14, 10),
+        name: 'مكتب البصرة',
+        type: PartyType.customer,
+        workplace: 'الخدمات',
+        branch: 'البصرة',
+        phone: '07805556677',
+        alternatePhone: '',
+        city: 'البصرة',
+        address: 'الجزائر',
+        notes: '',
+        balanceIqd: 210000,
+        balanceUsd: 75,
+      ),
+      Party(
+        id: 'party-008',
+        number: 8,
+        createdAt: DateTime(2026, 7, 8, 10, 50),
+        name: 'علي حسن',
+        type: PartyType.customer,
+        workplace: 'تجارة المفرد',
+        branch: 'الكاظمية',
+        phone: '07701110022',
+        alternatePhone: '',
+        city: 'بغداد',
+        address: 'الكاظمية',
+        notes: '',
+        balanceIqd: 0,
+        balanceUsd: 150,
+      ),
+      Party(
+        id: 'party-009',
+        number: 9,
+        createdAt: DateTime(2026, 7, 9, 13, 40),
+        name: 'مجهز الفرات',
+        type: PartyType.supplier,
+        workplace: 'تجهيز المواد',
+        branch: 'كربلاء',
+        phone: '07604443322',
+        alternatePhone: '',
+        city: 'كربلاء',
+        address: 'حي الحسين',
+        notes: '',
+        balanceIqd: -1725000,
+        balanceUsd: 0,
+      ),
+      Party(
+        id: 'party-010',
+        number: 10,
+        createdAt: DateTime(2026, 7, 10, 8, 30),
+        name: 'نور فاضل',
+        type: PartyType.employee,
+        workplace: 'المبيعات',
+        branch: 'الرئيسي',
+        phone: '07507778899',
+        alternatePhone: '',
+        city: 'أربيل',
+        address: 'الإسكان',
+        notes: '',
+        balanceIqd: 0,
+        balanceUsd: 0,
+      ),
     ];
 
 Map<EntityId, PartyMasterDataReferences> demoPartyMasterDataReferences() => {
-      EntityId.demo('party', 1): PartyMasterDataReferences(
+      EntityId('party-001'): PartyMasterDataReferences(
         workplaceId: EntityId.demo('workplace', 1),
         branchId: EntityId.demo('branch', 1),
       ),
-      EntityId.demo('party', 2): PartyMasterDataReferences(
+      EntityId('party-002'): PartyMasterDataReferences(
         workplaceId: EntityId.demo('workplace', 2),
         branchId: EntityId.demo('branch', 2),
       ),
-      EntityId.demo('party', 3): PartyMasterDataReferences(
+      EntityId('party-003'): PartyMasterDataReferences(
         workplaceId: EntityId.demo('workplace', 3),
         branchId: EntityId.demo('branch', 3),
       ),
+      EntityId('party-004'): PartyMasterDataReferences(
+        workplaceId: EntityId.demo('workplace', 4),
+        branchId: EntityId.demo('branch', 4),
+      ),
+      EntityId('party-005'): PartyMasterDataReferences(
+        workplaceId: EntityId.demo('workplace', 5),
+        branchId: EntityId.demo('branch', 5),
+      ),
+      EntityId('party-006'): PartyMasterDataReferences(
+        workplaceId: EntityId.demo('workplace', 6),
+        branchId: EntityId.demo('branch', 6),
+      ),
+      EntityId('party-007'): PartyMasterDataReferences(
+        workplaceId: EntityId.demo('workplace', 7),
+        branchId: EntityId.demo('branch', 7),
+      ),
+      EntityId('party-008'): PartyMasterDataReferences(
+        workplaceId: EntityId.demo('workplace', 2),
+        branchId: EntityId.demo('branch', 8),
+      ),
+      EntityId('party-009'): PartyMasterDataReferences(
+        workplaceId: EntityId.demo('workplace', 3),
+        branchId: EntityId.demo('branch', 9),
+      ),
+      EntityId('party-010'): PartyMasterDataReferences(
+        workplaceId: EntityId.demo('workplace', 8),
+        branchId: EntityId.demo('branch', 10),
+      ),
     };
+
+final demoReferencedPartyIds = <EntityId>{
+  EntityId('party-001'),
+  EntityId('party-002'),
+  EntityId('party-003'),
+  EntityId('party-005'),
+};

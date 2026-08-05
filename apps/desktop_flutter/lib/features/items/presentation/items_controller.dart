@@ -1,30 +1,43 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/data/app_repository.dart';
+import '../../../core/domain/business_values.dart';
 import '../domain/item.dart';
+import '../domain/item_repository.dart';
 
 @immutable
 class ItemsState {
   const ItemsState({
-    required this.items,
+    this.dataState = const AppDataState.loading(),
     this.query = '',
     this.selectedItemId,
+    this.groups = const [],
+    this.types = const [],
   });
 
-  final List<Item> items;
+  final AppDataState<List<Item>> dataState;
   final String query;
   final String? selectedItemId;
+  final List<ItemGroup> groups;
+  final List<ItemType> types;
+
+  List<Item> get items => dataState.data ?? const [];
 
   ItemsState copyWith({
-    List<Item>? items,
+    AppDataState<List<Item>>? dataState,
     String? query,
     Object? selectedItemId = _unchanged,
+    List<ItemGroup>? groups,
+    List<ItemType>? types,
   }) {
     return ItemsState(
-      items: items ?? this.items,
+      dataState: dataState ?? this.dataState,
       query: query ?? this.query,
       selectedItemId: identical(selectedItemId, _unchanged)
           ? this.selectedItemId
           : selectedItemId as String?,
+      groups: groups ?? this.groups,
+      types: types ?? this.types,
     );
   }
 }
@@ -33,63 +46,16 @@ const _unchanged = Object();
 
 class ItemsController extends ChangeNotifier {
   ItemsController({
-    List<Item>? initialItems,
-    Set<String>? referencedItemIds,
-  })  : _referencedItemIds = Set.unmodifiable(
-          referencedItemIds ?? _demoReferencedItemIds,
-        ),
-        _state = ItemsState(
-          items: List.unmodifiable(initialItems ?? _demoItems),
-        );
+    required ItemRepository repository,
+    VoidCallback? onDataChanged,
+  })  : _repository = repository,
+        _onDataChanged = onDataChanged;
 
-  final Set<String> _referencedItemIds;
-
-  static const groups = <ItemGroup>[
-    ItemGroup(id: 'group-office', number: 1, name: 'أجهزة مكتبية'),
-    ItemGroup(id: 'group-printing', number: 2, name: 'مستلزمات طباعة'),
-    ItemGroup(id: 'group-stationery', number: 3, name: 'قرطاسية'),
-  ];
-
-  static const types = <ItemType>[
-    ItemType(
-      id: 'type-printers',
-      groupId: 'group-office',
-      number: 1,
-      name: 'طابعات',
-    ),
-    ItemType(
-      id: 'type-calculators',
-      groupId: 'group-office',
-      number: 2,
-      name: 'آلات حاسبة',
-    ),
-    ItemType(
-      id: 'type-toner',
-      groupId: 'group-printing',
-      number: 1,
-      name: 'أحبار',
-    ),
-    ItemType(
-      id: 'type-paper',
-      groupId: 'group-printing',
-      number: 2,
-      name: 'ورق طباعة',
-    ),
-    ItemType(
-      id: 'type-pens',
-      groupId: 'group-stationery',
-      number: 1,
-      name: 'أقلام',
-    ),
-    ItemType(
-      id: 'type-files',
-      groupId: 'group-stationery',
-      number: 2,
-      name: 'ملفات',
-    ),
-  ];
-
-  ItemsState _state;
+  final ItemRepository _repository;
+  final VoidCallback? _onDataChanged;
+  ItemsState _state = const ItemsState();
+  bool _isDisposed = false;
+  int _loadGeneration = 0;
 
   ItemsState get state => _state;
 
@@ -98,8 +64,7 @@ class ItemsController extends ChangeNotifier {
     if (query.isEmpty) return _state.items;
     return List.unmodifiable(
       _state.items.where(
-        (item) =>
-            item.searchText.replaceAll(',', '').contains(query),
+        (item) => item.searchText.replaceAll(',', '').contains(query),
       ),
     );
   }
@@ -115,20 +80,80 @@ class ItemsController extends ChangeNotifier {
 
   List<ItemType> typesFor(String groupId) {
     return List.unmodifiable(
-      types.where((type) => type.groupId == groupId),
+      _state.types.where((type) => type.groupId == groupId),
     );
   }
 
-  ItemGroup groupById(String groupId) {
-    return groups.firstWhere((group) => group.id == groupId);
+  ItemGroup? groupById(String groupId) {
+    for (final group in _state.groups) {
+      if (group.id == groupId) return group;
+    }
+    return null;
   }
 
-  ItemType typeById(String typeId) {
-    return types.firstWhere((type) => type.id == typeId);
+  ItemType? typeById(String typeId) {
+    for (final type in _state.types) {
+      if (type.id == typeId) return type;
+    }
+    return null;
   }
 
-  bool isItemReferenced(String itemId) =>
-      _referencedItemIds.contains(itemId);
+  Future<void> load() async {
+    if (_isDisposed) return;
+    final generation = ++_loadGeneration;
+    _state = _state.copyWith(dataState: const AppDataState.loading());
+    _notifyListenersIfActive();
+    try {
+      final items = await _repository.getAll();
+      final groups = await _repository.getGroups();
+      final types = await _repository.getTypes();
+      if (_loadIsStale(generation)) return;
+      if (groups.isEmpty || types.isEmpty) {
+        _setMissingReference(
+          'مجموعات المواد أو أنواعها غير متاحة',
+          generation,
+        );
+        return;
+      }
+      final resolved = <Item>[];
+      for (final item in items) {
+        final group = _groupFrom(groups, item.groupId);
+        final type = _typeFrom(types, item.typeId);
+        if (group == null || type == null || type.groupId != group.id) {
+          _setMissingReference(
+            'مجموعة المادة أو نوعها غير متاح: ${item.name}',
+            generation,
+          );
+          return;
+        }
+        resolved.add(
+          item.copyWith(groupName: group.name, typeName: type.name),
+        );
+      }
+      _state = _state.copyWith(
+        dataState: resolved.isEmpty
+            ? const AppDataState.empty(message: 'لا توجد مواد مسجلة حالياً.')
+            : AppDataState.ready(List.unmodifiable(resolved)),
+        groups: List.unmodifiable(groups),
+        types: List.unmodifiable(types),
+        selectedItemId: resolved.any(
+          (item) => item.id == _state.selectedItemId,
+        )
+            ? _state.selectedItemId
+            : null,
+      );
+      _notifyListenersIfActive();
+    } catch (error) {
+      if (_loadIsStale(generation)) return;
+      _state = _state.copyWith(
+        dataState: AppDataState.error(
+          error,
+          message: 'تعذر تحميل بيانات المواد.',
+        ),
+      );
+      _notifyListenersIfActive();
+    }
+  }
 
   bool codeExists(String code, {String? exceptItemId}) {
     final normalized = code.trim().toLowerCase();
@@ -142,15 +167,17 @@ class ItemsController extends ChangeNotifier {
   int get selectedVisibleIndex => _selectedVisibleIndex(visibleItems);
 
   void search(String value) {
+    if (_isDisposed) return;
     if (_state.query == value) return;
     _state = _state.copyWith(query: value);
-    notifyListeners();
+    _notifyListenersIfActive();
   }
 
   void select(String? itemId) {
+    if (_isDisposed) return;
     if (_state.selectedItemId == itemId) return;
     _state = _state.copyWith(selectedItemId: itemId);
-    notifyListeners();
+    _notifyListenersIfActive();
   }
 
   void first() => _selectAt(0);
@@ -198,33 +225,82 @@ class ItemsController extends ChangeNotifier {
     _selectAt(items.length - 1);
   }
 
-  void add(Item item) {
-    _state = _state.copyWith(
-      items: List.unmodifiable([..._state.items, item]),
-      selectedItemId: item.id,
-    );
-    notifyListeners();
+  Future<Item> add(Item item) async {
+    final saved = await _repository.save(item);
+    if (_isDisposed) return saved;
+    await load();
+    if (_isDisposed) return saved;
+    select(saved.id);
+    _onDataChanged?.call();
+    return selectedItem ?? saved;
   }
 
-  void update(Item item) {
-    final index = _state.items.indexWhere((entry) => entry.id == item.id);
-    if (index < 0) return;
-    final updated = [..._state.items]..[index] = item;
-    _state = _state.copyWith(items: List.unmodifiable(updated));
-    notifyListeners();
+  Future<Item> update(Item item) async {
+    final saved = await _repository.save(item);
+    if (_isDisposed) return saved;
+    await load();
+    if (_isDisposed) return saved;
+    select(saved.id);
+    _onDataChanged?.call();
+    return selectedItem ?? saved;
   }
 
-  Item? deleteSelected() {
+  Future<DeleteDecision> canDeleteSelected() async {
     final selected = selectedItem;
-    if (selected == null || isItemReferenced(selected.id)) return null;
-    _state = _state.copyWith(
-      items: List.unmodifiable(
-        _state.items.where((item) => item.id != selected.id),
-      ),
-      selectedItemId: null,
-    );
-    notifyListeners();
+    if (selected == null) {
+      return const DeleteDecision.blocked('اختر مادة من الجدول لحذفها');
+    }
+    return _repository.canDelete(selected.entityId);
+  }
+
+  Future<Item?> deleteSelected() async {
+    final selected = selectedItem;
+    if (selected == null) return null;
+    final decision = await _repository.canDelete(selected.entityId);
+    if (!decision.isAllowed) return null;
+    await _repository.delete(selected.entityId);
+    if (_isDisposed) return selected;
+    await load();
+    if (_isDisposed) return selected;
+    _onDataChanged?.call();
     return selected;
+  }
+
+  void _setMissingReference(String message, int generation) {
+    if (_loadIsStale(generation)) return;
+    _state = _state.copyWith(
+      dataState: AppDataState.missingReference(message),
+    );
+    _notifyListenersIfActive();
+  }
+
+  bool _loadIsStale(int generation) {
+    return _isDisposed || generation != _loadGeneration;
+  }
+
+  void _notifyListenersIfActive() {
+    if (!_isDisposed) notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    _loadGeneration++;
+    super.dispose();
+  }
+
+  ItemGroup? _groupFrom(List<ItemGroup> groups, String id) {
+    for (final group in groups) {
+      if (group.id == id) return group;
+    }
+    return null;
+  }
+
+  ItemType? _typeFrom(List<ItemType> types, String id) {
+    for (final type in types) {
+      if (type.id == id) return type;
+    }
+    return null;
   }
 
   void _selectAt(int index) {
@@ -237,91 +313,3 @@ class ItemsController extends ChangeNotifier {
     return items.indexWhere((item) => item.id == _state.selectedItemId);
   }
 }
-
-const _demoReferencedItemIds = <String>{
-  'item-001',
-  'item-002',
-  'item-003',
-  'item-004',
-};
-
-const _demoItems = <Item>[
-  Item(
-    id: 'item-001',
-    code: 'P-1001',
-    name: 'طابعة ليزر',
-    barcode: '1000000000001',
-    groupId: 'group-office',
-    groupName: 'أجهزة مكتبية',
-    typeId: 'type-printers',
-    typeName: 'طابعات',
-    salePriceIqd: 285000,
-    salePriceUsd: 190,
-    notes: '',
-  ),
-  Item(
-    id: 'item-002',
-    code: 'P-1002',
-    name: 'حبر طابعة أسود',
-    barcode: '1000000000002',
-    groupId: 'group-printing',
-    groupName: 'مستلزمات طباعة',
-    typeId: 'type-toner',
-    typeName: 'أحبار',
-    salePriceIqd: 72000,
-    salePriceUsd: 48,
-    notes: '',
-  ),
-  Item(
-    id: 'item-003',
-    code: 'P-1003',
-    name: 'ورق تصوير A4',
-    barcode: '1000000000003',
-    groupId: 'group-printing',
-    groupName: 'مستلزمات طباعة',
-    typeId: 'type-paper',
-    typeName: 'ورق طباعة',
-    salePriceIqd: 8500,
-    salePriceUsd: 5.75,
-    notes: 'رزمة 500 ورقة',
-  ),
-  Item(
-    id: 'item-004',
-    code: 'P-1004',
-    name: 'آلة حاسبة مكتبية',
-    barcode: '1000000000004',
-    groupId: 'group-office',
-    groupName: 'أجهزة مكتبية',
-    typeId: 'type-calculators',
-    typeName: 'آلات حاسبة',
-    salePriceIqd: 24000,
-    salePriceUsd: 16,
-    notes: '',
-  ),
-  Item(
-    id: 'item-005',
-    code: 'P-1005',
-    name: 'قلم جاف أزرق',
-    barcode: '1000000000005',
-    groupId: 'group-stationery',
-    groupName: 'قرطاسية',
-    typeId: 'type-pens',
-    typeName: 'أقلام',
-    salePriceIqd: 750,
-    salePriceUsd: 0.5,
-    notes: '',
-  ),
-  Item(
-    id: 'item-006',
-    code: 'P-1006',
-    name: 'ملف حفظ مستندات',
-    barcode: '1000000000006',
-    groupId: 'group-stationery',
-    groupName: 'قرطاسية',
-    typeId: 'type-files',
-    typeName: 'ملفات',
-    salePriceIqd: 2500,
-    salePriceUsd: 1.75,
-    notes: '',
-  ),
-];

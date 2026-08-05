@@ -1,14 +1,26 @@
 import 'package:erp/app/app.dart';
+import 'package:erp/core/app_state/app_repositories.dart';
+import 'package:erp/core/data/app_repository.dart';
 import 'package:erp/core/design/app_design_system.dart';
+import 'package:erp/core/domain/business_values.dart';
+import 'package:erp/features/parties/data/demo_party_repository.dart';
 import 'package:erp/features/parties/domain/party.dart';
+import 'package:erp/features/parties/domain/party_repository.dart';
 import 'package:erp/features/parties/presentation/parties_controller.dart';
+import 'package:erp/features/settings/data/demo_operational_settings_repositories.dart';
+import 'package:erp/features/settings/domain/operational_master_data.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('filters and navigates the temporary parties list', () {
-    final controller = PartiesController();
+  test('filters and navigates the repository-backed parties list', () async {
+    final repositories = AppRepositories.demo();
+    final controller = PartiesController(
+      repository: repositories.parties,
+      masterData: repositories.operationalMasterData,
+    );
     addTearDown(controller.dispose);
+    await controller.load();
 
     expect(controller.state.parties, hasLength(10));
 
@@ -38,18 +50,122 @@ void main() {
     expect(controller.selectedParty, isNull);
   });
 
-  test('deletes only parties without known demo relationships', () {
-    final controller = PartiesController();
+  test('deletes only parties without known demo relationships', () async {
+    final repositories = AppRepositories.demo();
+    final controller = PartiesController(
+      repository: repositories.parties,
+      masterData: repositories.operationalMasterData,
+    );
     addTearDown(controller.dispose);
+    await controller.load();
 
     controller.select('party-001');
-    expect(controller.isPartyReferenced('party-001'), isTrue);
-    expect(controller.deleteSelected(), isNull);
+    expect((await controller.canDeleteSelected()).isAllowed, isFalse);
+    expect(await controller.deleteSelected(), isNull);
 
     controller.select('party-004');
-    expect(controller.isPartyReferenced('party-004'), isFalse);
-    expect(controller.deleteSelected()?.id, 'party-004');
+    expect((await controller.canDeleteSelected()).isAllowed, isTrue);
+    expect((await controller.deleteSelected())?.id, 'party-004');
     expect(controller.state.parties, hasLength(9));
+  });
+
+  test('persists parties across controllers and reports missing references',
+      () async {
+    final repositories = AppRepositories.demo();
+    final first = PartiesController(
+      repository: repositories.parties,
+      masterData: repositories.operationalMasterData,
+    );
+    addTearDown(first.dispose);
+    await first.load();
+    await first.add(
+      Party(
+        id: 'party-persistence-test',
+        number: first.nextNumber,
+        createdAt: DateTime(2026, 8, 5),
+        name: 'طرف مستمر',
+        type: PartyType.customer,
+        workplace: '',
+        branch: '',
+        phone: '',
+        alternatePhone: '',
+        city: '',
+        address: '',
+        notes: '',
+        balanceIqd: 0,
+        balanceUsd: 0,
+      ),
+    );
+
+    final reopened = PartiesController(
+      repository: repositories.parties,
+      masterData: repositories.operationalMasterData,
+    );
+    addTearDown(reopened.dispose);
+    await reopened.load();
+    expect(
+      reopened.state.parties.any((party) => party.id == 'party-persistence-test'),
+      isTrue,
+    );
+
+    final masterData = DemoOperationalMasterDataRepository();
+    final brokenRepository = DemoPartyRepository(
+      masterData: masterData,
+      initialValues: [demoParties().first],
+      initialMasterDataReferences: {
+        EntityId('party-001'): PartyMasterDataReferences(
+          workplaceId: EntityId('missing-workplace'),
+          branchId: EntityId('missing-branch'),
+        ),
+      },
+    );
+    final broken = PartiesController(
+      repository: brokenRepository,
+      masterData: masterData,
+    );
+    addTearDown(broken.dispose);
+    await broken.load();
+    expect(broken.state.dataState.status, AppDataStatus.missingReference);
+  });
+
+  test('enforces canonical names and complete master-data references',
+      () async {
+    final repositories = AppRepositories.demo();
+    final duplicate = Party(
+      id: 'party-normalized-duplicate',
+      number: 99,
+      createdAt: DateTime(2026, 8, 5),
+      name: '  أَحمد   كريم  ',
+      type: PartyType.customer,
+      workplace: '',
+      branch: '',
+      phone: '',
+      alternatePhone: '',
+      city: '',
+      address: '',
+      notes: '',
+      balanceIqd: 0,
+      balanceUsd: 0,
+    );
+    await expectLater(
+      repositories.parties.saveWithMasterData(
+        duplicate,
+        const PartyMasterDataReferences(),
+      ),
+      throwsStateError,
+    );
+
+    final workplace = (await repositories.operationalMasterData.getByKind(
+      OperationalMasterDataKind.workplace,
+    ))
+        .first;
+    await expectLater(
+      repositories.parties.saveWithMasterData(
+        duplicate.copyWith(name: 'طرف بمرجع ناقص'),
+        PartyMasterDataReferences(workplaceId: workplace.id),
+      ),
+      throwsStateError,
+    );
   });
 
   testWidgets('opens the parties screen with the approved shared controls',

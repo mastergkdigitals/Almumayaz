@@ -274,7 +274,7 @@ class ItemFormState extends State<ItemForm> {
                 ),
                 FocusTraversalOrder(
                   order: const NumericFocusOrder(5),
-                  child: AppTextField(
+                  child: AppMoneyField(
                     fieldKey: const Key('itemSalePriceIqdField'),
                     controller: controllers.salePriceIqd,
                     label: 'سعر البيع دينار',
@@ -284,15 +284,13 @@ class ItemFormState extends State<ItemForm> {
                     textDirection: TextDirection.rtl,
                     textAlign: TextAlign.right,
                     textInputAction: TextInputAction.next,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                    inputFormatters: const [AppMoneyInputFormatter()],
+                    decimalPlaces: 0,
                     onSubmitted: (_) => _moveTo(_usdFocusNode),
                   ),
                 ),
                 FocusTraversalOrder(
                   order: const NumericFocusOrder(6),
-                  child: AppTextField(
+                  child: AppMoneyField(
                     fieldKey: const Key('itemSalePriceUsdField'),
                     controller: controllers.salePriceUsd,
                     label: 'سعر البيع دولار',
@@ -302,9 +300,7 @@ class ItemFormState extends State<ItemForm> {
                     textDirection: TextDirection.rtl,
                     textAlign: TextAlign.right,
                     textInputAction: TextInputAction.next,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                    inputFormatters: const [AppMoneyInputFormatter()],
+                    decimalPlaces: 2,
                     onSubmitted: (_) => _moveTo(_notesFocusNode),
                   ),
                 ),
