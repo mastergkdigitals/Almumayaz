@@ -650,9 +650,13 @@ class _BackupDataSettingsSectionState
                   message: 'أنشئ نسخة جديدة لتظهر في السجل.',
                 ),
                 columns: const [
-                  AppTableColumn(label: 'التاريخ والوقت', flex: 1.5),
+                  AppTableColumn(
+                    label: 'التاريخ والوقت',
+                    numeric: true,
+                    flex: 1.5,
+                  ),
                   AppTableColumn(label: 'الوجهة', flex: 1.3),
-                  AppTableColumn(label: 'الحجم', flex: 0.8),
+                  AppTableColumn(label: 'الحجم', numeric: true, flex: 0.8),
                   AppTableColumn(label: 'الحالة', flex: 0.9),
                   AppTableColumn(label: 'الإجراء', flex: 0.65),
                 ],

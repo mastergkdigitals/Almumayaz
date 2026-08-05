@@ -479,7 +479,7 @@ class _CashboxScreenState extends State<CashboxScreen> {
       final saved = await controller.add(voucher);
       if (!mounted || !identical(controller, _cashboxController)) return;
       _loadVoucher(saved);
-      AppToast.showInfo(context, 'تم حفظ سند الصندوق مؤقتاً');
+      AppToast.showInfo(context, 'تم حفظ سند الصندوق');
     } on StateError catch (error) {
       if (mounted) AppToast.showWarning(context, _stateErrorMessage(error));
     }
@@ -502,7 +502,7 @@ class _CashboxScreenState extends State<CashboxScreen> {
       final saved = await controller.update(updated);
       if (!mounted || !identical(controller, _cashboxController)) return;
       _loadVoucher(saved);
-      AppToast.showSuccess(context, 'تم تحديث سند الصندوق مؤقتاً');
+      AppToast.showSuccess(context, 'تم تحديث سند الصندوق');
     } on StateError catch (error) {
       if (mounted) AppToast.showWarning(context, _stateErrorMessage(error));
     }
@@ -626,7 +626,7 @@ class _CashboxScreenState extends State<CashboxScreen> {
     await controller.deleteSelected();
     if (!mounted || !identical(controller, _cashboxController)) return;
     setState(_setNewForm);
-    AppToast.showDanger(context, 'تم حذف سند الصندوق مؤقتاً');
+    AppToast.showDanger(context, 'تم حذف سند الصندوق');
   }
 
   @override

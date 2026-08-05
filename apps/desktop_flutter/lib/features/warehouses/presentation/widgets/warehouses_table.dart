@@ -104,7 +104,7 @@ class _WarehousesTableState extends State<WarehousesTable> {
       accentColor: AppModuleColors.warehouses,
       selectedRowColor: selectedTint,
       columns: const [
-        AppTableColumn(label: 'الرقم', flex: 1),
+        AppTableColumn(label: 'الرقم', numeric: true, flex: 1),
         AppTableColumn(label: 'اسم المخزن', flex: 2.2),
         AppTableColumn(label: 'الموقع', flex: 2.4),
         AppTableColumn(label: 'عدد المواد', numeric: true, flex: 1.2),

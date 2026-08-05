@@ -768,10 +768,14 @@ class _UsersSecuritySettingsSectionState
             ),
             columns: const [
               AppTableColumn(label: 'الاسم الكامل', flex: 1.3),
-              AppTableColumn(label: 'اسم المستخدم', flex: 1),
+              AppTableColumn(
+                label: 'اسم المستخدم',
+                textDirection: TextDirection.ltr,
+                flex: 1,
+              ),
               AppTableColumn(label: 'الدور', flex: 1),
               AppTableColumn(label: 'الحالة', flex: 0.8),
-              AppTableColumn(label: 'آخر دخول', flex: 1.35),
+              AppTableColumn(label: 'آخر دخول', numeric: true, flex: 1.35),
               AppTableColumn(label: 'الإجراءات', flex: 1.15),
             ],
             rows: [
@@ -881,7 +885,11 @@ class _UsersSecuritySettingsSectionState
             columns: const [
               AppTableColumn(label: 'ت', flex: 0.4, numeric: true),
               AppTableColumn(label: 'الدور', flex: 1.1),
-              AppTableColumn(label: 'عدد المستخدمين', flex: 0.9),
+              AppTableColumn(
+                label: 'عدد المستخدمين',
+                numeric: true,
+                flex: 0.9,
+              ),
               AppTableColumn(label: 'ملخص الصلاحيات', flex: 2),
               AppTableColumn(label: 'الإجراءات', flex: 0.7),
             ],
@@ -1158,7 +1166,11 @@ class _UsersSecuritySettingsSectionState
               message: 'غيّر عبارة البحث أو نوع العملية.',
             ),
             columns: const [
-              AppTableColumn(label: 'التاريخ والوقت', flex: 1.4),
+              AppTableColumn(
+                label: 'التاريخ والوقت',
+                numeric: true,
+                flex: 1.4,
+              ),
               AppTableColumn(label: 'المستخدم', flex: 0.8),
               AppTableColumn(label: 'العملية', flex: 0.9),
               AppTableColumn(label: 'التفاصيل', flex: 2.2),

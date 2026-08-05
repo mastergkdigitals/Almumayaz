@@ -340,7 +340,7 @@ class _ItemsScreenState extends State<ItemsScreen> {
       final item = await _itemsController.add(_newItemFromForm());
       if (!mounted) return;
       _loadItem(item);
-      AppToast.showInfo(context, 'تم حفظ المادة مؤقتاً');
+      AppToast.showInfo(context, 'تم حفظ المادة');
     } on StateError catch (error) {
       if (mounted) AppToast.showWarning(context, _stateErrorMessage(error));
     }
@@ -360,7 +360,7 @@ class _ItemsScreenState extends State<ItemsScreen> {
       );
       if (!mounted) return;
       _loadItem(updated);
-      AppToast.showSuccess(context, 'تم تحديث المادة مؤقتاً');
+      AppToast.showSuccess(context, 'تم تحديث المادة');
     } on StateError catch (error) {
       if (mounted) AppToast.showWarning(context, _stateErrorMessage(error));
     }
@@ -404,7 +404,7 @@ class _ItemsScreenState extends State<ItemsScreen> {
     await _itemsController.deleteSelected();
     if (!mounted) return;
     setState(_setNewForm);
-    AppToast.showDanger(context, 'تم حذف المادة مؤقتاً');
+    AppToast.showDanger(context, 'تم حذف المادة');
   }
 
   @override

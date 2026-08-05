@@ -100,8 +100,8 @@ class _CashboxTableState extends State<CashboxTable> {
       accentColor: AppModuleColors.cashbox,
       selectedRowColor: selectedTint,
       columns: const [
-        AppTableColumn(label: 'رقم السند', flex: 2),
-        AppTableColumn(label: 'التاريخ', flex: 3),
+        AppTableColumn(label: 'رقم السند', numeric: true, flex: 2),
+        AppTableColumn(label: 'التاريخ', numeric: true, flex: 3),
         AppTableColumn(label: 'النوع', flex: 2),
         AppTableColumn(label: 'الحساب الرئيسي', flex: 4),
         AppTableColumn(label: 'الحساب الفرعي', flex: 4),

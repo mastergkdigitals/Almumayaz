@@ -261,7 +261,7 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
       final saved = await controller.add(warehouse);
       if (!mounted || !identical(controller, _warehousesController)) return;
       _loadWarehouse(saved);
-      AppToast.showInfo(context, 'تم حفظ المخزن مؤقتاً');
+      AppToast.showInfo(context, 'تم حفظ المخزن');
     } on StateError catch (error) {
       if (mounted) AppToast.showWarning(context, _stateErrorMessage(error));
     }
@@ -281,7 +281,7 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
       final saved = await controller.update(updated);
       if (!mounted || !identical(controller, _warehousesController)) return;
       _loadWarehouse(saved);
-      AppToast.showSuccess(context, 'تم تحديث المخزن مؤقتاً');
+      AppToast.showSuccess(context, 'تم تحديث المخزن');
     } on StateError catch (error) {
       if (mounted) AppToast.showWarning(context, _stateErrorMessage(error));
     }
@@ -330,7 +330,7 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
     await controller.deleteSelected();
     if (!mounted || !identical(controller, _warehousesController)) return;
     setState(_setNewForm);
-    AppToast.showDanger(context, 'تم حذف المخزن مؤقتاً');
+    AppToast.showDanger(context, 'تم حذف المخزن');
   }
 
   Future<void> _openProducts() async {
@@ -373,7 +373,7 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
         !identical(controller, _warehousesController)) {
       return;
     }
-    AppToast.showInfo(context, 'تم تنفيذ النقل المخزني مؤقتاً');
+    AppToast.showInfo(context, 'تم تنفيذ النقل المخزني');
   }
 
   List<WarehouseInventoryItem> _visibleInventory() {

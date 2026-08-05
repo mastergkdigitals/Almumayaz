@@ -301,10 +301,18 @@ class _ElectronicArchiveSettingsSectionState
                 ),
                 columns: const [
                   AppTableColumn(label: 'اسم المستند', flex: 1.8),
-                  AppTableColumn(label: 'اسم الملف', flex: 1.5),
+                  AppTableColumn(
+                    label: 'اسم الملف',
+                    textDirection: TextDirection.ltr,
+                    flex: 1.5,
+                  ),
                   AppTableColumn(label: 'النوع', flex: 0.65),
-                  AppTableColumn(label: 'الحجم', flex: 0.7),
-                  AppTableColumn(label: 'تاريخ الإضافة', flex: 1),
+                  AppTableColumn(label: 'الحجم', numeric: true, flex: 0.7),
+                  AppTableColumn(
+                    label: 'تاريخ الإضافة',
+                    numeric: true,
+                    flex: 1,
+                  ),
                   AppTableColumn(label: 'الإجراءات', flex: 1.15),
                 ],
                 rows: [

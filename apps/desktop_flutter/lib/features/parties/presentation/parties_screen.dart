@@ -302,7 +302,7 @@ class _PartiesScreenState extends State<PartiesScreen> {
       final party = await _partiesController.add(_newPartyFromForm());
       if (!mounted) return;
       _loadParty(party);
-      AppToast.showInfo(context, 'تم حفظ الطرف مؤقتاً');
+      AppToast.showInfo(context, 'تم حفظ الطرف');
     } on StateError catch (error) {
       if (mounted) AppToast.showWarning(context, _stateErrorMessage(error));
     }
@@ -326,7 +326,7 @@ class _PartiesScreenState extends State<PartiesScreen> {
       );
       if (!mounted) return;
       _loadParty(updated);
-      AppToast.showSuccess(context, 'تم تحديث الطرف مؤقتاً');
+      AppToast.showSuccess(context, 'تم تحديث الطرف');
     } on StateError catch (error) {
       if (mounted) AppToast.showWarning(context, _stateErrorMessage(error));
     }
@@ -370,7 +370,7 @@ class _PartiesScreenState extends State<PartiesScreen> {
     await _partiesController.deleteSelected();
     if (!mounted) return;
     setState(_setNewForm);
-    AppToast.showDanger(context, 'تم حذف الطرف مؤقتاً');
+    AppToast.showDanger(context, 'تم حذف الطرف');
   }
 
   void _showStatement(Party party) {

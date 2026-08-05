@@ -99,7 +99,7 @@ class _PartiesTableState extends State<PartiesTable> {
         AppTableColumn(label: 'اسم الطرف', flex: 1.5),
         AppTableColumn(label: 'النوع', flex: 0.9),
         AppTableColumn(label: 'جهة العمل', flex: 1.25),
-        AppTableColumn(label: 'رقم الهاتف', flex: 1.05),
+        AppTableColumn(label: 'رقم الهاتف', numeric: true, flex: 1.05),
         AppTableColumn(label: 'الرصيد دينار', numeric: true, flex: 1.05),
         AppTableColumn(label: 'الرصيد دولار', numeric: true, flex: 1.05),
         AppTableColumn(label: 'الإجراء', flex: 0.65),

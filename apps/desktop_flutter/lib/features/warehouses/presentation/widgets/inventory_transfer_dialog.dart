@@ -319,7 +319,7 @@ class _InventoryTransferDialogState
     });
     AppToast.showInfo(
       context,
-      'تم تنفيذ النقل المخزني مؤقتاً',
+      'تم تنفيذ النقل المخزني',
       messenger: _dialogMessengerKey.currentState,
     );
   }
@@ -467,7 +467,7 @@ class _InventoryTransferDialogState
           setState(() => _historyQuery = '');
           AppToast.showSuccess(
             context,
-            'تم تحديث السجل المؤقت',
+            'تم تحديث السجل',
             messenger: _dialogMessengerKey.currentState,
           );
         },
@@ -857,8 +857,8 @@ class _TransferHistoryTableState extends State<_TransferHistoryTable> {
       accentColor: AppModuleColors.warehouses,
       alternatingRowColor: null,
       columns: const [
-        AppTableColumn(label: 'رقم النقل', flex: 0.8),
-        AppTableColumn(label: 'التاريخ', flex: 1),
+        AppTableColumn(label: 'رقم النقل', numeric: true, flex: 0.8),
+        AppTableColumn(label: 'التاريخ', numeric: true, flex: 1),
         AppTableColumn(label: 'من مخزن', flex: 1.35),
         AppTableColumn(label: 'إلى مخزن', flex: 1.35),
         AppTableColumn(label: 'المواد', flex: 2.5),
