@@ -151,13 +151,13 @@ void main() {
     final repositories = AppRepositories.demo();
 
     final partyDecision = await repositories.parties.canDelete(
-      EntityId.demo('party', 1),
+      EntityId('party-001'),
     );
     final itemDecision = await repositories.items.canDelete(
-      EntityId.demo('item', 1),
+      EntityId('item-001'),
     );
     final warehouseDecision = await repositories.warehouses.canDelete(
-      EntityId.demo('warehouse', 1),
+      EntityId('warehouse-001'),
     );
 
     expect(partyDecision.isAllowed, isFalse);
@@ -168,11 +168,23 @@ void main() {
   test('cashbox balance uses the persisted chronological snapshot', () async {
     final cashbox = AppRepositories.demo().cashbox;
     final balance = await cashbox.getBalance(
-      EntityId.demo('cashbox-subaccount', 1),
+      EntityId.demo('cashbox-subaccount', 4),
+    );
+    final mainAccounts = await cashbox.getMainAccounts();
+    final partiesAccount = mainAccounts.firstWhere(
+      (account) =>
+          account.id == EntityId.demo('cashbox-main-account', 4).value,
+    );
+    final customerAccount = partiesAccount.subaccounts.firstWhere(
+      (account) =>
+          account.id == EntityId.demo('cashbox-subaccount', 4).value,
     );
 
     expect(balance.iqd.toPlainString(), '500000');
     expect(balance.usd.toPlainString(), '850.00');
+    expect(partiesAccount.label, 'الأطراف');
+    expect(customerAccount.balanceIqd, 500000);
+    expect(customerAccount.balanceUsd, 850);
   });
 
   test('cashbox recalculates snapshots after update and delete', () async {
@@ -181,13 +193,13 @@ void main() {
     await cashbox.save(voucher.copyWith(amountIqd: 500000));
 
     var balance = await cashbox.getBalance(
-      EntityId.demo('cashbox-subaccount', 1),
+      EntityId.demo('cashbox-subaccount', 4),
     );
     expect(balance.iqd.toPlainString(), '750000');
 
     await cashbox.delete(EntityId(voucher.id));
     balance = await cashbox.getBalance(
-      EntityId.demo('cashbox-subaccount', 1),
+      EntityId.demo('cashbox-subaccount', 4),
     );
     expect(balance.iqd.toPlainString(), '1250000');
   });
@@ -374,17 +386,17 @@ void main() {
 
   test('invalid warehouse transfer leaves all balances unchanged', () async {
     final repositories = AppRepositories.demo();
-    final warehouseId = EntityId.demo('warehouse', 1);
+    final warehouseId = EntityId('warehouse-001');
     final before = await repositories.warehouses.getInventory(warehouseId);
 
     expect(
       () => repositories.warehouses.transfer(
         InventoryTransferDraft(
           fromWarehouseId: warehouseId,
-          toWarehouseId: EntityId.demo('warehouse', 2),
+          toWarehouseId: EntityId('warehouse-002'),
           lines: [
             InventoryTransferLine(
-              itemId: EntityId.demo('item', 1),
+              itemId: EntityId('item-001'),
               quantity: WholeQuantity(9999),
             ),
           ],

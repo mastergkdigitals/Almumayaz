@@ -34,6 +34,8 @@ abstract interface class CashboxRepository
 
   Future<CashboxBalanceSnapshot> getBalance(EntityId subaccountId);
 
+  Future<CashboxBalanceSnapshot> getOpeningBalance();
+
   Future<bool> referencesParty(EntityId partyId);
 
   Future<bool> referencesMasterData(EntityId masterDataId);

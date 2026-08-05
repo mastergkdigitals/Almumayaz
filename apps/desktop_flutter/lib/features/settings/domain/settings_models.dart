@@ -1,6 +1,6 @@
 import '../../../core/domain/business_values.dart';
 
-enum PurchaseKind { local, import, returnPurchase }
+enum PurchaseKind { local, imported, returnPurchase }
 
 enum PaymentKind { cash, credit }
 

@@ -1,5 +1,18 @@
 part of '../settings_sections.dart';
 
+const _settingsDeviceId = 'demo-windows-device';
+const _settingsPrinterOptions = <AppDropdownOption<String>>[
+  AppDropdownOption(
+    value: 'Microsoft Print to PDF',
+    label: 'Microsoft Print to PDF',
+  ),
+  AppDropdownOption(value: 'HP LaserJet Pro', label: 'HP LaserJet Pro'),
+  AppDropdownOption(
+    value: 'Canon Office Printer',
+    label: 'Canon Office Printer',
+  ),
+];
+
 class BusinessPoliciesSettingsSection extends StatefulWidget {
   const BusinessPoliciesSettingsSection({
     required this.accentColor,
@@ -12,18 +25,144 @@ class BusinessPoliciesSettingsSection extends StatefulWidget {
   State<BusinessPoliciesSettingsSection> createState() =>
       _BusinessPoliciesSettingsSectionState();
 }
+
+class _BusinessPoliciesSettingsData {
+  const _BusinessPoliciesSettingsData({
+    required this.policies,
+    required this.device,
+  });
+
+  final BusinessPolicySettings policies;
+  final DeviceSettings device;
+}
+
 class _BusinessPoliciesSettingsSectionState
     extends State<BusinessPoliciesSettingsSection> {
-  final _exchangeRateController = TextEditingController(text: '1,310');
-  final _customerDebtLimitController =
-      TextEditingController(text: '5,000,000');
-  final _debtDueDaysController = TextEditingController(text: '30');
-  final _copiesController = TextEditingController(text: '1');
+  final _exchangeRateController = TextEditingController();
+  final _customerDebtLimitController = TextEditingController();
+  final _debtDueDaysController = TextEditingController();
+  final _copiesController = TextEditingController();
+
+  AppDataState<_BusinessPoliciesSettingsData> _state =
+      const AppDataState.loading();
+  BusinessSettingsRepository? _businessRepository;
+  DeviceSettingsRepository? _deviceRepository;
+  AppStore? _store;
   var _allowInsufficientStockSale = false;
   var _overdueDebtAlerts = true;
-  var _printer = 'Microsoft Print to PDF';
-  var _paperSize = 'A4';
+  var _printer = _settingsPrinterOptions.first.value;
+  var _paperSize = PrintPaperSize.a4;
   var _previewEnabled = true;
+  var _isSaving = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_businessRepository != null) return;
+    final store = AppStoreScope.of(context, listen: false);
+    _store = store;
+    _businessRepository = store.repositories.businessSettings;
+    _deviceRepository = store.repositories.deviceSettings;
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _state = const AppDataState.loading());
+    try {
+      final policies = await _businessRepository!.loadBusinessPolicies();
+      final device =
+          await _deviceRepository!.loadDeviceSettings(_settingsDeviceId);
+      if (!mounted) return;
+      _applyLoadedValues(policies, device);
+      setState(
+        () => _state = AppDataState.ready(
+          _BusinessPoliciesSettingsData(
+            policies: policies,
+            device: device,
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(
+        () => _state = AppDataState.error(
+          error,
+          message: _settingsRepositoryMessage(error),
+        ),
+      );
+    }
+  }
+
+  void _applyLoadedValues(
+    BusinessPolicySettings policies,
+    DeviceSettings device,
+  ) {
+    _exchangeRateController.text = _formatSettingsNumber(
+      policies.defaultExchangeRate.toPlainString(),
+    );
+    _customerDebtLimitController.text = _formatSettingsNumber(
+      policies.defaultCustomerDebtLimit.toPlainString(),
+    );
+    _debtDueDaysController.text = '${policies.defaultDebtDueDays}';
+    _copiesController.text = '${device.printCopies}';
+    _allowInsufficientStockSale = policies.allowSaleWithInsufficientStock;
+    _overdueDebtAlerts = policies.overdueDebtAlertsEnabled;
+    _printer = _settingsPrinterOptions.any(
+      (option) => option.value == device.defaultPrinterName,
+    )
+        ? device.defaultPrinterName!
+        : _settingsPrinterOptions.first.value;
+    _paperSize = device.paperSize;
+    _previewEnabled = device.printPreviewEnabled;
+  }
+
+  Future<void> _save() async {
+    if (_isSaving) return;
+    try {
+      final policies = BusinessPolicySettings(
+        defaultExchangeRate: ExchangeRate.parse(
+          _exchangeRateController.text,
+        ),
+        allowSaleWithInsufficientStock: _allowInsufficientStockSale,
+        defaultCustomerDebtLimit: Money.parse(
+          _customerDebtLimitController.text,
+          AppCurrency.iqd,
+        ),
+        defaultDebtDueDays: int.parse(
+          _debtDueDaysController.text.replaceAll(',', ''),
+        ),
+        overdueDebtAlertsEnabled: _overdueDebtAlerts,
+      );
+      final device = DeviceSettings(
+        deviceId: _settingsDeviceId,
+        defaultPrinterName: _printer,
+        paperSize: _paperSize,
+        printCopies: int.parse(_copiesController.text.replaceAll(',', '')),
+        printPreviewEnabled: _previewEnabled,
+      );
+
+      setState(() => _isSaving = true);
+      await _businessRepository!.saveBusinessPolicies(policies);
+      await _deviceRepository!.saveDeviceSettings(device);
+      _store!.markDataChanged();
+      if (!mounted) return;
+      _applyLoadedValues(policies, device);
+      setState(
+        () => _state = AppDataState.ready(
+          _BusinessPoliciesSettingsData(
+            policies: policies,
+            device: device,
+          ),
+        ),
+      );
+      AppToast.showInfo(context, 'تم حفظ سياسات العمل والطباعة');
+    } catch (error) {
+      if (!mounted) return;
+      AppToast.showDanger(context, _settingsRepositoryMessage(error));
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -36,6 +175,16 @@ class _BusinessPoliciesSettingsSectionState
 
   @override
   Widget build(BuildContext context) {
+    return AppDataStateView<_BusinessPoliciesSettingsData>(
+      state: _state,
+      loadingStateKey: const Key('businessPoliciesLoadingState'),
+      errorStateKey: const Key('businessPoliciesErrorState'),
+      onRetry: _load,
+      dataBuilder: (context, _) => _buildContent(),
+    );
+  }
+
+  Widget _buildContent() {
     return ListView(
       key: const Key('businessPoliciesSettingsContent'),
       primary: false,
@@ -52,20 +201,14 @@ class _BusinessPoliciesSettingsSectionState
               accentColor: widget.accentColor,
               child: Column(
                 children: [
-                  AppTextField(
+                  AppMoneyField(
                     fieldKey:
                         const Key('settingsDefaultExchangeRateField'),
                     controller: _exchangeRateController,
                     label: 'سعر الصرف الافتراضي',
                     icon: Icons.currency_exchange_rounded,
                     accentColor: widget.accentColor,
-                    textDirection: TextDirection.rtl,
-                    textAlign: TextAlign.right,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                    inputFormatters: const [
-                      AppMoneyInputFormatter(decimalPlaces: 4),
-                    ],
+                    decimalPlaces: ExchangeRate.decimalPlaces,
                   ),
                   const SizedBox(height: AppSpacing.md),
                   AppSwitchField(
@@ -90,31 +233,22 @@ class _BusinessPoliciesSettingsSectionState
               accentColor: widget.accentColor,
               child: Column(
                 children: [
-                  AppTextField(
+                  AppMoneyField(
                     fieldKey:
                         const Key('settingsDefaultCustomerDebtLimitField'),
                     controller: _customerDebtLimitController,
                     label: 'حد الدين الافتراضي للزبون',
                     icon: Icons.credit_score_rounded,
                     accentColor: widget.accentColor,
-                    textDirection: TextDirection.rtl,
-                    textAlign: TextAlign.right,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: const [
-                      AppMoneyInputFormatter(decimalPlaces: 0),
-                    ],
+                    decimalPlaces: 0,
                   ),
                   const SizedBox(height: AppSpacing.md),
-                  AppTextField(
+                  AppIntegerField(
                     fieldKey: const Key('settingsDefaultDebtDueDaysField'),
                     controller: _debtDueDaysController,
                     label: 'مدة استحقاق الدين الافتراضية بالأيام',
                     icon: Icons.event_repeat_rounded,
                     accentColor: widget.accentColor,
-                    textDirection: TextDirection.rtl,
-                    textAlign: TextAlign.right,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: const [AppIntegerInputFormatter()],
                   ),
                   const SizedBox(height: AppSpacing.md),
                   AppSwitchField(
@@ -144,12 +278,7 @@ class _BusinessPoliciesSettingsSectionState
             icon: Icons.save_outlined,
             variant: AppButtonVariant.primary,
             minWidth: 215,
-            onPressed: () {
-              AppToast.showInfo(
-                context,
-                'تم حفظ سياسات العمل والطباعة مؤقتاً',
-              );
-            },
+            onPressed: _isSaving ? null : _save,
           ),
         ),
       ],
@@ -171,20 +300,7 @@ class _BusinessPoliciesSettingsSectionState
             icon: Icons.print_outlined,
             accentColor: widget.accentColor,
             value: _printer,
-            options: const [
-              AppDropdownOption(
-                value: 'Microsoft Print to PDF',
-                label: 'Microsoft Print to PDF',
-              ),
-              AppDropdownOption(
-                value: 'HP LaserJet Pro',
-                label: 'HP LaserJet Pro',
-              ),
-              AppDropdownOption(
-                value: 'Canon Office Printer',
-                label: 'Canon Office Printer',
-              ),
-            ],
+            options: _settingsPrinterOptions,
             useIntrinsicHeight: true,
             textDirection: TextDirection.rtl,
             textAlign: TextAlign.right,
@@ -194,15 +310,15 @@ class _BusinessPoliciesSettingsSectionState
               setState(() => _printer = value);
             },
           ),
-          AppDropdownField<String>(
+          AppDropdownField<PrintPaperSize>(
             fieldKey: const Key('settingsPaperSizeField'),
             label: 'حجم الورق',
             icon: Icons.description_outlined,
             accentColor: widget.accentColor,
             value: _paperSize,
             options: const [
-              AppDropdownOption(value: 'A4', label: 'A4'),
-              AppDropdownOption(value: 'A5', label: 'A5'),
+              AppDropdownOption(value: PrintPaperSize.a4, label: 'A4'),
+              AppDropdownOption(value: PrintPaperSize.a5, label: 'A5'),
             ],
             useIntrinsicHeight: true,
             textDirection: TextDirection.rtl,
@@ -213,16 +329,12 @@ class _BusinessPoliciesSettingsSectionState
               setState(() => _paperSize = value);
             },
           ),
-          AppTextField(
+          AppIntegerField(
             fieldKey: const Key('settingsPrintCopiesField'),
             controller: _copiesController,
             label: 'عدد النسخ',
             icon: Icons.copy_all_outlined,
             accentColor: widget.accentColor,
-            textDirection: TextDirection.rtl,
-            textAlign: TextAlign.right,
-            keyboardType: TextInputType.number,
-            inputFormatters: const [AppIntegerInputFormatter()],
           ),
           AppSwitchField(
             key: const Key('settingsPrintPreviewSwitch'),

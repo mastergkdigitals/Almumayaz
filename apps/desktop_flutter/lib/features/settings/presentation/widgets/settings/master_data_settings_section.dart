@@ -12,79 +12,20 @@ class MasterDataSettingsSection extends StatefulWidget {
   State<MasterDataSettingsSection> createState() =>
       _MasterDataSettingsSectionState();
 }
+
+class _MasterDataSettingsData {
+  const _MasterDataSettingsData(this.records);
+
+  final List<OperationalMasterDataRecord> records;
+}
+
 class _MasterDataSettingsSectionState
     extends State<MasterDataSettingsSection> {
   var _selectedTab = 'groupsTypes';
-  var _itemGroups = <_SettingsNamedEntry>[
-    const _SettingsNamedEntry(id: 1, name: 'المواد الغذائية'),
-    const _SettingsNamedEntry(id: 2, name: 'الأجهزة الكهربائية'),
-    const _SettingsNamedEntry(id: 3, name: 'القرطاسية'),
-  ];
-  var _itemTypes = <_SettingsNamedEntry>[
-    const _SettingsNamedEntry(
-      id: 1,
-      name: 'مشروبات',
-      parent: 'المواد الغذائية',
-    ),
-    const _SettingsNamedEntry(
-      id: 2,
-      name: 'مواد جافة',
-      parent: 'المواد الغذائية',
-    ),
-    const _SettingsNamedEntry(
-      id: 3,
-      name: 'أجهزة منزلية',
-      parent: 'الأجهزة الكهربائية',
-    ),
-  ];
-  var _workplaces = <_SettingsNamedEntry>[
-    const _SettingsNamedEntry(id: 1, name: 'شركة المميز'),
-    const _SettingsNamedEntry(id: 2, name: 'السوق المحلي'),
-    const _SettingsNamedEntry(id: 3, name: 'المبيعات المباشرة'),
-  ];
-  var _branches = <_SettingsNamedEntry>[
-    const _SettingsNamedEntry(
-      id: 1,
-      name: 'الفرع الرئيسي',
-      parent: 'شركة المميز',
-    ),
-    const _SettingsNamedEntry(
-      id: 2,
-      name: 'فرع الكرادة',
-      parent: 'السوق المحلي',
-    ),
-    const _SettingsNamedEntry(
-      id: 3,
-      name: 'فرع المنصور',
-      parent: 'المبيعات المباشرة',
-    ),
-  ];
-  var _cashboxMainAccounts = <_SettingsNamedEntry>[
-    const _SettingsNamedEntry(
-      id: 1,
-      name: 'الصندوق الرئيسي',
-      isProtected: true,
-    ),
-    const _SettingsNamedEntry(id: 2, name: 'المصاريف العامة'),
-    const _SettingsNamedEntry(id: 3, name: 'حساب الأطراف'),
-  ];
-  var _cashboxSubAccounts = <_SettingsNamedEntry>[
-    const _SettingsNamedEntry(
-      id: 1,
-      name: 'النقدية اليومية',
-      parent: 'الصندوق الرئيسي',
-    ),
-    const _SettingsNamedEntry(
-      id: 2,
-      name: 'أجور النقل',
-      parent: 'المصاريف العامة',
-    ),
-    const _SettingsNamedEntry(
-      id: 3,
-      name: 'مصروفات المكتب',
-      parent: 'المصاريف العامة',
-    ),
-  ];
+  AppDataState<_MasterDataSettingsData> _state =
+      const AppDataState.loading();
+  OperationalMasterDataRepository? _repository;
+  AppStore? _store;
 
   int get _selectedTabIndex => switch (_selectedTab) {
         'workplacesBranches' => 1,
@@ -92,89 +33,111 @@ class _MasterDataSettingsSectionState
         _ => 0,
       };
 
-  List<_SettingsNamedEntry> _cascadeParentChanges({
-    required List<_SettingsNamedEntry> previousParents,
-    required List<_SettingsNamedEntry> nextParents,
-    required List<_SettingsNamedEntry> children,
-  }) {
-    final nextNamesById = {
-      for (final entry in nextParents) entry.id: entry.name,
-    };
-    final previousIdsByName = {
-      for (final entry in previousParents) entry.name: entry.id,
-    };
-    return [
-      for (final child in children)
-        if (child.parent == null)
-          child
-        else
-          _cascadeChildParent(
-            child: child,
-            previousIdsByName: previousIdsByName,
-            nextNamesById: nextNamesById,
-            nextParents: nextParents,
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_repository != null) return;
+    final store = AppStoreScope.of(context, listen: false);
+    _store = store;
+    _repository = store.repositories.operationalMasterData;
+    _load(showLoading: true);
+  }
+
+  Future<void> _load({required bool showLoading}) async {
+    if (showLoading) {
+      setState(() => _state = const AppDataState.loading());
+    }
+    try {
+      final records = [...await _repository!.getAll()];
+      final recordsById = {
+        for (final record in records) record.id: record,
+      };
+      records.sort((first, second) {
+        final byKind = first.kind.index.compareTo(second.kind.index);
+        if (byKind != 0) return byKind;
+
+        final firstParentNumber = recordsById[first.parentId]?.number ?? 0;
+        final secondParentNumber = recordsById[second.parentId]?.number ?? 0;
+        final byParent = firstParentNumber.compareTo(secondParentNumber);
+        if (byParent != 0) return byParent;
+
+        final byNumber = first.number.compareTo(second.number);
+        return byNumber != 0
+            ? byNumber
+            : first.id.value.compareTo(second.id.value);
+      });
+      if (!mounted) return;
+      if (records.isEmpty) {
+        setState(
+          () => _state = const AppDataState.empty(
+            message: 'لا توجد بيانات أساسية مسجلة حالياً.',
           ),
-    ];
-  }
-
-  _SettingsNamedEntry _cascadeChildParent({
-    required _SettingsNamedEntry child,
-    required Map<String, int> previousIdsByName,
-    required Map<int, String> nextNamesById,
-    required List<_SettingsNamedEntry> nextParents,
-  }) {
-    final renamedParent =
-        nextNamesById[previousIdsByName[child.parent]];
-    final unchangedParent = nextParents.any(
-      (entry) => entry.name == child.parent,
-    )
-        ? child.parent
-        : null;
-    final nextParent = renamedParent ?? unchangedParent;
-
-    return child.copyWith(
-      parent: nextParent,
-      clearParent: nextParent == null,
-    );
-  }
-
-  void _replaceItemGroups(List<_SettingsNamedEntry> entries) {
-    setState(() {
-      _itemTypes = _cascadeParentChanges(
-        previousParents: _itemGroups,
-        nextParents: entries,
-        children: _itemTypes,
+        );
+        return;
+      }
+      final missingReference = _findMissingMasterDataReference(records);
+      if (missingReference != null) {
+        setState(
+          () => _state = AppDataState.missingReference(missingReference),
+        );
+        return;
+      }
+      setState(
+        () => _state = AppDataState.ready(
+          _MasterDataSettingsData(List.unmodifiable(records)),
+        ),
       );
-      _itemGroups = entries;
-    });
+    } catch (error) {
+      if (!mounted) return;
+      setState(
+        () => _state = AppDataState.error(
+          error,
+          message: _settingsRepositoryMessage(error),
+        ),
+      );
+    }
   }
 
-  void _replaceWorkplaces(List<_SettingsNamedEntry> entries) {
-    setState(() {
-      _branches = _cascadeParentChanges(
-        previousParents: _workplaces,
-        nextParents: entries,
-        children: _branches,
-      );
-      _workplaces = entries;
-    });
+  Future<void> _saveRecord(OperationalMasterDataRecord record) async {
+    await _repository!.save(record);
+    _store!.markDataChanged();
+    await _load(showLoading: false);
   }
 
-  void _replaceCashboxMainAccounts(
-    List<_SettingsNamedEntry> entries,
-  ) {
-    setState(() {
-      _cashboxSubAccounts = _cascadeParentChanges(
-        previousParents: _cashboxMainAccounts,
-        nextParents: entries,
-        children: _cashboxSubAccounts,
-      );
-      _cashboxMainAccounts = entries;
-    });
+  Future<DeleteDecision> _canDelete(EntityId id) {
+    return _repository!.canDelete(id);
+  }
+
+  Future<void> _deleteRecord(EntityId id) async {
+    await _repository!.delete(id);
+    _store!.markDataChanged();
+    await _load(showLoading: false);
   }
 
   @override
   Widget build(BuildContext context) {
+    return AppDataStateView<_MasterDataSettingsData>(
+      state: _state,
+      loadingStateKey: const Key('masterDataLoadingState'),
+      emptyStateKey: const Key('masterDataEmptyState'),
+      missingReferenceStateKey: const Key('masterDataMissingReferenceState'),
+      errorStateKey: const Key('masterDataErrorState'),
+      emptyActionLabel: 'إضافة أول سجل',
+      onEmptyAction: () {
+        setState(
+          () => _state = const AppDataState.ready(
+            _MasterDataSettingsData(<OperationalMasterDataRecord>[]),
+          ),
+        );
+      },
+      onRetry: () => _load(showLoading: true),
+      missingReferenceActionLabel: 'إعادة المحاولة',
+      onMissingReferenceAction: () => _load(showLoading: true),
+      dataBuilder: (context, data) => _buildContent(data.records),
+    );
+  }
+
+  Widget _buildContent(List<OperationalMasterDataRecord> records) {
     return ListView(
       key: const Key('masterDataSettingsContent'),
       primary: false,
@@ -210,30 +173,24 @@ class _MasterDataSettingsSectionState
           children: [
             _GroupsTypesTemplate(
               accentColor: widget.accentColor,
-              groups: _itemGroups,
-              types: _itemTypes,
-              onGroupsChanged: _replaceItemGroups,
-              onTypesChanged: (entries) {
-                setState(() => _itemTypes = entries);
-              },
+              records: records,
+              onSave: _saveRecord,
+              canDelete: _canDelete,
+              onDelete: _deleteRecord,
             ),
             _WorkplacesBranchesTemplate(
               accentColor: widget.accentColor,
-              workplaces: _workplaces,
-              branches: _branches,
-              onWorkplacesChanged: _replaceWorkplaces,
-              onBranchesChanged: (entries) {
-                setState(() => _branches = entries);
-              },
+              records: records,
+              onSave: _saveRecord,
+              canDelete: _canDelete,
+              onDelete: _deleteRecord,
             ),
             _CashboxAccountsTemplate(
               accentColor: widget.accentColor,
-              mainAccounts: _cashboxMainAccounts,
-              subAccounts: _cashboxSubAccounts,
-              onMainAccountsChanged: _replaceCashboxMainAccounts,
-              onSubAccountsChanged: (entries) {
-                setState(() => _cashboxSubAccounts = entries);
-              },
+              records: records,
+              onSave: _saveRecord,
+              canDelete: _canDelete,
+              onDelete: _deleteRecord,
             ),
           ],
         ),
@@ -242,23 +199,39 @@ class _MasterDataSettingsSectionState
   }
 }
 
+typedef _SaveMasterDataRecord = Future<void> Function(
+  OperationalMasterDataRecord record,
+);
+typedef _CanDeleteMasterDataRecord = Future<DeleteDecision> Function(
+  EntityId id,
+);
+typedef _DeleteMasterDataRecord = Future<void> Function(EntityId id);
+
 class _GroupsTypesTemplate extends StatelessWidget {
   const _GroupsTypesTemplate({
     required this.accentColor,
-    required this.groups,
-    required this.types,
-    required this.onGroupsChanged,
-    required this.onTypesChanged,
+    required this.records,
+    required this.onSave,
+    required this.canDelete,
+    required this.onDelete,
   });
 
   final Color accentColor;
-  final List<_SettingsNamedEntry> groups;
-  final List<_SettingsNamedEntry> types;
-  final ValueChanged<List<_SettingsNamedEntry>> onGroupsChanged;
-  final ValueChanged<List<_SettingsNamedEntry>> onTypesChanged;
+  final List<OperationalMasterDataRecord> records;
+  final _SaveMasterDataRecord onSave;
+  final _CanDeleteMasterDataRecord canDelete;
+  final _DeleteMasterDataRecord onDelete;
 
   @override
   Widget build(BuildContext context) {
+    final groups = _recordsByKind(
+      records,
+      OperationalMasterDataKind.itemGroup,
+    );
+    final types = _recordsByKind(
+      records,
+      OperationalMasterDataKind.itemType,
+    );
     return SettingsResponsiveGrid(
       key: const Key('settingsGroupsTypesTemplate'),
       preferredColumns: 2,
@@ -270,23 +243,27 @@ class _GroupsTypesTemplate extends StatelessWidget {
           fieldLabel: 'اسم المجموعة',
           icon: Icons.folder_copy_outlined,
           accentColor: accentColor,
+          kind: OperationalMasterDataKind.itemGroup,
           entries: groups,
-          referencedNames: {
-            for (final entry in types)
-              if (entry.parent != null) entry.parent!,
-          },
-          onEntriesChanged: onGroupsChanged,
+          allKindEntries: groups,
+          onSave: onSave,
+          canDelete: canDelete,
+          onDelete: onDelete,
         ),
         _SettingsManagementPanel(
           keyPrefix: 'settingsItemTypes',
           title: 'أنواع المواد',
           fieldLabel: 'اسم النوع',
           parentLabel: 'المجموعة',
-          parentOptions: [for (final entry in groups) entry.name],
           icon: Icons.account_tree_outlined,
           accentColor: accentColor,
+          kind: OperationalMasterDataKind.itemType,
           entries: types,
-          onEntriesChanged: onTypesChanged,
+          allKindEntries: types,
+          parentOptions: groups,
+          onSave: onSave,
+          canDelete: canDelete,
+          onDelete: onDelete,
         ),
       ],
     );
@@ -296,20 +273,28 @@ class _GroupsTypesTemplate extends StatelessWidget {
 class _WorkplacesBranchesTemplate extends StatelessWidget {
   const _WorkplacesBranchesTemplate({
     required this.accentColor,
-    required this.workplaces,
-    required this.branches,
-    required this.onWorkplacesChanged,
-    required this.onBranchesChanged,
+    required this.records,
+    required this.onSave,
+    required this.canDelete,
+    required this.onDelete,
   });
 
   final Color accentColor;
-  final List<_SettingsNamedEntry> workplaces;
-  final List<_SettingsNamedEntry> branches;
-  final ValueChanged<List<_SettingsNamedEntry>> onWorkplacesChanged;
-  final ValueChanged<List<_SettingsNamedEntry>> onBranchesChanged;
+  final List<OperationalMasterDataRecord> records;
+  final _SaveMasterDataRecord onSave;
+  final _CanDeleteMasterDataRecord canDelete;
+  final _DeleteMasterDataRecord onDelete;
 
   @override
   Widget build(BuildContext context) {
+    final workplaces = _recordsByKind(
+      records,
+      OperationalMasterDataKind.workplace,
+    );
+    final branches = _recordsByKind(
+      records,
+      OperationalMasterDataKind.branch,
+    );
     return SettingsResponsiveGrid(
       key: const Key('settingsWorkplacesBranchesTemplate'),
       preferredColumns: 2,
@@ -321,23 +306,27 @@ class _WorkplacesBranchesTemplate extends StatelessWidget {
           fieldLabel: 'اسم جهة العمل',
           icon: Icons.business_center_outlined,
           accentColor: accentColor,
+          kind: OperationalMasterDataKind.workplace,
           entries: workplaces,
-          referencedNames: {
-            for (final entry in branches)
-              if (entry.parent != null) entry.parent!,
-          },
-          onEntriesChanged: onWorkplacesChanged,
+          allKindEntries: workplaces,
+          onSave: onSave,
+          canDelete: canDelete,
+          onDelete: onDelete,
         ),
         _SettingsManagementPanel(
           keyPrefix: 'settingsWorkplaceBranches',
           title: 'الفروع',
           fieldLabel: 'اسم الفرع',
           parentLabel: 'جهة العمل',
-          parentOptions: [for (final entry in workplaces) entry.name],
           icon: Icons.fork_right_outlined,
           accentColor: accentColor,
+          kind: OperationalMasterDataKind.branch,
           entries: branches,
-          onEntriesChanged: onBranchesChanged,
+          allKindEntries: branches,
+          parentOptions: workplaces,
+          onSave: onSave,
+          canDelete: canDelete,
+          onDelete: onDelete,
         ),
       ],
     );
@@ -347,20 +336,28 @@ class _WorkplacesBranchesTemplate extends StatelessWidget {
 class _CashboxAccountsTemplate extends StatelessWidget {
   const _CashboxAccountsTemplate({
     required this.accentColor,
-    required this.mainAccounts,
-    required this.subAccounts,
-    required this.onMainAccountsChanged,
-    required this.onSubAccountsChanged,
+    required this.records,
+    required this.onSave,
+    required this.canDelete,
+    required this.onDelete,
   });
 
   final Color accentColor;
-  final List<_SettingsNamedEntry> mainAccounts;
-  final List<_SettingsNamedEntry> subAccounts;
-  final ValueChanged<List<_SettingsNamedEntry>> onMainAccountsChanged;
-  final ValueChanged<List<_SettingsNamedEntry>> onSubAccountsChanged;
+  final List<OperationalMasterDataRecord> records;
+  final _SaveMasterDataRecord onSave;
+  final _CanDeleteMasterDataRecord canDelete;
+  final _DeleteMasterDataRecord onDelete;
 
   @override
   Widget build(BuildContext context) {
+    final mainAccounts = _recordsByKind(
+      records,
+      OperationalMasterDataKind.cashboxMainAccount,
+    );
+    final subaccounts = _recordsByKind(
+      records,
+      OperationalMasterDataKind.cashboxSubaccount,
+    );
     return SettingsResponsiveGrid(
       key: const Key('settingsCashboxAccountsTemplate'),
       preferredColumns: 2,
@@ -372,52 +369,29 @@ class _CashboxAccountsTemplate extends StatelessWidget {
           fieldLabel: 'اسم الحساب الرئيسي',
           icon: Icons.account_balance_wallet_outlined,
           accentColor: accentColor,
+          kind: OperationalMasterDataKind.cashboxMainAccount,
           entries: mainAccounts,
-          referencedNames: {
-            for (final entry in subAccounts)
-              if (entry.parent != null) entry.parent!,
-          },
-          onEntriesChanged: onMainAccountsChanged,
+          allKindEntries: mainAccounts,
+          onSave: onSave,
+          canDelete: canDelete,
+          onDelete: onDelete,
         ),
         _SettingsManagementPanel(
           keyPrefix: 'settingsCashboxSubAccounts',
           title: 'الحسابات الفرعية',
           fieldLabel: 'اسم الحساب الفرعي',
           parentLabel: 'الحساب الرئيسي',
-          parentOptions: [for (final entry in mainAccounts) entry.name],
           icon: Icons.segment_outlined,
           accentColor: accentColor,
-          entries: subAccounts,
-          onEntriesChanged: onSubAccountsChanged,
+          kind: OperationalMasterDataKind.cashboxSubaccount,
+          entries: subaccounts,
+          allKindEntries: subaccounts,
+          parentOptions: mainAccounts,
+          onSave: onSave,
+          canDelete: canDelete,
+          onDelete: onDelete,
         ),
       ],
-    );
-  }
-}
-
-class _SettingsNamedEntry {
-  const _SettingsNamedEntry({
-    required this.id,
-    required this.name,
-    this.isProtected = false,
-    this.parent,
-  });
-
-  final int id;
-  final String name;
-  final bool isProtected;
-  final String? parent;
-
-  _SettingsNamedEntry copyWith({
-    String? name,
-    String? parent,
-    bool clearParent = false,
-  }) {
-    return _SettingsNamedEntry(
-      id: id,
-      name: name ?? this.name,
-      isProtected: isProtected,
-      parent: clearParent ? null : parent ?? this.parent,
     );
   }
 }
@@ -429,11 +403,14 @@ class _SettingsManagementPanel extends StatefulWidget {
     required this.fieldLabel,
     required this.icon,
     required this.accentColor,
+    required this.kind,
     required this.entries,
-    required this.onEntriesChanged,
+    required this.allKindEntries,
+    required this.onSave,
+    required this.canDelete,
+    required this.onDelete,
     this.parentLabel,
     this.parentOptions = const [],
-    this.referencedNames = const {},
   });
 
   final String keyPrefix;
@@ -441,11 +418,14 @@ class _SettingsManagementPanel extends StatefulWidget {
   final String fieldLabel;
   final IconData icon;
   final Color accentColor;
-  final List<_SettingsNamedEntry> entries;
-  final ValueChanged<List<_SettingsNamedEntry>> onEntriesChanged;
+  final OperationalMasterDataKind kind;
+  final List<OperationalMasterDataRecord> entries;
+  final List<OperationalMasterDataRecord> allKindEntries;
+  final _SaveMasterDataRecord onSave;
+  final _CanDeleteMasterDataRecord canDelete;
+  final _DeleteMasterDataRecord onDelete;
   final String? parentLabel;
-  final List<String> parentOptions;
-  final Set<String> referencedNames;
+  final List<OperationalMasterDataRecord> parentOptions;
 
   @override
   State<_SettingsManagementPanel> createState() =>
@@ -455,35 +435,34 @@ class _SettingsManagementPanel extends StatefulWidget {
 class _SettingsManagementPanelState
     extends State<_SettingsManagementPanel> {
   final _nameController = TextEditingController();
-  int? _selectedId;
-  String? _selectedParent;
+  EntityId? _selectedId;
+  EntityId? _selectedParentId;
+  var _isMutating = false;
 
   @override
   void initState() {
     super.initState();
-    _selectedParent =
-        widget.parentOptions.isEmpty ? null : widget.parentOptions.first;
+    _selectedParentId = widget.parentOptions.firstOrNull?.id;
   }
 
   @override
   void didUpdateWidget(covariant _SettingsManagementPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
-
     final selectedId = _selectedId;
     if (selectedId != null) {
-      final selectedIndex =
-          widget.entries.indexWhere((entry) => entry.id == selectedId);
-      if (selectedIndex < 0) {
+      final selected = widget.entries
+          .where((entry) => entry.id == selectedId)
+          .firstOrNull;
+      if (selected == null) {
         _selectedId = null;
         _nameController.clear();
       } else {
-        final selectedEntry = widget.entries[selectedIndex];
-        _selectedParent = selectedEntry.parent;
+        _selectedParentId = selected.parentId;
       }
-    } else if (_selectedParent == null ||
-        !widget.parentOptions.contains(_selectedParent)) {
-      _selectedParent =
-          widget.parentOptions.isEmpty ? null : widget.parentOptions.first;
+    } else if (!widget.parentOptions.any(
+      (parent) => parent.id == _selectedParentId,
+    )) {
+      _selectedParentId = widget.parentOptions.firstOrNull?.id;
     }
   }
 
@@ -497,121 +476,140 @@ class _SettingsManagementPanelState
     setState(() {
       _selectedId = null;
       _nameController.clear();
-      _selectedParent =
-          widget.parentOptions.isEmpty ? null : widget.parentOptions.first;
+      _selectedParentId = widget.parentOptions.firstOrNull?.id;
     });
   }
 
-  void _addEntry() {
+  Future<void> _addEntry() async {
     final name = _nameController.text.trim();
-    if (name.isEmpty) {
-      AppToast.showWarning(context, 'اكتب ${widget.fieldLabel} أولاً');
-      return;
-    }
-    if (widget.entries.any(
-      (entry) => entry.name.trim().toLowerCase() == name.toLowerCase(),
-    )) {
-      AppToast.showWarning(context, 'هذا الاسم مستخدم مسبقاً');
-      return;
-    }
-    if (widget.parentLabel != null && _selectedParent == null) {
-      AppToast.showWarning(context, 'اختر ${widget.parentLabel} أولاً');
-      return;
-    }
-
-    final nextId = widget.entries.fold<int>(
+    if (!_validateNameAndParent(name)) return;
+    final numberedEntries = widget.parentLabel == null
+        ? widget.allKindEntries
+        : widget.allKindEntries.where(
+            (entry) => entry.parentId == _selectedParentId,
+          );
+    final nextNumber = numberedEntries.fold<int>(
           0,
-          (largest, entry) => entry.id > largest ? entry.id : largest,
+          (largest, entry) => entry.number > largest ? entry.number : largest,
         ) +
         1;
-    final nextEntries = [
-      ...widget.entries,
-      _SettingsNamedEntry(
-        id: nextId,
-        name: name,
-        parent: widget.parentLabel == null ? null : _selectedParent,
+    final nextId = EntityId.demo(
+      _masterDataEntityType(widget.kind),
+      _nextEntitySequence(
+        widget.allKindEntries.map((entry) => entry.id),
+        fallback: nextNumber,
       ),
-    ];
-    setState(() {
-      _selectedId = nextId;
-    });
-    widget.onEntriesChanged(nextEntries);
-    AppToast.showInfo(context, 'تمت الإضافة إلى نموذج ${widget.title}');
+    );
+    final record = OperationalMasterDataRecord(
+      id: nextId,
+      kind: widget.kind,
+      number: nextNumber,
+      name: name,
+      parentId: widget.parentLabel == null ? null : _selectedParentId,
+    );
+    await _mutate(
+      () => widget.onSave(record),
+      onSuccess: () {
+        _selectedId = nextId;
+        AppToast.showInfo(context, 'تمت إضافة السجل');
+      },
+    );
   }
 
-  void _updateEntry() {
+  Future<void> _updateEntry() async {
     final selectedId = _selectedId;
     final name = _nameController.text.trim();
-    if (selectedId == null || name.isEmpty) {
-      AppToast.showWarning(context, 'اختر سجلاً واكتب الاسم الجديد');
+    if (selectedId == null || !_validateNameAndParent(name)) {
+      if (selectedId == null) {
+        AppToast.showWarning(context, 'اختر سجلاً واكتب الاسم الجديد');
+      }
       return;
     }
-    if (widget.entries.any(
-      (entry) =>
-          entry.id != selectedId &&
-          entry.name.trim().toLowerCase() == name.toLowerCase(),
-    )) {
-      AppToast.showWarning(context, 'هذا الاسم مستخدم مسبقاً');
-      return;
-    }
-    if (widget.parentLabel != null && _selectedParent == null) {
-      AppToast.showWarning(context, 'اختر ${widget.parentLabel} أولاً');
-      return;
-    }
-
-    final nextEntries = List<_SettingsNamedEntry>.of(widget.entries);
-    final index =
-        nextEntries.indexWhere((entry) => entry.id == selectedId);
-    if (index < 0) return;
-    nextEntries[index] = nextEntries[index].copyWith(
+    final existing = widget.entries
+        .where((entry) => entry.id == selectedId)
+        .firstOrNull;
+    if (existing == null) return;
+    final record = OperationalMasterDataRecord(
+      id: existing.id,
+      kind: existing.kind,
+      number: existing.number,
       name: name,
-      parent: widget.parentLabel == null ? null : _selectedParent,
-      clearParent: widget.parentLabel == null,
+      parentId: widget.parentLabel == null ? null : _selectedParentId,
+      relatedEntityId: existing.relatedEntityId,
+      isProtected: existing.isProtected,
     );
-    widget.onEntriesChanged(nextEntries);
-    AppToast.showSuccess(context, 'تم تحديث السجل التجريبي');
+    await _mutate(
+      () => widget.onSave(record),
+      onSuccess: () => AppToast.showSuccess(context, 'تم تحديث السجل'),
+    );
   }
 
-  Future<void> _deleteEntry(_SettingsNamedEntry entry) async {
-    if (entry.isProtected) {
-      AppToast.showWarning(context, 'لا يمكن حذف الحساب النظامي');
-      return;
+  bool _validateNameAndParent(String name) {
+    if (name.isEmpty) {
+      AppToast.showWarning(context, 'اكتب ${widget.fieldLabel} أولاً');
+      return false;
     }
-    if (widget.referencedNames.contains(entry.name)) {
+    if (widget.parentLabel != null && _selectedParentId == null) {
+      AppToast.showWarning(context, 'اختر ${widget.parentLabel} أولاً');
+      return false;
+    }
+    return true;
+  }
+
+  Future<void> _deleteEntry(OperationalMasterDataRecord entry) async {
+    if (_isMutating) return;
+    final decision = await widget.canDelete(entry.id);
+    if (!mounted) return;
+    if (!decision.isAllowed) {
       AppToast.showDanger(
         context,
-        'لا يمكن حذف هذا السجل لأنه مرتبط ببيانات أخرى',
+        decision.reason ?? 'لا يمكن حذف هذا السجل',
       );
       return;
     }
-
     final confirmed = await AppDialogs.confirm(
       context: context,
       title: 'حذف السجل',
-      message: 'هل تريد حذف «${entry.name}» من النموذج؟',
+      message: 'هل تريد حذف «${entry.name}»؟',
       confirmLabel: 'حذف',
       isDanger: true,
     );
     if (!confirmed || !mounted) return;
-
-    final nextEntries = [
-      for (final candidate in widget.entries)
-        if (candidate.id != entry.id) candidate,
-    ];
-    setState(() {
-      if (_selectedId == entry.id) {
-        _selectedId = null;
-        _nameController.clear();
-      }
-    });
-    widget.onEntriesChanged(nextEntries);
-    AppToast.showDanger(context, 'تم حذف السجل التجريبي');
+    await _mutate(
+      () => widget.onDelete(entry.id),
+      onSuccess: () {
+        if (_selectedId == entry.id) {
+          _selectedId = null;
+          _nameController.clear();
+        }
+        AppToast.showDanger(context, 'تم حذف السجل');
+      },
+    );
   }
 
-  void _selectEntry(_SettingsNamedEntry entry) {
+  Future<void> _mutate(
+    Future<void> Function() operation, {
+    required VoidCallback onSuccess,
+  }) async {
+    if (_isMutating) return;
+    setState(() => _isMutating = true);
+    try {
+      await operation();
+      if (!mounted) return;
+      onSuccess();
+      setState(() {});
+    } catch (error) {
+      if (!mounted) return;
+      AppToast.showDanger(context, _settingsRepositoryMessage(error));
+    } finally {
+      if (mounted) setState(() => _isMutating = false);
+    }
+  }
+
+  void _selectEntry(OperationalMasterDataRecord entry) {
     setState(() {
       _selectedId = entry.id;
-      _selectedParent = entry.parent;
+      _selectedParentId = entry.parentId;
       _nameController.text = entry.name;
       _nameController.selection = TextSelection.collapsed(
         offset: _nameController.text.length,
@@ -622,6 +620,9 @@ class _SettingsManagementPanelState
   @override
   Widget build(BuildContext context) {
     final prefix = widget.keyPrefix;
+    final parentNames = {
+      for (final parent in widget.parentOptions) parent.id: parent.name,
+    };
 
     return SettingsTemplatePanel(
       key: Key('${prefix}Panel'),
@@ -637,18 +638,23 @@ class _SettingsManagementPanelState
               label: widget.parentLabel!,
               icon: Icons.account_tree_outlined,
               accentColor: widget.accentColor,
-              value: _selectedParent,
-              enabled: widget.parentOptions.isNotEmpty,
+              value: _selectedParentId?.value,
+              enabled: widget.parentOptions.isNotEmpty && !_isMutating,
               options: [
                 for (final option in widget.parentOptions)
-                  AppDropdownOption(value: option, label: option),
+                  AppDropdownOption(
+                    value: option.id.value,
+                    label: option.name,
+                  ),
               ],
               useIntrinsicHeight: true,
               textDirection: TextDirection.rtl,
               textAlign: TextAlign.right,
               menuTextDirection: TextDirection.rtl,
               onChanged: (value) {
-                if (value != null) setState(() => _selectedParent = value);
+                if (value != null) {
+                  setState(() => _selectedParentId = EntityId(value));
+                }
               },
             ),
             const SizedBox(height: AppSpacing.md),
@@ -659,6 +665,7 @@ class _SettingsManagementPanelState
             label: widget.fieldLabel,
             icon: Icons.edit_outlined,
             accentColor: widget.accentColor,
+            enabled: !_isMutating,
             textDirection: TextDirection.rtl,
             textAlign: TextAlign.right,
             onChanged: (_) => setState(() {}),
@@ -678,8 +685,9 @@ class _SettingsManagementPanelState
                 icon: Icons.add_rounded,
                 backgroundColor: widget.accentColor,
                 minWidth: 115,
-                onPressed: widget.parentLabel != null &&
-                        _selectedParent == null
+                onPressed: _isMutating ||
+                        (widget.parentLabel != null &&
+                            _selectedParentId == null)
                     ? null
                     : _addEntry,
               ),
@@ -689,9 +697,10 @@ class _SettingsManagementPanelState
                 icon: Icons.refresh_rounded,
                 variant: AppButtonVariant.success,
                 minWidth: 115,
-                onPressed: _selectedId == null ||
+                onPressed: _isMutating ||
+                        _selectedId == null ||
                         (widget.parentLabel != null &&
-                            _selectedParent == null)
+                            _selectedParentId == null)
                     ? null
                     : _updateEntry,
               ),
@@ -701,8 +710,9 @@ class _SettingsManagementPanelState
                 icon: Icons.undo_rounded,
                 variant: AppButtonVariant.warning,
                 minWidth: 115,
-                onPressed: _selectedId == null &&
-                        _nameController.text.isEmpty
+                onPressed: _isMutating ||
+                        (_selectedId == null &&
+                            _nameController.text.isEmpty)
                     ? null
                     : _clearSelection,
               ),
@@ -717,32 +727,25 @@ class _SettingsManagementPanelState
             accentColor: widget.accentColor,
             showShadow: false,
             columns: [
-              const AppTableColumn(
-                label: 'ت',
-                flex: 0.45,
-                numeric: true,
-              ),
+              const AppTableColumn(label: 'ت', flex: 0.45, numeric: true),
               const AppTableColumn(label: 'الاسم', flex: 1.8),
               if (widget.parentLabel != null)
-                AppTableColumn(
-                  label: widget.parentLabel!,
-                  flex: 1.35,
-                ),
+                AppTableColumn(label: widget.parentLabel!, flex: 1.35),
               const AppTableColumn(label: 'الحالة', flex: 1),
               const AppTableColumn(label: 'الإجراءات', flex: 0.8),
             ],
             rows: [
               for (final entry in widget.entries)
                 AppTableRow(
-                  rowKey: Key('${prefix}Row_${entry.id}'),
+                  rowKey: Key('${prefix}Row_${entry.id.value}'),
                   selected: entry.id == _selectedId,
                   onTap: () => _selectEntry(entry),
                   cells: [
-                    Text('${entry.id}', textAlign: TextAlign.center),
+                    Text('${entry.number}', textAlign: TextAlign.center),
                     Text(entry.name, overflow: TextOverflow.ellipsis),
                     if (widget.parentLabel != null)
                       Text(
-                        entry.parent ?? 'غير محدد',
+                        parentNames[entry.parentId] ?? 'غير محدد',
                         overflow: TextOverflow.ellipsis,
                       ),
                     Center(
@@ -755,13 +758,12 @@ class _SettingsManagementPanelState
                     ),
                     Center(
                       child: AppTableActionButton(
-                        key: Key('${prefix}Delete_${entry.id}'),
+                        key: Key('${prefix}Delete_${entry.id.value}'),
                         icon: Icons.delete_outline_rounded,
-                        tooltip: entry.isProtected
-                            ? 'حساب نظامي'
-                            : 'حذف',
+                        tooltip: entry.isProtected ? 'سجل نظامي' : 'حذف',
                         variant: AppButtonVariant.danger,
-                        onPressed: () => _deleteEntry(entry),
+                        onPressed:
+                            _isMutating ? null : () => _deleteEntry(entry),
                       ),
                     ),
                   ],
@@ -773,3 +775,50 @@ class _SettingsManagementPanelState
     );
   }
 }
+
+List<OperationalMasterDataRecord> _recordsByKind(
+  List<OperationalMasterDataRecord> records,
+  OperationalMasterDataKind kind,
+) {
+  return List.unmodifiable(
+    records.where((record) => record.kind == kind),
+  );
+}
+
+String? _findMissingMasterDataReference(
+  List<OperationalMasterDataRecord> records,
+) {
+  final byId = {for (final record in records) record.id: record};
+  for (final record in records) {
+    final parentId = record.parentId;
+    if (parentId == null) continue;
+    final parent = byId[parentId];
+    if (parent == null || parent.kind != _requiredMasterDataParent(record.kind)) {
+      return 'السجل «${record.name}» مرتبط بسجل أب غير موجود.';
+    }
+  }
+  return null;
+}
+
+OperationalMasterDataKind? _requiredMasterDataParent(
+  OperationalMasterDataKind kind,
+) =>
+    switch (kind) {
+      OperationalMasterDataKind.itemType =>
+        OperationalMasterDataKind.itemGroup,
+      OperationalMasterDataKind.branch =>
+        OperationalMasterDataKind.workplace,
+      OperationalMasterDataKind.cashboxSubaccount =>
+        OperationalMasterDataKind.cashboxMainAccount,
+      _ => null,
+    };
+
+String _masterDataEntityType(OperationalMasterDataKind kind) => switch (kind) {
+      OperationalMasterDataKind.itemGroup => 'item-group',
+      OperationalMasterDataKind.itemType => 'item-type',
+      OperationalMasterDataKind.workplace => 'workplace',
+      OperationalMasterDataKind.branch => 'branch',
+      OperationalMasterDataKind.cashboxMainAccount =>
+        'cashbox-main-account',
+      OperationalMasterDataKind.cashboxSubaccount => 'cashbox-subaccount',
+    };

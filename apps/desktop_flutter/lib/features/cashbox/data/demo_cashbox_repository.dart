@@ -10,6 +10,10 @@ class DemoCashboxRepository extends InMemoryDemoRepository<CashboxVoucher>
   factory DemoCashboxRepository({
     Iterable<CashboxVoucher>? initialValues,
     required OperationalMasterDataRepository masterData,
+    CashboxBalanceSnapshot openingBalance = const CashboxBalanceSnapshot(
+      iqd: Money.fromMinorUnits(9800000, AppCurrency.iqd),
+      usd: Money.fromMinorUnits(450000, AppCurrency.usd),
+    ),
   }) {
     final values = List<CashboxVoucher>.of(
       initialValues ?? demoCashboxVouchers(),
@@ -17,13 +21,16 @@ class DemoCashboxRepository extends InMemoryDemoRepository<CashboxVoucher>
     return DemoCashboxRepository._(
       initialValues: values,
       masterData: masterData,
+      openingBalance: openingBalance,
     );
   }
 
   DemoCashboxRepository._({
     required List<CashboxVoucher> initialValues,
     required OperationalMasterDataRepository masterData,
+    required CashboxBalanceSnapshot openingBalance,
   })  : _masterData = masterData,
+        _openingBalance = openingBalance,
         _openingBalances = _resolveOpeningBalances(initialValues),
         super(
           initialValues: initialValues,
@@ -31,6 +38,7 @@ class DemoCashboxRepository extends InMemoryDemoRepository<CashboxVoucher>
         );
 
   final OperationalMasterDataRepository _masterData;
+  final CashboxBalanceSnapshot _openingBalance;
   final Map<String, CashboxAccountBalance> _openingBalances;
 
   @override
@@ -55,7 +63,7 @@ class DemoCashboxRepository extends InMemoryDemoRepository<CashboxVoucher>
       mainRecords.map((record) async {
         return CashboxMainAccount(
           id: record.id.value,
-          label: '${record.number} - ${record.name}',
+          label: record.name,
           subaccounts: await getSubaccounts(record.id),
         );
       }),
@@ -70,16 +78,18 @@ class DemoCashboxRepository extends InMemoryDemoRepository<CashboxVoucher>
       OperationalMasterDataKind.cashboxSubaccount,
       parentId: parentId,
     );
-    return List.unmodifiable(
-      records.map(
-        (record) => CashboxSubaccount(
+    final accounts = await Future.wait(
+      records.map((record) async {
+        final balance = await getBalance(record.id);
+        return CashboxSubaccount(
           id: record.id.value,
           label: '${record.number} - ${record.name}',
-          balanceIqd: 0,
-          balanceUsd: 0,
-        ),
-      ),
+          balanceIqd: balance.iqd.majorUnits,
+          balanceUsd: balance.usd.majorUnits,
+        );
+      }),
     );
+    return List.unmodifiable(accounts);
   }
 
   @override
@@ -145,6 +155,9 @@ class DemoCashboxRepository extends InMemoryDemoRepository<CashboxVoucher>
       usd: Money.fromMajor(latest.balanceAfterUsd, AppCurrency.usd),
     );
   }
+
+  @override
+  Future<CashboxBalanceSnapshot> getOpeningBalance() async => _openingBalance;
 
   @override
   Future<bool> referencesParty(EntityId partyId) async {
@@ -235,13 +248,13 @@ Map<String, CashboxAccountBalance> _resolveOpeningBalances(
 
 List<CashboxVoucher> demoCashboxVouchers() => [
       CashboxVoucher(
-        id: EntityId.demo('cashbox-voucher', 1).value,
+        id: 'cashbox-001',
         number: 1,
         createdAt: DateTime(2026, 7, 27, 8, 30),
         type: CashboxVoucherType.receipt,
-        mainAccountId: EntityId.demo('cashbox-main-account', 1).value,
+        mainAccountId: EntityId.demo('cashbox-main-account', 4).value,
         mainAccountLabel: 'الأطراف',
-        subaccountId: EntityId.demo('cashbox-subaccount', 1).value,
+        subaccountId: EntityId.demo('cashbox-subaccount', 4).value,
         subaccountLabel: '1 - شركة النخيل للتجارة',
         exchangeRate: 1310,
         amountIqd: 750000,
@@ -253,13 +266,13 @@ List<CashboxVoucher> demoCashboxVouchers() => [
         notes: 'دفعة على الحساب',
       ),
       CashboxVoucher(
-        id: EntityId.demo('cashbox-voucher', 2).value,
+        id: 'cashbox-002',
         number: 2,
         createdAt: DateTime(2026, 7, 27, 9, 10),
         type: CashboxVoucherType.payment,
-        mainAccountId: EntityId.demo('cashbox-main-account', 2).value,
+        mainAccountId: EntityId.demo('cashbox-main-account', 5).value,
         mainAccountLabel: 'المصاريف',
-        subaccountId: EntityId.demo('cashbox-subaccount', 2).value,
+        subaccountId: EntityId.demo('cashbox-subaccount', 7).value,
         subaccountLabel: 'نقل',
         exchangeRate: 1310,
         amountIqd: 125000,
@@ -269,5 +282,77 @@ List<CashboxVoucher> demoCashboxVouchers() => [
         balanceBeforeUsd: 0,
         balanceAfterUsd: 0,
         notes: 'نقل مواد إلى المخزن',
+      ),
+      CashboxVoucher(
+        id: 'cashbox-003',
+        number: 3,
+        createdAt: DateTime(2026, 7, 27, 10, 5),
+        type: CashboxVoucherType.payment,
+        mainAccountId: EntityId.demo('cashbox-main-account', 4).value,
+        mainAccountLabel: 'الأطراف',
+        subaccountId: EntityId.demo('cashbox-subaccount', 6).value,
+        subaccountLabel: '3 - مجهز الرافدين',
+        exchangeRate: 1310,
+        amountIqd: 0,
+        amountUsd: 400,
+        balanceBeforeIqd: -3200000,
+        balanceAfterIqd: -3200000,
+        balanceBeforeUsd: -1200,
+        balanceAfterUsd: -800,
+        notes: 'تسديد جزء من الرصيد',
+      ),
+      CashboxVoucher(
+        id: 'cashbox-004',
+        number: 4,
+        createdAt: DateTime(2026, 7, 26, 11, 40),
+        type: CashboxVoucherType.receipt,
+        mainAccountId: EntityId.demo('cashbox-main-account', 6).value,
+        mainAccountLabel: 'إيرادات أخرى',
+        subaccountId: EntityId.demo('cashbox-subaccount', 10).value,
+        subaccountLabel: 'خدمات',
+        exchangeRate: 1310,
+        amountIqd: 300000,
+        amountUsd: 0,
+        balanceBeforeIqd: 0,
+        balanceAfterIqd: -300000,
+        balanceBeforeUsd: 0,
+        balanceAfterUsd: 0,
+        notes: '',
+      ),
+      CashboxVoucher(
+        id: 'cashbox-005',
+        number: 5,
+        createdAt: DateTime(2026, 7, 25, 13, 15),
+        type: CashboxVoucherType.payment,
+        mainAccountId: EntityId.demo('cashbox-main-account', 5).value,
+        mainAccountLabel: 'المصاريف',
+        subaccountId: EntityId.demo('cashbox-subaccount', 8).value,
+        subaccountLabel: 'صيانة',
+        exchangeRate: 1310,
+        amountIqd: 85000,
+        amountUsd: 0,
+        balanceBeforeIqd: 125000,
+        balanceAfterIqd: 210000,
+        balanceBeforeUsd: 0,
+        balanceAfterUsd: 0,
+        notes: 'صيانة أجهزة المكتب',
+      ),
+      CashboxVoucher(
+        id: 'cashbox-006',
+        number: 6,
+        createdAt: DateTime(2026, 7, 24, 15, 20),
+        type: CashboxVoucherType.receipt,
+        mainAccountId: EntityId.demo('cashbox-main-account', 4).value,
+        mainAccountLabel: 'الأطراف',
+        subaccountId: EntityId.demo('cashbox-subaccount', 5).value,
+        subaccountLabel: '2 - أحمد كريم',
+        exchangeRate: 1310,
+        amountIqd: 475000,
+        amountUsd: 0,
+        balanceBeforeIqd: 475000,
+        balanceAfterIqd: 0,
+        balanceBeforeUsd: 0,
+        balanceAfterUsd: 0,
+        notes: 'تسديد كامل الرصيد',
       ),
     ];

@@ -42,6 +42,33 @@ String _formatAuditTimestamp(AuditTimestamp timestamp) {
 String _serviceMessage(Object error) =>
     error is ServiceFailure ? error.message : 'تعذر إكمال العملية التجريبية';
 
+String _settingsRepositoryMessage(Object error) {
+  if (error is StateError) return '${error.message}';
+  if (error is FormatException) return 'أدخل القيم الرقمية بصيغة صحيحة';
+  if (error is ArgumentError) return 'تحقق من القيم المدخلة';
+  if (error is ServiceFailure) return error.message;
+  return 'تعذر تحميل أو حفظ الإعدادات. حاول مرة أخرى.';
+}
+
+String _formatSettingsNumber(String value) {
+  final normalized = value.trim().replaceAll(',', '');
+  final parts = normalized.split('.');
+  final integer = parts.first;
+  final sign = integer.startsWith('-') ? '-' : '';
+  final digits = sign.isEmpty ? integer : integer.substring(1);
+  final buffer = StringBuffer(sign);
+  for (var index = 0; index < digits.length; index++) {
+    if (index > 0 && (digits.length - index) % 3 == 0) buffer.write(',');
+    buffer.write(digits[index]);
+  }
+  if (parts.length > 1 && parts[1].isNotEmpty) {
+    buffer
+      ..write('.')
+      ..write(parts[1]);
+  }
+  return buffer.toString();
+}
+
 int _nextEntitySequence(
   Iterable<EntityId> ids, {
   required int fallback,

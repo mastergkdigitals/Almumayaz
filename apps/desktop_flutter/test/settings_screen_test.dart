@@ -166,6 +166,15 @@ void main() {
       findsOneWidget,
     );
     expect(
+      _fieldText(
+        tester,
+        find.byKey(
+          const Key('settingsDefaultCustomerDebtLimitField'),
+        ),
+      ),
+      '5,000,000',
+    );
+    expect(
       find.byKey(const Key('settingsOverdueDebtAlerts')),
       findsOneWidget,
     );
@@ -392,6 +401,62 @@ void main() {
     expect(find.byKey(const Key('settingsScreen')), findsNothing);
   });
 
+  testWidgets('persists saved policies and operational defaults in AppStore',
+      (tester) async {
+    await _openSettings(tester);
+    await _openSection(tester, 'businessPolicies');
+
+    await tester.enterText(
+      find.byKey(const Key('settingsDefaultExchangeRateField')),
+      '1,425',
+    );
+    await tester.drag(
+      find.byKey(const Key('businessPoliciesSettingsContent')),
+      const Offset(0, -760),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('settingsSaveBusinessPolicies')));
+    await tester.pumpAndSettle();
+
+    await _returnToSettingsHub(tester);
+    await _openSection(tester, 'businessPolicies');
+    expect(
+      _fieldText(
+        tester,
+        find.byKey(const Key('settingsDefaultExchangeRateField')),
+      ),
+      '1,425',
+    );
+
+    await _returnToSettingsHub(tester);
+    await _openSection(tester, 'defaultSettings');
+    final currencyField = tester.widget<AppDropdownField<String>>(
+      find.ancestor(
+        of: find.byKey(const Key('settingsSalesDefaultCurrency')),
+        matching: find.byType(AppDropdownField<String>),
+      ),
+    );
+    currencyField.onChanged('USD');
+    await tester.pump();
+    await tester.drag(
+      find.byKey(const Key('operationalDefaultsSettingsContent')),
+      const Offset(0, -420),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('settingsSaveOperationalDefaults')));
+    await tester.pumpAndSettle();
+
+    await _returnToSettingsHub(tester);
+    await _openSection(tester, 'defaultSettings');
+    final reopenedCurrencyField = tester.widget<AppDropdownField<String>>(
+      find.ancestor(
+        of: find.byKey(const Key('settingsSalesDefaultCurrency')),
+        matching: find.byType(AppDropdownField<String>),
+      ),
+    );
+    expect(reopenedCurrencyField.value, 'USD');
+  });
+
   testWidgets('shows master data and backup testing controls',
       (tester) async {
     await _openSettings(tester);
@@ -437,7 +502,7 @@ void main() {
     );
     expect(
       (itemTypesTable.rows.first.cells[2] as Text).data,
-      'المواد الغذائية',
+      'أجهزة مكتبية',
     );
 
     await tester.enterText(
@@ -456,7 +521,7 @@ void main() {
     await tester.tap(
       find.byKey(const Key('settingsItemGroupsAddButton')),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(
       tester
           .widget<AppDataTable>(
@@ -479,13 +544,36 @@ void main() {
       itemTypeParent.options.map((option) => option.label),
       contains('مجموعة اختبار'),
     );
+    final testGroupOption = itemTypeParent.options.singleWhere(
+      (option) => option.label == 'مجموعة اختبار',
+    );
+
+    await tester.enterText(
+      find.byKey(const Key('settingsItemTypesNameField')),
+      'نوع اختبار',
+    );
+    await tester.tap(
+      find.byKey(const Key('settingsItemTypesAddButton')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<AppDataTable>(
+            find.byKey(const Key('settingsItemTypesTable')),
+          )
+          .rows
+          .any((row) => (row.cells[1] as Text).data == 'نوع اختبار'),
+      isTrue,
+    );
 
     tester
         .widget<AppDataTable>(
           find.byKey(const Key('settingsItemTypesTable')),
         )
         .rows
-        .first
+        .singleWhere(
+          (row) => (row.cells[1] as Text).data == 'نوع اختبار',
+        )
         .onTap!();
     await tester.pump();
     tester
@@ -495,21 +583,24 @@ void main() {
             matching: find.byType(AppDropdownField<String>),
           ),
         )
-        .onChanged('مجموعة اختبار');
-    await tester.pump();
+        .onChanged(testGroupOption.value);
+    await tester.pumpAndSettle();
     tester
         .widget<AppButton>(
           find.byKey(const Key('settingsItemTypesUpdateButton')),
         )
         .onPressed!();
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(
       (tester
                   .widget<AppDataTable>(
                     find.byKey(const Key('settingsItemTypesTable')),
                   )
                   .rows
-                  .first
+                  .singleWhere(
+                    (row) =>
+                        (row.cells[1] as Text).data == 'نوع اختبار',
+                  )
                   .cells[2]
               as Text)
           .data,
@@ -521,7 +612,9 @@ void main() {
           find.byKey(const Key('settingsItemGroupsTable')),
         )
         .rows
-        .last
+        .singleWhere(
+          (row) => (row.cells[1] as Text).data == 'مجموعة اختبار',
+        )
         .onTap!();
     await tester.pump();
     await tester.enterText(
@@ -533,14 +626,17 @@ void main() {
           find.byKey(const Key('settingsItemGroupsUpdateButton')),
         )
         .onPressed!();
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(
       (tester
                   .widget<AppDataTable>(
                     find.byKey(const Key('settingsItemTypesTable')),
                   )
                   .rows
-                  .first
+                  .singleWhere(
+                    (row) =>
+                        (row.cells[1] as Text).data == 'نوع اختبار',
+                  )
                   .cells[2]
               as Text)
           .data,
@@ -549,10 +645,12 @@ void main() {
 
     tester
         .widget<AppTableActionButton>(
-          find.byKey(const Key('settingsItemGroupsDelete_4')),
+          find.byKey(
+            Key('settingsItemGroupsDelete_${testGroupOption.value}'),
+          ),
         )
         .onPressed!();
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(
       find.text('لا يمكن حذف هذا السجل لأنه مرتبط ببيانات أخرى'),
       findsOneWidget,
@@ -948,6 +1046,7 @@ Future<void> _openSection(
   await tester.tap(
     find.byKey(Key('settingsSectionCard_$sectionId')),
   );
+  await tester.pump();
   await tester.pump();
   expect(
     find.byKey(Key('settingsSection_$sectionId')),

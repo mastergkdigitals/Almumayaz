@@ -22,7 +22,7 @@ class DemoWarehouseRepository extends InMemoryDemoRepository<Warehouse>
             balance.id: balance,
         },
         _transfers = List.of(
-          initialTransfers ?? const <InventoryTransfer>[],
+          initialTransfers ?? demoInventoryTransfers(),
         ),
         super(
           initialValues: initialValues ?? demoWarehouses(),
@@ -221,39 +221,122 @@ Future<bool> _neverReferenced(EntityId _) async => false;
 
 List<Warehouse> demoWarehouses() => [
       Warehouse(
-        id: EntityId.demo('warehouse', 1).value,
+        id: 'warehouse-001',
         number: 1,
-        name: 'الرئيسي',
-        location: 'بغداد',
-        notes: '',
+        name: 'المخزن الرئيسي',
+        location: 'بغداد - الشورجة',
+        notes: 'المخزن الرئيسي للشركة',
         isMain: true,
       ),
       Warehouse(
-        id: EntityId.demo('warehouse', 2).value,
+        id: 'warehouse-002',
         number: 2,
-        name: 'الفرعي',
-        location: 'البصرة',
+        name: 'مخزن الكرادة',
+        location: 'بغداد - الكرادة',
+        notes: '',
+      ),
+      Warehouse(
+        id: 'warehouse-003',
+        number: 3,
+        name: 'مخزن البصرة',
+        location: 'البصرة - العشار',
+        notes: 'مخزن فرع البصرة',
+      ),
+      Warehouse(
+        id: 'warehouse-004',
+        number: 4,
+        name: 'مخزن أربيل',
+        location: 'أربيل - المنطقة الصناعية',
         notes: '',
       ),
     ];
 
 List<InventoryBalance> demoInventory() => [
       InventoryBalance(
-        id: EntityId.demo('inventory', 1),
-        warehouseId: EntityId.demo('warehouse', 1),
-        itemId: EntityId.demo('item', 1),
-        quantity: WholeQuantity(12),
+        id: EntityId('inventory-001'),
+        warehouseId: EntityId('warehouse-001'),
+        itemId: EntityId('item-001'),
+        quantity: WholeQuantity(18),
       ),
       InventoryBalance(
-        id: EntityId.demo('inventory', 2),
-        warehouseId: EntityId.demo('warehouse', 1),
-        itemId: EntityId.demo('item', 2),
-        quantity: WholeQuantity(80),
+        id: EntityId('inventory-002'),
+        warehouseId: EntityId('warehouse-001'),
+        itemId: EntityId('item-002'),
+        quantity: WholeQuantity(64),
       ),
       InventoryBalance(
-        id: EntityId.demo('inventory', 3),
-        warehouseId: EntityId.demo('warehouse', 2),
-        itemId: EntityId.demo('item', 1),
-        quantity: WholeQuantity(3),
+        id: EntityId('inventory-003'),
+        warehouseId: EntityId('warehouse-001'),
+        itemId: EntityId('item-003'),
+        quantity: WholeQuantity(120),
+      ),
+      InventoryBalance(
+        id: EntityId('inventory-004'),
+        warehouseId: EntityId('warehouse-001'),
+        itemId: EntityId('item-004'),
+        quantity: WholeQuantity(25),
+      ),
+      InventoryBalance(
+        id: EntityId('inventory-005'),
+        warehouseId: EntityId('warehouse-002'),
+        itemId: EntityId('item-001'),
+        quantity: WholeQuantity(7),
+      ),
+      InventoryBalance(
+        id: EntityId('inventory-006'),
+        warehouseId: EntityId('warehouse-002'),
+        itemId: EntityId('item-003'),
+        quantity: WholeQuantity(45),
+      ),
+      InventoryBalance(
+        id: EntityId('inventory-007'),
+        warehouseId: EntityId('warehouse-003'),
+        itemId: EntityId('item-002'),
+        quantity: WholeQuantity(22),
+      ),
+      InventoryBalance(
+        id: EntityId('inventory-008'),
+        warehouseId: EntityId('warehouse-003'),
+        itemId: EntityId('item-004'),
+        quantity: WholeQuantity(11),
+      ),
+      InventoryBalance(
+        id: EntityId('inventory-009'),
+        warehouseId: EntityId('warehouse-004'),
+        itemId: EntityId('item-003'),
+        quantity: WholeQuantity(32),
+      ),
+    ];
+
+List<InventoryTransfer> demoInventoryTransfers() => [
+      InventoryTransfer(
+        id: EntityId('transfer-103'),
+        documentNumber: 103,
+        createdAt: AuditTimestamp(DateTime(2026, 7, 22)),
+        fromWarehouseId: EntityId('warehouse-003'),
+        toWarehouseId: EntityId('warehouse-001'),
+        lines: [
+          InventoryTransferLine(
+            itemId: EntityId('item-002'),
+            quantity: WholeQuantity(5),
+          ),
+          InventoryTransferLine(
+            itemId: EntityId('item-004'),
+            quantity: WholeQuantity(2),
+          ),
+        ],
+      ),
+      InventoryTransfer(
+        id: EntityId('transfer-104'),
+        documentNumber: 104,
+        createdAt: AuditTimestamp(DateTime(2026, 7, 24)),
+        fromWarehouseId: EntityId('warehouse-001'),
+        toWarehouseId: EntityId('warehouse-002'),
+        lines: [
+          InventoryTransferLine(
+            itemId: EntityId('item-003'),
+            quantity: WholeQuantity(20),
+          ),
+        ],
       ),
     ];
