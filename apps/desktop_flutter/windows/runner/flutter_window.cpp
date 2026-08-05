@@ -1,8 +1,11 @@
 #include "flutter_window.h"
 
+#include <flutter/standard_method_codec.h>
 #include <optional>
+#include <variant>
 
 #include "flutter/generated_plugin_registrant.h"
+#include "utils.h"
 
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
     : project_(project) {}
@@ -25,6 +28,31 @@ bool FlutterWindow::OnCreate() {
     return false;
   }
   RegisterPlugins(flutter_controller_->engine());
+  native_window_channel_ = std::make_unique<
+      flutter::MethodChannel<flutter::EncodableValue>>(
+      flutter_controller_->engine()->messenger(), "almumayaz/native_window",
+      &flutter::StandardMethodCodec::GetInstance());
+  native_window_channel_->SetMethodCallHandler(
+      [this](const auto& call, auto result) {
+        if (call.method_name() != "setTitle") {
+          result->NotImplemented();
+          return;
+        }
+
+        const auto* title = std::get_if<std::string>(call.arguments());
+        if (title == nullptr || title->empty()) {
+          result->Error("invalid_title", "Window title must not be empty.");
+          return;
+        }
+        const std::wstring wide_title = Utf16FromUtf8(*title);
+        if (wide_title.empty() ||
+            !::SetWindowTextW(GetHandle(), wide_title.c_str())) {
+          result->Error("window_title_failed",
+                        "Could not update the native window title.");
+          return;
+        }
+        result->Success();
+      });
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
@@ -40,6 +68,7 @@ bool FlutterWindow::OnCreate() {
 }
 
 void FlutterWindow::OnDestroy() {
+  native_window_channel_.reset();
   if (flutter_controller_) {
     flutter_controller_ = nullptr;
   }

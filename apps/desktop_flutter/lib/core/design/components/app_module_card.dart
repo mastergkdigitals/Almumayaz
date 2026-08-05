@@ -9,6 +9,7 @@ class AppModuleCard extends StatefulWidget {
     required this.icon,
     required this.colors,
     required this.shadowColor,
+    this.imageAsset,
     this.onTap,
     super.key,
   });
@@ -17,6 +18,7 @@ class AppModuleCard extends StatefulWidget {
   final IconData icon;
   final List<Color> colors;
   final Color shadowColor;
+  final String? imageAsset;
   final VoidCallback? onTap;
 
   @override
@@ -135,10 +137,9 @@ class _AppModuleCardState extends State<AppModuleCard> {
                                   AppColors.onStrong.withValues(alpha: 0.25),
                             ),
                           ),
-                          child: Icon(
-                            widget.icon,
-                            color: AppColors.onStrong,
-                            size: 34,
+                          child: _ModuleCardIdentity(
+                            icon: widget.icon,
+                            imageAsset: widget.imageAsset,
                           ),
                         ),
                         const SizedBox(height: AppSpacing.md),
@@ -163,6 +164,35 @@ class _AppModuleCardState extends State<AppModuleCard> {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ModuleCardIdentity extends StatelessWidget {
+  const _ModuleCardIdentity({required this.icon, this.imageAsset});
+
+  final IconData icon;
+  final String? imageAsset;
+
+  @override
+  Widget build(BuildContext context) {
+    final asset = imageAsset?.trim();
+    if (asset == null || asset.isEmpty) {
+      return Icon(icon, color: AppColors.onStrong, size: 34);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.all(8),
+      child: Image.asset(
+        asset,
+        key: const Key('appModuleCardLogo'),
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) => Icon(
+          icon,
+          color: AppColors.onStrong,
+          size: 34,
         ),
       ),
     );

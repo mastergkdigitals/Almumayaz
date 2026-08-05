@@ -36,6 +36,19 @@ void main() {
     expect(manifest, contains('PerMonitorV2'));
     expect(manifest, contains('Windows 10 and Windows 11'));
   });
+
+  test('Windows runner accepts the configured application title', () {
+    final entrypoint = _readProjectFile('windows/runner/main.cpp');
+    final window = _readProjectFile('windows/runner/flutter_window.cpp');
+    final main = _readProjectFile('lib/main.dart');
+
+    expect(entrypoint, contains('L"Almumayaz ERP"'));
+    expect(window, contains('"almumayaz/native_window"'));
+    expect(window, contains('call.method_name() != "setTitle"'));
+    expect(window, contains('SetWindowTextW(GetHandle()'));
+    expect(main, contains('configuration.applicationTitle'));
+    expect(main, contains('MethodChannelNativeWindowService'));
+  });
 }
 
 String _readProjectFile(String relativePath) {

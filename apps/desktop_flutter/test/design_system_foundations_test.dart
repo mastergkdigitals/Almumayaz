@@ -105,6 +105,28 @@ void main() {
     expect(AppControlHeights.invoiceField, 55);
   });
 
+  testWidgets('module cards can render configured customer branding',
+      (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: SizedBox(
+          width: 360,
+          height: 220,
+          child: AppModuleCard(
+            title: 'شركة الاختبار',
+            icon: Icons.business,
+            colors: [AppColors.blue, AppColors.primaryDark],
+            shadowColor: AppColors.blue,
+            imageAsset: 'assets/png/logo.png',
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byKey(const Key('appModuleCardLogo')), findsOneWidget);
+    expect(find.text('شركة الاختبار'), findsOneWidget);
+  });
+
   testWidgets('handles the global keyboard shortcuts', (tester) async {
     var searches = 0;
     var saves = 0;

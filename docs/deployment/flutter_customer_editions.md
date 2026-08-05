@@ -25,15 +25,21 @@ configuration file and update these values:
 | `APP_EDITION` | `internal` or `customer` |
 | `SHOW_DESIGN_SYSTEM` | Development convenience; must be `false` for customers |
 | `ENABLED_MODULES` | Comma-separated module IDs |
-| `APP_TITLE` | Flutter application title |
+| `APP_TITLE` | Flutter title and native Windows window title |
 | `COMPANY_NAME` | Name shown on the company dashboard card |
-| `COMPANY_LOGO_ASSET` | Reserved bundled asset path for customer branding |
+| `COMPANY_LOGO_ASSET` | Optional bundled asset path shown on the company card |
 
 Available module IDs are `purchases`, `sales`, `cashbox`, `parties`,
 `company`, `warehouses`, `reports`, `settings`, and `about`.
 
 Customer configuration files may stay outside the repository. This avoids
 committing customer-specific information while keeping a single codebase.
+
+For a custom logo, place the image under
+`apps/desktop_flutter/assets/png/` before building, then set
+`COMPANY_LOGO_ASSET` to its Flutter asset path, for example
+`assets/png/customer-logo.png`. The whole PNG directory is bundled, so this
+does not require another application folder or a source-code change.
 
 ## Build commands
 
@@ -50,6 +56,12 @@ Both commands produce
 `apps/desktop_flutter/build/windows/x64/runner/Release/Almumayaz.exe`.
 The Dart package deliberately remains `erp`; changing it would only create
 import churn and does not affect the customer-visible executable or metadata.
+The executable metadata remains the Almumayaz product identity, while
+`APP_TITLE`, company name, logo, and enabled modules are edition-specific.
+
+GitHub Actions verifies the common test suite and creates separate internal
+and customer-example Windows ZIP artifacts. A real customer build should use
+its private configuration and logo with the same customer build script.
 
 ## Verification before delivery
 
