@@ -26,6 +26,18 @@ void main() {
       );
       expect((-discount).toPlainString(), '-15.30');
       expect((-discount).absolute, discount);
+      expect(
+        Money.parse('120.00', AppCurrency.usd).clamp(
+          maximum: total,
+        ),
+        total,
+      );
+      expect(
+        Money.parse('-5.00', AppCurrency.usd).clamp(
+          minimum: Money.zero(AppCurrency.usd),
+        ),
+        Money.zero(AppCurrency.usd),
+      );
     });
 
     test('validates exchange rates percentages and whole quantities', () {

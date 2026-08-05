@@ -61,8 +61,8 @@ class Money implements Comparable<Money> {
   Money clamp({Money? minimum, Money? maximum}) {
     _requireSameCurrency(minimum);
     _requireSameCurrency(maximum);
-    if (minimum != null && this < minimum) return minimum;
-    if (maximum != null && this > maximum) return maximum;
+    if (minimum != null && compareTo(minimum) < 0) return minimum;
+    if (maximum != null && compareTo(maximum) > 0) return maximum;
     return this;
   }
 
