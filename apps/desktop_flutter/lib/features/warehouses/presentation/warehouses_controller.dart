@@ -165,7 +165,7 @@ class WarehousesController extends ChangeNotifier {
               balanceId: balance.id,
               productCode: item.code,
               productName: item.name,
-              wholeQuantity: balance.quantity,
+              stockQuantity: balance.quantity,
             ),
           );
         }

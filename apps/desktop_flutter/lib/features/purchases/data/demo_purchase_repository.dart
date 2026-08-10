@@ -2,6 +2,7 @@ import '../../../core/data/app_repository.dart';
 import '../../../core/domain/business_values.dart';
 import '../domain/purchase_invoice.dart';
 import '../domain/purchase_repository.dart';
+import 'demo_purchase_mutation_effects.dart';
 
 typedef PurchaseReferenceExists = Future<bool> Function(EntityId id);
 typedef PurchaseReferenceLabel = Future<String?> Function(EntityId id);
@@ -13,6 +14,7 @@ class DemoPurchaseRepository extends InMemoryDemoRepository<PurchaseInvoice>
     required PurchaseReferenceExists partyExists,
     required PurchaseReferenceExists itemExists,
     required PurchaseReferenceExists warehouseExists,
+    required DemoPurchaseMutationEffects mutationEffects,
     PurchaseReferenceLabel? partyLabelOf,
     PurchaseReferenceLabel? itemLabelOf,
   }) {
@@ -24,6 +26,7 @@ class DemoPurchaseRepository extends InMemoryDemoRepository<PurchaseInvoice>
       partyExists: partyExists,
       itemExists: itemExists,
       warehouseExists: warehouseExists,
+      mutationEffects: mutationEffects,
       partyLabelOf: partyLabelOf,
       itemLabelOf: itemLabelOf,
     );
@@ -34,11 +37,13 @@ class DemoPurchaseRepository extends InMemoryDemoRepository<PurchaseInvoice>
     required PurchaseReferenceExists partyExists,
     required PurchaseReferenceExists itemExists,
     required PurchaseReferenceExists warehouseExists,
+    required DemoPurchaseMutationEffects mutationEffects,
     PurchaseReferenceLabel? partyLabelOf,
     PurchaseReferenceLabel? itemLabelOf,
   })  : _partyExists = partyExists,
         _itemExists = itemExists,
         _warehouseExists = warehouseExists,
+        _mutationEffects = mutationEffects,
         _partyLabelOf = partyLabelOf,
         _itemLabelOf = itemLabelOf,
         _highestIssuedDocumentNumber = _highestDocumentNumber(initialValues),
@@ -53,50 +58,52 @@ class DemoPurchaseRepository extends InMemoryDemoRepository<PurchaseInvoice>
   final PurchaseReferenceExists _partyExists;
   final PurchaseReferenceExists _itemExists;
   final PurchaseReferenceExists _warehouseExists;
+  final DemoPurchaseMutationEffects _mutationEffects;
   final PurchaseReferenceLabel? _partyLabelOf;
   final PurchaseReferenceLabel? _itemLabelOf;
   int _highestIssuedDocumentNumber;
   final Set<int> _issuedDocumentNumbers;
 
   @override
-  Future<PurchaseInvoice> save(PurchaseInvoice value) async {
-    return await getById(value.id) == null
-        ? createInvoice(value)
-        : replaceInvoice(value);
-  }
+  Future<PurchaseInvoice> save(PurchaseInvoice value) =>
+      _applyInvoice(value, mode: _PurchaseMutationMode.upsert);
 
   @override
-  Future<PurchaseInvoice> createInvoice(PurchaseInvoice invoice) async {
-    if (await getById(invoice.id) != null) {
-      throw StateError('معرف فاتورة الشراء مستخدم مسبقاً');
-    }
-    await _validate(invoice);
-    _ensureDocumentNumberAvailable(invoice);
-    final saved = await super.save(invoice);
-    _issuedDocumentNumbers.add(invoice.documentNumber);
-    if (invoice.documentNumber > _highestIssuedDocumentNumber) {
-      _highestIssuedDocumentNumber = invoice.documentNumber;
-    }
-    return saved;
-  }
+  Future<PurchaseInvoice> createInvoice(PurchaseInvoice invoice) =>
+      _applyInvoice(invoice, mode: _PurchaseMutationMode.create);
 
   @override
-  Future<PurchaseInvoice> replaceInvoice(PurchaseInvoice invoice) async {
-    final existing = await getById(invoice.id);
-    if (existing == null) {
-      throw StateError('فاتورة الشراء غير موجودة');
-    }
-    await _validate(invoice);
-    _ensureDocumentNumberAvailable(
-      invoice,
-      previousDocumentNumber: existing.documentNumber,
+  Future<PurchaseInvoice> replaceInvoice(PurchaseInvoice invoice) =>
+      _applyInvoice(invoice, mode: _PurchaseMutationMode.replace);
+
+  Future<PurchaseInvoice> _applyInvoice(
+    PurchaseInvoice invoice, {
+    required _PurchaseMutationMode mode,
+  }) {
+    return _mutationEffects.applyPurchase(
+      candidate: invoice,
+      preflightAndLoadPrevious: () async {
+        final existing = getDemoValue(invoice.id);
+        if (mode == _PurchaseMutationMode.create && existing != null) {
+          throw StateError('معرف فاتورة الشراء مستخدم مسبقاً');
+        }
+        if (mode == _PurchaseMutationMode.replace && existing == null) {
+          throw StateError('فاتورة الشراء غير موجودة');
+        }
+        await _validate(invoice);
+        _ensureDocumentNumberAvailable(
+          invoice,
+          previousDocumentNumber: existing?.documentNumber,
+        );
+        return existing;
+      },
+      commit: (normalized) {
+        final staged = createDemoSnapshot();
+        staged[normalized.id] = normalized;
+        commitDemoSnapshot(staged);
+        _reserveDocumentNumber(normalized.documentNumber);
+      },
     );
-    final saved = await super.save(invoice);
-    _issuedDocumentNumbers.add(invoice.documentNumber);
-    if (invoice.documentNumber > _highestIssuedDocumentNumber) {
-      _highestIssuedDocumentNumber = invoice.documentNumber;
-    }
-    return saved;
   }
 
   Future<void> _validate(PurchaseInvoice value) async {
@@ -126,8 +133,33 @@ class DemoPurchaseRepository extends InMemoryDemoRepository<PurchaseInvoice>
     }
   }
 
+  void _reserveDocumentNumber(int documentNumber) {
+    _issuedDocumentNumbers.add(documentNumber);
+    if (documentNumber > _highestIssuedDocumentNumber) {
+      _highestIssuedDocumentNumber = documentNumber;
+    }
+  }
+
   @override
-  Future<void> deleteInvoicePermanently(EntityId id) => super.delete(id);
+  Future<void> delete(EntityId id) => deleteInvoicePermanently(id);
+
+  @override
+  Future<void> deleteInvoicePermanently(EntityId id) {
+    return _mutationEffects.deletePurchase(
+      id: id,
+      preflightAndLoadPrevious: () async {
+        final existing = getDemoValue(id);
+        if (existing == null) {
+          throw StateError('فاتورة الشراء غير موجودة');
+        }
+        return existing;
+      },
+      commit: () {
+        final staged = createDemoSnapshot()..remove(id);
+        commitDemoSnapshot(staged);
+      },
+    );
+  }
 
   @override
   Future<List<PurchaseInvoice>> search(String query) async {
@@ -164,6 +196,8 @@ class DemoPurchaseRepository extends InMemoryDemoRepository<PurchaseInvoice>
     return _highestIssuedDocumentNumber + 1;
   }
 }
+
+enum _PurchaseMutationMode { create, replace, upsert }
 
 int _highestDocumentNumber(Iterable<PurchaseInvoice> invoices) {
   var highest = 0;

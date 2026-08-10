@@ -71,7 +71,7 @@ class WarehouseInventoryItem {
       balanceId: EntityId(id),
       productCode: productCode,
       productName: productName,
-      wholeQuantity: WholeQuantity(quantity),
+      stockQuantity: StockQuantity(quantity),
     );
   }
 
@@ -79,16 +79,16 @@ class WarehouseInventoryItem {
     required this.balanceId,
     required this.productCode,
     required this.productName,
-    required this.wholeQuantity,
+    required this.stockQuantity,
   });
 
   final EntityId balanceId;
   final String productCode;
   final String productName;
-  final WholeQuantity wholeQuantity;
+  final StockQuantity stockQuantity;
 
   String get id => balanceId.value;
-  int get quantity => wholeQuantity.value;
+  int get quantity => stockQuantity.value;
   String get searchText => '$productCode $productName $quantity'.toLowerCase();
 }
 

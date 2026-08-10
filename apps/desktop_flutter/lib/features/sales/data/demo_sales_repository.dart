@@ -2,6 +2,7 @@ import '../../../core/data/app_repository.dart';
 import '../../../core/domain/business_values.dart';
 import '../domain/sales_invoice.dart';
 import '../domain/sales_repository.dart';
+import 'demo_sales_mutation_effects.dart';
 
 typedef SalesReferenceExists = Future<bool> Function(EntityId id);
 typedef SalesReferenceLabel = Future<String?> Function(EntityId id);
@@ -13,6 +14,7 @@ class DemoSalesRepository extends InMemoryDemoRepository<SalesInvoice>
     required SalesReferenceExists partyExists,
     required SalesReferenceExists itemExists,
     required SalesReferenceExists warehouseExists,
+    required DemoSalesMutationEffects mutationEffects,
     SalesReferenceLabel? partyLabelOf,
     SalesReferenceLabel? itemLabelOf,
   }) {
@@ -24,6 +26,7 @@ class DemoSalesRepository extends InMemoryDemoRepository<SalesInvoice>
       partyExists: partyExists,
       itemExists: itemExists,
       warehouseExists: warehouseExists,
+      mutationEffects: mutationEffects,
       partyLabelOf: partyLabelOf,
       itemLabelOf: itemLabelOf,
     );
@@ -34,11 +37,13 @@ class DemoSalesRepository extends InMemoryDemoRepository<SalesInvoice>
     required SalesReferenceExists partyExists,
     required SalesReferenceExists itemExists,
     required SalesReferenceExists warehouseExists,
+    required DemoSalesMutationEffects mutationEffects,
     SalesReferenceLabel? partyLabelOf,
     SalesReferenceLabel? itemLabelOf,
   })  : _partyExists = partyExists,
         _itemExists = itemExists,
         _warehouseExists = warehouseExists,
+        _mutationEffects = mutationEffects,
         _partyLabelOf = partyLabelOf,
         _itemLabelOf = itemLabelOf,
         _highestIssuedDocumentNumber = _highestDocumentNumber(initialValues),
@@ -53,50 +58,52 @@ class DemoSalesRepository extends InMemoryDemoRepository<SalesInvoice>
   final SalesReferenceExists _partyExists;
   final SalesReferenceExists _itemExists;
   final SalesReferenceExists _warehouseExists;
+  final DemoSalesMutationEffects _mutationEffects;
   final SalesReferenceLabel? _partyLabelOf;
   final SalesReferenceLabel? _itemLabelOf;
   int _highestIssuedDocumentNumber;
   final Set<int> _issuedDocumentNumbers;
 
   @override
-  Future<SalesInvoice> save(SalesInvoice value) async {
-    return await getById(value.id) == null
-        ? createInvoice(value)
-        : replaceInvoice(value);
-  }
+  Future<SalesInvoice> save(SalesInvoice value) =>
+      _applyInvoice(value, mode: _SalesMutationMode.upsert);
 
   @override
-  Future<SalesInvoice> createInvoice(SalesInvoice invoice) async {
-    if (await getById(invoice.id) != null) {
-      throw StateError('معرف فاتورة البيع مستخدم مسبقاً');
-    }
-    await _validate(invoice);
-    _ensureDocumentNumberAvailable(invoice);
-    final saved = await super.save(invoice);
-    _issuedDocumentNumbers.add(invoice.documentNumber);
-    if (invoice.documentNumber > _highestIssuedDocumentNumber) {
-      _highestIssuedDocumentNumber = invoice.documentNumber;
-    }
-    return saved;
-  }
+  Future<SalesInvoice> createInvoice(SalesInvoice invoice) =>
+      _applyInvoice(invoice, mode: _SalesMutationMode.create);
 
   @override
-  Future<SalesInvoice> replaceInvoice(SalesInvoice invoice) async {
-    final existing = await getById(invoice.id);
-    if (existing == null) {
-      throw StateError('فاتورة البيع غير موجودة');
-    }
-    await _validate(invoice);
-    _ensureDocumentNumberAvailable(
-      invoice,
-      previousDocumentNumber: existing.documentNumber,
+  Future<SalesInvoice> replaceInvoice(SalesInvoice invoice) =>
+      _applyInvoice(invoice, mode: _SalesMutationMode.replace);
+
+  Future<SalesInvoice> _applyInvoice(
+    SalesInvoice invoice, {
+    required _SalesMutationMode mode,
+  }) {
+    return _mutationEffects.applySale(
+      candidate: invoice,
+      preflightAndLoadPrevious: () async {
+        final existing = getDemoValue(invoice.id);
+        if (mode == _SalesMutationMode.create && existing != null) {
+          throw StateError('معرف فاتورة البيع مستخدم مسبقاً');
+        }
+        if (mode == _SalesMutationMode.replace && existing == null) {
+          throw StateError('فاتورة البيع غير موجودة');
+        }
+        await _validate(invoice);
+        _ensureDocumentNumberAvailable(
+          invoice,
+          previousDocumentNumber: existing?.documentNumber,
+        );
+        return existing;
+      },
+      commit: (normalized) {
+        final staged = createDemoSnapshot();
+        staged[normalized.id] = normalized;
+        commitDemoSnapshot(staged);
+        _reserveDocumentNumber(normalized.documentNumber);
+      },
     );
-    final saved = await super.save(invoice);
-    _issuedDocumentNumbers.add(invoice.documentNumber);
-    if (invoice.documentNumber > _highestIssuedDocumentNumber) {
-      _highestIssuedDocumentNumber = invoice.documentNumber;
-    }
-    return saved;
   }
 
   Future<void> _validate(SalesInvoice value) async {
@@ -126,8 +133,33 @@ class DemoSalesRepository extends InMemoryDemoRepository<SalesInvoice>
     }
   }
 
+  void _reserveDocumentNumber(int documentNumber) {
+    _issuedDocumentNumbers.add(documentNumber);
+    if (documentNumber > _highestIssuedDocumentNumber) {
+      _highestIssuedDocumentNumber = documentNumber;
+    }
+  }
+
   @override
-  Future<void> deleteInvoicePermanently(EntityId id) => super.delete(id);
+  Future<void> delete(EntityId id) => deleteInvoicePermanently(id);
+
+  @override
+  Future<void> deleteInvoicePermanently(EntityId id) {
+    return _mutationEffects.deleteSale(
+      id: id,
+      preflightAndLoadPrevious: () async {
+        final existing = getDemoValue(id);
+        if (existing == null) {
+          throw StateError('فاتورة البيع غير موجودة');
+        }
+        return existing;
+      },
+      commit: () {
+        final staged = createDemoSnapshot()..remove(id);
+        commitDemoSnapshot(staged);
+      },
+    );
+  }
 
   @override
   Future<List<SalesInvoice>> search(String query) async {
@@ -164,6 +196,8 @@ class DemoSalesRepository extends InMemoryDemoRepository<SalesInvoice>
     return _highestIssuedDocumentNumber + 1;
   }
 }
+
+enum _SalesMutationMode { create, replace, upsert }
 
 int _highestDocumentNumber(Iterable<SalesInvoice> invoices) {
   var highest = 0;

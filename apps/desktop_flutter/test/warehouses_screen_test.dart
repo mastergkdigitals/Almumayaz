@@ -23,8 +23,8 @@ void main() {
       EntityId('warehouse-001'),
     );
     expect(
-      controller.inventoryFor('warehouse-001').first.wholeQuantity,
-      WholeQuantity(18),
+      controller.inventoryFor('warehouse-001').first.stockQuantity,
+      const StockQuantity(18),
     );
     expect(controller.materialCountFor('warehouse-001'), 4);
     expect(controller.totalQuantityFor('warehouse-001'), 227);

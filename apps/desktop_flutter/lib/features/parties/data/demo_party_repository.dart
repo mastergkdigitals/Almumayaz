@@ -1,4 +1,5 @@
 import '../../../core/data/app_repository.dart';
+import '../../../core/data/demo_transaction_runner.dart';
 import '../../../core/domain/business_values.dart';
 import '../../settings/domain/operational_master_data.dart';
 import '../../settings/domain/operational_master_data_repository.dart';
@@ -6,6 +7,16 @@ import '../domain/party.dart';
 import '../domain/party_repository.dart';
 
 typedef PartyReferenceLookup = Future<bool> Function(EntityId partyId);
+
+class DemoPartyBalanceAdjustment {
+  const DemoPartyBalanceAdjustment({
+    required this.partyId,
+    required this.delta,
+  });
+
+  final EntityId partyId;
+  final Money delta;
+}
 
 class DemoPartyRepository extends InMemoryDemoRepository<Party>
     implements PartyRepository {
@@ -15,8 +26,10 @@ class DemoPartyRepository extends InMemoryDemoRepository<Party>
     Map<EntityId, PartyMasterDataReferences>? initialMasterDataReferences,
     Set<EntityId>? initiallyReferencedIds,
     PartyReferenceLookup? isReferenced,
+    DemoTransactionRunner? transactionRunner,
   })  : _masterData = masterData,
         _isReferenced = isReferenced ?? _neverReferenced,
+        _transactionRunner = transactionRunner ?? DemoTransactionRunner(),
         _initiallyReferencedIds = Set.unmodifiable(
           initiallyReferencedIds ?? const <EntityId>{},
         ),
@@ -31,7 +44,41 @@ class DemoPartyRepository extends InMemoryDemoRepository<Party>
   final PartyReferenceLookup _isReferenced;
   final Set<EntityId> _initiallyReferencedIds;
   final OperationalMasterDataRepository _masterData;
+  final DemoTransactionRunner _transactionRunner;
   final Map<EntityId, PartyMasterDataReferences> _masterDataReferences;
+
+  /// Builds a complete party snapshot with signed IQD/USD adjustments.
+  Map<EntityId, Party> stageBalanceAdjustments(
+    Iterable<DemoPartyBalanceAdjustment> adjustments,
+  ) {
+    final staged = createDemoSnapshot();
+    final aggregated = <(EntityId, AppCurrency), Money>{};
+    for (final adjustment in adjustments) {
+      final key = (adjustment.partyId, adjustment.delta.currency);
+      aggregated[key] = (aggregated[key] ??
+              Money.zero(adjustment.delta.currency)) +
+          adjustment.delta;
+    }
+    for (final entry in aggregated.entries) {
+      final (partyId, currency) = entry.key;
+      final party = staged[partyId];
+      if (party == null) throw StateError('الطرف المحدد غير موجود');
+      staged[partyId] = switch (currency) {
+        AppCurrency.iqd => party.copyWithTyped(
+            iqdBalance: party.iqdBalance + entry.value,
+          ),
+        AppCurrency.usd => party.copyWithTyped(
+            usdBalance: party.usdBalance + entry.value,
+          ),
+      };
+    }
+    return staged;
+  }
+
+  /// Commits a snapshot already validated by the shared transaction runner.
+  void commitPartySnapshot(Map<EntityId, Party> staged) {
+    commitDemoSnapshot(staged);
+  }
 
   @override
   Future<List<Party>> search(String query) async {
@@ -54,7 +101,11 @@ class DemoPartyRepository extends InMemoryDemoRepository<Party>
   }
 
   @override
-  Future<Party> save(Party value) async {
+  Future<Party> save(Party value) {
+    return _transactionRunner.run(() => _saveUnlocked(value));
+  }
+
+  Future<Party> _saveUnlocked(Party value) async {
     final duplicate = (await getAll()).any(
       (party) =>
           party.entityId != value.entityId &&
@@ -63,11 +114,30 @@ class DemoPartyRepository extends InMemoryDemoRepository<Party>
     if (duplicate) {
       throw StateError('يوجد طرف آخر بالاسم نفسه');
     }
-    return super.save(value);
+    final current = getDemoValue(value.entityId);
+    final normalized = current == null
+        ? value
+        : value.copyWithTyped(
+            // Party profile fields can be edited from a stale screen, but
+            // balances are read-only projections owned by business
+            // transactions and must always come from the live record.
+            iqdBalance: current.iqdBalance,
+            usdBalance: current.usdBalance,
+          );
+    return super.save(normalized);
   }
 
   @override
   Future<Party> saveWithMasterData(
+    Party party,
+    PartyMasterDataReferences references,
+  ) {
+    return _transactionRunner.run(
+      () => _saveWithMasterDataUnlocked(party, references),
+    );
+  }
+
+  Future<Party> _saveWithMasterDataUnlocked(
     Party party,
     PartyMasterDataReferences references,
   ) async {
@@ -93,7 +163,7 @@ class DemoPartyRepository extends InMemoryDemoRepository<Party>
         branch.parentId != workplaceId) {
       throw StateError('الفرع لا يتبع جهة العمل المحددة');
     }
-    final saved = await save(party);
+    final saved = await _saveUnlocked(party);
     _masterDataReferences[party.entityId] = references;
     return saved;
   }
@@ -128,9 +198,11 @@ class DemoPartyRepository extends InMemoryDemoRepository<Party>
   }
 
   @override
-  Future<void> delete(EntityId id) async {
-    await super.delete(id);
-    _masterDataReferences.remove(id);
+  Future<void> delete(EntityId id) {
+    return _transactionRunner.run(() async {
+      await super.delete(id);
+      _masterDataReferences.remove(id);
+    });
   }
 }
 

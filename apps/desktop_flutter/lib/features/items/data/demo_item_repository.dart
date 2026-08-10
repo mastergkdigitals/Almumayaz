@@ -1,4 +1,5 @@
 import '../../../core/data/app_repository.dart';
+import '../../../core/data/demo_transaction_runner.dart';
 import '../../../core/domain/business_values.dart';
 import '../../settings/domain/operational_master_data.dart';
 import '../../settings/domain/operational_master_data_repository.dart';
@@ -14,8 +15,10 @@ class DemoItemRepository extends InMemoryDemoRepository<Item>
     required OperationalMasterDataRepository masterData,
     Set<EntityId>? initiallyReferencedIds,
     ItemReferenceLookup? isReferenced,
+    DemoTransactionRunner? transactionRunner,
   })  : _masterData = masterData,
         _isReferenced = isReferenced ?? _neverReferenced,
+        _transactionRunner = transactionRunner ?? DemoTransactionRunner(),
         _initiallyReferencedIds = Set.unmodifiable(
           initiallyReferencedIds ?? const <EntityId>{},
         ),
@@ -27,6 +30,7 @@ class DemoItemRepository extends InMemoryDemoRepository<Item>
   final OperationalMasterDataRepository _masterData;
   final ItemReferenceLookup _isReferenced;
   final Set<EntityId> _initiallyReferencedIds;
+  final DemoTransactionRunner _transactionRunner;
 
   @override
   Future<List<Item>> search(String query) async {
@@ -75,7 +79,11 @@ class DemoItemRepository extends InMemoryDemoRepository<Item>
   }
 
   @override
-  Future<Item> save(Item value) async {
+  Future<Item> save(Item value) {
+    return _transactionRunner.run(() => _saveUnlocked(value));
+  }
+
+  Future<Item> _saveUnlocked(Item value) async {
     final groups = await getGroups();
     final types = await getTypes(groupId: value.groupEntityId);
     final groupExists = groups.any(
@@ -96,6 +104,11 @@ class DemoItemRepository extends InMemoryDemoRepository<Item>
     );
     if (duplicateCode) throw StateError('رمز المادة مستخدم مسبقاً');
     return super.save(value);
+  }
+
+  @override
+  Future<void> delete(EntityId id) {
+    return _transactionRunner.run(() => super.delete(id));
   }
 
   @override

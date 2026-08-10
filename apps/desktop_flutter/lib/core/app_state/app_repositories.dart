@@ -14,7 +14,9 @@ import '../../features/settings/domain/operational_master_data_repository.dart';
 import '../../features/settings/domain/settings_repository.dart';
 import '../../features/warehouses/data/demo_warehouse_repository.dart';
 import '../../features/warehouses/domain/warehouse_repository.dart';
+import '../data/demo_transaction_runner.dart';
 import '../domain/business_values.dart';
+import 'demo_invoice_effects_coordinator.dart';
 
 /// One composition root for every repository used by the desktop app.
 ///
@@ -35,6 +37,7 @@ class AppRepositories {
   });
 
   factory AppRepositories.demo() {
+    final transactionRunner = DemoTransactionRunner();
     late DemoOperationalMasterDataRepository masterData;
     late DemoPartyRepository parties;
     late DemoItemRepository items;
@@ -76,6 +79,7 @@ class AppRepositories {
 
     parties = DemoPartyRepository(
       masterData: masterData,
+      transactionRunner: transactionRunner,
       isReferenced: (partyId) async {
         if ((await sales.getAll()).any(
           (invoice) => invoice.customerId == partyId,
@@ -93,6 +97,7 @@ class AppRepositories {
 
     items = DemoItemRepository(
       masterData: masterData,
+      transactionRunner: transactionRunner,
       isReferenced: (itemId) async {
         if ((await sales.getAll()).any(
           (invoice) => invoice.lines.any((line) => line.itemId == itemId),
@@ -109,6 +114,7 @@ class AppRepositories {
     );
 
     warehouses = DemoWarehouseRepository(
+      transactionRunner: transactionRunner,
       itemExists: (itemId) async => await items.getById(itemId) != null,
       isExternallyReferenced: (warehouseId) async {
         return (await sales.getAll()).any(
@@ -144,10 +150,24 @@ class AppRepositories {
     Future<bool> warehouseExists(EntityId id) async =>
         await warehouses.getById(id) != null;
 
+    businessSettings = DemoBusinessSettingsRepository(
+      warehouseExists: warehouseExists,
+      cashboxMainAccountExists: (id) async => (await cashbox.getMainAccounts())
+          .any((account) => account.entityId == id),
+    );
+
+    final invoiceEffects = DemoInvoiceEffectsCoordinator(
+      transactionRunner: transactionRunner,
+      parties: parties,
+      warehouses: warehouses,
+      businessSettings: businessSettings,
+    );
+
     sales = DemoSalesRepository(
       partyExists: partyExists,
       itemExists: itemExists,
       warehouseExists: warehouseExists,
+      mutationEffects: invoiceEffects,
       partyLabelOf: (id) async => (await parties.getById(id))?.name,
       itemLabelOf: (id) async => (await items.getById(id))?.name,
     );
@@ -155,14 +175,9 @@ class AppRepositories {
       partyExists: partyExists,
       itemExists: itemExists,
       warehouseExists: warehouseExists,
+      mutationEffects: invoiceEffects,
       partyLabelOf: (id) async => (await parties.getById(id))?.name,
       itemLabelOf: (id) async => (await items.getById(id))?.name,
-    );
-
-    businessSettings = DemoBusinessSettingsRepository(
-      warehouseExists: warehouseExists,
-      cashboxMainAccountExists: (id) async => (await cashbox.getMainAccounts())
-          .any((account) => account.entityId == id),
     );
 
     return AppRepositories(

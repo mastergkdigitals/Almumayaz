@@ -16,9 +16,9 @@ class InventoryBalance {
   final EntityId id;
   final EntityId warehouseId;
   final EntityId itemId;
-  final WholeQuantity quantity;
+  final StockQuantity quantity;
 
-  InventoryBalance copyWith({WholeQuantity? quantity}) {
+  InventoryBalance copyWith({StockQuantity? quantity}) {
     return InventoryBalance(
       id: id,
       warehouseId: warehouseId,

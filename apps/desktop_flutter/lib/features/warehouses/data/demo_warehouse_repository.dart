@@ -1,10 +1,23 @@
 import '../../../core/data/app_repository.dart';
+import '../../../core/data/demo_transaction_runner.dart';
 import '../../../core/domain/business_values.dart';
 import '../domain/inventory_records.dart';
 import '../domain/warehouse.dart';
 import '../domain/warehouse_repository.dart';
 
 typedef WarehouseReferenceExists = Future<bool> Function(EntityId id);
+
+class DemoInventoryAdjustment {
+  const DemoInventoryAdjustment({
+    required this.warehouseId,
+    required this.itemId,
+    required this.quantityDelta,
+  });
+
+  final EntityId warehouseId;
+  final EntityId itemId;
+  final int quantityDelta;
+}
 
 class DemoWarehouseRepository extends InMemoryDemoRepository<Warehouse>
     implements WarehouseRepository {
@@ -14,9 +27,11 @@ class DemoWarehouseRepository extends InMemoryDemoRepository<Warehouse>
     Iterable<InventoryTransfer>? initialTransfers,
     required WarehouseReferenceExists itemExists,
     WarehouseReferenceExists? isExternallyReferenced,
+    DemoTransactionRunner? transactionRunner,
   })  : _itemExists = itemExists,
         _isExternallyReferenced =
             isExternallyReferenced ?? _neverReferenced,
+        _transactionRunner = transactionRunner ?? DemoTransactionRunner(),
         _inventory = {
           for (final balance in initialInventory ?? demoInventory())
             balance.id: balance,
@@ -31,8 +46,69 @@ class DemoWarehouseRepository extends InMemoryDemoRepository<Warehouse>
 
   final WarehouseReferenceExists _itemExists;
   final WarehouseReferenceExists _isExternallyReferenced;
+  final DemoTransactionRunner _transactionRunner;
   final Map<EntityId, InventoryBalance> _inventory;
   final List<InventoryTransfer> _transfers;
+
+  /// Builds a complete candidate inventory map without mutating live state.
+  /// Adjustments are aggregated by stable warehouse/item identity first.
+  Map<EntityId, InventoryBalance> stageInventoryAdjustments(
+    Iterable<DemoInventoryAdjustment> adjustments, {
+    required bool allowNegative,
+  }) {
+    final staged = Map<EntityId, InventoryBalance>.of(_inventory);
+    final aggregated = <(EntityId, EntityId), int>{};
+    for (final adjustment in adjustments) {
+      final key = (adjustment.warehouseId, adjustment.itemId);
+      aggregated[key] =
+          (aggregated[key] ?? 0) + adjustment.quantityDelta;
+    }
+    for (final entry in aggregated.entries) {
+      if (entry.value == 0) continue;
+      final (warehouseId, itemId) = entry.key;
+      if (getDemoValue(warehouseId) == null) {
+        throw StateError('أحد المخازن المحددة غير موجود');
+      }
+      final current = _findBalanceIn(staged, warehouseId, itemId);
+      final finalQuantity = (current?.quantity.value ?? 0) + entry.value;
+      if (!allowNegative && finalQuantity < 0) {
+        throw StateError('الكمية غير كافية في المخزن المصدر');
+      }
+      if (current == null) {
+        final id = EntityId(
+          'inventory-${warehouseId.value}-${itemId.value}',
+        );
+        staged[id] = InventoryBalance(
+          id: id,
+          warehouseId: warehouseId,
+          itemId: itemId,
+          quantity: StockQuantity(finalQuantity),
+        );
+      } else {
+        staged[current.id] = current.copyWith(
+          quantity: StockQuantity(finalQuantity),
+        );
+      }
+    }
+    return staged;
+  }
+
+  /// Commits a snapshot already validated by the shared transaction runner.
+  void commitInventorySnapshot(Map<EntityId, InventoryBalance> staged) {
+    _inventory
+      ..clear()
+      ..addAll(staged);
+  }
+
+  @override
+  Future<Warehouse> save(Warehouse value) {
+    return _transactionRunner.run(() => super.save(value));
+  }
+
+  @override
+  Future<void> delete(EntityId id) {
+    return _transactionRunner.run(() => super.delete(id));
+  }
 
   @override
   Future<List<Warehouse>> search(String query) async {
@@ -63,14 +139,25 @@ class DemoWarehouseRepository extends InMemoryDemoRepository<Warehouse>
 
   @override
   Future<InventoryTransfer> transfer(InventoryTransferDraft draft) {
-    return _performTransfer(
-      draft,
-      createdAt: draft.createdAt ?? AuditTimestamp(DateTime.now()),
+    return _transactionRunner.run(
+      () => _performTransferUnlocked(
+        draft,
+        createdAt: draft.createdAt ?? AuditTimestamp(DateTime.now()),
+      ),
     );
   }
 
   @override
   Future<InventoryTransfer> reverseTransfer(
+    EntityId transferId, {
+    AuditTimestamp? createdAt,
+  }) {
+    return _transactionRunner.run(
+      () => _reverseTransferUnlocked(transferId, createdAt: createdAt),
+    );
+  }
+
+  Future<InventoryTransfer> _reverseTransferUnlocked(
     EntityId transferId, {
     AuditTimestamp? createdAt,
   }) async {
@@ -91,7 +178,7 @@ class DemoWarehouseRepository extends InMemoryDemoRepository<Warehouse>
         )) {
       throw StateError('لا يمكن عكس هذا النقل مرة أخرى');
     }
-    return _performTransfer(
+    return _performTransferUnlocked(
       InventoryTransferDraft(
         fromWarehouseId: originalTransfer.toWarehouseId,
         toWarehouseId: originalTransfer.fromWarehouseId,
@@ -102,7 +189,7 @@ class DemoWarehouseRepository extends InMemoryDemoRepository<Warehouse>
     );
   }
 
-  Future<InventoryTransfer> _performTransfer(
+  Future<InventoryTransfer> _performTransferUnlocked(
     InventoryTransferDraft draft, {
     required AuditTimestamp createdAt,
     EntityId? reversalOfId,
@@ -120,34 +207,30 @@ class DemoWarehouseRepository extends InMemoryDemoRepository<Warehouse>
       if (!await _itemExists(line.itemId)) {
         throw StateError('إحدى المواد المحددة غير موجودة');
       }
-      final source = _findBalance(draft.fromWarehouseId, line.itemId);
-      if (source == null || source.quantity.value < line.quantity.value) {
-        throw StateError('الكمية غير كافية في المخزن المصدر');
-      }
     }
 
+    final adjustments = <DemoInventoryAdjustment>[];
     for (final line in draft.lines) {
-      final source = _findBalance(draft.fromWarehouseId, line.itemId)!;
-      final destination = _findBalance(draft.toWarehouseId, line.itemId);
-      _inventory[source.id] = source.copyWith(
-        quantity: source.quantity - line.quantity,
-      );
-      if (destination == null) {
-        final id = EntityId(
-          'inventory-${draft.toWarehouseId.value}-${line.itemId.value}',
+      adjustments
+        ..add(
+          DemoInventoryAdjustment(
+            warehouseId: draft.fromWarehouseId,
+            itemId: line.itemId,
+            quantityDelta: -line.quantity.value,
+          ),
+        )
+        ..add(
+          DemoInventoryAdjustment(
+            warehouseId: draft.toWarehouseId,
+            itemId: line.itemId,
+            quantityDelta: line.quantity.value,
+          ),
         );
-        _inventory[id] = InventoryBalance(
-          id: id,
-          warehouseId: draft.toWarehouseId,
-          itemId: line.itemId,
-          quantity: line.quantity,
-        );
-      } else {
-        _inventory[destination.id] = destination.copyWith(
-          quantity: destination.quantity + line.quantity,
-        );
-      }
     }
+    final stagedInventory = stageInventoryAdjustments(
+      adjustments,
+      allowNegative: false,
+    );
 
     final number = _nextTransferNumber;
     final transfer = InventoryTransfer(
@@ -159,6 +242,7 @@ class DemoWarehouseRepository extends InMemoryDemoRepository<Warehouse>
       lines: draft.lines,
       reversalOfId: reversalOfId,
     );
+    commitInventorySnapshot(stagedInventory);
     _transfers.add(transfer);
     return transfer;
   }
@@ -171,8 +255,12 @@ class DemoWarehouseRepository extends InMemoryDemoRepository<Warehouse>
         1;
   }
 
-  InventoryBalance? _findBalance(EntityId warehouseId, EntityId itemId) {
-    for (final balance in _inventory.values) {
+  InventoryBalance? _findBalanceIn(
+    Map<EntityId, InventoryBalance> inventory,
+    EntityId warehouseId,
+    EntityId itemId,
+  ) {
+    for (final balance in inventory.values) {
       if (balance.warehouseId == warehouseId && balance.itemId == itemId) {
         return balance;
       }
@@ -254,55 +342,73 @@ List<InventoryBalance> demoInventory() => [
         id: EntityId('inventory-001'),
         warehouseId: EntityId('warehouse-001'),
         itemId: EntityId('item-001'),
-        quantity: WholeQuantity(18),
+        quantity: const StockQuantity(18),
       ),
       InventoryBalance(
         id: EntityId('inventory-002'),
         warehouseId: EntityId('warehouse-001'),
         itemId: EntityId('item-002'),
-        quantity: WholeQuantity(64),
+        quantity: const StockQuantity(64),
       ),
       InventoryBalance(
         id: EntityId('inventory-003'),
         warehouseId: EntityId('warehouse-001'),
         itemId: EntityId('item-003'),
-        quantity: WholeQuantity(120),
+        quantity: const StockQuantity(120),
       ),
       InventoryBalance(
         id: EntityId('inventory-004'),
         warehouseId: EntityId('warehouse-001'),
         itemId: EntityId('item-004'),
-        quantity: WholeQuantity(25),
+        quantity: const StockQuantity(25),
       ),
       InventoryBalance(
         id: EntityId('inventory-005'),
         warehouseId: EntityId('warehouse-002'),
         itemId: EntityId('item-001'),
-        quantity: WholeQuantity(7),
+        quantity: const StockQuantity(7),
       ),
       InventoryBalance(
         id: EntityId('inventory-006'),
         warehouseId: EntityId('warehouse-002'),
         itemId: EntityId('item-003'),
-        quantity: WholeQuantity(45),
+        quantity: const StockQuantity(45),
       ),
       InventoryBalance(
         id: EntityId('inventory-007'),
         warehouseId: EntityId('warehouse-003'),
         itemId: EntityId('item-002'),
-        quantity: WholeQuantity(22),
+        quantity: const StockQuantity(22),
       ),
       InventoryBalance(
         id: EntityId('inventory-008'),
         warehouseId: EntityId('warehouse-003'),
         itemId: EntityId('item-004'),
-        quantity: WholeQuantity(11),
+        quantity: const StockQuantity(11),
       ),
       InventoryBalance(
         id: EntityId('inventory-009'),
         warehouseId: EntityId('warehouse-004'),
         itemId: EntityId('item-003'),
-        quantity: WholeQuantity(32),
+        quantity: const StockQuantity(32),
+      ),
+      InventoryBalance(
+        id: EntityId('inventory-seed-purchase-item-003'),
+        warehouseId: EntityId('warehouse-003'),
+        itemId: EntityId('item-003'),
+        quantity: const StockQuantity(15),
+      ),
+      InventoryBalance(
+        id: EntityId('inventory-seed-purchase-item-007'),
+        warehouseId: EntityId('warehouse-004'),
+        itemId: EntityId('item-007'),
+        quantity: const StockQuantity(5),
+      ),
+      InventoryBalance(
+        id: EntityId('inventory-seed-purchase-item-008'),
+        warehouseId: EntityId('warehouse-004'),
+        itemId: EntityId('item-008'),
+        quantity: const StockQuantity(7),
       ),
     ];
 

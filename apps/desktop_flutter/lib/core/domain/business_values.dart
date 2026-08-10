@@ -261,6 +261,45 @@ class WholeQuantity implements Comparable<WholeQuantity> {
   String toString() => '$value';
 }
 
+/// A signed quantity used only for persisted inventory balances.
+///
+/// Business-document and transfer inputs continue to use [WholeQuantity]. A
+/// signed stock projection is necessary when the explicit business policy
+/// allows a sale to take inventory below zero.
+class StockQuantity implements Comparable<StockQuantity> {
+  const StockQuantity(this.value);
+
+  factory StockQuantity.fromWhole(WholeQuantity value) {
+    return StockQuantity(value.value);
+  }
+
+  final int value;
+
+  bool get isZero => value == 0;
+  bool get isNegative => value < 0;
+
+  StockQuantity operator +(StockQuantity other) {
+    return StockQuantity(value + other.value);
+  }
+
+  StockQuantity operator -(StockQuantity other) {
+    return StockQuantity(value - other.value);
+  }
+
+  @override
+  int compareTo(StockQuantity other) => value.compareTo(other.value);
+
+  @override
+  bool operator ==(Object other) =>
+      other is StockQuantity && other.value == value;
+
+  @override
+  int get hashCode => value.hashCode;
+
+  @override
+  String toString() => '$value';
+}
+
 class BusinessDate implements Comparable<BusinessDate> {
   BusinessDate(int year, int month, int day)
       : value = _validatedDate(year, month, day);

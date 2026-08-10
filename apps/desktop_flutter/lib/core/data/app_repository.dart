@@ -75,6 +75,25 @@ abstract class InMemoryDemoRepository<T extends Object>
   final EntityId Function(T value) idOf;
   final Map<EntityId, T> _values;
 
+  /// Returns a mutable point-in-time copy for a staged demo transaction.
+  ///
+  /// Callers must finish validation before passing the candidate map to
+  /// [commitDemoSnapshot]. These primitives intentionally contain no awaits,
+  /// allowing a coordinator to swap several staged repository projections in
+  /// one uninterrupted event-loop turn.
+  Map<EntityId, T> createDemoSnapshot() => Map<EntityId, T>.of(_values);
+
+  /// Reads the current value synchronously while a demo transaction owns the
+  /// shared runner.
+  T? getDemoValue(EntityId id) => _values[id];
+
+  /// Applies an already validated snapshot. This method must stay no-fail.
+  void commitDemoSnapshot(Map<EntityId, T> stagedValues) {
+    _values
+      ..clear()
+      ..addAll(stagedValues);
+  }
+
   @override
   Future<List<T>> getAll() async => List<T>.unmodifiable(_values.values);
 
