@@ -18,7 +18,7 @@ void main() {
     addTearDown(controller.dispose);
     await controller.load();
 
-    expect(controller.state.vouchers, hasLength(6));
+    expect(controller.state.vouchers, hasLength(10));
     expect(
       controller.state.vouchers.first.entityId,
       EntityId('cashbox-001'),
@@ -44,7 +44,7 @@ void main() {
     expect(controller.selectedVoucher?.number, 2);
 
     controller.last();
-    expect(controller.selectedVoucher?.number, 6);
+    expect(controller.selectedVoucher?.number, 10);
 
     controller.last();
     expect(controller.selectedVoucher, isNull);
@@ -59,12 +59,12 @@ void main() {
     addTearDown(controller.dispose);
     await controller.load();
 
-    expect(controller.state.vouchers, hasLength(6));
-    expect(controller.summary.todayReceiptIqd, 750000);
+    expect(controller.state.vouchers, hasLength(10));
+    expect(controller.summary.todayReceiptIqd, 1150000);
     expect(controller.summary.todayPaymentIqd, 125000);
     expect(
       controller.summary.iqdTodayReceipt,
-      Money.fromMajor(750000, AppCurrency.iqd),
+      Money.fromMajor(1150000, AppCurrency.iqd),
     );
 
     controller.select('cashbox-003');
@@ -104,7 +104,7 @@ void main() {
     );
     addTearDown(reopened.dispose);
     await reopened.load();
-    expect(reopened.state.vouchers, hasLength(6));
+    expect(reopened.state.vouchers, hasLength(10));
     expect(reopened.accountBalance(third.subaccountId).usd, -1190);
   });
 
@@ -304,7 +304,7 @@ void main() {
         'المبلغ دولار',
       ],
     );
-    expect(table.rows, hasLength(6));
+    expect(table.rows, hasLength(10));
     expect(table.alternatingRowColor, isNull);
 
     expect(
@@ -487,6 +487,43 @@ void main() {
 
     expect(find.byKey(const Key('cashboxScreen')), findsNothing);
     expect(find.byKey(const Key('dashboardCard_cashbox')), findsOneWidget);
+  });
+
+  testWidgets('keeps invoice-generated Cashbox postings read-only',
+      (tester) async {
+    await _openCashbox(tester);
+    await tester.enterText(
+      find.byKey(const Key('cashboxSearchField')),
+      'قيد آلي لفاتورة بيع رقم 102',
+    );
+    await tester.pump();
+    await tester.tap(
+      find.byKey(
+        const Key(
+          'cashboxRow_'
+          'cashbox-system-salesInvoice-sales-invoice-102',
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(
+      tester.widget<AppButton>(
+        find.byKey(const Key('cashboxDeleteButton')),
+      ).onPressed,
+      isNull,
+    );
+    await tester.enterText(
+      find.byKey(const Key('cashboxNotesField')),
+      'محاولة تعديل قيد آلي',
+    );
+    await tester.pump();
+    expect(
+      tester.widget<AppButton>(
+        find.byKey(const Key('cashboxUpdateButton')),
+      ).onPressed,
+      isNull,
+    );
   });
 }
 

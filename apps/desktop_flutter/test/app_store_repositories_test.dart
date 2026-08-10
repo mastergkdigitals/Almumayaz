@@ -237,7 +237,7 @@ void main() {
       (await repository.canDelete(
         EntityId.demo('cashbox-subaccount', 1),
       )).isAllowed,
-      isTrue,
+      isFalse,
     );
   });
 

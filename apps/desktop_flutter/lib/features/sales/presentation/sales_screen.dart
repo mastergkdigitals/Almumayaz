@@ -10,6 +10,7 @@ import '../../../core/domain/business_values.dart';
 import '../../../core/printing/document_output_service.dart';
 import '../../../core/services/service_failure.dart';
 import '../../items/domain/item.dart';
+import '../../parties/application/party_statement_service.dart';
 import '../../parties/domain/party.dart';
 import '../../settings/domain/settings_models.dart';
 import '../../warehouses/domain/warehouse.dart';
@@ -148,6 +149,7 @@ class _SalesScreenState extends State<SalesScreen> {
   var _isDocumentActionRunning = false;
   Future<bool>? _pendingDiscardConfirmation;
   AppStore? _store;
+  late PartyStatementService _statementService;
   InvoiceEditorCoordinator<_DemoSalesInvoice>? _coordinator;
   AppDataState<List<_DemoSalesInvoice>> _invoiceState =
       const AppDataState.loading();
@@ -213,6 +215,13 @@ class _SalesScreenState extends State<SalesScreen> {
     if (_didStartLoading) return;
     _didStartLoading = true;
     _store = AppStoreScope.of(context, listen: false);
+    final repositories = _store!.repositories;
+    _statementService = RepositoryPartyStatementService(
+      parties: repositories.parties,
+      sales: repositories.sales,
+      purchases: repositories.purchases,
+      cashbox: repositories.cashbox,
+    );
     _coordinator = InvoiceEditorCoordinator<_DemoSalesInvoice>(
       loadRecords: _loadRepositoryInvoices,
     );

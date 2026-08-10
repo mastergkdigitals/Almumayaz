@@ -506,13 +506,19 @@ void main() {
             find.byKey(const Key('appStatementReportTable')),
           )
           .rows,
-      hasLength(1),
+      hasLength(2),
     );
 
     await tester.tap(find.byKey(const Key('appStatementPdf')));
     await tester.pumpAndSettle();
     expect(_outputFileName(tester), endsWith('.pdf'));
-    expect(_documentContent(tester), contains('قائمة بيع رقم 101'));
+    expect(
+      _documentContent(tester),
+      allOf(
+        contains('قائمة بيع رقم 101'),
+        contains('سند قبض رقم 1'),
+      ),
+    );
 
     await tester.tap(find.byKey(const Key('appDocumentOutputClose')));
     await tester.pumpAndSettle();
@@ -548,7 +554,7 @@ void main() {
       allOf(
         contains('قائمة بيع رقم 101'),
         contains('سند قبض رقم 1'),
-        contains('-573,000'),
+        contains('500,000'),
       ),
     );
   });
@@ -565,7 +571,7 @@ void main() {
     expect(find.byKey(const Key('appDocumentOutputDialog')), findsOneWidget);
     expect(
       _documentContent(tester),
-      allOf(contains('سند قبض رقم 7'), contains('النقدية اليومية')),
+      allOf(contains('سند قبض رقم 11'), contains('النقدية اليومية')),
     );
   });
 }

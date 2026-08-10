@@ -242,10 +242,10 @@ extension _PurchaseDocumentState on _PurchaseScreenState {
     }
   }
 
-  DateTime? _firstPurchaseTransactionDate(String supplierName) {
+  DateTime? _firstPurchaseTransactionDate(EntityId supplierId) {
     DateTime? firstDate;
     for (final invoice in _purchaseInvoices) {
-      if (invoice.supplierName != supplierName) continue;
+      if (invoice.source.supplierId != supplierId) continue;
       if (firstDate == null || invoice.dateTime.isBefore(firstDate)) {
         firstDate = invoice.dateTime;
       }
@@ -253,53 +253,19 @@ extension _PurchaseDocumentState on _PurchaseScreenState {
     return firstDate;
   }
 
-  num _purchaseInvoiceTotal(_DemoPurchaseInvoice invoice) {
-    final lineTotal = invoice.items.fold<num>(
-      0,
-      (total, item) => total + item.totalValue,
-    );
-    final expenses = AppFormatters.parseNumber(invoice.expenses) ?? 0;
-    final discount =
-        AppFormatters.parseNumber(invoice.invoiceDiscount) ?? 0;
-    return lineTotal + expenses - discount;
-  }
-
-  List<AppStatementReportEntry> _purchaseStatementEntries(
-    String supplierName,
-    AppStatementOptions options,
+  List<AppStatementReportEntry> _statementReportEntries(
+    PartyStatementResult result,
   ) {
-    final fromDate = DateTime(
-      options.fromDate.year,
-      options.fromDate.month,
-      options.fromDate.day,
-    );
-    final toDateExclusive = DateTime(
-      options.toDate.year,
-      options.toDate.month,
-      options.toDate.day + 1,
-    );
-    final invoices = _purchaseInvoices.where((invoice) {
-      return invoice.supplierName == supplierName &&
-          invoice.currency == options.currencyCode &&
-          !invoice.dateTime.isBefore(fromDate) &&
-          invoice.dateTime.isBefore(toDateExclusive);
-    }).toList()
-      ..sort((left, right) => left.dateTime.compareTo(right.dateTime));
-
     return [
-      for (final invoice in invoices)
+      for (final entry in result.entries)
         AppStatementReportEntry(
-          date: invoice.dateTime,
-          balance: AppFormatters.parseNumber(invoice.currentBalance) ?? 0,
-          credit: _purchaseInvoiceTotal(invoice),
-          debit: AppFormatters.parseNumber(invoice.paid) ?? 0,
-          type: 'قائمة شراء',
-          quantity: invoice.items.fold<int>(
-            0,
-            (total, item) => total + item.quantityValue,
-          ),
-          details:
-              'قائمة شراء رقم ${invoice.id} • ${invoice.purchaseType}',
+          date: entry.date,
+          balance: entry.balance.majorUnits,
+          credit: entry.credit.majorUnits,
+          debit: entry.debit.majorUnits,
+          type: entry.type.label,
+          quantity: entry.quantity,
+          details: entry.details,
         ),
     ];
   }
@@ -312,6 +278,9 @@ extension _PurchaseDocumentState on _PurchaseScreenState {
       if (!await _reloadSelectedPurchaseInvoiceForOutput() || !mounted) {
         return;
       }
+      final selectedInvoice = _selectedInvoice;
+      if (selectedInvoice == null) return;
+      final supplierId = selectedInvoice.source.supplierId;
       final supplierName = _supplierNameController.text.trim();
       final displayName =
           supplierName.isEmpty ? 'مجهز غير محدد' : supplierName;
@@ -320,19 +289,38 @@ extension _PurchaseDocumentState on _PurchaseScreenState {
         partyName: displayName,
         partyLabel: 'اسم المجهز',
         accentColor: AppModuleColors.purchases,
-        firstTransactionDate: _firstPurchaseTransactionDate(displayName),
+        firstTransactionDate: _firstPurchaseTransactionDate(supplierId),
       );
       if (!mounted || options == null) return;
 
+      final result = await _statementService.load(
+        PartyStatementQuery(
+          partyId: supplierId,
+          fromDate: BusinessDate.fromDateTime(options.fromDate),
+          toDate: BusinessDate.fromDateTime(options.toDate),
+          currency: AppCurrency.parse(options.currencyCode),
+        ),
+      );
+      if (!mounted) return;
       await AppStatementReportDialog.show(
         context,
         partyName: displayName,
         options: options,
-        entries: _purchaseStatementEntries(displayName, options),
+        openingBalance: result.openingBalance.majorUnits,
+        entries: _statementReportEntries(result),
         accentColor: AppModuleColors.purchases,
         printService: widget.printService,
         exportService: widget.exportService,
       );
+    } on ServiceFailure catch (failure) {
+      if (mounted) AppToast.showError(context, failure.message);
+    } catch (_) {
+      if (mounted) {
+        AppToast.showError(
+          context,
+          'تعذر تحميل كشف حساب المجهز. حاول مرة أخرى.',
+        );
+      }
     } finally {
       if (mounted) {
         _setPurchaseState(() => _isDocumentActionRunning = false);

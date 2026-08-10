@@ -68,6 +68,18 @@ class ReportFilterDefinition {
   final IconData icon;
   final ReportFilterKind kind;
   final List<ReportFilterOption> options;
+
+  ReportFilterDefinition withOptions(
+    List<ReportFilterOption> runtimeOptions,
+  ) {
+    if (kind != ReportFilterKind.dropdown) return this;
+    return ReportFilterDefinition.dropdown(
+      id: id,
+      label: label,
+      icon: icon,
+      options: List<ReportFilterOption>.unmodifiable(runtimeOptions),
+    );
+  }
 }
 
 class ReportFilterOption {

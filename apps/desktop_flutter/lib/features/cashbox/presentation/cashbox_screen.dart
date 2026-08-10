@@ -491,6 +491,13 @@ class _CashboxScreenState extends State<CashboxScreen> {
       AppToast.showWarning(context, 'اختر سنداً من الجدول لتحديثه');
       return;
     }
+    if (selected.isSystemGenerated) {
+      AppToast.showWarning(
+        context,
+        'هذا القيد مولد من فاتورة ولا يمكن تعديله يدوياً',
+      );
+      return;
+    }
     if (!_validateForm()) return;
 
     final updated = _voucherFromForm(
@@ -598,6 +605,13 @@ class _CashboxScreenState extends State<CashboxScreen> {
       AppToast.showWarning(context, 'اختر سنداً من الجدول لحذفه');
       return;
     }
+    if (selected.isSystemGenerated) {
+      AppToast.showWarning(
+        context,
+        'هذا القيد مولد من فاتورة ولا يمكن حذفه يدوياً',
+      );
+      return;
+    }
 
     final controller = _cashboxController;
     final decision = await controller.canDeleteSelected();
@@ -634,8 +648,10 @@ class _CashboxScreenState extends State<CashboxScreen> {
     return AnimatedBuilder(
       animation: _cashboxController,
       builder: (context, _) {
-        final hasSelectedVoucher =
-            _cashboxController.selectedVoucher != null;
+        final selectedVoucher = _cashboxController.selectedVoucher;
+        final hasSelectedVoucher = selectedVoucher != null;
+        final selectedVoucherIsEditable =
+            selectedVoucher != null && !selectedVoucher.isSystemGenerated;
         final visibleVouchers = _cashboxController.visibleVouchers;
         final selectedVisibleIndex =
             _cashboxController.selectedVisibleIndex;
@@ -665,7 +681,7 @@ class _CashboxScreenState extends State<CashboxScreen> {
             onBack: _attemptBack,
             onSearch: _searchFocusNode.requestFocus,
             onSave: hasSelectedVoucher
-                ? _hasUnsavedChanges
+                ? selectedVoucherIsEditable && _hasUnsavedChanges
                     ? _update
                     : null
                 : _save,
@@ -727,11 +743,12 @@ class _CashboxScreenState extends State<CashboxScreen> {
                       ? () => _navigate(_cashboxController.last)
                       : null,
                   onSave: hasSelectedVoucher ? null : _save,
-                  onUpdate: hasSelectedVoucher && _hasUnsavedChanges
+                  onUpdate:
+                      selectedVoucherIsEditable && _hasUnsavedChanges
                       ? _update
                       : null,
                   onUndo: _hasUnsavedChanges ? _undo : null,
-                  onDelete: hasSelectedVoucher ? _delete : null,
+                  onDelete: selectedVoucherIsEditable ? _delete : null,
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Expanded(

@@ -86,6 +86,7 @@ class CashboxController extends ChangeNotifier {
   CashboxState _state = const CashboxState();
   bool _isDisposed = false;
   int _loadGeneration = 0;
+  int _nextVoucherNumber = 1;
 
   CashboxState get state => _state;
 
@@ -109,13 +110,7 @@ class CashboxController extends ChangeNotifier {
     return null;
   }
 
-  int get nextNumber {
-    if (_state.vouchers.isEmpty) return 1;
-    return _state.vouchers
-            .map((voucher) => voucher.number)
-            .reduce((first, second) => first > second ? first : second) +
-        1;
-  }
+  int get nextNumber => _nextVoucherNumber;
 
   CashboxSummary get summary {
     var receiptIqd = Money.zero(AppCurrency.iqd);
@@ -205,6 +200,10 @@ class CashboxController extends ChangeNotifier {
       final vouchers = await _repository.getAll();
       final accounts = await _repository.getMainAccounts();
       final openingBalance = await _repository.getOpeningBalance();
+      final repository = _repository;
+      final nextVoucherNumber = repository is CashboxIssuedNumberRepository
+          ? await repository.nextVoucherNumber()
+          : _nextNumberFrom(vouchers);
       final defaults = await _settingsRepository.loadOperationalDefaults();
       final policies = await _settingsRepository.loadBusinessPolicies();
       if (_loadIsStale(generation)) return;
@@ -271,6 +270,7 @@ class CashboxController extends ChangeNotifier {
             ? _state.selectedVoucherEntityId
             : null,
       );
+      _nextVoucherNumber = nextVoucherNumber;
       _notifyListenersIfActive();
     } catch (error) {
       if (_loadIsStale(generation)) return;
@@ -427,6 +427,14 @@ class CashboxController extends ChangeNotifier {
     CashboxVoucher second,
   ) =>
       _compareVouchers(first, second) < 0;
+
+  static int _nextNumberFrom(Iterable<CashboxVoucher> vouchers) {
+    var highest = 0;
+    for (final voucher in vouchers) {
+      if (voucher.number > highest) highest = voucher.number;
+    }
+    return highest + 1;
+  }
 
   @override
   void dispose() {

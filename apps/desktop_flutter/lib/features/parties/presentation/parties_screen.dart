@@ -117,6 +117,7 @@ class _PartiesScreenState extends State<PartiesScreen> {
       listen: false,
     ).repositories;
     _statementService = RepositoryPartyStatementService(
+      parties: repositories.parties,
       sales: repositories.sales,
       purchases: repositories.purchases,
       cashbox: repositories.cashbox,
@@ -451,6 +452,7 @@ class _PartiesScreenState extends State<PartiesScreen> {
       context,
       partyName: party.name,
       options: options,
+      openingBalance: result.openingBalance.majorUnits,
       entries: [
         for (final entry in result.entries)
           AppStatementReportEntry(

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/app_state/app_store.dart';
 import '../../../core/design/app_design_system.dart';
 import '../data/report_demo_catalog.dart';
+import '../data/repository_report_data_service.dart';
 import 'report_definition.dart';
 import 'widgets/report_section_view.dart';
 
@@ -15,6 +16,18 @@ class ReportsScreen extends StatefulWidget {
 
 class _ReportsScreenState extends State<ReportsScreen> {
   ReportDefinition? _selectedReport;
+  Object? _repositoryIdentity;
+  RepositoryReportDataService? _rowsService;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final repositories = AppStoreScope.of(context).repositories;
+    if (!identical(_repositoryIdentity, repositories)) {
+      _repositoryIdentity = repositories;
+      _rowsService = RepositoryReportDataService(repositories);
+    }
+  }
 
   void _openReport(ReportDefinition report) {
     FocusManager.instance.primaryFocus?.unfocus();
@@ -33,10 +46,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final reportOutput = AppStoreScope.of(
-      context,
-      listen: false,
-    ).services.reportOutput;
+    final store = AppStoreScope.of(context);
+    final reportOutput = store.services.reportOutput;
     final selectedReport = _selectedReport;
     final accentColor =
         selectedReport?.palette.middle ?? AppModuleColors.reports;
@@ -70,6 +81,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         definition: selectedReport,
                         definitions: reportDefinitions,
                         onDefinitionChanged: _openReport,
+                        rowsService: _rowsService!,
+                        refreshToken: store.revision,
                         printService: reportOutput,
                         exportService: reportOutput,
                       ),

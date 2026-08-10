@@ -1,3 +1,5 @@
+import '../../features/cashbox/data/demo_cashbox_repository.dart';
+import '../../features/cashbox/domain/cashbox_voucher.dart';
 import '../../features/parties/data/demo_party_repository.dart';
 import '../../features/parties/domain/party.dart';
 import '../../features/purchases/data/demo_purchase_mutation_effects.dart';
@@ -9,27 +11,29 @@ import '../../features/warehouses/data/demo_warehouse_repository.dart';
 import '../data/demo_transaction_runner.dart';
 import '../domain/business_values.dart';
 
-/// Applies the cross-feature projections of demo invoices atomically.
+/// Applies invoice, inventory, Cashbox, and Party demo projections atomically.
 ///
-/// Cashbox posting deliberately remains outside this coordinator. Invoice
-/// received/paid amounts are already represented by statement movements, and
-/// the current cashbox model has no immutable source-document identity with
-/// which to prevent a duplicate posting.
+/// The Party adjustment remains the authoritative net invoice effect.
+/// Source-linked Cashbox vouchers represent received/paid money but must not
+/// be counted a second time by party statements.
 class DemoInvoiceEffectsCoordinator
     implements DemoSalesMutationEffects, DemoPurchaseMutationEffects {
   const DemoInvoiceEffectsCoordinator({
     required DemoTransactionRunner transactionRunner,
     required DemoPartyRepository parties,
     required DemoWarehouseRepository warehouses,
+    required DemoCashboxRepository cashbox,
     required BusinessSettingsRepository businessSettings,
   })  : _transactionRunner = transactionRunner,
         _parties = parties,
         _warehouses = warehouses,
+        _cashbox = cashbox,
         _businessSettings = businessSettings;
 
   final DemoTransactionRunner _transactionRunner;
   final DemoPartyRepository _parties;
   final DemoWarehouseRepository _warehouses;
+  final DemoCashboxRepository _cashbox;
   final BusinessSettingsRepository _businessSettings;
 
   @override
@@ -58,12 +62,16 @@ class DemoInvoiceEffectsCoordinator
       final stagedParties = _parties.stageBalanceAdjustments(
         partyAdjustments,
       );
+      final stagedCashbox = await _cashbox.stageInvoicePosting(
+        _salesPosting(candidate),
+      );
       final finalParty = stagedParties[candidate.customerId]!;
       final finalBalance = _partyBalance(finalParty, candidate.currency);
       final normalized = _salesWithBalance(candidate, finalBalance);
 
       commit(normalized);
       _warehouses.commitInventorySnapshot(stagedInventory);
+      _cashbox.commitCashboxMutation(stagedCashbox);
       _parties.commitPartySnapshot(stagedParties);
       return normalized;
     });
@@ -84,9 +92,13 @@ class DemoInvoiceEffectsCoordinator
       final stagedParties = _parties.stageBalanceAdjustments([
         _salesPartyAdjustment(previous, direction: -1),
       ]);
+      final stagedCashbox = _cashbox.stageRemoveInvoicePosting(
+        _salesSource(previous),
+      );
 
       commit();
       _warehouses.commitInventorySnapshot(stagedInventory);
+      _cashbox.commitCashboxMutation(stagedCashbox);
       _parties.commitPartySnapshot(stagedParties);
     });
   }
@@ -116,6 +128,9 @@ class DemoInvoiceEffectsCoordinator
       final stagedParties = _parties.stageBalanceAdjustments(
         partyAdjustments,
       );
+      final stagedCashbox = await _cashbox.stageInvoicePosting(
+        _purchasePosting(candidate),
+      );
       final finalParty = stagedParties[candidate.supplierId]!;
       final signedBalance = _partyBalance(finalParty, candidate.currency);
 
@@ -128,6 +143,7 @@ class DemoInvoiceEffectsCoordinator
 
       commit(normalized);
       _warehouses.commitInventorySnapshot(stagedInventory);
+      _cashbox.commitCashboxMutation(stagedCashbox);
       _parties.commitPartySnapshot(stagedParties);
       return normalized;
     });
@@ -148,9 +164,13 @@ class DemoInvoiceEffectsCoordinator
       final stagedParties = _parties.stageBalanceAdjustments([
         _purchasePartyAdjustment(previous, direction: -1),
       ]);
+      final stagedCashbox = _cashbox.stageRemoveInvoicePosting(
+        _purchaseSource(previous),
+      );
 
       commit();
       _warehouses.commitInventorySnapshot(stagedInventory);
+      _cashbox.commitCashboxMutation(stagedCashbox);
       _parties.commitPartySnapshot(stagedParties);
     });
   }
@@ -212,11 +232,61 @@ class DemoInvoiceEffectsCoordinator
     );
   }
 
+  DemoInvoiceCashboxPosting _salesPosting(SalesInvoice invoice) {
+    return DemoInvoiceCashboxPosting(
+      source: _salesSource(invoice),
+      createdTimestamp: _invoiceTimestamp(invoice.date, invoice.minuteOfDay),
+      type: CashboxVoucherType.receipt,
+      exchangeRate: invoice.exchangeRate,
+      amount: invoice.received,
+      notes: 'قيد آلي لفاتورة بيع رقم ${invoice.documentNumber}',
+    );
+  }
+
+  CashboxVoucherSource _salesSource(SalesInvoice invoice) {
+    return CashboxVoucherSource(
+      kind: CashboxVoucherSourceKind.salesInvoice,
+      sourceId: invoice.id,
+      partyId: invoice.customerId,
+    );
+  }
+
+  DemoInvoiceCashboxPosting _purchasePosting(PurchaseInvoice invoice) {
+    return DemoInvoiceCashboxPosting(
+      source: _purchaseSource(invoice),
+      createdTimestamp: _invoiceTimestamp(invoice.date, invoice.minuteOfDay),
+      type: invoice.purchaseKind ==
+              PurchaseTransactionKind.returnPurchase
+          ? CashboxVoucherType.receipt
+          : CashboxVoucherType.payment,
+      exchangeRate: invoice.exchangeRate,
+      amount: invoice.paid,
+      notes: 'قيد آلي لفاتورة شراء رقم ${invoice.documentNumber}',
+    );
+  }
+
+  CashboxVoucherSource _purchaseSource(PurchaseInvoice invoice) {
+    return CashboxVoucherSource(
+      kind: CashboxVoucherSourceKind.purchaseInvoice,
+      sourceId: invoice.id,
+      partyId: invoice.supplierId,
+    );
+  }
+
   Money _partyBalance(Party party, AppCurrency currency) {
     return currency == AppCurrency.iqd
         ? party.iqdBalance
         : party.usdBalance;
   }
+}
+
+AuditTimestamp _invoiceTimestamp(BusinessDate date, int minuteOfDay) {
+  return AuditTimestamp(
+    date.atTime(
+      hour: minuteOfDay ~/ Duration.minutesPerHour,
+      minute: minuteOfDay % Duration.minutesPerHour,
+    ),
+  );
 }
 
 SalesInvoice _salesWithBalance(SalesInvoice source, Money balance) {

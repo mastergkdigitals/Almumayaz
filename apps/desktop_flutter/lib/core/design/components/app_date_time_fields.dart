@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../app_formatters.dart';
 import '../app_tokens.dart';
@@ -84,27 +85,40 @@ class _AppDateFieldState extends State<AppDateField> {
 
   @override
   Widget build(BuildContext context) {
-    return AppTextField(
-      fieldKey: widget.fieldKey,
-      controller: _controller,
-      label: widget.label,
-      icon: Icons.calendar_month_rounded,
-      accentColor: widget.accentColor,
+    return Semantics(
+      button: true,
       enabled: widget.enabled,
-      readOnly: true,
-      textDirection: widget.textDirection,
-      textAlign: widget.textAlign,
-      onTap: _pickDate,
-      suffixIcon: widget.showPickerButton
-          ? AppTooltip(
-              message: 'اختيار التاريخ',
-              child: AppFieldIconButton(
-                icon: Icons.edit_calendar_rounded,
-                color: widget.accentColor ?? AppColors.primary,
-                onPressed: widget.enabled ? _pickDate : null,
-              ),
-            )
-          : null,
+      label: '${widget.label}، اضغط Enter أو Space لاختيار التاريخ',
+      child: CallbackShortcuts(
+        bindings: {
+          const SingleActivator(LogicalKeyboardKey.enter): _pickDate,
+          const SingleActivator(LogicalKeyboardKey.numpadEnter): _pickDate,
+          const SingleActivator(LogicalKeyboardKey.space): _pickDate,
+        },
+        child: AppTextField(
+          fieldKey: widget.fieldKey,
+          controller: _controller,
+          label: widget.label,
+          icon: Icons.calendar_month_rounded,
+          accentColor: widget.accentColor,
+          enabled: widget.enabled,
+          readOnly: true,
+          textDirection: widget.textDirection,
+          textAlign: widget.textAlign,
+          onTap: _pickDate,
+          onSubmitted: (_) => _pickDate(),
+          suffixIcon: widget.showPickerButton
+              ? AppTooltip(
+                  message: 'اختيار التاريخ',
+                  child: AppFieldIconButton(
+                    icon: Icons.edit_calendar_rounded,
+                    color: widget.accentColor ?? AppColors.primary,
+                    onPressed: widget.enabled ? _pickDate : null,
+                  ),
+                )
+              : null,
+        ),
+      ),
     );
   }
 
@@ -185,23 +199,36 @@ class _AppDateRangeFieldState extends State<AppDateRangeField> {
 
   @override
   Widget build(BuildContext context) {
-    return AppTextField(
-      fieldKey: widget.fieldKey,
-      controller: _controller,
-      label: widget.label,
-      icon: Icons.date_range_rounded,
-      accentColor: widget.accentColor,
+    return Semantics(
+      button: true,
       enabled: widget.enabled,
-      readOnly: true,
-      textDirection: TextDirection.rtl,
-      textAlign: TextAlign.right,
-      onTap: _pickRange,
-      suffixIcon: AppTooltip(
-        message: 'اختيار نطاق التاريخ',
-        child: AppFieldIconButton(
-          icon: Icons.calendar_view_week_rounded,
-          color: widget.accentColor ?? AppColors.primary,
-          onPressed: widget.enabled ? _pickRange : null,
+      label: '${widget.label}، اضغط Enter أو Space لاختيار نطاق التاريخ',
+      child: CallbackShortcuts(
+        bindings: {
+          const SingleActivator(LogicalKeyboardKey.enter): _pickRange,
+          const SingleActivator(LogicalKeyboardKey.numpadEnter): _pickRange,
+          const SingleActivator(LogicalKeyboardKey.space): _pickRange,
+        },
+        child: AppTextField(
+          fieldKey: widget.fieldKey,
+          controller: _controller,
+          label: widget.label,
+          icon: Icons.date_range_rounded,
+          accentColor: widget.accentColor,
+          enabled: widget.enabled,
+          readOnly: true,
+          textDirection: TextDirection.rtl,
+          textAlign: TextAlign.right,
+          onTap: _pickRange,
+          onSubmitted: (_) => _pickRange(),
+          suffixIcon: AppTooltip(
+            message: 'اختيار نطاق التاريخ',
+            child: AppFieldIconButton(
+              icon: Icons.calendar_view_week_rounded,
+              color: widget.accentColor ?? AppColors.primary,
+              onPressed: widget.enabled ? _pickRange : null,
+            ),
+          ),
         ),
       ),
     );

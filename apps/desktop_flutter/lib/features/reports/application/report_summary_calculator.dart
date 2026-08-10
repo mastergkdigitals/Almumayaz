@@ -13,6 +13,8 @@ abstract final class ReportSummaryCalculator {
     required List<ReportRowDefinition> rows,
     required List<ReportMetricDefinition> fallbackMetrics,
     Map<String, String> selectedFilters = const {},
+    num? cashboxOpeningIqd,
+    num? cashboxOpeningUsd,
   }) {
     final values = switch ((reportId, variantId)) {
       ('salesInvoices', _) => _invoiceValues(
@@ -30,7 +32,11 @@ abstract final class ReportSummaryCalculator {
       ('profits', _) => _profitValues(rows),
       ('inventory', 'currentStock') => _stockValues(rows),
       ('inventory', 'transfers') => _transferValues(rows),
-      ('cashbox', _) => _cashboxValues(rows),
+      ('cashbox', _) => _cashboxValues(
+          rows,
+          openingIqd: cashboxOpeningIqd,
+          openingUsd: cashboxOpeningUsd,
+        ),
       ('partyBalances', _) => _partyBalanceValues(
           rows,
           selectedCurrency: selectedFilters['currency'],
@@ -86,19 +92,30 @@ abstract final class ReportSummaryCalculator {
     for (final currency in const ['IQD', 'USD']) {
       final currencyRows = rows
           .where((row) => _hasFilterValue(row, 'currency', currency))
+          .toList(growable: false);
+      final costedRows = currencyRows
           .where((row) => _numberAt(row, 10) != null)
           .toList(growable: false);
       final sales = _sumColumn(currencyRows, 9);
-      final cost = _sumColumn(currencyRows, 10);
-      final profit = _sumColumn(currencyRows, 11);
+      final costedSales = _sumColumn(costedRows, 9);
+      final cost = _sumColumn(costedRows, 10);
+      final profit = _sumColumn(costedRows, 11);
       final suffix = currency == 'IQD' ? 'دينار' : 'دولار';
       final decimals = currency == 'IQD' ? 0 : 2;
       values['المبيعات المحتسبة - $suffix'] =
           _format(sales, decimals: decimals);
+      if (currencyRows.isNotEmpty && costedRows.isEmpty) {
+        values['التكلفة - $suffix'] = 'غير متوفرة';
+        values['الربح - $suffix'] = 'غير متوفر';
+        values['هامش الربح - $suffix'] = 'غير متوفر';
+        continue;
+      }
       values['التكلفة - $suffix'] = _format(cost, decimals: decimals);
       values['الربح - $suffix'] = _format(profit, decimals: decimals);
       values['هامش الربح - $suffix'] =
-          sales == 0 ? '0.00%' : '${(profit / sales * 100).toStringAsFixed(2)}%';
+          costedSales == 0
+              ? '0.00%'
+              : '${(profit / costedSales * 100).toStringAsFixed(2)}%';
     }
     return values;
   }
@@ -150,10 +167,12 @@ abstract final class ReportSummaryCalculator {
   }
 
   static Map<String, String> _cashboxValues(
-    List<ReportRowDefinition> rows,
-  ) {
-    const openingIqd = 9800000.0;
-    const openingUsd = 4500.0;
+    List<ReportRowDefinition> rows, {
+    num? openingIqd,
+    num? openingUsd,
+  }) {
+    final resolvedOpeningIqd = (openingIqd ?? 9800000).toDouble();
+    final resolvedOpeningUsd = (openingUsd ?? 4500).toDouble();
 
     double received(int amountColumn) => rows
         .where((row) => _textAt(row, 4) == 'قبض')
@@ -185,12 +204,14 @@ abstract final class ReportSummaryCalculator {
       'القبض - دينار': _format(receivedIqd),
       'الصرف - دينار': _format(spentIqd),
       'الصافي - دينار': _format(netIqd),
-      'الرصيد - دينار': _format(hasIqd ? openingIqd + netIqd : 0),
+      'الرصيد - دينار': _format(
+        hasIqd ? resolvedOpeningIqd + netIqd : 0,
+      ),
       'القبض - دولار': _format(receivedUsd, decimals: 2),
       'الصرف - دولار': _format(spentUsd, decimals: 2),
       'الصافي - دولار': _format(netUsd, decimals: 2),
       'الرصيد - دولار': _format(
-        hasUsd ? openingUsd + netUsd : 0,
+        hasUsd ? resolvedOpeningUsd + netUsd : 0,
         decimals: 2,
       ),
       'عدد الحركات': '${rows.length}',

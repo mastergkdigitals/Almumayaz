@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../core/design/app_design_system.dart';
+import '../../application/report_data_snapshot_service.dart';
 import '../../application/report_output_service.dart';
 import '../../application/report_rows_service.dart';
 import '../../application/report_summary_calculator.dart';
@@ -22,6 +25,7 @@ class ReportSectionView extends StatefulWidget {
     this.printService = const DemoReportOutputService(),
     this.exportService = const DemoReportOutputService(),
     this.initialDropdownValues = const {},
+    this.refreshToken = 0,
   });
 
   final ReportDefinition definition;
@@ -31,6 +35,7 @@ class ReportSectionView extends StatefulWidget {
   final ReportPrintService printService;
   final ReportExportService exportService;
   final Map<String, String> initialDropdownValues;
+  final int refreshToken;
 
   @override
   State<ReportSectionView> createState() => _ReportSectionViewState();
@@ -44,12 +49,15 @@ class _ReportSectionViewState extends State<ReportSectionView> {
 
   late ReportVariantDefinition _variant;
   late List<ReportRowDefinition> _loadedRows;
+  Map<String, List<ReportFilterOption>> _runtimeFilterOptions = const {};
+  CashboxReportMetadata? _cashboxMetadata;
   DateTimeRange? _dateRange;
   Map<String, String> _dropdownValues = {};
   String? _selectedRowId;
   bool _isLoading = false;
   String? _loadError;
   ReportOutputAction? _activeOutput;
+  int _loadGeneration = 0;
 
   Color get _accentColor => widget.definition.palette.middle;
 
@@ -62,10 +70,31 @@ class _ReportSectionViewState extends State<ReportSectionView> {
       ..._defaultDropdownValues(_variant),
       ...widget.initialDropdownValues,
     };
+    if (widget.rowsService is ReportDataSnapshotService) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          unawaited(
+            _refreshRows(showResultToast: false, focusTable: false),
+          );
+        }
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant ReportSectionView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.rowsService != widget.rowsService ||
+        oldWidget.refreshToken != widget.refreshToken) {
+      unawaited(
+        _refreshRows(showResultToast: false, focusTable: false),
+      );
+    }
   }
 
   @override
   void dispose() {
+    _loadGeneration++;
     _searchController.dispose();
     _searchFocusNode.dispose();
     _tableFocusNode.dispose();
@@ -84,6 +113,13 @@ class _ReportSectionViewState extends State<ReportSectionView> {
     };
   }
 
+  List<ReportFilterDefinition> get _effectiveFilters => [
+        for (final filter in _variant.filters)
+          _runtimeFilterOptions[filter.id] == null
+              ? filter
+              : filter.withOptions(_runtimeFilterOptions[filter.id]!),
+      ];
+
   ReportRowsRequest _rowsRequest(ReportVariantDefinition variant) {
     return ReportRowsRequest(
       reportId: widget.definition.id,
@@ -93,12 +129,10 @@ class _ReportSectionViewState extends State<ReportSectionView> {
 
   List<ReportRowDefinition> _initialRows(ReportVariantDefinition variant) {
     final service = widget.rowsService;
-    final ReportRowsSnapshotProvider? snapshotProvider =
-        service is ReportRowsSnapshotProvider
-        ? service as ReportRowsSnapshotProvider
-        : null;
-    if (snapshotProvider == null) return const [];
-    return snapshotProvider.snapshot(_rowsRequest(variant));
+    if (service case ReportRowsSnapshotProvider snapshotProvider) {
+      return snapshotProvider.snapshot(_rowsRequest(variant));
+    }
+    return const [];
   }
 
   void _focusSearch() {
@@ -106,7 +140,7 @@ class _ReportSectionViewState extends State<ReportSectionView> {
   }
 
   String? get _missingReferenceMessage {
-    for (final filter in _variant.filters) {
+    for (final filter in _effectiveFilters) {
       if (filter.kind != ReportFilterKind.dropdown) continue;
       if (filter.options.isEmpty) {
         return 'لا توجد قيم متاحة في ${filter.label}. '
@@ -135,7 +169,14 @@ class _ReportSectionViewState extends State<ReportSectionView> {
       _dropdownValues = _defaultDropdownValues(variant);
       _selectedRowId = null;
       _loadError = null;
+      _runtimeFilterOptions = const {};
+      _cashboxMetadata = null;
     });
+    if (widget.rowsService is ReportDataSnapshotService) {
+      unawaited(
+        _refreshRows(showResultToast: false, focusTable: false),
+      );
+    }
   }
 
   void _resetFilters() {
@@ -151,12 +192,19 @@ class _ReportSectionViewState extends State<ReportSectionView> {
 
   Future<void> _showReport() async {
     FocusManager.instance.primaryFocus?.unfocus();
-    if (_isLoading) return;
+    await _refreshRows(showResultToast: true, focusTable: true);
+  }
+
+  Future<bool> _refreshRows({
+    required bool showResultToast,
+    required bool focusTable,
+  }) async {
     final missingReference = _missingReferenceMessage;
     if (missingReference != null) {
       AppToast.showError(context, missingReference);
-      return;
+      return false;
     }
+    final generation = ++_loadGeneration;
     setState(() {
       _isLoading = true;
       _loadError = null;
@@ -164,58 +212,85 @@ class _ReportSectionViewState extends State<ReportSectionView> {
     });
     final requestedVariant = _variant;
     try {
-      final rows = await widget.rowsService.load(
-        _rowsRequest(requestedVariant),
-      );
-      if (!mounted || _variant.id != requestedVariant.id) return;
-      setState(() => _loadedRows = rows);
-      _tableFocusNode.requestFocus();
-      AppToast.showInfo(
-        context,
-        'تم عرض ${_visibleRows.length} نتيجة تجريبية',
-      );
-    } catch (_) {
-      if (!mounted) return;
+      final request = _rowsRequest(requestedVariant);
+      final service = widget.rowsService;
+      final snapshot = service is ReportDataSnapshotService
+          ? await service.loadSnapshot(request)
+          : service is ReportRowsSnapshotProvider
+              ? ReportDataSnapshot(rows: service.snapshot(request))
+              : ReportDataSnapshot(rows: await service.load(request));
+      if (!mounted ||
+          generation != _loadGeneration ||
+          _variant.id != requestedVariant.id) {
+        return false;
+      }
       setState(() {
-        _loadError = 'تعذر تحميل بيانات التقرير التجريبية';
+        _loadedRows = snapshot.rows;
+        _runtimeFilterOptions = snapshot.filterOptions;
+        _cashboxMetadata = snapshot.cashboxMetadata;
+      });
+      if (focusTable) _tableFocusNode.requestFocus();
+      if (showResultToast) {
+        AppToast.showInfo(
+          context,
+          'تم عرض ${_visibleRows.length} نتيجة',
+        );
+      }
+      return true;
+    } catch (_) {
+      if (!mounted || generation != _loadGeneration) return false;
+      setState(() {
+        _loadError = 'تعذر تحميل بيانات التقرير';
       });
       AppToast.showError(context, _loadError!);
+      return false;
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted && generation == _loadGeneration) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   Future<void> _runOutput(ReportOutputAction action) async {
     FocusManager.instance.primaryFocus?.unfocus();
     if (_activeOutput != null) return;
-    final rows = _visibleRows;
-    if (rows.isEmpty) {
-      AppToast.showWarning(context, 'لا توجد نتائج لتجهيزها');
-      return;
-    }
-
-    if (action == ReportOutputAction.printPreview) {
-      AppToast.showInfo(
-        context,
-        'تم تجهيز معاينة طباعة ${widget.definition.title}',
-      );
-    }
     setState(() => _activeOutput = action);
-    final request = ReportOutputRequest(
-      reportTitle: widget.definition.title,
-      variantLabel: _variant.label,
-      columnLabels: [
-        for (final column in _variant.columns) column.label,
-      ],
-      rowValues: [
-        for (final row in rows) row.cells,
-      ],
-      metrics: {
-        for (final metric in _calculatedMetrics)
-          metric.label: metric.value,
-      },
-    );
     try {
+      final refreshed = await _refreshRows(
+        showResultToast: false,
+        focusTable: false,
+      );
+      if (!mounted || !refreshed) return;
+      final missingReference = _missingReferenceMessage;
+      if (missingReference != null) {
+        AppToast.showError(context, missingReference);
+        return;
+      }
+      final rows = _visibleRows;
+      if (rows.isEmpty) {
+        AppToast.showWarning(context, 'لا توجد نتائج لتجهيزها');
+        return;
+      }
+      if (action == ReportOutputAction.printPreview) {
+        AppToast.showInfo(
+          context,
+          'تم تجهيز معاينة طباعة ${widget.definition.title}',
+        );
+      }
+      final request = ReportOutputRequest(
+        reportTitle: widget.definition.title,
+        variantLabel: _variant.label,
+        columnLabels: [
+          for (final column in _variant.columns) column.label,
+        ],
+        rowValues: [
+          for (final row in rows) row.cells,
+        ],
+        metrics: {
+          for (final metric in _calculatedMetrics)
+            metric.label: metric.value,
+        },
+      );
       final result = switch (action) {
         ReportOutputAction.printPreview =>
           await widget.printService.createPreview(request),
@@ -239,6 +314,10 @@ class _ReportSectionViewState extends State<ReportSectionView> {
       if (!mounted) return;
       setState(() => _activeOutput = null);
       AppToast.showError(context, 'تعذر تجهيز مخرجات التقرير');
+    } finally {
+      if (mounted && _activeOutput == action) {
+        setState(() => _activeOutput = null);
+      }
     }
   }
 
@@ -259,43 +338,6 @@ class _ReportSectionViewState extends State<ReportSectionView> {
         ),
       ),
     );
-  }
-
-  KeyEventResult _handleTableKeyEvent(FocusNode _, KeyEvent event) {
-    if (event is! KeyDownEvent || _visibleRows.isEmpty) {
-      return KeyEventResult.ignored;
-    }
-    final rows = _visibleRows;
-    var index = rows.indexWhere((row) => row.id == _selectedRowId);
-    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-      index = index < 0
-          ? 0
-          : (index + 1).clamp(0, rows.length - 1).toInt();
-    } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-      index = index < 0
-          ? rows.length - 1
-          : (index - 1).clamp(0, rows.length - 1).toInt();
-    } else if (event.logicalKey == LogicalKeyboardKey.home) {
-      index = 0;
-    } else if (event.logicalKey == LogicalKeyboardKey.end) {
-      index = rows.length - 1;
-    } else if (event.logicalKey == LogicalKeyboardKey.enter && index < 0) {
-      index = 0;
-    } else {
-      return KeyEventResult.ignored;
-    }
-    setState(() => _selectedRowId = rows[index].id);
-    if (_tableScrollController.hasClients) {
-      _tableScrollController.animateTo(
-        (index * 52.0).clamp(
-          0,
-          _tableScrollController.position.maxScrollExtent,
-        ).toDouble(),
-        duration: const Duration(milliseconds: 120),
-        curve: Curves.easeOut,
-      );
-    }
-    return KeyEventResult.handled;
   }
 
   List<ReportRowDefinition> get _visibleRows {
@@ -337,6 +379,8 @@ class _ReportSectionViewState extends State<ReportSectionView> {
       rows: _visibleRows,
       fallbackMetrics: _variant.metrics,
       selectedFilters: _dropdownValues,
+      cashboxOpeningIqd: _cashboxMetadata?.openingIqd.majorUnits,
+      cashboxOpeningUsd: _cashboxMetadata?.openingUsd.majorUnits,
     );
   }
 
@@ -384,7 +428,7 @@ class _ReportSectionViewState extends State<ReportSectionView> {
                 const SizedBox(height: AppSpacing.sm),
                 ReportFilterPanel(
                   reportId: reportId,
-                  filters: _variant.filters,
+                  filters: _effectiveFilters,
                   dropdownValues: _dropdownValues,
                   dateRange: _dateRange,
                   accentColor: _accentColor,
@@ -395,7 +439,7 @@ class _ReportSectionViewState extends State<ReportSectionView> {
                     });
                   },
                   onDropdownChanged: (filterId, value) {
-                    final filter = _variant.filters.singleWhere(
+                    final filter = _effectiveFilters.singleWhere(
                       (candidate) => candidate.id == filterId,
                     );
                     setState(() {
@@ -461,7 +505,11 @@ class _ReportSectionViewState extends State<ReportSectionView> {
                     missingReference: _missingReferenceMessage,
                     tableFocusNode: _tableFocusNode,
                     tableScrollController: _tableScrollController,
-                    onTableKeyEvent: _handleTableKeyEvent,
+                    onKeyboardSelectionChanged: (index) {
+                      final rows = _visibleRows;
+                      if (index < 0 || index >= rows.length) return;
+                      setState(() => _selectedRowId = rows[index].id);
+                    },
                     onRetry: _showReport,
                     onResetFilters: _resetFilters,
                     onRowTap: (row) {

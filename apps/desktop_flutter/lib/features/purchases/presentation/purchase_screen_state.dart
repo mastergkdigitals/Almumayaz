@@ -51,6 +51,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
   var _isDocumentActionRunning = false;
   Future<bool>? _pendingDiscardConfirmation;
   AppStore? _store;
+  late PartyStatementService _statementService;
   InvoiceEditorCoordinator<_DemoPurchaseInvoice>? _coordinator;
   AppDataState<List<_DemoPurchaseInvoice>> _invoiceState =
       const AppDataState.loading();
@@ -121,6 +122,13 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
     if (_didStartLoading) return;
     _didStartLoading = true;
     _store = AppStoreScope.of(context, listen: false);
+    final repositories = _store!.repositories;
+    _statementService = RepositoryPartyStatementService(
+      parties: repositories.parties,
+      sales: repositories.sales,
+      purchases: repositories.purchases,
+      cashbox: repositories.cashbox,
+    );
     _coordinator = InvoiceEditorCoordinator<_DemoPurchaseInvoice>(
       loadRecords: _loadRepositoryInvoices,
     );

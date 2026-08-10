@@ -1,15 +1,48 @@
 import '../../../core/data/app_repository.dart';
+import '../../../core/data/demo_transaction_runner.dart';
 import '../../../core/domain/business_values.dart';
+import '../../parties/data/demo_party_repository.dart';
 import '../../settings/domain/operational_master_data.dart';
 import '../../settings/domain/operational_master_data_repository.dart';
 import '../domain/cashbox_repository.dart';
 import '../domain/cashbox_voucher.dart';
 
+class DemoInvoiceCashboxPosting {
+  const DemoInvoiceCashboxPosting({
+    required this.source,
+    required this.createdTimestamp,
+    required this.type,
+    required this.exchangeRate,
+    required this.amount,
+    required this.notes,
+  });
+
+  final CashboxVoucherSource source;
+  final AuditTimestamp createdTimestamp;
+  final CashboxVoucherType type;
+  final ExchangeRate exchangeRate;
+  final Money amount;
+  final String notes;
+}
+
+/// Fully validated Cashbox projection waiting for a synchronous commit.
+class DemoCashboxStagedMutation {
+  const DemoCashboxStagedMutation._({
+    required this.values,
+    this.newlyIssuedNumber,
+  });
+
+  final Map<EntityId, CashboxVoucher> values;
+  final int? newlyIssuedNumber;
+}
+
 class DemoCashboxRepository extends InMemoryDemoRepository<CashboxVoucher>
-    implements CashboxRepository {
+    implements CashboxRepository, CashboxIssuedNumberRepository {
   factory DemoCashboxRepository({
     Iterable<CashboxVoucher>? initialValues,
     required OperationalMasterDataRepository masterData,
+    DemoPartyRepository? parties,
+    DemoTransactionRunner? transactionRunner,
     CashboxBalanceSnapshot openingBalance = const CashboxBalanceSnapshot(
       iqd: Money.fromMinorUnits(9800000, AppCurrency.iqd),
       usd: Money.fromMinorUnits(450000, AppCurrency.usd),
@@ -18,9 +51,17 @@ class DemoCashboxRepository extends InMemoryDemoRepository<CashboxVoucher>
     final values = List<CashboxVoucher>.of(
       initialValues ?? demoCashboxVouchers(),
     );
+    final resolvedRunner = transactionRunner ?? DemoTransactionRunner();
+    final resolvedParties = parties ??
+        DemoPartyRepository(
+          masterData: masterData,
+          transactionRunner: resolvedRunner,
+        );
     return DemoCashboxRepository._(
       initialValues: values,
       masterData: masterData,
+      parties: resolvedParties,
+      transactionRunner: resolvedRunner,
       openingBalance: openingBalance,
     );
   }
@@ -28,18 +69,30 @@ class DemoCashboxRepository extends InMemoryDemoRepository<CashboxVoucher>
   DemoCashboxRepository._({
     required List<CashboxVoucher> initialValues,
     required OperationalMasterDataRepository masterData,
+    required DemoPartyRepository parties,
+    required DemoTransactionRunner transactionRunner,
     required CashboxBalanceSnapshot openingBalance,
   })  : _masterData = masterData,
+        _parties = parties,
+        _transactionRunner = transactionRunner,
         _openingBalance = openingBalance,
         _openingBalances = _resolveOpeningBalances(initialValues),
+        _highestIssuedNumber = _highestVoucherNumber(initialValues),
+        _issuedNumbers = {
+          for (final voucher in initialValues) voucher.number,
+        },
         super(
           initialValues: initialValues,
           idOf: (voucher) => voucher.entityId,
         );
 
   final OperationalMasterDataRepository _masterData;
+  final DemoPartyRepository _parties;
+  final DemoTransactionRunner _transactionRunner;
   final CashboxBalanceSnapshot _openingBalance;
   final Map<EntityId, CashboxAccountBalance> _openingBalances;
+  int _highestIssuedNumber;
+  final Set<int> _issuedNumbers;
 
   @override
   Future<List<CashboxVoucher>> search(String query) async {
@@ -93,44 +146,73 @@ class DemoCashboxRepository extends InMemoryDemoRepository<CashboxVoucher>
   }
 
   @override
-  Future<CashboxVoucher> save(CashboxVoucher value) async {
-    final mainId = value.mainAccountEntityId;
-    final subId = value.subaccountEntityId;
-    final mainExists = (await getMainAccounts()).any(
-      (account) => account.entityId == mainId,
-    );
-    final subExists = (await getSubaccounts(mainId)).any(
-      (account) => account.entityId == subId,
-    );
-    if (!mainExists || !subExists) {
-      throw StateError('حساب الصندوق المحدد غير موجود');
-    }
-    final values = await getAll();
-    final index = values.indexWhere(
-      (voucher) => voucher.entityId == value.entityId,
-    );
-    final updated = [...values];
-    if (index < 0) {
-      updated.add(value);
-    } else {
-      updated[index] = value;
-    }
-    final normalized = _normalizeBalances(updated);
-    for (final voucher in normalized) {
-      await super.save(voucher);
-    }
-    return normalized.firstWhere(
-      (voucher) => voucher.entityId == value.entityId,
-    );
+  Future<CashboxVoucher> save(CashboxVoucher value) {
+    return _transactionRunner.run(() async {
+      if (value.isSystemGenerated) {
+        throw StateError('لا يمكن حفظ قيد صندوق آلي يدوياً');
+      }
+      final existing = getDemoValue(value.entityId);
+      if (existing?.isSystemGenerated ?? false) {
+        throw StateError('لا يمكن تعديل قيد صندوق آلي');
+      }
+      _ensureManualNumberAvailable(value, existing: existing);
+      final account = await _loadAccount(
+        value.mainAccountEntityId,
+        value.subaccountEntityId,
+      );
+      final normalizedValue = value.copyWithTyped(
+        mainAccountLabel: account.main.name,
+        subaccountLabel: '${account.sub.number} - ${account.sub.name}',
+      );
+      final partyAdjustments = <DemoPartyBalanceAdjustment>[
+        if (existing != null)
+          ...await _partyAdjustments(existing, direction: -1),
+        ...await _partyAdjustments(normalizedValue, direction: 1),
+      ];
+      final stagedCashbox = _stageUpsert(
+        normalizedValue,
+        newlyIssuedNumber: existing == null ? value.number : null,
+      );
+      final stagedParties = _parties.stageBalanceAdjustments(
+        partyAdjustments,
+      );
+
+      commitCashboxMutation(stagedCashbox);
+      _parties.commitPartySnapshot(stagedParties);
+      return stagedCashbox.values[value.entityId]!;
+    });
   }
 
   @override
-  Future<void> delete(EntityId id) async {
-    await super.delete(id);
-    final normalized = _normalizeBalances(await getAll());
-    for (final voucher in normalized) {
-      await super.save(voucher);
+  Future<DeleteDecision> canDelete(EntityId id) async {
+    final existing = getDemoValue(id);
+    if (existing == null) {
+      return const DeleteDecision.blocked('السجل غير موجود');
     }
+    if (existing.isSystemGenerated) {
+      return const DeleteDecision.blocked(
+        'لا يمكن حذف قيد صندوق مولد من فاتورة',
+      );
+    }
+    return const DeleteDecision.allowed();
+  }
+
+  @override
+  Future<void> delete(EntityId id) {
+    return _transactionRunner.run(() async {
+      final existing = getDemoValue(id);
+      if (existing == null) throw StateError('السجل غير موجود');
+      if (existing.isSystemGenerated) {
+        throw StateError('لا يمكن حذف قيد صندوق مولد من فاتورة');
+      }
+      final stagedParties = _parties.stageBalanceAdjustments(
+        await _partyAdjustments(existing, direction: -1),
+      );
+      final stagedCashbox = _stageRemove(existing.entityId);
+
+      commitCashboxMutation(stagedCashbox);
+      _parties.commitPartySnapshot(stagedParties);
+    });
   }
 
   @override
@@ -165,6 +247,82 @@ class DemoCashboxRepository extends InMemoryDemoRepository<CashboxVoucher>
   Future<CashboxBalanceSnapshot> getOpeningBalance() async => _openingBalance;
 
   @override
+  Future<int> nextVoucherNumber() async => _highestIssuedNumber + 1;
+
+  /// Stages creation, replacement, or zero-amount removal of the one system
+  /// voucher owned by [posting.source]. The caller must already own the
+  /// shared transaction runner and must commit with [commitCashboxMutation].
+  Future<DemoCashboxStagedMutation> stageInvoicePosting(
+    DemoInvoiceCashboxPosting posting,
+  ) async {
+    final existing = _sourceVoucher(posting.source);
+    if (posting.amount.isZero) {
+      return existing == null
+          ? DemoCashboxStagedMutation._(values: createDemoSnapshot())
+          : _stageRemove(existing.entityId);
+    }
+    if (posting.amount.isNegative) {
+      throw StateError('مبلغ قيد الفاتورة لا يمكن أن يكون سالباً');
+    }
+    final accounts = await _loadPostingAccount();
+    final number = existing?.number ?? _highestIssuedNumber + 1;
+    final entityId = existing?.entityId ?? _sourceVoucherId(posting.source);
+    final collision = getDemoValue(entityId);
+    if (collision != null && collision.entityId != existing?.entityId) {
+      throw StateError('معرف قيد الصندوق الآلي مستخدم مسبقاً');
+    }
+    final zeroIqd = Money.zero(AppCurrency.iqd);
+    final zeroUsd = Money.zero(AppCurrency.usd);
+    final value = CashboxVoucher.typed(
+      entityId: entityId,
+      number: number,
+      createdTimestamp: posting.createdTimestamp,
+      type: posting.type,
+      mainAccountEntityId: accounts.main.id,
+      mainAccountLabel: accounts.main.name,
+      subaccountEntityId: accounts.sub.id,
+      subaccountLabel: '${accounts.sub.number} - ${accounts.sub.name}',
+      exchangeRateValue: posting.exchangeRate,
+      iqdAmount:
+          posting.amount.currency == AppCurrency.iqd ? posting.amount : zeroIqd,
+      usdAmount:
+          posting.amount.currency == AppCurrency.usd ? posting.amount : zeroUsd,
+      iqdBalanceBefore: existing?.iqdBalanceBefore ?? zeroIqd,
+      iqdBalanceAfter: existing?.iqdBalanceAfter ?? zeroIqd,
+      usdBalanceBefore: existing?.usdBalanceBefore ?? zeroUsd,
+      usdBalanceAfter: existing?.usdBalanceAfter ?? zeroUsd,
+      notes: posting.notes,
+      source: posting.source,
+    );
+    return _stageUpsert(
+      value,
+      newlyIssuedNumber: existing == null ? number : null,
+    );
+  }
+
+  /// Stages removal of the system posting for an invoice. Issued voucher
+  /// numbers remain reserved after the posting is removed.
+  DemoCashboxStagedMutation stageRemoveInvoicePosting(
+    CashboxVoucherSource source,
+  ) {
+    final existing = _sourceVoucher(source);
+    return existing == null
+        ? DemoCashboxStagedMutation._(values: createDemoSnapshot())
+        : _stageRemove(existing.entityId);
+  }
+
+  /// Synchronous/no-fail final commit used by the invoice coordinator.
+  void commitCashboxMutation(DemoCashboxStagedMutation staged) {
+    commitDemoSnapshot(staged.values);
+    final issuedNumber = staged.newlyIssuedNumber;
+    if (issuedNumber == null) return;
+    _issuedNumbers.add(issuedNumber);
+    if (issuedNumber > _highestIssuedNumber) {
+      _highestIssuedNumber = issuedNumber;
+    }
+  }
+
+  @override
   Future<List<CashboxVoucher>> getByParty(EntityId partyId) async {
     final relatedAccountIds = (await _masterData.getByKind(
       OperationalMasterDataKind.cashboxSubaccount,
@@ -172,10 +330,11 @@ class DemoCashboxRepository extends InMemoryDemoRepository<CashboxVoucher>
         .where((account) => account.relatedEntityId == partyId)
         .map((account) => account.id)
         .toSet();
-    if (relatedAccountIds.isEmpty) return const [];
     return List.unmodifiable(
       (await getAll()).where(
-        (voucher) => relatedAccountIds.contains(voucher.subaccountEntityId),
+        (voucher) =>
+            relatedAccountIds.contains(voucher.subaccountEntityId) ||
+            voucher.source?.partyId == partyId,
       ),
     );
   }
@@ -188,7 +347,10 @@ class DemoCashboxRepository extends InMemoryDemoRepository<CashboxVoucher>
         .where((account) => account.relatedEntityId == partyId)
         .map((account) => account.id)
         .toSet();
-    return relatedAccounts.isNotEmpty;
+    if (relatedAccounts.isNotEmpty) return true;
+    return (await getAll()).any(
+      (voucher) => voucher.source?.partyId == partyId,
+    );
   }
 
   @override
@@ -212,6 +374,121 @@ class DemoCashboxRepository extends InMemoryDemoRepository<CashboxVoucher>
       );
     }
     return false;
+  }
+
+  void _ensureManualNumberAvailable(
+    CashboxVoucher value, {
+    required CashboxVoucher? existing,
+  }) {
+    if (value.number < 1) {
+      throw StateError('رقم سند الصندوق يجب أن يكون موجباً');
+    }
+    if (existing != null && existing.number != value.number) {
+      throw StateError('لا يمكن تغيير رقم سند صندوق صادر');
+    }
+    if (existing == null && _issuedNumbers.contains(value.number)) {
+      throw StateError('رقم سند الصندوق مستخدم مسبقاً');
+    }
+  }
+
+  Future<({
+    OperationalMasterDataRecord main,
+    OperationalMasterDataRecord sub,
+  })> _loadAccount(EntityId mainId, EntityId subId) async {
+    final main = await _masterData.getById(mainId);
+    final sub = await _masterData.getById(subId);
+    if (main?.kind != OperationalMasterDataKind.cashboxMainAccount ||
+        sub?.kind != OperationalMasterDataKind.cashboxSubaccount ||
+        sub?.parentId != mainId) {
+      throw StateError('حساب الصندوق المحدد غير موجود');
+    }
+    return (main: main!, sub: sub!);
+  }
+
+  Future<({
+    OperationalMasterDataRecord main,
+    OperationalMasterDataRecord sub,
+  })> _loadPostingAccount() async {
+    // Invoice Party balances already contain the authoritative net invoice
+    // effect. Generated received/paid postings therefore use a generic
+    // settlement account and retain Party linkage only in source metadata.
+    final fallbackMainId = EntityId.demo('cashbox-main-account', 1);
+    final fallbackSubId = EntityId.demo('cashbox-subaccount', 1);
+    final main = await _masterData.getById(fallbackMainId);
+    final sub = await _masterData.getById(fallbackSubId);
+    if (main?.kind == OperationalMasterDataKind.cashboxMainAccount &&
+        sub?.kind == OperationalMasterDataKind.cashboxSubaccount &&
+        sub?.parentId == fallbackMainId &&
+        sub?.relatedEntityId == null) {
+      return (main: main!, sub: sub!);
+    }
+    throw StateError('حساب تسويات الفواتير الآلي غير موجود');
+  }
+
+  Future<List<DemoPartyBalanceAdjustment>> _partyAdjustments(
+    CashboxVoucher voucher, {
+    required int direction,
+  }) async {
+    final subaccount = await _masterData.getById(
+      voucher.subaccountEntityId,
+    );
+    final partyId = subaccount?.relatedEntityId;
+    if (partyId == null) return const [];
+    final voucherDirection =
+        voucher.type == CashboxVoucherType.receipt ? -1 : 1;
+    final multiplier = voucherDirection * direction;
+    return [
+      DemoPartyBalanceAdjustment(
+        partyId: partyId,
+        delta: voucher.iqdAmount * multiplier,
+      ),
+      DemoPartyBalanceAdjustment(
+        partyId: partyId,
+        delta: voucher.usdAmount * multiplier,
+      ),
+    ];
+  }
+
+  CashboxVoucher? _sourceVoucher(CashboxVoucherSource source) {
+    final matches = createDemoSnapshot().values.where((voucher) {
+      final candidate = voucher.source;
+      return candidate?.kind == source.kind &&
+          candidate?.sourceId == source.sourceId;
+    }).toList();
+    if (matches.length > 1) {
+      throw StateError('يوجد أكثر من قيد صندوق للمصدر نفسه');
+    }
+    return matches.isEmpty ? null : matches.single;
+  }
+
+  EntityId _sourceVoucherId(CashboxVoucherSource source) {
+    return EntityId(
+      'cashbox-system-${source.kind.name}-${source.sourceId.value}',
+    );
+  }
+
+  DemoCashboxStagedMutation _stageUpsert(
+    CashboxVoucher value, {
+    required int? newlyIssuedNumber,
+  }) {
+    final staged = createDemoSnapshot()..[value.entityId] = value;
+    return DemoCashboxStagedMutation._(
+      values: {
+        for (final voucher in _normalizeBalances(staged.values.toList()))
+          voucher.entityId: voucher,
+      },
+      newlyIssuedNumber: newlyIssuedNumber,
+    );
+  }
+
+  DemoCashboxStagedMutation _stageRemove(EntityId id) {
+    final staged = createDemoSnapshot()..remove(id);
+    return DemoCashboxStagedMutation._(
+      values: {
+        for (final voucher in _normalizeBalances(staged.values.toList()))
+          voucher.entityId: voucher,
+      },
+    );
   }
 
   List<CashboxVoucher> _normalizeBalances(List<CashboxVoucher> values) {
@@ -267,6 +544,14 @@ Map<EntityId, CashboxAccountBalance> _resolveOpeningBalances(
     );
   }
   return Map.unmodifiable(openings);
+}
+
+int _highestVoucherNumber(Iterable<CashboxVoucher> values) {
+  var highest = 0;
+  for (final voucher in values) {
+    if (voucher.number > highest) highest = voucher.number;
+  }
+  return highest;
 }
 
 CashboxVoucher _demoCashboxVoucher({

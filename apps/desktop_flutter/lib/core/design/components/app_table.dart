@@ -54,7 +54,9 @@ class AppDataTable extends StatefulWidget {
     this.minimumColumnWidth = 180,
     this.isLoading = false,
     this.emptyState,
+    this.focusNode,
     this.verticalScrollController,
+    this.onKeyboardSelectionChanged,
     this.accentColor,
     this.borderColor,
     this.headerBackgroundColor,
@@ -75,7 +77,9 @@ class AppDataTable extends StatefulWidget {
   final double minimumColumnWidth;
   final bool isLoading;
   final Widget? emptyState;
+  final FocusNode? focusNode;
   final ScrollController? verticalScrollController;
+  final ValueChanged<int>? onKeyboardSelectionChanged;
   final Color? accentColor;
   final Color? borderColor;
   final Color? headerBackgroundColor;
@@ -94,12 +98,14 @@ class AppDataTable extends StatefulWidget {
 class _AppDataTableState extends State<AppDataTable> {
   final _internalVerticalScrollController = ScrollController();
   final _horizontalScrollController = ScrollController();
-  final _focusNode = FocusNode(debugLabel: 'appDataTable');
+  final _internalFocusNode = FocusNode(debugLabel: 'appDataTable');
 
   int? _keyboardSelectionIndex;
 
   ScrollController get _verticalScrollController =>
       widget.verticalScrollController ?? _internalVerticalScrollController;
+
+  FocusNode get _focusNode => widget.focusNode ?? _internalFocusNode;
 
   @override
   void initState() {
@@ -128,7 +134,7 @@ class _AppDataTableState extends State<AppDataTable> {
   void dispose() {
     _internalVerticalScrollController.dispose();
     _horizontalScrollController.dispose();
-    _focusNode.dispose();
+    _internalFocusNode.dispose();
     super.dispose();
   }
 
@@ -143,6 +149,14 @@ class _AppDataTableState extends State<AppDataTable> {
     }
     if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
       _moveKeyboardSelection(-1);
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.home) {
+      _moveKeyboardSelectionTo(0);
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.end) {
+      _moveKeyboardSelectionTo(widget.rows.length - 1);
       return KeyEventResult.handled;
     }
     if (event.logicalKey == LogicalKeyboardKey.enter ||
@@ -168,10 +182,16 @@ class _AppDataTableState extends State<AppDataTable> {
         : (currentIndex + delta)
             .clamp(0, widget.rows.length - 1)
             .toInt();
-    if (currentIndex != nextIndex) {
+    _moveKeyboardSelectionTo(nextIndex);
+  }
+
+  void _moveKeyboardSelectionTo(int index) {
+    final nextIndex = index.clamp(0, widget.rows.length - 1).toInt();
+    if (_keyboardSelectionIndex != nextIndex) {
       setState(() => _keyboardSelectionIndex = nextIndex);
     }
     _focusNode.requestFocus();
+    widget.onKeyboardSelectionChanged?.call(nextIndex);
     _ensureSelectionVisible(nextIndex);
   }
 

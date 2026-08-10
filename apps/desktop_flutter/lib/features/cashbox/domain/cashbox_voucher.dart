@@ -7,6 +7,28 @@ enum CashboxVoucherType {
   receipt,
 }
 
+enum CashboxVoucherSourceKind {
+  salesInvoice,
+  purchaseInvoice,
+}
+
+/// Immutable identity of a system-generated cashbox posting.
+///
+/// Manual edit APIs deliberately cannot replace this metadata. Invoice
+/// coordinators may rebuild the posting details while preserving [sourceId].
+@immutable
+class CashboxVoucherSource {
+  const CashboxVoucherSource({
+    required this.kind,
+    required this.sourceId,
+    required this.partyId,
+  });
+
+  final CashboxVoucherSourceKind kind;
+  final EntityId sourceId;
+  final EntityId partyId;
+}
+
 extension CashboxVoucherTypeLabel on CashboxVoucherType {
   String get label => switch (this) {
         CashboxVoucherType.payment => 'صرف',
@@ -160,6 +182,7 @@ class CashboxVoucher {
     required this.usdBalanceBefore,
     required this.usdBalanceAfter,
     required this.notes,
+    this.source,
   }) {
     _requireCurrency(iqdAmount, AppCurrency.iqd, 'iqdAmount');
     _requireCurrency(usdAmount, AppCurrency.usd, 'usdAmount');
@@ -185,6 +208,9 @@ class CashboxVoucher {
   final Money usdBalanceBefore;
   final Money usdBalanceAfter;
   final String notes;
+  final CashboxVoucherSource? source;
+
+  bool get isSystemGenerated => source != null;
 
   String get id => entityId.value;
   DateTime get createdAt => createdTimestamp.value.toLocal();
@@ -251,6 +277,7 @@ class CashboxVoucher {
           ? usdBalanceAfter
           : Money.fromMajor(balanceAfterUsd, AppCurrency.usd),
       notes: notes ?? this.notes,
+      source: source,
     );
   }
 
@@ -288,6 +315,7 @@ class CashboxVoucher {
       usdBalanceBefore: usdBalanceBefore ?? this.usdBalanceBefore,
       usdBalanceAfter: usdBalanceAfter ?? this.usdBalanceAfter,
       notes: notes ?? this.notes,
+      source: source,
     );
   }
 

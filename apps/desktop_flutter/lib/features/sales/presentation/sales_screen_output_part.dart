@@ -251,10 +251,10 @@ extension _SalesScreenOutputPart on _SalesScreenState {
     }
   }
 
-  DateTime? _firstSalesTransactionDate(String customerName) {
+  DateTime? _firstSalesTransactionDate(EntityId customerId) {
     DateTime? firstDate;
     for (final invoice in _salesInvoices) {
-      if (invoice.customerName != customerName) continue;
+      if (invoice.source.customerId != customerId) continue;
       if (firstDate == null || invoice.dateTime.isBefore(firstDate)) {
         firstDate = invoice.dateTime;
       }
@@ -262,41 +262,19 @@ extension _SalesScreenOutputPart on _SalesScreenState {
     return firstDate;
   }
 
-  List<AppStatementReportEntry> _salesStatementEntries(
-    String customerName,
-    AppStatementOptions options,
+  List<AppStatementReportEntry> _statementReportEntries(
+    PartyStatementResult result,
   ) {
-    final fromDate = DateTime(
-      options.fromDate.year,
-      options.fromDate.month,
-      options.fromDate.day,
-    );
-    final toDateExclusive = DateTime(
-      options.toDate.year,
-      options.toDate.month,
-      options.toDate.day + 1,
-    );
-    final invoices = _salesInvoices.where((invoice) {
-      return invoice.customerName == customerName &&
-          invoice.currency == options.currencyCode &&
-          !invoice.dateTime.isBefore(fromDate) &&
-          invoice.dateTime.isBefore(toDateExclusive);
-    }).toList()
-      ..sort((left, right) => left.dateTime.compareTo(right.dateTime));
-
     return [
-      for (final invoice in invoices)
+      for (final entry in result.entries)
         AppStatementReportEntry(
-          date: invoice.dateTime,
-          balance: AppFormatters.parseNumber(invoice.currentBalance) ?? 0,
-          credit: AppFormatters.parseNumber(invoice.received) ?? 0,
-          debit: AppFormatters.parseNumber(invoice.total) ?? 0,
-          type: 'قائمة بيع',
-          quantity: invoice.items.fold<int>(
-            0,
-            (total, item) => total + item.quantityValue,
-          ),
-          details: 'قائمة بيع رقم ${invoice.id} • ${invoice.saleType}',
+          date: entry.date,
+          balance: entry.balance.majorUnits,
+          credit: entry.credit.majorUnits,
+          debit: entry.debit.majorUnits,
+          type: entry.type.label,
+          quantity: entry.quantity,
+          details: entry.details,
         ),
     ];
   }
@@ -365,6 +343,9 @@ extension _SalesScreenOutputPart on _SalesScreenState {
     _setSalesState(() => _isDocumentActionRunning = true);
     try {
       if (!await _reloadSelectedSalesInvoiceForOutput() || !mounted) return;
+      final selectedInvoice = _selectedInvoice;
+      if (selectedInvoice == null) return;
+      final customerId = selectedInvoice.source.customerId;
       final customerName = _customerNameController.text.trim();
       final displayName =
           customerName.isEmpty ? 'زبون غير محدد' : customerName;
@@ -373,19 +354,38 @@ extension _SalesScreenOutputPart on _SalesScreenState {
         partyName: displayName,
         partyLabel: 'اسم الزبون',
         accentColor: AppModuleColors.sales,
-        firstTransactionDate: _firstSalesTransactionDate(displayName),
+        firstTransactionDate: _firstSalesTransactionDate(customerId),
       );
       if (!mounted || options == null) return;
 
+      final result = await _statementService.load(
+        PartyStatementQuery(
+          partyId: customerId,
+          fromDate: BusinessDate.fromDateTime(options.fromDate),
+          toDate: BusinessDate.fromDateTime(options.toDate),
+          currency: AppCurrency.parse(options.currencyCode),
+        ),
+      );
+      if (!mounted) return;
       await AppStatementReportDialog.show(
         context,
         partyName: displayName,
         options: options,
-        entries: _salesStatementEntries(displayName, options),
+        openingBalance: result.openingBalance.majorUnits,
+        entries: _statementReportEntries(result),
         accentColor: AppModuleColors.sales,
         printService: widget.printService,
         exportService: widget.exportService,
       );
+    } on ServiceFailure catch (failure) {
+      if (mounted) AppToast.showError(context, failure.message);
+    } catch (_) {
+      if (mounted) {
+        AppToast.showError(
+          context,
+          'تعذر تحميل كشف حساب الزبون. حاول مرة أخرى.',
+        );
+      }
     } finally {
       if (mounted) {
         _setSalesState(() => _isDocumentActionRunning = false);

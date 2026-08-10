@@ -24,10 +24,19 @@ abstract interface class CashboxRepository
 
   Future<CashboxBalanceSnapshot> getOpeningBalance();
 
-  /// Returns vouchers posted to the party's canonical cashbox subaccount.
+  /// Returns vouchers related to the party, including source-linked system
+  /// postings. Consumers that already represent invoice settlement must
+  /// exclude [CashboxVoucher.isSystemGenerated].
   Future<List<CashboxVoucher>> getByParty(EntityId partyId);
 
   Future<bool> referencesParty(EntityId partyId);
 
   Future<bool> referencesMasterData(EntityId masterDataId);
+}
+
+/// Capability exposed by repositories that retain issued-number history.
+abstract interface class CashboxIssuedNumberRepository {
+  /// Returns a number greater than every number ever issued, including
+  /// deleted vouchers.
+  Future<int> nextVoucherNumber();
 }

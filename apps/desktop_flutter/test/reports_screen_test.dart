@@ -1,11 +1,15 @@
 import 'package:erp/app/app.dart';
+import 'package:erp/core/app_state/app_store.dart';
 import 'package:erp/core/design/app_design_system.dart';
+import 'package:erp/core/domain/business_values.dart';
+import 'package:erp/features/reports/application/report_data_snapshot_service.dart';
 import 'package:erp/features/reports/application/report_output_service.dart';
 import 'package:erp/features/reports/application/report_rows_service.dart';
 import 'package:erp/features/reports/application/report_summary_calculator.dart';
 import 'package:erp/features/reports/data/report_demo_catalog.dart';
 import 'package:erp/features/reports/presentation/report_definition.dart';
 import 'package:erp/features/reports/presentation/widgets/report_section_view.dart';
+import 'package:erp/features/sales/domain/sales_invoice.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -320,6 +324,55 @@ void main() {
     }
   });
 
+  testWidgets('refreshes a mounted report after shared data changes',
+      (tester) async {
+    final store = AppStore.demo();
+    addTearDown(store.dispose);
+    await _openReports(tester, store: store);
+    await _openReport(tester, 'salesInvoices');
+
+    AppDataTable salesTable() => tester.widget<AppDataTable>(
+          find.byKey(const Key('reportTable_salesInvoices_main')),
+        );
+    expect(salesTable().rows, hasLength(3));
+
+    await store.repositories.sales.createInvoice(
+      SalesInvoice(
+        id: EntityId('phase4-mounted-report-sale'),
+        documentNumber: 104,
+        date: BusinessDate(2026, 8, 10),
+        minuteOfDay: 12 * 60,
+        customerId: EntityId('party-001'),
+        defaultWarehouseId: EntityId('warehouse-001'),
+        currency: AppCurrency.iqd,
+        exchangeRate: ExchangeRate.parse('1310'),
+        settlementKind: SalesSettlementKind.credit,
+        lines: [
+          SalesInvoiceLine(
+            id: EntityId('phase4-mounted-report-line'),
+            itemId: EntityId('item-001'),
+            warehouseId: EntityId('warehouse-001'),
+            quantity: WholeQuantity(1),
+            unitPrice: Money.fromMajor(1000, AppCurrency.iqd),
+            discountPerUnit: Money.zero(AppCurrency.iqd),
+          ),
+        ],
+        invoiceDiscount: Money.zero(AppCurrency.iqd),
+        received: Money.zero(AppCurrency.iqd),
+      ),
+    );
+    store.markDataChanged();
+    await tester.pumpAndSettle();
+
+    expect(salesTable().rows, hasLength(4));
+    expect(
+      salesTable().rows.any(
+        (row) => (row.cells[1] as Text).data == '104',
+      ),
+      isTrue,
+    );
+  });
+
   testWidgets('filters, resets and prints Sales demo report',
       (tester) async {
     await _openReports(tester);
@@ -503,6 +556,61 @@ void main() {
     await _finishToast(tester);
   });
 
+  testWidgets('reloads the latest repository snapshot before export',
+      (tester) async {
+    final definition = reportDefinitions.first;
+    final original = _demoRows(definition, definition.variants.first).first;
+    final latestCells = [...original.cells]..[3] = 'الزبون المحدث';
+    final service = _SequencedReportDataService([
+      ReportDataSnapshot(rows: [original]),
+      ReportDataSnapshot(
+        rows: [
+          ReportRowDefinition(
+            id: original.id,
+            date: original.date,
+            filterValues: original.filterValues,
+            searchTerms: original.searchTerms,
+            cells: latestCells,
+          ),
+        ],
+      ),
+    ]);
+    final output = _RecordingReportExportService();
+    await tester.binding.setSurfaceSize(const Size(1280, 720));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Directionality(
+            textDirection: TextDirection.rtl,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: ReportSectionView(
+                definition: definition,
+                definitions: [definition],
+                onDefinitionChanged: (_) {},
+                rowsService: service,
+                exportService: output,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const Key('reportExcelButton_salesInvoices')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(service.loadCount, 2);
+    expect(output.lastRequest, isNotNull);
+    expect(output.lastRequest!.rowValues.single[3], 'الزبون المحدث');
+    await tester.tap(find.byKey(const Key('reportOutputPreviewClose')));
+    await tester.pump();
+  });
+
   testWidgets('shows a missing-reference state for stale filters',
       (tester) async {
     final definition = reportDefinitions.first;
@@ -618,7 +726,57 @@ void main() {
       find.byKey(const Key('reportTable_salesInvoices_main')),
     );
     expect(table.rows.first.selected, isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.end);
+    await tester.pump();
+    expect(
+      tester
+          .widget<AppDataTable>(
+            find.byKey(const Key('reportTable_salesInvoices_main')),
+          )
+          .rows
+          .last
+          .selected,
+      isTrue,
+    );
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.home);
+    await tester.pump();
+    expect(
+      tester
+          .widget<AppDataTable>(
+            find.byKey(const Key('reportTable_salesInvoices_main')),
+          )
+          .rows
+          .first
+          .selected,
+      isTrue,
+    );
     await _finishToast(tester);
+  });
+
+  testWidgets('opens the report date-range picker from the keyboard',
+      (tester) async {
+    await _openReports(tester);
+    await _openReport(tester, 'salesInvoices');
+
+    final field = find.byKey(
+      const Key('reportFilter_salesInvoices_period'),
+    );
+    final editable = tester.widget<EditableText>(
+      find.descendant(of: field, matching: find.byType(EditableText)),
+    );
+    editable.focusNode.requestFocus();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+
+    expect(
+      find.byKey(const Key('appDateRangePickerDialog')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key('appDatePickerCancel')));
+    await tester.pump();
   });
 
   testWidgets('switches Inventory report between stock and transfers',
@@ -722,6 +880,44 @@ class _FailingReportRowsService implements ReportRowsService {
   }
 }
 
+class _SequencedReportDataService
+    implements ReportRowsService, ReportDataSnapshotService {
+  _SequencedReportDataService(this.snapshots);
+
+  final List<ReportDataSnapshot> snapshots;
+  int loadCount = 0;
+
+  @override
+  Future<ReportDataSnapshot> loadSnapshot(ReportRowsRequest request) async {
+    final index = loadCount.clamp(0, snapshots.length - 1).toInt();
+    loadCount++;
+    return snapshots[index];
+  }
+
+  @override
+  Future<List<ReportRowDefinition>> load(ReportRowsRequest request) async {
+    return (await loadSnapshot(request)).rows;
+  }
+}
+
+class _RecordingReportExportService implements ReportExportService {
+  ReportOutputRequest? lastRequest;
+
+  @override
+  Future<ReportOutputResult> export(
+    ReportOutputRequest request,
+    ReportExportFormat format,
+  ) async {
+    lastRequest = request;
+    return ReportOutputResult(
+      title: 'نتيجة التصدير',
+      content: request.rowValues.single.join('|'),
+      rowCount: request.rowValues.length,
+      fileName: 'report.xlsx',
+    );
+  }
+}
+
 List<ReportRowDefinition> _demoRows(
   ReportDefinition report,
   ReportVariantDefinition variant,
@@ -732,11 +928,14 @@ List<ReportRowDefinition> _demoRows(
   );
 }
 
-Future<void> _openReports(WidgetTester tester) async {
+Future<void> _openReports(
+  WidgetTester tester, {
+  AppStore? store,
+}) async {
   await tester.binding.setSurfaceSize(const Size(1280, 720));
   addTearDown(() => tester.binding.setSurfaceSize(null));
 
-  await tester.pumpWidget(const AlmumayazApp());
+  await tester.pumpWidget(AlmumayazApp(store: store));
   await tester.enterText(
     find.byKey(const Key('usernameField')),
     'admin',
@@ -760,7 +959,7 @@ Future<void> _openReport(
   await tester.tap(
     find.byKey(Key('reportSectionCard_$reportId')),
   );
-  await tester.pump();
+  await tester.pumpAndSettle();
   expect(
     find.byKey(Key('reportSection_$reportId')),
     findsOneWidget,

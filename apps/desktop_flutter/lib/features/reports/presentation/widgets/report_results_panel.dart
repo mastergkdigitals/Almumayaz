@@ -15,7 +15,7 @@ class ReportResultsPanel extends StatelessWidget {
     required this.isLoading,
     required this.tableFocusNode,
     required this.tableScrollController,
-    required this.onTableKeyEvent,
+    required this.onKeyboardSelectionChanged,
     required this.onRowTap,
     required this.onRetry,
     required this.onResetFilters,
@@ -33,7 +33,7 @@ class ReportResultsPanel extends StatelessWidget {
   final bool isLoading;
   final FocusNode tableFocusNode;
   final ScrollController tableScrollController;
-  final KeyEventResult Function(FocusNode, KeyEvent) onTableKeyEvent;
+  final ValueChanged<int> onKeyboardSelectionChanged;
   final ValueChanged<ReportRowDefinition> onRowTap;
   final VoidCallback onRetry;
   final VoidCallback onResetFilters;
@@ -70,57 +70,54 @@ class ReportResultsPanel extends StatelessWidget {
 
         return Semantics(
           label: 'جدول نتائج $reportTitle. استخدم الأسهم للتنقل بين الصفوف.',
-          child: Focus(
-            key: Key('reportTableKeyboardScope_$reportId'),
+          child: AppDataTable(
+            key: Key('reportTable_${reportId}_${variant.id}'),
+            columns: [
+              for (final column in variant.columns)
+                AppTableColumn(
+                  label: column.label,
+                  numeric: column.numeric,
+                  flex: column.flex,
+                ),
+            ],
+            rows: [
+              for (final row in rows)
+                AppTableRow(
+                  rowKey: Key(
+                    'reportRow_${reportId}_${variant.id}_${row.id}',
+                  ),
+                  selected: selectedRowId == row.id,
+                  onTap: () => onRowTap(row),
+                  cells: [
+                    for (final value in row.cells)
+                      Text(
+                        value,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                      ),
+                  ],
+                ),
+            ],
+            height: constraints.maxHeight,
+            isLoading: isLoading,
             focusNode: tableFocusNode,
-            onKeyEvent: onTableKeyEvent,
-            child: AppDataTable(
-              key: Key('reportTable_${reportId}_${variant.id}'),
-              columns: [
-                for (final column in variant.columns)
-                  AppTableColumn(
-                    label: column.label,
-                    numeric: column.numeric,
-                    flex: column.flex,
-                  ),
-              ],
-              rows: [
-                for (final row in rows)
-                  AppTableRow(
-                    rowKey: Key(
-                      'reportRow_${reportId}_${variant.id}_${row.id}',
-                    ),
-                    selected: selectedRowId == row.id,
-                    onTap: () => onRowTap(row),
-                    cells: [
-                      for (final value in row.cells)
-                        Text(
-                          value,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                        ),
-                    ],
-                  ),
-              ],
-              height: constraints.maxHeight,
-              isLoading: isLoading,
-              verticalScrollController: tableScrollController,
-              headerHeight: 52,
-              rowHeight: 52,
-              minimumColumnWidth: variant.minimumColumnWidth,
-              accentColor: accentColor,
-              selectedRowColor: Color.alphaBlend(
-                accentColor.withAlpha(18),
-                AppColors.surface,
-              ),
-              showShadow: false,
-              emptyState: AppStatePanel(
-                key: Key('reportEmptyState_$reportId'),
-                type: AppStateType.empty,
-                title: 'لا توجد نتائج مطابقة',
-                message: 'غيّر التصفية أو عبارة البحث ثم حاول مرة أخرى.',
-              ),
+            verticalScrollController: tableScrollController,
+            onKeyboardSelectionChanged: onKeyboardSelectionChanged,
+            headerHeight: 52,
+            rowHeight: 52,
+            minimumColumnWidth: variant.minimumColumnWidth,
+            accentColor: accentColor,
+            selectedRowColor: Color.alphaBlend(
+              accentColor.withAlpha(18),
+              AppColors.surface,
+            ),
+            showShadow: false,
+            emptyState: AppStatePanel(
+              key: Key('reportEmptyState_$reportId'),
+              type: AppStateType.empty,
+              title: 'لا توجد نتائج مطابقة',
+              message: 'غيّر التصفية أو عبارة البحث ثم حاول مرة أخرى.',
             ),
           ),
         );

@@ -41,6 +41,7 @@ abstract final class AppStatementReportDialog {
     required String partyName,
     required AppStatementOptions options,
     required List<AppStatementReportEntry> entries,
+    num? openingBalance,
     Color accentColor = AppModuleColors.parties,
     DocumentPrintService? printService,
     DocumentExportService? exportService,
@@ -55,6 +56,7 @@ abstract final class AppStatementReportDialog {
           partyName: partyName,
           options: options,
           entries: entries,
+          openingBalance: openingBalance,
           accentColor: accentColor,
           printService: printService ??
               outputScope?.printService ??
@@ -73,6 +75,7 @@ class _StatementReportBody extends StatefulWidget {
     required this.partyName,
     required this.options,
     required this.entries,
+    required this.openingBalance,
     required this.accentColor,
     required this.printService,
     required this.exportService,
@@ -81,6 +84,7 @@ class _StatementReportBody extends StatefulWidget {
   final String partyName;
   final AppStatementOptions options;
   final List<AppStatementReportEntry> entries;
+  final num? openingBalance;
   final Color accentColor;
   final DocumentPrintService printService;
   final DocumentExportService exportService;
@@ -109,6 +113,14 @@ class _StatementReportBodyState extends State<_StatementReportBody> {
           label: 'العملة',
           value: AppFormatters.currency(options.currencyCode),
         ),
+        if (widget.openingBalance != null)
+          DocumentField(
+            label: 'الرصيد الافتتاحي',
+            value: _formatMoney(
+              widget.openingBalance!,
+              options.currencyCode,
+            ),
+          ),
       ],
       columns: const [
         DocumentColumn(label: 'التاريخ'),
@@ -275,6 +287,18 @@ class _StatementReportBodyState extends State<_StatementReportBody> {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
+                if (widget.openingBalance != null) ...[
+                  const SizedBox(width: AppSpacing.lg),
+                  Text(
+                    'الرصيد الافتتاحي: '
+                    '${_formatMoney(widget.openingBalance!, options.currencyCode)}',
+                    key: const Key('appStatementOpeningBalanceText'),
+                    style: AppTypography.fieldText.copyWith(
+                      color: Colors.black,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

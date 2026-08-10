@@ -31,7 +31,7 @@ void main() {
     expect(controller.state.parties.first.entityId, EntityId('party-001'));
     expect(
       controller.state.parties.first.iqdBalance,
-      Money.fromMajor(1250000, AppCurrency.iqd),
+      Money.fromMajor(500000, AppCurrency.iqd),
     );
     expect(
       controller.state.parties.first.usdBalance,
@@ -789,7 +789,7 @@ void main() {
     );
     expect(find.text('قائمة بيع رقم 101 — تضاف إلى حساب الزبون'), findsOneWidget);
     expect(find.text('سند قبض رقم 1 — دفعة على الحساب'), findsOneWidget);
-    expect(find.text('-573,000'), findsOneWidget);
+    expect(find.text('500,000'), findsOneWidget);
   });
 
   testWidgets('shows loading and an error when party statement loading fails',

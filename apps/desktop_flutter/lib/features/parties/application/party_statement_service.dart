@@ -7,6 +7,7 @@ import '../../purchases/domain/purchase_invoice.dart';
 import '../../purchases/domain/purchase_repository.dart';
 import '../../sales/domain/sales_invoice.dart';
 import '../../sales/domain/sales_repository.dart';
+import '../domain/party_repository.dart';
 
 @immutable
 class PartyStatementQuery {
@@ -73,11 +74,13 @@ class PartyStatementResult {
   const PartyStatementResult({
     required this.query,
     required this.entries,
+    required this.openingBalance,
     required this.closingBalance,
   });
 
   final PartyStatementQuery query;
   final List<PartyStatementEntry> entries;
+  final Money openingBalance;
   final Money closingBalance;
 }
 
@@ -87,40 +90,60 @@ abstract interface class PartyStatementService {
 
 class RepositoryPartyStatementService implements PartyStatementService {
   const RepositoryPartyStatementService({
+    required PartyRepository parties,
     required SalesRepository sales,
     required PurchaseRepository purchases,
     required CashboxRepository cashbox,
-  })  : _sales = sales,
+  })  : _parties = parties,
+        _sales = sales,
         _purchases = purchases,
         _cashbox = cashbox;
 
+  final PartyRepository _parties;
   final SalesRepository _sales;
   final PurchaseRepository _purchases;
   final CashboxRepository _cashbox;
 
   @override
   Future<PartyStatementResult> load(PartyStatementQuery query) async {
+    final party = await _parties.getById(query.partyId);
+    if (party == null) {
+      throw StateError('الطرف المرتبط بكشف الحساب غير موجود');
+    }
     final sales = await _sales.getAll();
     final purchases = await _purchases.getAll();
     final vouchers = await _cashbox.getByParty(query.partyId);
-    final movements = <_PartyStatementMovement>[
+    final allMovements = <_PartyStatementMovement>[
       for (final invoice in sales)
         if (invoice.customerId == query.partyId &&
-            invoice.currency == query.currency &&
-            _includes(query, invoice.date))
+            invoice.currency == query.currency)
           _saleMovement(invoice),
       for (final invoice in purchases)
         if (invoice.supplierId == query.partyId &&
-            invoice.currency == query.currency &&
-            _includes(query, invoice.date))
+            invoice.currency == query.currency)
           _purchaseMovement(invoice),
       for (final voucher in vouchers)
-        if (_includes(
-          query,
-          voucher.createdTimestamp.localDate,
-        ))
+        if (!voucher.isSystemGenerated)
           ..._cashboxMovements(voucher, query.currency),
-    ]
+    ];
+    var recordedNet = Money.zero(query.currency);
+    for (final movement in allMovements) {
+      final sides = _normalizeSides(movement.debit, movement.credit);
+      recordedNet = recordedNet + sides.debit - sides.credit;
+    }
+    final currentBalance = switch (query.currency) {
+      AppCurrency.iqd => party.iqdBalance,
+      AppCurrency.usd => party.usdBalance,
+    };
+    final baselineBalance = currentBalance - recordedNet;
+    final movements = allMovements
+        .where(
+          (movement) => _isOnOrBeforeToDate(
+            query,
+            BusinessDate.fromDateTime(movement.date),
+          ),
+        )
+        .toList()
       ..sort((first, second) {
         final byDate = first.date.compareTo(second.date);
         if (byDate != 0) return byDate;
@@ -129,11 +152,16 @@ class RepositoryPartyStatementService implements PartyStatementService {
         return first.id.value.compareTo(second.id.value);
       });
 
-    var balance = Money.zero(query.currency);
+    var openingBalance = baselineBalance;
+    var balance = openingBalance;
     final entries = <PartyStatementEntry>[];
     for (final movement in movements) {
       final sides = _normalizeSides(movement.debit, movement.credit);
       balance = balance + sides.debit - sides.credit;
+      if (_isBeforeFromDate(query, movement.date)) {
+        openingBalance = balance;
+        continue;
+      }
       entries.add(
         PartyStatementEntry(
           id: movement.id,
@@ -151,13 +179,23 @@ class RepositoryPartyStatementService implements PartyStatementService {
     return PartyStatementResult(
       query: query,
       entries: List.unmodifiable(entries),
+      openingBalance: openingBalance,
       closingBalance: balance,
     );
   }
 
-  static bool _includes(PartyStatementQuery query, BusinessDate date) {
-    return date.compareTo(query.fromDate) >= 0 &&
-        date.compareTo(query.toDate) <= 0;
+  static bool _isOnOrBeforeToDate(
+    PartyStatementQuery query,
+    BusinessDate date,
+  ) {
+    return date.compareTo(query.toDate) <= 0;
+  }
+
+  static bool _isBeforeFromDate(
+    PartyStatementQuery query,
+    DateTime date,
+  ) {
+    return BusinessDate.fromDateTime(date).compareTo(query.fromDate) < 0;
   }
 
   static _PartyStatementMovement _saleMovement(SalesInvoice invoice) {
@@ -184,14 +222,16 @@ class RepositoryPartyStatementService implements PartyStatementService {
   static _PartyStatementMovement _purchaseMovement(
     PurchaseInvoice invoice,
   ) {
+    final isReturn =
+        invoice.purchaseKind == PurchaseTransactionKind.returnPurchase;
     return _PartyStatementMovement(
       id: invoice.id,
       date: invoice.date.atTime(
         hour: invoice.minuteOfDay ~/ Duration.minutesPerHour,
         minute: invoice.minuteOfDay % Duration.minutesPerHour,
       ),
-      debit: invoice.paid,
-      credit: invoice.total,
+      debit: isReturn ? invoice.total : invoice.paid,
+      credit: isReturn ? invoice.paid : invoice.total,
       type: PartyStatementEntryType.purchase,
       quantity: invoice.lines.fold<int>(
         0,

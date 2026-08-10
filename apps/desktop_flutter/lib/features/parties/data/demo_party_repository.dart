@@ -256,7 +256,8 @@ List<Party> demoParties() => [
         city: 'بغداد',
         address: 'الكرادة',
         notes: '',
-        balanceIqd: 1250000,
+        // Current balance after seeded cashbox receipt cashbox-001.
+        balanceIqd: 500000,
         balanceUsd: 850,
       ),
       _demoParty(
@@ -272,7 +273,8 @@ List<Party> demoParties() => [
         city: 'بغداد',
         address: 'المنصور',
         notes: '',
-        balanceIqd: 475000,
+        // Current balance after seeded cashbox receipt cashbox-006.
+        balanceIqd: 0,
         balanceUsd: 0,
       ),
       _demoParty(
@@ -289,7 +291,8 @@ List<Party> demoParties() => [
         address: 'العشار',
         notes: 'التواصل صباحاً',
         balanceIqd: -3200000,
-        balanceUsd: -1200,
+        // Current balance after seeded cashbox payment cashbox-003.
+        balanceUsd: -800,
       ),
       _demoParty(
         id: 'party-004',
