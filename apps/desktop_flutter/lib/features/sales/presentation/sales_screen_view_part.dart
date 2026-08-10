@@ -11,34 +11,51 @@ extension _SalesScreenViewPart on _SalesScreenState {
         hasInvoices && selectedInvoiceIndex >= 0;
     final currencyName = _currency == 'USD' ? 'دولار' : 'دينار';
     final isEditorReady = _invoiceState.status == AppDataStatus.ready;
+    final canUseSavedInvoiceOutput =
+        _canUseSelectedSalesInvoiceForOutput;
     final tint = Color.alphaBlend(
       AppModuleColors.sales.withAlpha(12),
       AppColors.surface,
     );
 
     return PopScope(
-      canPop: !_hasUnsavedChanges && !_isRepositoryBusy,
+      canPop: !_hasUnsavedChanges &&
+          !_isRepositoryBusy &&
+          !_isDocumentActionRunning,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && !_isRepositoryBusy) _attemptBack();
+        if (!didPop &&
+            !_isRepositoryBusy &&
+            !_isDocumentActionRunning) {
+          _attemptBack();
+        }
       },
       child: AppScreenShell(
         key: const Key('salesScreen'),
         title: 'المبيعات',
         backgroundColor: tint,
-        onBack: _attemptBack,
-        onSearch: !isEditorReady || _isRepositoryBusy
+        onBack: _isDocumentActionRunning ? null : _attemptBack,
+        onSearch: !isEditorReady ||
+                _isRepositoryBusy ||
+                _isDocumentActionRunning
             ? null
             : _showSalesSearch,
-        onSave: !isEditorReady || _isRepositoryBusy
+        onSave: !isEditorReady ||
+                _isRepositoryBusy ||
+                _isDocumentActionRunning
             ? null
             : hasSelectedInvoice
             ? _hasUnsavedChanges
                 ? _update
                 : null
             : _save,
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
+        body: ExcludeFocus(
+          excluding: _isDocumentActionRunning,
+          child: AbsorbPointer(
+            key: const Key('salesDocumentActionAbsorber'),
+            absorbing: _isDocumentActionRunning,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
         ColoredBox(
           key: const Key('salesTintBackground'),
           color: tint,
@@ -247,15 +264,29 @@ extension _SalesScreenViewPart on _SalesScreenState {
                   onSearch: !isEditorReady || _isRepositoryBusy
                       ? null
                       : _showSalesSearch,
-                  onPrint: !isEditorReady || _isDocumentActionRunning
-                      ? null
-                      : _printSalesInvoice,
-                  onInstallments:
-                      isEditorReady && _saleType == 'أقساط'
+                  onPrint: canUseSavedInvoiceOutput
+                      ? _printSalesInvoice
+                      : null,
+                  onPrintWithoutPrices: canUseSavedInvoiceOutput
+                      ? () => _printSalesInvoice(includePrices: false)
+                      : null,
+                  onExportPdf: canUseSavedInvoiceOutput
+                      ? () => _exportSalesInvoice(
+                            DocumentExportFormat.pdf,
+                          )
+                      : null,
+                  onExportExcel: canUseSavedInvoiceOutput
+                      ? () => _exportSalesInvoice(
+                            DocumentExportFormat.excel,
+                          )
+                      : null,
+                  onInstallments: canUseSavedInvoiceOutput &&
+                          _saleType == 'أقساط'
                           ? _openInstallments
                           : null,
-                  onStatement:
-                      isEditorReady ? _showSalesStatement : null,
+                  onStatement: canUseSavedInvoiceOutput
+                      ? _showSalesStatement
+                      : null,
                 ),
                 firstButtonKey: const Key('salesFirstButton'),
                 previousButtonKey: const Key('salesPreviousButton'),
@@ -328,7 +359,9 @@ extension _SalesScreenViewPart on _SalesScreenState {
                   child: const Center(child: CircularProgressIndicator()),
                 ),
               ),
-          ],
+              ],
+            ),
+          ),
         ),
       ),
     );

@@ -25,7 +25,8 @@ class PurchaseInvoiceLine {
         salePrice.isNegative ||
         lineDiscount.currency != purchasePrice.currency ||
         salePrice.currency != purchasePrice.currency ||
-        lineDiscount.isNegative) {
+        lineDiscount.isNegative ||
+        lineDiscount.compareTo(grossTotal) > 0) {
       throw ArgumentError('Purchase line values are invalid');
     }
   }
@@ -89,13 +90,17 @@ class PurchaseInvoice {
         invoiceDiscount.isNegative) {
       throw ArgumentError('Purchase adjustments are invalid');
     }
-    if (paid.currency != currency) {
-      throw ArgumentError.value(paid, 'paid', 'Invalid paid currency');
+    final discountBase = subtotal + expenses;
+    if (invoiceDiscount.compareTo(discountBase) > 0) {
+      throw ArgumentError.value(
+        invoiceDiscount,
+        'invoiceDiscount',
+        'Discount must not exceed the invoice subtotal and expenses',
+      );
     }
-    final invalidPaid = total.isNegative
-        ? paid != total
-        : paid.isNegative || paid.compareTo(total) > 0;
-    if (invalidPaid) {
+    if (paid.currency != currency ||
+        paid.isNegative ||
+        paid.compareTo(total) > 0) {
       throw ArgumentError.value(paid, 'paid', 'Invalid paid value');
     }
     if (settlementKind == PurchaseSettlementKind.cash && paid != total) {
@@ -143,8 +148,6 @@ class PurchaseInvoice {
 
   Money get total => subtotal + expenses - invoiceDiscount;
 
-  /// The amount is canonical. This derived value can exceed 100 when a
-  /// purchase intentionally preserves a negative result like the old app.
   num get invoiceDiscountPercentageValue {
     final base = subtotal + expenses;
     if (base.isZero) return 0;

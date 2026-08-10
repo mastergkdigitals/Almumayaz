@@ -4,28 +4,152 @@ import 'package:erp/core/design/app_design_system.dart';
 import 'package:erp/core/domain/business_values.dart';
 import 'package:erp/features/settings/domain/settings_models.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('preserves negative purchase row results', () {
+  test('caps purchase row calculations at zero for an excessive discount', () {
     const row = AppPurchaseInvoiceTableRowData(
       quantity: '1',
       purchasePrice: '10',
       discount: '20',
     );
 
-    expect(row.totalValue, -10);
-    expect(row.priceAfterDiscountValue, -10);
+    expect(row.hasValidLineDiscount, isFalse);
+    expect(row.effectiveDiscountValue, 10);
+    expect(row.totalValue, 0);
+    expect(row.priceAfterDiscountValue, 0);
 
-    final calculated = row.withCalculatedValues(
-      'IQD',
-      lineBaseTotal: -10,
+    final calculated = calculatePurchaseInvoiceRows(
+      rows: [row],
+      currencyCode: 'IQD',
       invoiceAdjustment: 0,
+    ).rows.single;
+    expect(calculated.priceAfterDiscount, '0');
+    expect(calculated.total, '0');
+    expect(calculated.cost, '0');
+    expect(calculated.totalCost, '0');
+  });
+
+  test('treats numeric-only purchase rows as partial instead of empty', () {
+    expect(const AppPurchaseInvoiceTableRowData().isEmpty, isTrue);
+
+    for (final row in const [
+      AppPurchaseInvoiceTableRowData(container: '2'),
+      AppPurchaseInvoiceTableRowData(purchasePrice: '100'),
+      AppPurchaseInvoiceTableRowData(discount: '10'),
+      AppPurchaseInvoiceTableRowData(salePrice: '125'),
+    ]) {
+      expect(row.isEmpty, isFalse);
+      expect(row.hasRequiredValues, isFalse);
+    }
+  });
+
+  test('reconciles zero-base purchase cost allocation with invoice totals', () {
+    const fullyDiscountedRows = [
+      AppPurchaseInvoiceTableRowData(
+        code: 'A',
+        quantity: '1',
+        purchasePrice: '100',
+        discount: '100',
+      ),
+      AppPurchaseInvoiceTableRowData(
+        code: 'B',
+        quantity: '3',
+        purchasePrice: '100',
+        discount: '300',
+      ),
+    ];
+    final grossAllocation = calculatePurchaseInvoiceRows(
+      rows: fullyDiscountedRows,
+      currencyCode: 'IQD',
+      invoiceAdjustment: 20,
     );
-    expect(calculated.priceAfterDiscount, '-10');
-    expect(calculated.total, '-10');
-    expect(calculated.cost, '-10');
-    expect(calculated.totalCost, '-10');
+    expect(
+      grossAllocation.rows.map((row) => row.totalCost),
+      ['5', '15'],
+    );
+    expect(grossAllocation.totalCost, '20');
+
+    const zeroGrossRows = [
+      AppPurchaseInvoiceTableRowData(code: 'A', quantity: '1'),
+      AppPurchaseInvoiceTableRowData(code: 'B', quantity: '3'),
+    ];
+    final quantityAllocation = calculatePurchaseInvoiceRows(
+      rows: zeroGrossRows,
+      currencyCode: 'IQD',
+      invoiceAdjustment: 20,
+    );
+    expect(
+      quantityAllocation.rows.map((row) => row.totalCost),
+      ['5', '15'],
+    );
+    expect(quantityAllocation.totalCost, '20');
+
+    const zeroQuantityRows = [
+      AppPurchaseInvoiceTableRowData(code: 'A'),
+      AppPurchaseInvoiceTableRowData(code: 'B'),
+    ];
+    final equalAllocation = calculatePurchaseInvoiceRows(
+      rows: zeroQuantityRows,
+      currencyCode: 'IQD',
+      invoiceAdjustment: 20,
+    );
+    expect(
+      equalAllocation.rows.map((row) => row.totalCost),
+      ['10', '10'],
+    );
+    expect(equalAllocation.totalCost, '20');
+  });
+
+  test('allocates indivisible IQD and USD remainders deterministically', () {
+    const rows = [
+      AppPurchaseInvoiceTableRowData(
+        code: 'A',
+        quantity: '1',
+        purchasePrice: '1',
+      ),
+      AppPurchaseInvoiceTableRowData(
+        code: 'B',
+        quantity: '1',
+        purchasePrice: '1',
+      ),
+      AppPurchaseInvoiceTableRowData(
+        code: 'C',
+        quantity: '1',
+        purchasePrice: '1',
+      ),
+    ];
+
+    final iqd = calculatePurchaseInvoiceRows(
+      rows: rows,
+      currencyCode: 'IQD',
+      invoiceAdjustment: 1,
+    );
+    expect(iqd.rows.map((row) => row.totalCost), ['2', '1', '1']);
+    expect(iqd.totalCost, '4');
+    expect(_sumDisplayedPurchaseCosts(iqd), 4);
+
+    final usd = calculatePurchaseInvoiceRows(
+      rows: rows,
+      currencyCode: 'USD',
+      invoiceAdjustment: 0.01,
+    );
+    expect(
+      usd.rows.map((row) => row.totalCost),
+      ['1.01', '1.00', '1.00'],
+    );
+    expect(usd.totalCost, '3.01');
+    expect(_sumDisplayedPurchaseCosts(usd), closeTo(3.01, 0.000001));
+
+    final discounted = calculatePurchaseInvoiceRows(
+      rows: rows,
+      currencyCode: 'IQD',
+      invoiceAdjustment: -2,
+    );
+    expect(discounted.rows.map((row) => row.totalCost), ['1', '0', '0']);
+    expect(discounted.totalCost, '1');
+    expect(_sumDisplayedPurchaseCosts(discounted), 1);
   });
 
   testWidgets('builds the shared purchase invoice layout', (tester) async {
@@ -412,8 +536,12 @@ void main() {
       findsOneWidget,
     );
     expect(
+      find.descendant(of: summary, matching: find.text('180.00')),
+      findsOneWidget,
+    );
+    expect(
       find.descendant(of: summary, matching: find.text('200.00')),
-      findsNWidgets(2),
+      findsOneWidget,
     );
 
     await tester.enterText(
@@ -489,6 +617,59 @@ void main() {
     );
   });
 
+  testWidgets('allocates expenses when purchase lines are fully discounted',
+      (tester) async {
+    await _openPurchaseScreen(tester);
+    await _openNewPurchaseForm(tester);
+    await _completeCurrentPurchaseRow(tester);
+
+    await tester.enterText(
+      _invoiceFieldByPrefix(
+        'appPurchaseInvoiceTemplatePurchasePriceField-',
+      ),
+      '100',
+    );
+    await tester.enterText(
+      _invoiceFieldByPrefix(
+        'appPurchaseInvoiceTemplateDiscountField-',
+      ),
+      '100',
+    );
+    await tester.enterText(
+      find.byKey(const Key('purchaseExpensesField')),
+      '20',
+    );
+    await tester.pump();
+
+    expect(
+      _invoiceFieldValueByPrefix(
+        tester,
+        'appPurchaseInvoiceTemplateTotalField-',
+      ),
+      '0',
+    );
+    expect(
+      _invoiceFieldValueByPrefix(
+        tester,
+        'appPurchaseInvoiceTemplateTotalCostField-',
+      ),
+      '20',
+    );
+    expect(_fieldValue(tester, 'purchaseTotalField'), '20');
+
+    final summary = find.byKey(
+      const Key('appPurchaseInvoiceTableSummary'),
+    );
+    expect(
+      find.descendant(of: summary, matching: find.text('0')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: summary, matching: find.text('20')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('caps purchase payment in IQD and USD when totals change',
       (tester) async {
     await _openPurchaseScreen(tester);
@@ -524,6 +705,33 @@ void main() {
     expect(_fieldValue(tester, 'purchaseRemainingField'), '0.00');
   });
 
+  testWidgets('caps purchase invoice discounts before totals become negative',
+      (tester) async {
+    await _openPurchaseScreen(tester);
+
+    await tester.enterText(
+      find.byKey(const Key('purchaseInvoiceDiscountField')),
+      '999999',
+    );
+    await tester.pump();
+
+    expect(_fieldValue(tester, 'purchaseInvoiceDiscountField'), '150,000');
+    expect(_fieldValue(tester, 'purchaseDiscountPercentageField'), '100.00');
+    expect(_fieldValue(tester, 'purchaseTotalField'), '0');
+    expect(_fieldValue(tester, 'purchasePaidField'), '0');
+    expect(_fieldValue(tester, 'purchaseRemainingField'), '0');
+
+    await tester.enterText(
+      find.byKey(const Key('purchaseDiscountPercentageField')),
+      '125',
+    );
+    await tester.pump();
+
+    expect(_fieldValue(tester, 'purchaseDiscountPercentageField'), '100.00');
+    expect(_fieldValue(tester, 'purchaseInvoiceDiscountField'), '150,000');
+    expect(_fieldValue(tester, 'purchaseTotalField'), '0');
+  });
+
   testWidgets('guards purchase edits when Windows Back is used',
       (tester) async {
     await _openPurchaseScreen(tester);
@@ -551,6 +759,41 @@ void main() {
     expect(find.byKey(const Key('dashboardCard_purchases')), findsOneWidget);
   });
 
+  testWidgets('guards purchase edits from app, keyboard, and record navigation',
+      (tester) async {
+    await _openPurchaseScreen(tester);
+
+    await tester.enterText(
+      find.byKey(const Key('purchaseNotesField')),
+      'تعديل غير محفوظ',
+    );
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('appScreenBackButton')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('appConfirmDialog')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('appDialogCancelButton')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('purchaseNotesField')));
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('appConfirmDialog')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('appDialogCancelButton')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('purchaseNextButton')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('appConfirmDialog')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('appDialogCancelButton')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('purchaseScreen')), findsOneWidget);
+    expect(_fieldValue(tester, 'purchaseInvoiceNumberField'), '101');
+    expect(_fieldValue(tester, 'purchaseNotesField'), 'تعديل غير محفوظ');
+  });
+
   testWidgets(
       'requires complete purchase rows and ignores a trailing empty row',
       (tester) async {
@@ -574,6 +817,28 @@ void main() {
     await tester.pump();
     expect(find.text('أضف مادة واحدة مكتملة على الأقل'), findsOneWidget);
     await _finishToast(tester);
+
+    await tester.enterText(
+      _invoiceFieldByPrefix(
+        'appPurchaseInvoiceTemplatePurchasePriceField-',
+      ),
+      '100',
+    );
+    await tester.tap(find.byKey(const Key('purchaseSaveButton')));
+    await tester.pump();
+    expect(
+      find.text(
+        'أكمل بيانات سطر المادة: رمز المادة واسم المادة والكمية',
+      ),
+      findsOneWidget,
+    );
+    await _finishToast(tester);
+    await tester.enterText(
+      _invoiceFieldByPrefix(
+        'appPurchaseInvoiceTemplatePurchasePriceField-',
+      ),
+      '0',
+    );
 
     await tester.enterText(
       _invoiceFieldByPrefix('appPurchaseInvoiceTemplateCodeField-'),
@@ -628,6 +893,114 @@ void main() {
     );
     await tester.pump();
     expect(find.textContaining('1 مواد'), findsOneWidget);
+  });
+
+  testWidgets('normalizes cleared optional purchase money fields before save',
+      (tester) async {
+    await _openPurchaseScreen(tester);
+    await _openNewPurchaseForm(tester);
+    _dropdown(tester, 'purchasePaymentTypeField').onChanged('آجل');
+    await tester.pump();
+    await tester.enterText(
+      find.byKey(const Key('purchaseSupplierNameField')),
+      'مجهز الفرات',
+    );
+    await _completeCurrentPurchaseRow(tester);
+
+    for (final key in const [
+      'purchaseExpensesField',
+      'purchaseInvoiceDiscountField',
+      'purchaseDiscountPercentageField',
+      'purchasePaidField',
+    ]) {
+      await tester.enterText(find.byKey(Key(key)), '');
+      await tester.pump();
+    }
+
+    expect(_fieldValue(tester, 'purchaseExpensesField'), '0');
+    expect(_fieldValue(tester, 'purchaseInvoiceDiscountField'), '0');
+    expect(_fieldValue(tester, 'purchaseDiscountPercentageField'), '0.00');
+    expect(_fieldValue(tester, 'purchasePaidField'), '0');
+
+    await tester.tap(find.byKey(const Key('purchaseSaveButton')));
+    await tester.pump();
+    _expectToast(
+      tester,
+      color: AppColors.blue,
+      message: 'تم حفظ قائمة الشراء',
+    );
+    await _finishToast(tester);
+  });
+
+  testWidgets('normalizes Purchase row precision when USD changes to IQD',
+      (tester) async {
+    final store = AppStore.demo();
+    await _openPurchaseScreen(tester, store: store);
+    await _openNewPurchaseForm(tester);
+    _dropdown(tester, 'purchasePaymentTypeField').onChanged('آجل');
+    await tester.pump();
+    _dropdown(tester, 'purchaseCurrencyField').onChanged('USD');
+    await tester.pump();
+    await tester.enterText(
+      find.byKey(const Key('purchaseSupplierNameField')),
+      'مجهز الفرات',
+    );
+    await _completeCurrentPurchaseRow(tester);
+    await tester.enterText(
+      _invoiceFieldByPrefix(
+        'appPurchaseInvoiceTemplateQuantityField-',
+      ),
+      '2',
+    );
+    await tester.enterText(
+      _invoiceFieldByPrefix(
+        'appPurchaseInvoiceTemplatePurchasePriceField-',
+      ),
+      '0.50',
+    );
+    await tester.pump();
+    expect(
+      _invoiceFieldValueByPrefix(
+        tester,
+        'appPurchaseInvoiceTemplateTotalField-',
+      ),
+      '1.00',
+    );
+
+    _dropdown(tester, 'purchaseCurrencyField').onChanged('IQD');
+    await tester.pump();
+    expect(
+      _invoiceFieldValueByPrefix(
+        tester,
+        'appPurchaseInvoiceTemplatePurchasePriceField-',
+      ),
+      '1',
+    );
+    expect(
+      _invoiceFieldValueByPrefix(
+        tester,
+        'appPurchaseInvoiceTemplateTotalField-',
+      ),
+      '2',
+    );
+    expect(_fieldValue(tester, 'purchaseTotalField'), '2');
+
+    await tester.tap(find.byKey(const Key('purchaseSaveButton')));
+    await tester.pump();
+    _expectToast(
+      tester,
+      color: AppColors.blue,
+      message: 'تم حفظ قائمة الشراء',
+    );
+
+    final savedInvoices = await store.repositories.purchases.getAll();
+    final saved = savedInvoices.singleWhere(
+      (invoice) => invoice.documentNumber == 104,
+    );
+    expect(saved.lines.single.purchasePrice.toPlainString(), '1');
+    expect(saved.subtotal.toPlainString(), '2');
+    expect(saved.total.toPlainString(), '2');
+    await _finishToast(tester);
   });
 
   testWidgets('navigates and searches complete demo purchase invoices',
@@ -908,6 +1281,16 @@ AppDropdownField<String> _dropdown(
       of: find.byKey(Key(key)),
       matching: find.byType(AppDropdownField<String>),
     ),
+  );
+}
+
+num _sumDisplayedPurchaseCosts(
+  AppPurchaseInvoiceRowsCalculation calculation,
+) {
+  return calculation.rows.fold<num>(
+    0,
+    (sum, row) =>
+        sum + (AppFormatters.parseNumber(row.totalCost) ?? 0),
   );
 }
 

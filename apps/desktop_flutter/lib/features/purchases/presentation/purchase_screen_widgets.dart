@@ -5,12 +5,16 @@ class _PurchaseInvoiceButtons extends StatelessWidget {
     required this.onSearch,
     required this.onPrint,
     required this.onPrintWithoutPrices,
+    required this.onExportPdf,
+    required this.onExportExcel,
     required this.onStatement,
   });
 
   final VoidCallback? onSearch;
   final VoidCallback? onPrint;
   final VoidCallback? onPrintWithoutPrices;
+  final VoidCallback? onExportPdf;
+  final VoidCallback? onExportExcel;
   final VoidCallback? onStatement;
 
   @override
@@ -41,6 +45,20 @@ class _PurchaseInvoiceButtons extends StatelessWidget {
           icon: Icons.money_off_rounded,
           tooltip: 'طباعة بدون سعر',
           onPressed: onPrintWithoutPrices,
+        ),
+        AppHeaderIconButton(
+          key: const Key('purchasePdfButton'),
+          tooltipKey: const Key('purchasePdfTooltip'),
+          icon: Icons.picture_as_pdf_rounded,
+          tooltip: 'تصدير PDF',
+          onPressed: onExportPdf,
+        ),
+        AppHeaderIconButton(
+          key: const Key('purchaseExcelButton'),
+          tooltipKey: const Key('purchaseExcelTooltip'),
+          icon: Icons.table_view_rounded,
+          tooltip: 'تصدير Excel',
+          onPressed: onExportExcel,
         ),
         AppHeaderIconButton(
           key: const Key('purchaseStatementButton'),

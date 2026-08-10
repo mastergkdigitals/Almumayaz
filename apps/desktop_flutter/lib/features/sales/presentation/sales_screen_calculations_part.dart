@@ -48,14 +48,31 @@ extension _SalesScreenCalculationsPart on _SalesScreenState {
   void _changeCurrency(String value) {
     if (_currency == value) return;
     _setSalesState(() {
-      _currency = value;
-      _activeItems = List<AppSalesInvoiceTableRowData>.unmodifiable(
-        _activeItems.map(
-          (item) => item.withCalculatedValues(_currency),
-        ),
-      );
-      _tableDataVersion++;
-      _syncCalculatedFields();
+      final wasApplyingFormState = _isApplyingFormState;
+      _isApplyingFormState = true;
+      try {
+        _currency = value;
+        _activeItems = List<AppSalesInvoiceTableRowData>.unmodifiable(
+          _activeItems.map(
+            (item) => item.normalizeMonetaryValues(_currency),
+          ),
+        );
+        _setControllerText(
+          _invoiceDiscountController,
+          _normalizedMoneyText(
+            _invoiceDiscountController.text,
+            _currency,
+          ),
+        );
+        _nonCashReceivedText = _normalizedMoneyText(
+          _nonCashReceivedText,
+          _currency,
+        );
+        _tableDataVersion++;
+        _syncCalculatedFields();
+      } finally {
+        _isApplyingFormState = wasApplyingFormState;
+      }
       _refreshSelectionState();
     });
   }
@@ -106,7 +123,7 @@ extension _SalesScreenCalculationsPart on _SalesScreenState {
       num subtotal = 0;
       for (final item in _activeItems) {
         quantity += item.quantityValue;
-        rowDiscount += item.discountValue;
+        rowDiscount += item.totalDiscountValue;
         subtotal += item.totalValue;
       }
 
@@ -123,17 +140,38 @@ extension _SalesScreenCalculationsPart on _SalesScreenState {
       late final num invoiceDiscount;
       if (_discountInputSource ==
           _InvoiceDiscountInputSource.percentage) {
-        final percentage =
-            AppFormatters.parseNumber(_discountPercentageController.text) ??
-                0;
-        invoiceDiscount = subtotal * percentage / 100;
+        final parsedPercentage = AppFormatters.parseNumber(
+          _discountPercentageController.text,
+        );
+        final requestedPercentage = parsedPercentage ?? 0;
+        final percentage = requestedPercentage.clamp(0, 100);
+        if (parsedPercentage == null || percentage != requestedPercentage) {
+          _setControllerText(
+            _discountPercentageController,
+            AppFormatters.money(percentage, decimalPlaces: 2),
+          );
+        }
         _setControllerText(
           _invoiceDiscountController,
-          AppFormatters.moneyByCurrency(invoiceDiscount, _currency),
+          AppFormatters.moneyByCurrency(
+            subtotal * percentage / 100,
+            _currency,
+          ),
         );
-      } else {
         invoiceDiscount =
             AppFormatters.parseNumber(_invoiceDiscountController.text) ?? 0;
+      } else {
+        final parsedDiscount = AppFormatters.parseNumber(
+          _invoiceDiscountController.text,
+        );
+        final requestedDiscount = parsedDiscount ?? 0;
+        invoiceDiscount = requestedDiscount.clamp(0, subtotal);
+        if (parsedDiscount == null || invoiceDiscount != requestedDiscount) {
+          _setControllerText(
+            _invoiceDiscountController,
+            AppFormatters.moneyByCurrency(invoiceDiscount, _currency),
+          );
+        }
         final percentage =
             subtotal == 0 ? 0 : invoiceDiscount * 100 / subtotal;
         _setControllerText(
@@ -152,14 +190,16 @@ extension _SalesScreenCalculationsPart on _SalesScreenState {
           AppFormatters.moneyByCurrency(received, _currency),
         );
       } else {
-        final requestedReceived =
-            AppFormatters.parseNumber(_nonCashReceivedText) ?? 0;
+        final parsedReceived = AppFormatters.parseNumber(
+          _nonCashReceivedText,
+        );
+        final requestedReceived = parsedReceived ?? 0;
         received = requestedReceived < 0
             ? 0
             : requestedReceived > total
                 ? total
                 : requestedReceived;
-        if (received != requestedReceived) {
+        if (parsedReceived == null || received != requestedReceived) {
           _nonCashReceivedText = AppFormatters.moneyByCurrency(
             received,
             _currency,
@@ -199,4 +239,8 @@ extension _SalesScreenCalculationsPart on _SalesScreenState {
     controller.text = value;
   }
 
+  String _normalizedMoneyText(String value, String currencyCode) {
+    final parsed = AppFormatters.parseNumber(value) ?? 0;
+    return AppFormatters.moneyByCurrency(parsed, currencyCode);
+  }
 }

@@ -11,34 +11,51 @@ extension _PurchaseViewState on _PurchaseScreenState {
         hasInvoices && selectedInvoiceIndex >= 0;
     final currencyName = _currency == 'USD' ? 'دولار' : 'دينار';
     final isEditorReady = _invoiceState.status == AppDataStatus.ready;
+    final canUseSavedInvoiceOutput =
+        _canUseSelectedPurchaseInvoiceForOutput;
     final tint = Color.alphaBlend(
       AppModuleColors.purchases.withAlpha(12),
       AppColors.surface,
     );
 
     return PopScope(
-      canPop: !_hasUnsavedChanges && !_isRepositoryBusy,
+      canPop: !_hasUnsavedChanges &&
+          !_isRepositoryBusy &&
+          !_isDocumentActionRunning,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && !_isRepositoryBusy) _attemptBack();
+        if (!didPop &&
+            !_isRepositoryBusy &&
+            !_isDocumentActionRunning) {
+          _attemptBack();
+        }
       },
       child: AppScreenShell(
         key: const Key('purchaseScreen'),
         title: 'المشتريات',
         backgroundColor: tint,
-        onBack: _attemptBack,
-        onSearch: !isEditorReady || _isRepositoryBusy
+        onBack: _isDocumentActionRunning ? null : _attemptBack,
+        onSearch: !isEditorReady ||
+                _isRepositoryBusy ||
+                _isDocumentActionRunning
             ? null
             : _showPurchaseSearch,
-        onSave: !isEditorReady || _isRepositoryBusy
+        onSave: !isEditorReady ||
+                _isRepositoryBusy ||
+                _isDocumentActionRunning
             ? null
             : hasSelectedInvoice
             ? _hasUnsavedChanges
                 ? _update
                 : null
             : _save,
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
+        body: ExcludeFocus(
+          excluding: _isDocumentActionRunning,
+          child: AbsorbPointer(
+            key: const Key('purchaseDocumentActionAbsorber'),
+            absorbing: _isDocumentActionRunning,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
         ColoredBox(
           key: const Key('purchaseTintBackground'),
           color: tint,
@@ -188,7 +205,6 @@ extension _PurchaseViewState on _PurchaseScreenState {
                   summaryTotal: _summaryTotal,
                   summaryTotalCost: _summaryTotalCost,
                   currencyCode: _currency,
-                  lineBaseTotal: _lineBaseTotal,
                   invoiceAdjustment: _invoiceAdjustment,
                   itemOptions: _itemOptions,
                   onRowsChanged: _changeItems,
@@ -274,16 +290,25 @@ extension _PurchaseViewState on _PurchaseScreenState {
                   onSearch: !isEditorReady || _isRepositoryBusy
                       ? null
                       : _showPurchaseSearch,
-                  onPrint: !isEditorReady || _isDocumentActionRunning
-                      ? null
-                      : () => _printPurchaseInvoice(),
-                  onPrintWithoutPrices: isEditorReady &&
-                          hasSelectedInvoice &&
-                          !_isDocumentActionRunning
+                  onPrint: canUseSavedInvoiceOutput
+                      ? () => _printPurchaseInvoice()
+                      : null,
+                  onPrintWithoutPrices: canUseSavedInvoiceOutput
                       ? () => _printPurchaseInvoice(includePrices: false)
                       : null,
-                  onStatement:
-                      isEditorReady ? _showPurchaseStatement : null,
+                  onExportPdf: canUseSavedInvoiceOutput
+                      ? () => _exportPurchaseInvoice(
+                            DocumentExportFormat.pdf,
+                          )
+                      : null,
+                  onExportExcel: canUseSavedInvoiceOutput
+                      ? () => _exportPurchaseInvoice(
+                            DocumentExportFormat.excel,
+                          )
+                      : null,
+                  onStatement: canUseSavedInvoiceOutput
+                      ? _showPurchaseStatement
+                      : null,
                 ),
                 firstButtonKey: const Key('purchaseFirstButton'),
                 previousButtonKey: const Key('purchasePreviousButton'),
@@ -356,7 +381,9 @@ extension _PurchaseViewState on _PurchaseScreenState {
                   child: const Center(child: CircularProgressIndicator()),
                 ),
               ),
-          ],
+              ],
+            ),
+          ),
         ),
       ),
     );

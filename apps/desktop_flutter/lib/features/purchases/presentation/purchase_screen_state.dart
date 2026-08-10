@@ -40,7 +40,6 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
   var _summaryDiscount = '0';
   var _summaryTotal = '0';
   var _summaryTotalCost = '0';
-  num _lineBaseTotal = 0;
   num _invoiceAdjustment = 0;
   var _tableDataVersion = 0;
   var _discountInputSource = _PurchaseDiscountInputSource.amount;

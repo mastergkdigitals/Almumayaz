@@ -4,9 +4,46 @@ import 'package:erp/core/design/app_design_system.dart';
 import 'package:erp/core/domain/business_values.dart';
 import 'package:erp/features/settings/domain/settings_models.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('classifies every editable Sales row input as meaningful', () {
+    expect(const AppSalesInvoiceTableRowData().isEmpty, isTrue);
+    expect(
+      const AppSalesInvoiceTableRowData(quantity: '2').isEmpty,
+      isFalse,
+    );
+    expect(
+      const AppSalesInvoiceTableRowData(salePrice: '25,000').isEmpty,
+      isFalse,
+    );
+    expect(
+      const AppSalesInvoiceTableRowData(discount: '500').isEmpty,
+      isFalse,
+    );
+    expect(
+      const AppSalesInvoiceTableRowData(warehouse: 'الرصافة').isEmpty,
+      isFalse,
+    );
+    expect(
+      const AppSalesInvoiceTableRowData(
+        quantity: '2',
+        salePrice: '1,000',
+        discount: '500',
+      ).totalDiscountValue,
+      1000,
+    );
+    const cappedDiscount = AppSalesInvoiceTableRowData(
+      quantity: '2',
+      salePrice: '100',
+      discount: '150',
+    );
+    expect(cappedDiscount.discountValue, 100);
+    expect(cappedDiscount.totalDiscountValue, 200);
+    expect(cappedDiscount.totalValue, 0);
+  });
+
   testWidgets('builds the shared sales invoice layout', (tester) async {
     await _openSalesScreen(tester);
 
@@ -439,7 +476,7 @@ void main() {
     expect(_fieldValue(tester, 'salesCustomerNameField'), 'أحمد كريم');
   });
 
-  testWidgets('guards Sales edits when Windows Back is used',
+  testWidgets('guards Sales edits from app, keyboard and Windows Back',
       (tester) async {
     await _openSalesScreen(tester);
 
@@ -448,6 +485,23 @@ void main() {
       'تعديل غير محفوظ',
     );
     await tester.pump();
+
+    await tester.tap(find.byKey(const Key('appScreenBackButton')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('appConfirmDialog')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('appDialogCancelButton')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('salesScreen')), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('appConfirmDialog')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('appDialogCancelButton')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('salesScreen')), findsOneWidget);
+
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
 
@@ -488,6 +542,42 @@ void main() {
     await tester.pump();
     expect(find.text('أضف مادة واحدة مكتملة على الأقل'), findsOneWidget);
     await _finishToast(tester);
+
+    await tester.enterText(
+      _invoiceFieldByPrefix('appSalesInvoiceTemplateSalePriceField-'),
+      '25000',
+    );
+    await tester.tap(find.byKey(const Key('salesSaveButton')));
+    await tester.pump();
+    expect(
+      find.text(
+        'أكمل بيانات سطر المادة: رمز المادة واسم المادة والكمية',
+      ),
+      findsOneWidget,
+    );
+    await _finishToast(tester);
+    await tester.enterText(
+      _invoiceFieldByPrefix('appSalesInvoiceTemplateSalePriceField-'),
+      '0',
+    );
+
+    await tester.enterText(
+      _invoiceFieldByPrefix('appSalesInvoiceTemplateDiscountField-'),
+      '500',
+    );
+    await tester.tap(find.byKey(const Key('salesSaveButton')));
+    await tester.pump();
+    expect(
+      find.text(
+        'أكمل بيانات سطر المادة: رمز المادة واسم المادة والكمية',
+      ),
+      findsOneWidget,
+    );
+    await _finishToast(tester);
+    await tester.enterText(
+      _invoiceFieldByPrefix('appSalesInvoiceTemplateDiscountField-'),
+      '0',
+    );
 
     await tester.enterText(
       _invoiceFieldByPrefix('appSalesInvoiceTemplateCodeField-'),
@@ -577,6 +667,158 @@ void main() {
     await tester.pump();
     expect(_fieldValue(tester, 'salesReceivedField'), '77,000.00');
     expect(_fieldValue(tester, 'salesRemainingIqdField'), '0.00');
+  });
+
+  testWidgets('normalizes a cleared noncash receipt before update',
+      (tester) async {
+    final store = AppStore.demo();
+    await _openSalesScreen(tester, store: store);
+
+    await tester.tap(find.byKey(const Key('salesNextButton')));
+    await tester.pumpAndSettle();
+    expect(_fieldValue(tester, 'salesInvoiceNumberField'), '102');
+    expect(_fieldValue(tester, 'salesReceivedField'), '250');
+
+    await tester.enterText(
+      find.byKey(const Key('salesReceivedField')),
+      '',
+    );
+    await tester.pump();
+
+    expect(_fieldValue(tester, 'salesReceivedField'), '0.00');
+    expect(_actionButton(tester, 'salesUpdateButton').onPressed, isNotNull);
+
+    await tester.tap(find.byKey(const Key('salesUpdateButton')));
+    await tester.pump();
+    _expectToast(
+      tester,
+      color: AppColors.green,
+      message: 'تم تحديث قائمة البيع',
+    );
+
+    final updated = (await store.repositories.sales.getAll()).firstWhere(
+      (invoice) => invoice.documentNumber == 102,
+    );
+    expect(updated.received, Money.zero(AppCurrency.usd));
+    await _finishToast(tester);
+  });
+
+  testWidgets('rounds Sales row money before switching USD to IQD and saving',
+      (tester) async {
+    final store = AppStore.demo();
+    await _openSalesScreen(tester, store: store);
+    await _openNewSalesForm(tester);
+
+    _dropdown(tester, 'salesCurrencyField').onChanged('USD');
+    await tester.pump();
+    await tester.enterText(
+      find.byKey(const Key('salesCustomerNameField')),
+      'علي حسن',
+    );
+    await _completeCurrentSalesRow(tester);
+    await tester.enterText(
+      _invoiceFieldByPrefix('appSalesInvoiceTemplateQuantityField-'),
+      '2',
+    );
+    await tester.enterText(
+      _invoiceFieldByPrefix('appSalesInvoiceTemplateSalePriceField-'),
+      '0.50',
+    );
+    _dropdown(tester, 'salesTypeField').onChanged('آجل');
+    await tester.pump();
+    await tester.enterText(
+      find.byKey(const Key('salesInvoiceDiscountField')),
+      '0.01',
+    );
+    await tester.enterText(
+      find.byKey(const Key('salesReceivedField')),
+      '0.01',
+    );
+    await tester.pump();
+
+    expect(
+      _invoiceFieldValueByPrefix(
+        tester,
+        'appSalesInvoiceTemplateTotalField-',
+      ),
+      '1.00',
+    );
+
+    _dropdown(tester, 'salesCurrencyField').onChanged('IQD');
+    await tester.pump();
+
+    expect(
+      _invoiceFieldValueByPrefix(
+        tester,
+        'appSalesInvoiceTemplateSalePriceField-',
+      ),
+      '1',
+    );
+    expect(
+      _invoiceFieldValueByPrefix(
+        tester,
+        'appSalesInvoiceTemplateDiscountField-',
+      ),
+      '0',
+    );
+    expect(
+      _invoiceFieldValueByPrefix(
+        tester,
+        'appSalesInvoiceTemplateTotalField-',
+      ),
+      '2',
+    );
+    expect(_fieldValue(tester, 'salesInvoiceDiscountField'), '0');
+    expect(_fieldValue(tester, 'salesTotalIqdField'), '2');
+    expect(_fieldValue(tester, 'salesReceivedField'), '0');
+    expect(_fieldValue(tester, 'salesRemainingIqdField'), '2');
+
+    await tester.tap(find.byKey(const Key('salesSaveButton')));
+    await tester.pump();
+    _expectToast(
+      tester,
+      color: AppColors.blue,
+      message: 'تم حفظ قائمة البيع',
+    );
+
+    final saved = (await store.repositories.sales.getAll()).firstWhere(
+      (invoice) => invoice.documentNumber == 104,
+    );
+    expect(saved.currency, AppCurrency.iqd);
+    expect(saved.lines.single.unitPrice.toPlainString(), '1');
+    expect(saved.total.toPlainString(), '2');
+    expect(saved.invoiceDiscount.toPlainString(), '0');
+    expect(saved.received.toPlainString(), '0');
+    expect(_fieldValue(tester, 'salesTotalIqdField'), '2');
+    await _finishToast(tester);
+  });
+
+  testWidgets('caps Sales invoice discount amount and percentage',
+      (tester) async {
+    await _openSalesScreen(tester);
+
+    await tester.enterText(
+      find.byKey(const Key('salesInvoiceDiscountField')),
+      '999999',
+    );
+    await tester.pump();
+
+    expect(_fieldValue(tester, 'salesInvoiceDiscountField'), '177,000');
+    expect(_fieldValue(tester, 'salesDiscountPercentageField'), '100.00');
+    expect(_fieldValue(tester, 'salesReceivedField'), '0');
+    expect(_fieldValue(tester, 'salesTotalIqdField'), '0');
+    expect(_fieldValue(tester, 'salesRemainingIqdField'), '0');
+
+    await tester.enterText(
+      find.byKey(const Key('salesDiscountPercentageField')),
+      '125',
+    );
+    await tester.pump();
+
+    expect(_fieldValue(tester, 'salesDiscountPercentageField'), '100.00');
+    expect(_fieldValue(tester, 'salesInvoiceDiscountField'), '177,000');
+    expect(_fieldValue(tester, 'salesTotalIqdField'), '0');
+    expect(_fieldValue(tester, 'salesReceivedField'), '0');
   });
 
   testWidgets('shows matching Sales action toasts', (tester) async {
@@ -690,7 +932,7 @@ void main() {
     );
     saleTypeDropdown.onChanged('أقساط');
     await tester.pump();
-    expect(installmentsButton().onPressed, isNotNull);
+    expect(installmentsButton().onPressed, isNull);
 
     final currencyDropdown = tester.widget<AppDropdownField<String>>(
       find.ancestor(
@@ -721,6 +963,13 @@ void main() {
         .onChanged('نقدي');
     await tester.pump();
     expect(installmentsButton().onPressed, isNull);
+
+    await tester.tap(find.byKey(const Key('salesUndoButton')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('salesNextButton')));
+    await tester.pumpAndSettle();
+    expect(_fieldValue(tester, 'salesInvoiceNumberField'), '102');
+    expect(installmentsButton().onPressed, isNotNull);
   });
 
   testWidgets('calculates Sales rows discounts totals and cash receipt',
@@ -792,13 +1041,53 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.descendant(of: summary, matching: find.text('10.00')),
+      find.descendant(of: summary, matching: find.text('20.00')),
       findsOneWidget,
     );
     expect(
       find.descendant(of: summary, matching: find.text('180.00')),
       findsOneWidget,
     );
+
+    await tester.enterText(
+      _invoiceFieldByPrefix(
+        'appSalesInvoiceTemplateDiscountField-',
+      ),
+      '150',
+    );
+    await tester.pump();
+    expect(
+      _invoiceFieldValueByPrefix(
+        tester,
+        'appSalesInvoiceTemplateDiscountField-',
+      ),
+      '100.00',
+    );
+    expect(
+      _invoiceFieldValueByPrefix(
+        tester,
+        'appSalesInvoiceTemplatePriceAfterDiscountField-',
+      ),
+      '0.00',
+    );
+    expect(
+      _invoiceFieldValueByPrefix(
+        tester,
+        'appSalesInvoiceTemplateTotalField-',
+      ),
+      '0.00',
+    );
+    expect(
+      find.descendant(of: summary, matching: find.text('200.00')),
+      findsOneWidget,
+    );
+    await tester.enterText(
+      _invoiceFieldByPrefix(
+        'appSalesInvoiceTemplateDiscountField-',
+      ),
+      '10',
+    );
+    await tester.pump();
 
     await tester.enterText(
       find.byKey(const Key('salesInvoiceDiscountField')),
@@ -965,10 +1254,11 @@ void main() {
   testWidgets('opens sales statement options and report', (tester) async {
     await _openSalesScreen(tester);
 
-    await tester.enterText(
-      find.byKey(const Key('salesCustomerNameField')),
-      'أسواق دجلة',
-    );
+    await tester.tap(find.byKey(const Key('salesNextButton')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('salesNextButton')));
+    await tester.pumpAndSettle();
+    expect(_fieldValue(tester, 'salesCustomerNameField'), 'أسواق دجلة');
     await tester.tap(find.byKey(const Key('salesStatementButton')));
     await tester.pumpAndSettle();
 

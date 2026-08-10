@@ -154,10 +154,29 @@ extension _PurchaseFormState on _PurchaseScreenState {
   void _changeCurrency(String value) {
     if (_currency == value) return;
     _setPurchaseState(() {
-      _currency = value;
-      _tableDataVersion++;
-      _syncCalculatedFields();
-      _refreshSelectionState();
+      final wasApplyingFormState = _isApplyingFormState;
+      _isApplyingFormState = true;
+      try {
+        _currency = value;
+        _activeItems = List<AppPurchaseInvoiceTableRowData>.unmodifiable(
+          _activeItems.map((item) => item.withCurrencyPrecision(value)),
+        );
+        _setControllerText(
+          _expensesController,
+          _moneyTextAtCurrentPrecision(_expensesController.text),
+        );
+        _setControllerText(
+          _invoiceDiscountController,
+          _moneyTextAtCurrentPrecision(_invoiceDiscountController.text),
+        );
+        _nonCashPaidText = _moneyTextAtCurrentPrecision(_nonCashPaidText);
+        _setControllerText(_paidController, _nonCashPaidText);
+        _tableDataVersion++;
+        _syncCalculatedFields();
+        _refreshSelectionState();
+      } finally {
+        _isApplyingFormState = wasApplyingFormState;
+      }
     });
   }
 
@@ -206,33 +225,67 @@ extension _PurchaseFormState on _PurchaseScreenState {
     _isApplyingFormState = true;
     try {
       var quantity = 0;
-      num grossTotal = 0;
       num rowDiscount = 0;
       num lineBaseTotal = 0;
       for (final item in _activeItems) {
         quantity += item.quantityValue;
-        grossTotal += item.grossTotalValue;
-        rowDiscount += item.discountValue;
+        rowDiscount += item.effectiveDiscountValue;
         lineBaseTotal += item.totalValue;
       }
 
-      final expenses =
-          AppFormatters.parseNumber(_expensesController.text) ?? 0;
+      final parsedExpenses =
+          AppFormatters.parseNumber(_expensesController.text);
+      final requestedExpenses = parsedExpenses ?? 0;
+      final expenses = requestedExpenses < 0 ? 0 : requestedExpenses;
+      if (parsedExpenses == null || expenses != requestedExpenses) {
+        _setControllerText(
+          _expensesController,
+          AppFormatters.moneyByCurrency(expenses, _currency),
+        );
+      }
       final discountBase = lineBaseTotal + expenses;
       late final num invoiceDiscount;
       if (_discountInputSource ==
           _PurchaseDiscountInputSource.percentage) {
-        final percentage =
-            AppFormatters.parseNumber(_discountPercentageController.text) ??
-                0;
-        invoiceDiscount = discountBase * percentage / 100;
+        final parsedPercentage =
+            AppFormatters.parseNumber(_discountPercentageController.text);
+        final requestedPercentage = parsedPercentage ?? 0;
+        final percentage = requestedPercentage < 0
+            ? 0
+            : requestedPercentage > 100
+                ? 100
+                : requestedPercentage;
+        if (parsedPercentage == null || percentage != requestedPercentage) {
+          _setControllerText(
+            _discountPercentageController,
+            AppFormatters.money(percentage, decimalPlaces: 2),
+          );
+        }
+        final formattedDiscount = AppFormatters.moneyByCurrency(
+          discountBase * percentage / 100,
+          _currency,
+        );
+        invoiceDiscount =
+            AppFormatters.parseNumber(formattedDiscount) ?? 0;
         _setControllerText(
           _invoiceDiscountController,
-          AppFormatters.moneyByCurrency(invoiceDiscount, _currency),
+          formattedDiscount,
         );
       } else {
-        invoiceDiscount =
-            AppFormatters.parseNumber(_invoiceDiscountController.text) ?? 0;
+        final parsedDiscount =
+            AppFormatters.parseNumber(_invoiceDiscountController.text);
+        final requestedDiscount = parsedDiscount ?? 0;
+        invoiceDiscount = requestedDiscount < 0
+            ? 0
+            : requestedDiscount > discountBase
+                ? discountBase
+                : requestedDiscount;
+        if (parsedDiscount == null || invoiceDiscount != requestedDiscount) {
+          _setControllerText(
+            _invoiceDiscountController,
+            AppFormatters.moneyByCurrency(invoiceDiscount, _currency),
+          );
+        }
         final percentage =
             discountBase == 0 ? 0 : invoiceDiscount * 100 / discountBase;
         _setControllerText(
@@ -241,40 +294,26 @@ extension _PurchaseFormState on _PurchaseScreenState {
         );
       }
 
-      _lineBaseTotal = lineBaseTotal;
       _invoiceAdjustment = expenses - invoiceDiscount;
-      _activeItems = List<AppPurchaseInvoiceTableRowData>.unmodifiable(
-        _activeItems.map(
-          (item) => item.withCalculatedValues(
-            _currency,
-            lineBaseTotal: _lineBaseTotal,
-            invoiceAdjustment: _invoiceAdjustment,
-          ),
-        ),
+      final rowCalculation = calculatePurchaseInvoiceRows(
+        rows: _activeItems,
+        currencyCode: _currency,
+        invoiceAdjustment: _invoiceAdjustment,
       );
-
-      num totalCost = 0;
-      for (final item in _activeItems) {
-        totalCost += item.totalCostValue(
-          lineBaseTotal: _lineBaseTotal,
-          invoiceAdjustment: _invoiceAdjustment,
-        );
-      }
+      _activeItems = rowCalculation.rows;
       _summaryQuantity = AppFormatters.quantity(quantity);
       _summaryDiscount = AppFormatters.moneyByCurrency(
         rowDiscount,
         _currency,
       );
       _summaryTotal = AppFormatters.moneyByCurrency(
-        grossTotal,
+        lineBaseTotal,
         _currency,
       );
-      _summaryTotalCost = AppFormatters.moneyByCurrency(
-        totalCost,
-        _currency,
-      );
+      _summaryTotalCost = rowCalculation.totalCost;
 
-      final total = discountBase - invoiceDiscount;
+      final total =
+          AppFormatters.parseNumber(rowCalculation.totalCost) ?? 0;
       late final num paid;
       if (_paymentType == 'نقدي') {
         paid = total;
@@ -283,16 +322,14 @@ extension _PurchaseFormState on _PurchaseScreenState {
           AppFormatters.moneyByCurrency(paid, _currency),
         );
       } else {
-        final requestedPaid =
-            AppFormatters.parseNumber(_nonCashPaidText) ?? 0;
-        paid = total < 0
-            ? total
-            : requestedPaid < 0
-                ? 0
-                : requestedPaid > total
-                    ? total
-                    : requestedPaid;
-        if (paid != requestedPaid) {
+        final parsedPaid = AppFormatters.parseNumber(_nonCashPaidText);
+        final requestedPaid = parsedPaid ?? 0;
+        paid = requestedPaid < 0
+            ? 0
+            : requestedPaid > total
+                ? total
+                : requestedPaid;
+        if (parsedPaid == null || paid != requestedPaid) {
           _nonCashPaidText = AppFormatters.moneyByCurrency(
             paid,
             _currency,
@@ -301,7 +338,8 @@ extension _PurchaseFormState on _PurchaseScreenState {
         _setControllerText(_paidController, _nonCashPaidText);
       }
 
-      final remaining = _paymentType == 'نقدي' ? 0 : total - paid;
+      final unpaid = _paymentType == 'نقدي' ? 0 : total - paid;
+      final remaining = unpaid < 0 ? 0 : unpaid;
       final currentBalance = _balanceBeforeInvoice + remaining;
       _setControllerText(
         _totalController,
@@ -328,6 +366,12 @@ extension _PurchaseFormState on _PurchaseScreenState {
     controller.text = value;
   }
 
+  String _moneyTextAtCurrentPrecision(String value) {
+    return AppFormatters.moneyByCurrency(
+      AppFormatters.parseNumber(value) ?? 0,
+      _currency,
+    );
+  }
 
   bool _validateForm() {
     final supplierName = _supplierNameController.text.trim();
@@ -345,6 +389,17 @@ extension _PurchaseFormState on _PurchaseScreenState {
       AppToast.showWarning(
         context,
         'أكمل بيانات سطر المادة: رمز المادة واسم المادة والكمية',
+      );
+      return false;
+    }
+    if (meaningfulItems.any((item) => !item.hasValidNumericValues)) {
+      AppToast.showWarning(context, 'تحقق من القيم الرقمية في سطور المواد');
+      return false;
+    }
+    if (meaningfulItems.any((item) => !item.hasValidLineDiscount)) {
+      AppToast.showWarning(
+        context,
+        'يجب ألا يتجاوز خصم السطر إجمالي السطر',
       );
       return false;
     }

@@ -341,36 +341,88 @@ void main() {
     expect(purchaseLine.netTotal.toPlainString(), '190');
   });
 
-  test('Purchase model preserves a legitimate negative result', () {
-    final line = PurchaseInvoiceLine(
-      id: EntityId.demo('purchase-line', 91),
+  test('Purchase model rejects invalid discounts and paid amounts', () {
+    expect(
+      () => PurchaseInvoiceLine(
+        id: EntityId.demo('purchase-line', 91),
+        itemId: EntityId.demo('item', 1),
+        warehouseId: EntityId.demo('warehouse', 1),
+        quantity: WholeQuantity(1),
+        containerQuantity: WholeQuantity(0),
+        purchasePrice: Money.fromMajor(100, AppCurrency.iqd),
+        lineDiscount: Money.fromMajor(150, AppCurrency.iqd),
+        salePrice: Money.fromMajor(120, AppCurrency.iqd),
+      ),
+      throwsArgumentError,
+    );
+
+    final validLine = PurchaseInvoiceLine(
+      id: EntityId.demo('purchase-line', 92),
       itemId: EntityId.demo('item', 1),
       warehouseId: EntityId.demo('warehouse', 1),
       quantity: WholeQuantity(1),
       containerQuantity: WholeQuantity(0),
       purchasePrice: Money.fromMajor(100, AppCurrency.iqd),
-      lineDiscount: Money.fromMajor(150, AppCurrency.iqd),
+      lineDiscount: Money.fromMajor(10, AppCurrency.iqd),
       salePrice: Money.fromMajor(120, AppCurrency.iqd),
     );
-    final invoice = PurchaseInvoice(
-      id: EntityId.demo('purchase', 91),
-      documentNumber: 2091,
-      date: BusinessDate(2026, 8, 5),
-      minuteOfDay: 9 * 60,
-      supplierId: EntityId.demo('party', 3),
-      defaultWarehouseId: EntityId.demo('warehouse', 1),
-      currency: AppCurrency.iqd,
-      exchangeRate: ExchangeRate.parse('1310'),
-      purchaseKind: PurchaseTransactionKind.local,
-      settlementKind: PurchaseSettlementKind.cash,
-      lines: [line],
-      expenses: Money.zero(AppCurrency.iqd),
-      invoiceDiscount: Money.zero(AppCurrency.iqd),
-      paid: Money.fromMajor(-50, AppCurrency.iqd),
+    expect(
+      () => PurchaseInvoice(
+        id: EntityId.demo('purchase', 91),
+        documentNumber: 2091,
+        date: BusinessDate(2026, 8, 5),
+        minuteOfDay: 9 * 60,
+        supplierId: EntityId.demo('party', 3),
+        defaultWarehouseId: EntityId.demo('warehouse', 1),
+        currency: AppCurrency.iqd,
+        exchangeRate: ExchangeRate.parse('1310'),
+        purchaseKind: PurchaseTransactionKind.local,
+        settlementKind: PurchaseSettlementKind.credit,
+        lines: [validLine],
+        expenses: Money.fromMajor(5, AppCurrency.iqd),
+        invoiceDiscount: Money.fromMajor(96, AppCurrency.iqd),
+        paid: Money.zero(AppCurrency.iqd),
+      ),
+      throwsArgumentError,
     );
-
-    expect(invoice.total.toPlainString(), '-50');
-    expect(invoice.paid, invoice.total);
+    expect(
+      () => PurchaseInvoice(
+        id: EntityId.demo('purchase', 92),
+        documentNumber: 2092,
+        date: BusinessDate(2026, 8, 5),
+        minuteOfDay: 9 * 60,
+        supplierId: EntityId.demo('party', 3),
+        defaultWarehouseId: EntityId.demo('warehouse', 1),
+        currency: AppCurrency.iqd,
+        exchangeRate: ExchangeRate.parse('1310'),
+        purchaseKind: PurchaseTransactionKind.local,
+        settlementKind: PurchaseSettlementKind.credit,
+        lines: [validLine],
+        expenses: Money.fromMajor(5, AppCurrency.iqd),
+        invoiceDiscount: Money.zero(AppCurrency.iqd),
+        paid: Money.fromMajor(96, AppCurrency.iqd),
+      ),
+      throwsArgumentError,
+    );
+    expect(
+      () => PurchaseInvoice(
+        id: EntityId.demo('purchase', 93),
+        documentNumber: 2093,
+        date: BusinessDate(2026, 8, 5),
+        minuteOfDay: 9 * 60,
+        supplierId: EntityId.demo('party', 3),
+        defaultWarehouseId: EntityId.demo('warehouse', 1),
+        currency: AppCurrency.iqd,
+        exchangeRate: ExchangeRate.parse('1310'),
+        purchaseKind: PurchaseTransactionKind.local,
+        settlementKind: PurchaseSettlementKind.credit,
+        lines: [validLine],
+        expenses: Money.fromMajor(5, AppCurrency.iqd),
+        invoiceDiscount: Money.zero(AppCurrency.iqd),
+        paid: Money.fromMajor(-1, AppCurrency.iqd),
+      ),
+      throwsArgumentError,
+    );
   });
 
   test('invoice numbers remain reserved after permanent deletion', () async {

@@ -76,9 +76,23 @@ class AppPurchaseInvoiceTableRowData {
       quantityValue > 0;
 
   bool get isEmpty =>
+      lineId == null &&
+      itemId == null &&
       code.trim().isEmpty &&
       name.trim().isEmpty &&
-      quantityValue == 0;
+      warehouse == 'الرئيسي' &&
+      _isZeroOrBlank(quantity) &&
+      _isZeroOrBlank(container) &&
+      _isZeroOrBlank(purchasePrice) &&
+      _isZeroOrBlank(discount) &&
+      _isZeroOrBlank(salePrice);
+
+  bool get hasValidNumericValues =>
+      _isPositiveWholeNumber(quantity) &&
+      _isNonNegativeWholeNumberOrBlank(container) &&
+      _isNonNegativeNumberOrBlank(purchasePrice) &&
+      _isNonNegativeNumberOrBlank(discount) &&
+      _isNonNegativeNumberOrBlank(salePrice);
 
   num get purchasePriceValue =>
       AppFormatters.parseNumber(purchasePrice) ?? 0;
@@ -87,43 +101,44 @@ class AppPurchaseInvoiceTableRowData {
 
   num get grossTotalValue => quantityValue * purchasePriceValue;
 
-  num get totalValue => grossTotalValue - discountValue;
+  bool get hasValidLineDiscount {
+    final parsedDiscount = AppFormatters.parseNumber(discount);
+    if (discount.trim().isNotEmpty && parsedDiscount == null) return false;
+    final value = parsedDiscount ?? 0;
+    return value >= 0 && value <= grossTotalValue;
+  }
+
+  num get effectiveDiscountValue {
+    final value = discountValue;
+    if (value <= 0) return 0;
+    return value > grossTotalValue ? grossTotalValue : value;
+  }
+
+  num get totalValue => grossTotalValue - effectiveDiscountValue;
 
   num get priceAfterDiscountValue {
     if (quantityValue <= 0) return 0;
     return totalValue / quantityValue;
   }
 
-  num totalCostValue({
-    required num lineBaseTotal,
-    required num invoiceAdjustment,
-  }) {
-    if (lineBaseTotal <= 0) return totalValue;
-    return totalValue +
-        invoiceAdjustment * (totalValue / lineBaseTotal);
-  }
-
-  num costValue({
-    required num lineBaseTotal,
-    required num invoiceAdjustment,
-  }) {
-    if (quantityValue <= 0) return 0;
-    return totalCostValue(
-          lineBaseTotal: lineBaseTotal,
-          invoiceAdjustment: invoiceAdjustment,
-        ) /
-        quantityValue;
-  }
-
-  AppPurchaseInvoiceTableRowData withCalculatedValues(
-    String currencyCode, {
-    required num lineBaseTotal,
-    required num invoiceAdjustment,
-  }) {
-    final calculatedTotalCost = totalCostValue(
-      lineBaseTotal: lineBaseTotal,
-      invoiceAdjustment: invoiceAdjustment,
+  AppPurchaseInvoiceTableRowData withCurrencyPrecision(
+    String currencyCode,
+  ) {
+    final normalizedPurchasePrice = _moneyAtCurrencyPrecision(
+      purchasePrice,
+      currencyCode,
     );
+    final normalizedGrossTotal = quantityValue *
+        (AppFormatters.parseNumber(normalizedPurchasePrice) ?? 0);
+    final requestedDiscount = AppFormatters.parseNumber(
+          _moneyAtCurrencyPrecision(discount, currencyCode),
+        ) ??
+        0;
+    final normalizedDiscount = requestedDiscount < 0
+        ? 0
+        : requestedDiscount > normalizedGrossTotal
+            ? normalizedGrossTotal
+            : requestedDiscount;
     return AppPurchaseInvoiceTableRowData(
       lineId: lineId,
       itemId: itemId,
@@ -132,27 +147,164 @@ class AppPurchaseInvoiceTableRowData {
       warehouse: warehouse,
       quantity: quantity,
       container: container,
-      purchasePrice: purchasePrice,
-      discount: discount,
-      priceAfterDiscount: AppFormatters.moneyByCurrency(
-        priceAfterDiscountValue,
+      purchasePrice: normalizedPurchasePrice,
+      discount: AppFormatters.moneyByCurrency(
+        normalizedDiscount,
         currencyCode,
       ),
-      total: AppFormatters.moneyByCurrency(totalValue, currencyCode),
-      cost: AppFormatters.moneyByCurrency(
-        costValue(
-          lineBaseTotal: lineBaseTotal,
-          invoiceAdjustment: invoiceAdjustment,
-        ),
-        currencyCode,
-      ),
-      totalCost: AppFormatters.moneyByCurrency(
-        calculatedTotalCost,
-        currencyCode,
-      ),
-      salePrice: salePrice,
+      priceAfterDiscount: priceAfterDiscount,
+      total: total,
+      cost: cost,
+      totalCost: totalCost,
+      salePrice: _moneyAtCurrencyPrecision(salePrice, currencyCode),
     );
   }
+}
+
+class AppPurchaseInvoiceRowsCalculation {
+  const AppPurchaseInvoiceRowsCalculation({
+    required this.rows,
+    required this.totalCost,
+  });
+
+  final List<AppPurchaseInvoiceTableRowData> rows;
+  final String totalCost;
+}
+
+AppPurchaseInvoiceRowsCalculation calculatePurchaseInvoiceRows({
+  required List<AppPurchaseInvoiceTableRowData> rows,
+  required String currencyCode,
+  required num invoiceAdjustment,
+}) {
+  final lineTotals = [
+    for (final row in rows)
+      _valueToMinorUnits(row.totalValue, currencyCode),
+  ];
+  final grossTotals = [
+    for (final row in rows)
+      _valueToMinorUnits(row.grossTotalValue, currencyCode),
+  ];
+  final lineBaseTotal = lineTotals.fold<int>(0, (sum, value) => sum + value);
+  final adjustment = _valueToMinorUnits(invoiceAdjustment, currencyCode);
+  final targetTotal = lineBaseTotal + adjustment < 0
+      ? 0
+      : lineBaseTotal + adjustment;
+
+  // Prefer net value, then gross value, then quantity. The final equal
+  // fallback keeps zero-value rows deterministic while excluding a trailing
+  // empty row whenever any meaningful row exists.
+  late List<int> weights;
+  if (lineBaseTotal > 0) {
+    weights = lineTotals;
+  } else {
+    final grossTotal = grossTotals.fold<int>(
+      0,
+      (sum, value) => sum + (value < 0 ? 0 : value),
+    );
+    if (grossTotal > 0) {
+      weights = [for (final value in grossTotals) value < 0 ? 0 : value];
+    } else {
+      final totalQuantity = rows.fold<int>(
+        0,
+        (sum, row) =>
+            sum + (row.quantityValue < 0 ? 0 : row.quantityValue),
+      );
+      if (totalQuantity > 0) {
+        weights = [
+          for (final row in rows)
+            row.quantityValue < 0 ? 0 : row.quantityValue,
+        ];
+      } else {
+        weights = [for (final row in rows) row.isEmpty ? 0 : 1];
+        if (weights.isNotEmpty &&
+            weights.every((weight) => weight == 0)) {
+          weights[0] = 1;
+        }
+      }
+    }
+  }
+
+  final allocatedTotals = _allocateMinorUnits(targetTotal, weights);
+  final calculatedRows = <AppPurchaseInvoiceTableRowData>[];
+  for (var index = 0; index < rows.length; index++) {
+    final row = rows[index];
+    final allocatedTotal = allocatedTotals[index];
+    final allocatedMajor = _minorUnitsToMajor(
+      allocatedTotal,
+      currencyCode,
+    );
+    calculatedRows.add(
+      AppPurchaseInvoiceTableRowData(
+        lineId: row.lineId,
+        itemId: row.itemId,
+        code: row.code,
+        name: row.name,
+        warehouse: row.warehouse,
+        quantity: row.quantity,
+        container: row.container,
+        purchasePrice: row.purchasePrice,
+        discount: row.discount,
+        priceAfterDiscount: AppFormatters.moneyByCurrency(
+          row.priceAfterDiscountValue,
+          currencyCode,
+        ),
+        total: _formatMinorUnits(lineTotals[index], currencyCode),
+        cost: AppFormatters.moneyByCurrency(
+          row.quantityValue <= 0
+              ? 0
+              : allocatedMajor / row.quantityValue,
+          currencyCode,
+        ),
+        totalCost: _formatMinorUnits(allocatedTotal, currencyCode),
+        salePrice: row.salePrice,
+      ),
+    );
+  }
+
+  final allocatedTotal = allocatedTotals.fold<int>(
+    0,
+    (sum, value) => sum + value,
+  );
+  return AppPurchaseInvoiceRowsCalculation(
+    rows: List.unmodifiable(calculatedRows),
+    totalCost: _formatMinorUnits(allocatedTotal, currencyCode),
+  );
+}
+
+List<int> _allocateMinorUnits(int total, List<int> weights) {
+  final allocations = List<int>.filled(weights.length, 0);
+  if (total <= 0 || weights.isEmpty) return allocations;
+
+  final weightTotal = weights.fold<int>(
+    0,
+    (sum, weight) => sum + (weight < 0 ? 0 : weight),
+  );
+  if (weightTotal <= 0) return allocations;
+
+  final remainders = List<int>.filled(weights.length, 0);
+  var allocated = 0;
+  for (var index = 0; index < weights.length; index++) {
+    final weight = weights[index] < 0 ? 0 : weights[index];
+    final weightedTotal = total * weight;
+    allocations[index] = weightedTotal ~/ weightTotal;
+    remainders[index] = weightedTotal % weightTotal;
+    allocated += allocations[index];
+  }
+
+  final order = List<int>.generate(weights.length, (index) => index)
+    ..sort((left, right) {
+      final remainderOrder =
+          remainders[right].compareTo(remainders[left]);
+      return remainderOrder != 0 ? remainderOrder : left.compareTo(right);
+    });
+  // Largest-remainder distribution preserves every final minor unit. Stable
+  // row order resolves ties, so recalculation never moves the residual at
+  // random between otherwise equal rows.
+  final residual = total - allocated;
+  for (var offset = 0; offset < residual; offset++) {
+    allocations[order[offset]]++;
+  }
+  return allocations;
 }
 
 class _PurchaseInvoiceTemplateRow {
@@ -231,7 +383,6 @@ class AppPurchaseInvoiceTableTemplate extends StatefulWidget {
     this.summaryTotal = '0',
     this.summaryTotalCost = '0',
     this.currencyCode = 'IQD',
-    this.lineBaseTotal = 0,
     this.invoiceAdjustment = 0,
     this.itemOptions = const [],
     this.onRowsChanged,
@@ -244,7 +395,6 @@ class AppPurchaseInvoiceTableTemplate extends StatefulWidget {
   final String summaryTotal;
   final String summaryTotalCost;
   final String currencyCode;
-  final num lineBaseTotal;
   final num invoiceAdjustment;
   final List<AppInvoiceItemOption> itemOptions;
   final ValueChanged<List<AppPurchaseInvoiceTableRowData>>? onRowsChanged;
@@ -273,7 +423,6 @@ class _AppPurchaseInvoiceTableTemplateState
     super.didUpdateWidget(oldWidget);
     if (oldWidget.dataVersion == widget.dataVersion) {
       if (oldWidget.currencyCode != widget.currencyCode ||
-          oldWidget.lineBaseTotal != widget.lineBaseTotal ||
           oldWidget.invoiceAdjustment != widget.invoiceAdjustment) {
         _recalculateRows();
       }
@@ -292,11 +441,18 @@ class _AppPurchaseInvoiceTableTemplateState
   List<_PurchaseInvoiceTemplateRow> _createRows(
     List<AppPurchaseInvoiceTableRowData> rows,
   ) {
-    if (rows.isEmpty) return [_newRow(1)];
+    final sourceRows = rows.isEmpty
+        ? const [AppPurchaseInvoiceTableRowData()]
+        : rows;
+    final calculatedRows = calculatePurchaseInvoiceRows(
+      rows: sourceRows,
+      currencyCode: widget.currencyCode,
+      invoiceAdjustment: widget.invoiceAdjustment,
+    ).rows;
 
     return [
-      for (var index = 0; index < rows.length; index++)
-        _newRow(index + 1, rows[index]),
+      for (var index = 0; index < calculatedRows.length; index++)
+        _newRow(index + 1, calculatedRows[index]),
     ];
   }
 
@@ -308,16 +464,15 @@ class _AppPurchaseInvoiceTableTemplateState
     return _PurchaseInvoiceTemplateRow(
       id: 'r${_nextRowId++}',
       index: index,
-      data: data.withCalculatedValues(
-        widget.currencyCode,
-        lineBaseTotal: widget.lineBaseTotal,
-        invoiceAdjustment: widget.invoiceAdjustment,
-      ),
+      data: data,
     );
   }
 
   void _addRow() {
-    setState(() => _rows.add(_newRow(_rows.length + 1)));
+    setState(() {
+      _rows.add(_newRow(_rows.length + 1));
+      _recalculateRows();
+    });
     _notifyRowsChanged();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_tableScrollController.hasClients) return;
@@ -338,6 +493,7 @@ class _AppPurchaseInvoiceTableTemplateState
       for (var rowIndex = 0; rowIndex < _rows.length; rowIndex++) {
         _rows[rowIndex].setIndex(rowIndex + 1);
       }
+      _recalculateRows();
     });
     _notifyRowsChanged();
     WidgetsBinding.instance.addPostFrameCallback((_) => removed.dispose());
@@ -348,7 +504,10 @@ class _AppPurchaseInvoiceTableTemplateState
     String? value,
   ) {
     if (value == null) return;
-    setState(() => row.warehouse = value);
+    setState(() {
+      row.warehouse = value;
+      _recalculateRows();
+    });
     _notifyRowsChanged();
   }
 
@@ -358,7 +517,7 @@ class _AppPurchaseInvoiceTableTemplateState
   }
 
   void _changeRowText() {
-    setState(() {});
+    setState(_recalculateRows);
     _notifyRowsChanged();
   }
 
@@ -375,6 +534,7 @@ class _AppPurchaseInvoiceTableTemplateState
       row.itemId = option.id;
       row.codeController.text = option.code;
       row.nameController.text = option.name;
+      _recalculateRows();
     });
     _notifyRowsChanged();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -391,16 +551,14 @@ class _AppPurchaseInvoiceTableTemplateState
   }
 
   void _recalculateRows() {
-    for (final row in _rows) {
-      final data = AppPurchaseInvoiceTableRowData(
-        quantity: row.quantityController.text,
-        purchasePrice: row.purchasePriceController.text,
-        discount: row.discountController.text,
-      ).withCalculatedValues(
-        widget.currencyCode,
-        lineBaseTotal: widget.lineBaseTotal,
-        invoiceAdjustment: widget.invoiceAdjustment,
-      );
+    final calculatedRows = calculatePurchaseInvoiceRows(
+      rows: [for (final row in _rows) _rowData(row)],
+      currencyCode: widget.currencyCode,
+      invoiceAdjustment: widget.invoiceAdjustment,
+    ).rows;
+    for (var index = 0; index < _rows.length; index++) {
+      final row = _rows[index];
+      final data = calculatedRows[index];
       row.priceAfterDiscountController.text = data.priceAfterDiscount;
       row.totalController.text = data.total;
       row.costController.text = data.cost;
@@ -411,25 +569,29 @@ class _AppPurchaseInvoiceTableTemplateState
   void _notifyRowsChanged() {
     widget.onRowsChanged?.call(
       List<AppPurchaseInvoiceTableRowData>.unmodifiable(
-        _rows.map(
-          (row) => AppPurchaseInvoiceTableRowData(
-            lineId: row.lineId,
-            itemId: row.itemId,
-            code: row.codeController.text,
-            name: row.nameController.text,
-            warehouse: row.warehouse,
-            quantity: row.quantityController.text,
-            container: row.containerController.text,
-            purchasePrice: row.purchasePriceController.text,
-            discount: row.discountController.text,
-            priceAfterDiscount: row.priceAfterDiscountController.text,
-            total: row.totalController.text,
-            cost: row.costController.text,
-            totalCost: row.totalCostController.text,
-            salePrice: row.salePriceController.text,
-          ),
-        ),
+        _rows.map(_rowData),
       ),
+    );
+  }
+
+  AppPurchaseInvoiceTableRowData _rowData(
+    _PurchaseInvoiceTemplateRow row,
+  ) {
+    return AppPurchaseInvoiceTableRowData(
+      lineId: row.lineId,
+      itemId: row.itemId,
+      code: row.codeController.text,
+      name: row.nameController.text,
+      warehouse: row.warehouse,
+      quantity: row.quantityController.text,
+      container: row.containerController.text,
+      purchasePrice: row.purchasePriceController.text,
+      discount: row.discountController.text,
+      priceAfterDiscount: row.priceAfterDiscountController.text,
+      total: row.totalController.text,
+      cost: row.costController.text,
+      totalCost: row.totalCostController.text,
+      salePrice: row.salePriceController.text,
     );
   }
 
@@ -725,4 +887,79 @@ class _AppPurchaseInvoiceTableTemplateState
       textAlign: TextAlign.center,
     );
   }
+}
+
+bool _isZeroOrBlank(String value) {
+  final normalized = value.trim();
+  if (normalized.isEmpty) return true;
+  final parsed = AppFormatters.parseNumber(normalized);
+  return parsed != null && parsed == 0;
+}
+
+bool _isPositiveWholeNumber(String value) {
+  final parsed = AppFormatters.parseInteger(value);
+  return parsed != null && parsed > 0;
+}
+
+bool _isNonNegativeWholeNumberOrBlank(String value) {
+  if (value.trim().isEmpty) return true;
+  final parsed = AppFormatters.parseInteger(value);
+  return parsed != null && parsed >= 0;
+}
+
+bool _isNonNegativeNumberOrBlank(String value) {
+  if (value.trim().isEmpty) return true;
+  final parsed = AppFormatters.parseNumber(value);
+  return parsed != null && parsed >= 0;
+}
+
+String _moneyAtCurrencyPrecision(String value, String currencyCode) {
+  return AppFormatters.moneyByCurrency(
+    AppFormatters.parseNumber(value) ?? 0,
+    currencyCode,
+  );
+}
+
+int _valueToMinorUnits(num value, String currencyCode) {
+  final decimalPlaces = currencyCode.toUpperCase() == 'USD' ? 2 : 0;
+  final normalized = AppFormatters.money(
+    value,
+    decimalPlaces: decimalPlaces,
+  ).replaceAll(',', '');
+  final negative = normalized.startsWith('-');
+  final unsigned = negative ? normalized.substring(1) : normalized;
+  final parts = unsigned.split('.');
+  final whole = int.parse(parts.first);
+  final scale = decimalPlaces == 0 ? 1 : 100;
+  final fraction = decimalPlaces == 0
+      ? 0
+      : int.parse(parts.length == 1 ? '0' : parts.last.padRight(2, '0'));
+  final minorUnits = whole * scale + fraction;
+  return negative ? -minorUnits : minorUnits;
+}
+
+num _minorUnitsToMajor(int value, String currencyCode) {
+  return currencyCode.toUpperCase() == 'USD' ? value / 100 : value;
+}
+
+String _formatMinorUnits(int value, String currencyCode) {
+  final decimalPlaces = currencyCode.toUpperCase() == 'USD' ? 2 : 0;
+  final scale = decimalPlaces == 0 ? 1 : 100;
+  final sign = value < 0 ? '-' : '';
+  final absolute = value.abs();
+  final whole = _groupWholeDigits('${absolute ~/ scale}');
+  if (decimalPlaces == 0) return '$sign$whole';
+  final fraction = (absolute % scale).toString().padLeft(2, '0');
+  return '$sign$whole.$fraction';
+}
+
+String _groupWholeDigits(String digits) {
+  final buffer = StringBuffer();
+  for (var index = 0; index < digits.length; index++) {
+    if (index > 0 && (digits.length - index) % 3 == 0) {
+      buffer.write(',');
+    }
+    buffer.write(digits[index]);
+  }
+  return buffer.toString();
 }

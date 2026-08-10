@@ -4,12 +4,18 @@ class _SalesInvoiceButtons extends StatelessWidget {
   const _SalesInvoiceButtons({
     required this.onSearch,
     required this.onPrint,
+    required this.onPrintWithoutPrices,
+    required this.onExportPdf,
+    required this.onExportExcel,
     required this.onInstallments,
     required this.onStatement,
   });
 
   final VoidCallback? onSearch;
   final VoidCallback? onPrint;
+  final VoidCallback? onPrintWithoutPrices;
+  final VoidCallback? onExportPdf;
+  final VoidCallback? onExportExcel;
   final VoidCallback? onInstallments;
   final VoidCallback? onStatement;
 
@@ -34,6 +40,27 @@ class _SalesInvoiceButtons extends StatelessWidget {
           icon: Icons.print_rounded,
           tooltip: 'طباعة',
           onPressed: onPrint,
+        ),
+        AppHeaderIconButton(
+          key: const Key('salesPrintWithoutPricesButton'),
+          tooltipKey: const Key('salesPrintWithoutPricesTooltip'),
+          icon: Icons.money_off_rounded,
+          tooltip: 'طباعة بدون سعر',
+          onPressed: onPrintWithoutPrices,
+        ),
+        AppHeaderIconButton(
+          key: const Key('salesPdfButton'),
+          tooltipKey: const Key('salesPdfTooltip'),
+          icon: Icons.picture_as_pdf_rounded,
+          tooltip: 'تصدير PDF',
+          onPressed: onExportPdf,
+        ),
+        AppHeaderIconButton(
+          key: const Key('salesExcelButton'),
+          tooltipKey: const Key('salesExcelTooltip'),
+          icon: Icons.table_view_rounded,
+          tooltip: 'تصدير Excel',
+          onPressed: onExportExcel,
         ),
         AppHeaderIconButton(
           key: const Key('salesInstallmentsButton'),

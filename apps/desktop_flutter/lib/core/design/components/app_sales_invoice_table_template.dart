@@ -66,11 +66,20 @@ class AppSalesInvoiceTableRowData {
   bool get isEmpty =>
       code.trim().isEmpty &&
       name.trim().isEmpty &&
-      quantityValue == 0;
+      _isBlankOrZeroNumber(quantity) &&
+      _isBlankOrZeroNumber(salePrice) &&
+      _isBlankOrZeroNumber(discount) &&
+      warehouse.trim() == 'الرئيسي';
 
   num get salePriceValue => AppFormatters.parseNumber(salePrice) ?? 0;
 
-  num get discountValue => AppFormatters.parseNumber(discount) ?? 0;
+  num get discountValue {
+    final requestedDiscount = AppFormatters.parseNumber(discount) ?? 0;
+    final maximumDiscount = salePriceValue < 0 ? 0 : salePriceValue;
+    return requestedDiscount.clamp(0, maximumDiscount);
+  }
+
+  num get totalDiscountValue => discountValue * quantityValue;
 
   num get priceAfterDiscountValue {
     final value = salePriceValue - discountValue;
@@ -78,6 +87,42 @@ class AppSalesInvoiceTableRowData {
   }
 
   num get totalValue => priceAfterDiscountValue * quantityValue;
+
+  AppSalesInvoiceTableRowData normalizeMonetaryValues(
+    String currencyCode,
+  ) {
+    final normalizedSalePrice = _moneyValueForCurrency(
+      salePriceValue,
+      currencyCode,
+    );
+    final requestedDiscount = _moneyValueForCurrency(
+      AppFormatters.parseNumber(discount) ?? 0,
+      currencyCode,
+    );
+    final maximumDiscount =
+        normalizedSalePrice < 0 ? 0 : normalizedSalePrice;
+    final normalizedDiscount = requestedDiscount.clamp(
+      0,
+      maximumDiscount,
+    );
+
+    return AppSalesInvoiceTableRowData(
+      lineId: lineId,
+      itemId: itemId,
+      code: code,
+      name: name,
+      warehouse: warehouse,
+      quantity: quantity,
+      salePrice: AppFormatters.moneyByCurrency(
+        normalizedSalePrice,
+        currencyCode,
+      ),
+      discount: AppFormatters.moneyByCurrency(
+        normalizedDiscount,
+        currencyCode,
+      ),
+    ).withCalculatedValues(currencyCode);
+  }
 
   AppSalesInvoiceTableRowData withCalculatedValues(
     String currencyCode,
@@ -98,6 +143,18 @@ class AppSalesInvoiceTableRowData {
       total: AppFormatters.moneyByCurrency(totalValue, currencyCode),
     );
   }
+}
+
+num _moneyValueForCurrency(num value, String currencyCode) {
+  final formatted = AppFormatters.moneyByCurrency(value, currencyCode);
+  return AppFormatters.parseNumber(formatted) ?? 0;
+}
+
+bool _isBlankOrZeroNumber(String value) {
+  final normalized = value.trim();
+  if (normalized.isEmpty) return true;
+  final parsed = AppFormatters.parseNumber(normalized);
+  return parsed != null && parsed == 0;
 }
 
 class _SalesInvoiceTemplateRow {
@@ -311,11 +368,23 @@ class _AppSalesInvoiceTableTemplateState
   }
 
   void _recalculateRow(_SalesInvoiceTemplateRow row) {
+    final requestedDiscount =
+        AppFormatters.parseNumber(row.discountController.text) ?? 0;
     final data = AppSalesInvoiceTableRowData(
+      code: row.codeController.text,
+      name: row.nameController.text,
       quantity: row.quantityController.text,
       salePrice: row.salePriceController.text,
       discount: row.discountController.text,
     ).withCalculatedValues(widget.currencyCode);
+    final hasPricingContext =
+        data.quantityValue > 0 || data.salePriceValue > 0;
+    if (hasPricingContext && requestedDiscount != data.discountValue) {
+      row.discountController.text = AppFormatters.moneyByCurrency(
+        data.discountValue,
+        widget.currencyCode,
+      );
+    }
     row.priceAfterDiscountController.text = data.priceAfterDiscount;
     row.totalController.text = data.total;
   }

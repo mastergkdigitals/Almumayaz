@@ -217,7 +217,10 @@ extension _SalesScreenDataPart on _SalesScreenState {
         rows.fold<int>(0, (total, row) => total + row.quantityValue),
       ),
       summaryDiscount: AppFormatters.moneyByCurrency(
-        rows.fold<num>(0, (total, row) => total + row.discountValue),
+        rows.fold<num>(
+          0,
+          (total, row) => total + row.totalDiscountValue,
+        ),
         currency,
       ),
       summaryTotal: AppFormatters.moneyByCurrency(

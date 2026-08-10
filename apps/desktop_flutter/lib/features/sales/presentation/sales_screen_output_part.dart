@@ -92,19 +92,137 @@ extension _SalesScreenOutputPart on _SalesScreenState {
     );
   }
 
-  void _printSalesInvoice() {
-    unawaited(_runSalesPrint());
+  void _printSalesInvoice({bool includePrices = true}) {
+    unawaited(
+      _runSalesDocumentAction(
+        includePrices
+            ? DocumentOutputAction.print
+            : DocumentOutputAction.printWithoutPrices,
+      ),
+    );
   }
 
-  Future<void> _runSalesPrint() async {
-    if (_isDocumentActionRunning) return;
+  void _exportSalesInvoice(DocumentExportFormat format) {
+    unawaited(
+      _runSalesDocumentAction(
+        format == DocumentExportFormat.pdf
+            ? DocumentOutputAction.pdf
+            : DocumentOutputAction.excel,
+      ),
+    );
+  }
+
+  bool get _canUseSelectedSalesInvoiceForOutput =>
+      _invoiceState.status == AppDataStatus.ready &&
+      _selectedInvoice != null &&
+      !_hasUnsavedChanges &&
+      !_isRepositoryBusy &&
+      !_isDocumentActionRunning;
+
+  Future<bool> _reloadSelectedSalesInvoiceForOutput() async {
+    final selected = _selectedInvoice;
+    final coordinator = _coordinator;
+    if (selected == null || coordinator == null) return false;
+
+    final selectedEntityId = selected.source.id;
+    final state = await coordinator.load();
+    if (!mounted) return false;
+    final currentSelection = _selectedInvoice;
+    if (!_isDocumentActionRunning ||
+        currentSelection == null ||
+        currentSelection.source.id != selectedEntityId ||
+        _hasUnsavedChanges ||
+        _isRepositoryBusy) {
+      return false;
+    }
+
+    final records = state.data;
+    if (state.status != AppDataStatus.ready || records == null) {
+      final failureState = state.status == AppDataStatus.empty
+          ? const AppDataState<List<_DemoSalesInvoice>>.missingReference(
+              'قائمة البيع المحددة لم تعد موجودة.',
+            )
+          : state;
+      _setSalesState(() {
+        _invoiceState = failureState;
+        if (state.status == AppDataStatus.empty) {
+          _salesInvoices.clear();
+          _selectedInvoice = null;
+        }
+      });
+      AppToast.showError(
+        context,
+        failureState.message ?? 'تعذر تحديث قائمة البيع',
+      );
+      return false;
+    }
+
+    _DemoSalesInvoice? refreshed;
+    for (final candidate in records) {
+      if (candidate.source.id == selectedEntityId) {
+        refreshed = candidate;
+        break;
+      }
+    }
+    final refreshedInvoice = refreshed;
+    if (refreshedInvoice == null) {
+      const message = 'قائمة البيع المحددة لم تعد موجودة.';
+      _setSalesState(() {
+        _salesInvoices
+          ..clear()
+          ..addAll(records);
+        _selectedInvoice = null;
+        _invoiceState = const AppDataState.missingReference(message);
+      });
+      AppToast.showError(context, message);
+      return false;
+    }
+
+    _setSalesState(() {
+      _salesInvoices
+        ..clear()
+        ..addAll(records);
+      _invoiceState = AppDataState.ready(_salesInvoices);
+      _loadInvoice(refreshedInvoice);
+    });
+    return true;
+  }
+
+  Future<void> _runSalesDocumentAction(
+    DocumentOutputAction action,
+  ) async {
+    if (!_canUseSelectedSalesInvoiceForOutput) return;
     FocusManager.instance.primaryFocus?.unfocus();
     _setSalesState(() => _isDocumentActionRunning = true);
     try {
-      final result = await widget.printService.createPreview(
-        _salesDocumentRequest(),
-      );
-      if (!mounted) return;
+      if (!await _reloadSelectedSalesInvoiceForOutput() || !mounted) return;
+      final selectedEntityId = _selectedInvoice!.source.id;
+      final request = _salesDocumentRequest();
+      final result = switch (action) {
+        DocumentOutputAction.print =>
+          await widget.printService.createPreview(request),
+        DocumentOutputAction.printWithoutPrices =>
+          await widget.printService.createPreview(
+            request,
+            includePrices: false,
+          ),
+        DocumentOutputAction.pdf => await widget.exportService.export(
+            request,
+            DocumentExportFormat.pdf,
+          ),
+        DocumentOutputAction.excel => await widget.exportService.export(
+            request,
+            DocumentExportFormat.excel,
+          ),
+      };
+      if (!mounted ||
+          !_isDocumentActionRunning ||
+          _invoiceState.status != AppDataStatus.ready ||
+          _selectedInvoice?.source.id != selectedEntityId ||
+          _hasUnsavedChanges ||
+          _isRepositoryBusy) {
+        return;
+      }
       await AppDocumentOutputDialog.show(
         context,
         result: result,
@@ -114,7 +232,17 @@ extension _SalesScreenOutputPart on _SalesScreenState {
       if (mounted) AppToast.showError(context, failure.message);
     } catch (_) {
       if (mounted) {
-        AppToast.showError(context, 'تعذر تجهيز قائمة البيع للطباعة');
+        final message = switch (action) {
+          DocumentOutputAction.print =>
+            'تعذر تجهيز قائمة البيع للطباعة',
+          DocumentOutputAction.printWithoutPrices =>
+            'تعذر تجهيز قائمة البيع للطباعة بدون أسعار',
+          DocumentOutputAction.pdf =>
+            'تعذر تصدير قائمة البيع بصيغة PDF',
+          DocumentOutputAction.excel =>
+            'تعذر تصدير قائمة البيع بصيغة Excel',
+        };
+        AppToast.showError(context, message);
       }
     } finally {
       if (mounted) {
@@ -178,65 +306,91 @@ extension _SalesScreenOutputPart on _SalesScreenState {
   }
 
   Future<void> _showInstallments() async {
-    if (_saleType != 'أقساط') {
-      AppToast.showWarning(context, 'جدول الأقساط متاح للبيع بالأقساط فقط');
-      return;
-    }
-    final remaining =
-        AppFormatters.parseNumber(_remainingIqdController.text) ?? 0;
-    if (remaining <= 0) {
-      AppToast.showInfo(context, 'لا يوجد مبلغ متبقٍ لإنشاء جدول أقساط');
-      return;
-    }
+    if (!_canUseSelectedSalesInvoiceForOutput) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    _setSalesState(() => _isDocumentActionRunning = true);
+    try {
+      if (!await _reloadSelectedSalesInvoiceForOutput() || !mounted) return;
+      if (_saleType != 'أقساط') {
+        AppToast.showWarning(
+          context,
+          'جدول الأقساط متاح للبيع بالأقساط فقط',
+        );
+        return;
+      }
+      final remaining =
+          AppFormatters.parseNumber(_remainingIqdController.text) ?? 0;
+      if (remaining <= 0) {
+        AppToast.showInfo(
+          context,
+          'لا يوجد مبلغ متبقٍ لإنشاء جدول أقساط',
+        );
+        return;
+      }
 
-    final schedule = InstallmentScheduleBuilder.build(
-      remaining: remaining,
-      currencyCode: _currency,
-      invoiceDate: _invoiceDateTime,
-    );
-    final entries = <AppInstallmentScheduleEntry>[
-      for (final installment in schedule)
-        AppInstallmentScheduleEntry(
-          number: installment.number,
-          dueDate: installment.dueDate,
-          amount: installment.amount,
-          status: 'غير مسدد',
-        ),
-    ];
-    final customerName = _customerNameController.text.trim();
-    await AppInstallmentScheduleDialog.show(
-      context,
-      invoiceNumber: _invoiceNumberController.text,
-      customerName:
-          customerName.isEmpty ? 'زبون غير محدد' : customerName,
-      currencyCode: _currency,
-      entries: entries,
-      accentColor: AppModuleColors.sales,
-    );
+      final schedule = InstallmentScheduleBuilder.build(
+        remaining: remaining,
+        currencyCode: _currency,
+        invoiceDate: _invoiceDateTime,
+      );
+      final entries = <AppInstallmentScheduleEntry>[
+        for (final installment in schedule)
+          AppInstallmentScheduleEntry(
+            number: installment.number,
+            dueDate: installment.dueDate,
+            amount: installment.amount,
+            status: 'غير مسدد',
+          ),
+      ];
+      final customerName = _customerNameController.text.trim();
+      await AppInstallmentScheduleDialog.show(
+        context,
+        invoiceNumber: _invoiceNumberController.text,
+        customerName:
+            customerName.isEmpty ? 'زبون غير محدد' : customerName,
+        currencyCode: _currency,
+        entries: entries,
+        accentColor: AppModuleColors.sales,
+      );
+    } finally {
+      if (mounted) {
+        _setSalesState(() => _isDocumentActionRunning = false);
+      }
+    }
   }
 
   Future<void> _showSalesStatement() async {
-    final customerName = _customerNameController.text.trim();
-    final displayName =
-        customerName.isEmpty ? 'زبون غير محدد' : customerName;
-    final options = await AppStatementOptionsDialog.show(
-      context,
-      partyName: displayName,
-      partyLabel: 'اسم الزبون',
-      accentColor: AppModuleColors.sales,
-      firstTransactionDate: _firstSalesTransactionDate(displayName),
-    );
-    if (!mounted || options == null) return;
+    if (!_canUseSelectedSalesInvoiceForOutput) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    _setSalesState(() => _isDocumentActionRunning = true);
+    try {
+      if (!await _reloadSelectedSalesInvoiceForOutput() || !mounted) return;
+      final customerName = _customerNameController.text.trim();
+      final displayName =
+          customerName.isEmpty ? 'زبون غير محدد' : customerName;
+      final options = await AppStatementOptionsDialog.show(
+        context,
+        partyName: displayName,
+        partyLabel: 'اسم الزبون',
+        accentColor: AppModuleColors.sales,
+        firstTransactionDate: _firstSalesTransactionDate(displayName),
+      );
+      if (!mounted || options == null) return;
 
-    await AppStatementReportDialog.show(
-      context,
-      partyName: displayName,
-      options: options,
-      entries: _salesStatementEntries(displayName, options),
-      accentColor: AppModuleColors.sales,
-      printService: widget.printService,
-      exportService: widget.exportService,
-    );
+      await AppStatementReportDialog.show(
+        context,
+        partyName: displayName,
+        options: options,
+        entries: _salesStatementEntries(displayName, options),
+        accentColor: AppModuleColors.sales,
+        printService: widget.printService,
+        exportService: widget.exportService,
+      );
+    } finally {
+      if (mounted) {
+        _setSalesState(() => _isDocumentActionRunning = false);
+      }
+    }
   }
 
   void _openEmptyEditor() {
