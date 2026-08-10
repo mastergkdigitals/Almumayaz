@@ -331,7 +331,8 @@ class _PartyFormState extends State<PartyForm> {
                               focusNode: _workplaceFocusNode,
                               options: widget.workplaces,
                               displayStringForOption: (value) => value,
-                              onSelected: (_) {},
+                              onSelected: (_) =>
+                                  _moveFrom(_workplaceFocusNode),
                               onSubmitted: (_) =>
                                   _moveFrom(_workplaceFocusNode),
                             ),
@@ -347,7 +348,8 @@ class _PartyFormState extends State<PartyForm> {
                               focusNode: _branchFocusNode,
                               options: widget.branches,
                               displayStringForOption: (value) => value,
-                              onSelected: (_) {},
+                              onSelected: (_) =>
+                                  _moveFrom(_branchFocusNode),
                               onSubmitted: (_) =>
                                   _moveFrom(_branchFocusNode),
                             ),
@@ -403,7 +405,7 @@ class _PartyFormState extends State<PartyForm> {
                               focusNode: _cityFocusNode,
                               options: widget.cities,
                               displayStringForOption: (value) => value,
-                              onSelected: (_) {},
+                              onSelected: (_) => _moveFrom(_cityFocusNode),
                               onSubmitted: (_) =>
                                   _moveFrom(_cityFocusNode),
                             ),

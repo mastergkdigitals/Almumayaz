@@ -240,7 +240,7 @@ void main() {
 
     await tester.tap(find.byKey(const Key('partiesUndoButton')));
     await tester.pump();
-    await tester.tap(find.byKey(const Key('partyRow_party-003')));
+    await tester.tap(find.byKey(const Key('partyRow_party-004')));
     await tester.pump();
     await tester.tap(find.byKey(const Key('partiesDeleteButton')));
     await tester.pumpAndSettle();

@@ -177,7 +177,7 @@ void main() {
     expect(find.byKey(const Key('appDocumentOutputDialog')), findsOneWidget);
     expect(
       _documentContent(tester),
-      allOf(contains('سند قبض رقم 7'), contains('شركة النخيل للتجارة')),
+      allOf(contains('سند قبض رقم 7'), contains('النقدية اليومية')),
     );
   });
 }

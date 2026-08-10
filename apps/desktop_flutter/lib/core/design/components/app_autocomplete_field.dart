@@ -274,6 +274,16 @@ class _AppAutocompleteFieldState<T extends Object>
       _moveHighlight(-1);
       return KeyEventResult.handled;
     }
+    if (event.logicalKey == LogicalKeyboardKey.enter ||
+        event.logicalKey == LogicalKeyboardKey.numpadEnter) {
+      if (event is KeyRepeatEvent) return KeyEventResult.handled;
+      if (_selectHighlightedOption()) return KeyEventResult.handled;
+      final onSubmitted = widget.onSubmitted;
+      if (onSubmitted != null) {
+        onSubmitted(widget.controller.text);
+        return KeyEventResult.handled;
+      }
+    }
     if (event.logicalKey == LogicalKeyboardKey.escape) {
       _showAllOptions = false;
       _highlightedIndex = -1;
@@ -283,13 +293,17 @@ class _AppAutocompleteFieldState<T extends Object>
     return KeyEventResult.ignored;
   }
 
-  void _handleFieldSubmitted(String value) {
+  bool _selectHighlightedOption() {
+    if (_optionsOverlay == null) return false;
     final options = _matchingOptions();
-    if (_optionsOverlay != null && options.isNotEmpty) {
-      final index = _highlightedIndex < 0 ? 0 : _highlightedIndex;
-      _selectOption(options[index]);
-      return;
-    }
+    if (options.isEmpty) return false;
+    final index = _highlightedIndex < 0 ? 0 : _highlightedIndex;
+    _selectOption(options[index]);
+    return true;
+  }
+
+  void _handleFieldSubmitted(String value) {
+    if (_selectHighlightedOption()) return;
     widget.onSubmitted?.call(value);
   }
 

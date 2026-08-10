@@ -350,13 +350,13 @@ class PackageDocumentBinaryComposer implements DocumentBinaryComposer {
   }
 
   Future<_PdfFonts> _loadFonts() async {
-    final values = await Future.wait([
-      rootBundle.load('assets/fonts/Tajawal/Tajawal-Regular.ttf'),
-      rootBundle.load('assets/fonts/Tajawal/Tajawal-Bold.ttf'),
-    ]);
+    final regular =
+        await rootBundle.load('assets/fonts/Tajawal/Tajawal-Regular.ttf');
+    final bold =
+        await rootBundle.load('assets/fonts/Tajawal/Tajawal-Bold.ttf');
     return _PdfFonts(
-      regular: pw.Font.ttf(values[0]),
-      bold: pw.Font.ttf(values[1]),
+      regular: pw.Font.ttf(regular),
+      bold: pw.Font.ttf(bold),
     );
   }
 }

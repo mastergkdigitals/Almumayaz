@@ -211,7 +211,7 @@ void main() {
     expect(balance.iqd.toPlainString(), '1250000');
   });
 
-  test('settings master-data parents remain protected while children exist', () async {
+  test('settings master-data protects parent and referenced records', () async {
     final repository = AppRepositories.demo().operationalMasterData;
     final groups = await repository.getByKind(
       OperationalMasterDataKind.itemGroup,
@@ -229,9 +229,15 @@ void main() {
     );
     expect(
       (await repository.canDelete(
-        EntityId.demo('cashbox-subaccount', 1),
+        EntityId.demo('cashbox-subaccount', 4),
       )).isAllowed,
       isFalse,
+    );
+    expect(
+      (await repository.canDelete(
+        EntityId.demo('cashbox-subaccount', 1),
+      )).isAllowed,
+      isTrue,
     );
   });
 

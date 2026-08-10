@@ -585,7 +585,15 @@ void main() {
       find.byKey(const Key('reportExcelButton_salesInvoices')),
     );
     await tester.pump();
-    expect(find.text('لا توجد نتائج لتجهيزها'), findsOneWidget);
+    final toast = find.byKey(const Key('appToast')).first;
+    expect(toast, findsOneWidget);
+    expect(
+      find.descendant(
+        of: toast,
+        matching: find.text('لا توجد نتائج لتجهيزها'),
+      ),
+      findsOneWidget,
+    );
     expect(
       find.byKey(const Key('reportOutputPreviewDialog')),
       findsNothing,

@@ -193,9 +193,9 @@ void main() {
       'شركة الرافدين للتجهيز',
     );
     expect(
-      _fieldValue(
+      _invoiceFieldValueByPrefix(
         tester,
-        'appPurchaseInvoiceTemplateNameField-r1',
+        'appPurchaseInvoiceTemplateNameField-',
       ),
       'ورق طباعة A4',
     );
@@ -337,20 +337,20 @@ void main() {
     );
 
     await tester.enterText(
-      find.byKey(
-        const Key('appPurchaseInvoiceTemplateQuantityField-r5'),
+      _invoiceFieldByPrefix(
+        'appPurchaseInvoiceTemplateQuantityField-',
       ),
       '2',
     );
     await tester.enterText(
-      find.byKey(
-        const Key('appPurchaseInvoiceTemplatePurchasePriceField-r5'),
+      _invoiceFieldByPrefix(
+        'appPurchaseInvoiceTemplatePurchasePriceField-',
       ),
       '100',
     );
     await tester.enterText(
-      find.byKey(
-        const Key('appPurchaseInvoiceTemplateDiscountField-r5'),
+      _invoiceFieldByPrefix(
+        'appPurchaseInvoiceTemplateDiscountField-',
       ),
       '20',
     );
@@ -371,30 +371,30 @@ void main() {
     );
 
     expect(
-      _fieldValue(
+      _invoiceFieldValueByPrefix(
         tester,
-        'appPurchaseInvoiceTemplatePriceAfterDiscountField-r5',
+        'appPurchaseInvoiceTemplatePriceAfterDiscountField-',
       ),
       '90.00',
     );
     expect(
-      _fieldValue(
+      _invoiceFieldValueByPrefix(
         tester,
-        'appPurchaseInvoiceTemplateTotalField-r5',
+        'appPurchaseInvoiceTemplateTotalField-',
       ),
       '180.00',
     );
     expect(
-      _fieldValue(
+      _invoiceFieldValueByPrefix(
         tester,
-        'appPurchaseInvoiceTemplateCostField-r5',
+        'appPurchaseInvoiceTemplateCostField-',
       ),
       '100.00',
     );
     expect(
-      _fieldValue(
+      _invoiceFieldValueByPrefix(
         tester,
-        'appPurchaseInvoiceTemplateTotalCostField-r5',
+        'appPurchaseInvoiceTemplateTotalCostField-',
       ),
       '200.00',
     );
@@ -432,16 +432,16 @@ void main() {
       '170.00',
     );
     expect(
-      _fieldValue(
+      _invoiceFieldValueByPrefix(
         tester,
-        'appPurchaseInvoiceTemplateCostField-r5',
+        'appPurchaseInvoiceTemplateCostField-',
       ),
       '85.00',
     );
     expect(
-      _fieldValue(
+      _invoiceFieldValueByPrefix(
         tester,
-        'appPurchaseInvoiceTemplateTotalCostField-r5',
+        'appPurchaseInvoiceTemplateTotalCostField-',
       ),
       '170.00',
     );
@@ -457,9 +457,9 @@ void main() {
     );
     expect(_fieldValue(tester, 'purchaseTotalField'), '183.00');
     expect(
-      _fieldValue(
+      _invoiceFieldValueByPrefix(
         tester,
-        'appPurchaseInvoiceTemplateCostField-r5',
+        'appPurchaseInvoiceTemplateCostField-',
       ),
       '91.50',
     );
@@ -921,7 +921,17 @@ Finder _invoiceFieldByPrefix(String prefix) {
     return widget is TextFormField &&
         key is ValueKey<String> &&
         key.value.startsWith(prefix);
-  });
+  }).first;
+}
+
+String _invoiceFieldValueByPrefix(
+  WidgetTester tester,
+  String prefix,
+) {
+  return tester
+      .widget<TextFormField>(_invoiceFieldByPrefix(prefix))
+      .controller!
+      .text;
 }
 
 Future<void> _openNewPurchaseForm(WidgetTester tester) async {

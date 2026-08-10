@@ -185,7 +185,10 @@ void main() {
       'شركة النخيل للتجارة',
     );
     expect(
-      _fieldValue(tester, 'appSalesInvoiceTemplateNameField-r1'),
+      _invoiceFieldValueByPrefix(
+        tester,
+        'appSalesInvoiceTemplateNameField-',
+      ),
       'ورق طباعة',
     );
 
@@ -402,8 +405,8 @@ void main() {
     expect(_actionButton(tester, 'salesUpdateButton').onPressed, isNull);
     expect(_actionButton(tester, 'salesUndoButton').onPressed, isNull);
 
-    final itemNameField = find.byKey(
-      const Key('appSalesInvoiceTemplateNameField-r4'),
+    final itemNameField = _invoiceFieldByPrefix(
+      'appSalesInvoiceTemplateNameField-',
     );
     await tester.enterText(itemNameField, 'ورق طباعة معدل');
     await tester.pump();
@@ -748,36 +751,36 @@ void main() {
     await tester.pump();
 
     await tester.enterText(
-      find.byKey(
-        const Key('appSalesInvoiceTemplateQuantityField-r8'),
+      _invoiceFieldByPrefix(
+        'appSalesInvoiceTemplateQuantityField-',
       ),
       '2',
     );
     await tester.enterText(
-      find.byKey(
-        const Key('appSalesInvoiceTemplateSalePriceField-r8'),
+      _invoiceFieldByPrefix(
+        'appSalesInvoiceTemplateSalePriceField-',
       ),
       '100',
     );
     await tester.enterText(
-      find.byKey(
-        const Key('appSalesInvoiceTemplateDiscountField-r8'),
+      _invoiceFieldByPrefix(
+        'appSalesInvoiceTemplateDiscountField-',
       ),
       '10',
     );
     await tester.pump();
 
     expect(
-      _fieldValue(
+      _invoiceFieldValueByPrefix(
         tester,
-        'appSalesInvoiceTemplatePriceAfterDiscountField-r8',
+        'appSalesInvoiceTemplatePriceAfterDiscountField-',
       ),
       '90.00',
     );
     expect(
-      _fieldValue(
+      _invoiceFieldValueByPrefix(
         tester,
-        'appSalesInvoiceTemplateTotalField-r8',
+        'appSalesInvoiceTemplateTotalField-',
       ),
       '180.00',
     );
@@ -1058,7 +1061,17 @@ Finder _invoiceFieldByPrefix(String prefix) {
     return widget is TextFormField &&
         key is ValueKey<String> &&
         key.value.startsWith(prefix);
-  });
+  }).first;
+}
+
+String _invoiceFieldValueByPrefix(
+  WidgetTester tester,
+  String prefix,
+) {
+  return tester
+      .widget<TextFormField>(_invoiceFieldByPrefix(prefix))
+      .controller!
+      .text;
 }
 
 Future<void> _openNewSalesForm(WidgetTester tester) async {

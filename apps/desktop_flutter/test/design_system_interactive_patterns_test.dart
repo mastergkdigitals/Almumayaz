@@ -81,7 +81,13 @@ void main() {
     await tester.pump();
 
     expect(tester.getSize(groupsDialog).height, initialDialogHeight);
-    expect(find.text('أثاث مكتبي'), findsOneWidget);
+    expect(
+      tester
+          .widget<AppDataTable>(primaryTable)
+          .rows
+          .where((row) => (row.cells[1] as Text).data == 'أثاث مكتبي'),
+      hasLength(1),
+    );
     tester
         .widget<AppDataTable>(
           find.byKey(const Key('designGroupsTypesDialogPrimaryList')),
@@ -102,7 +108,16 @@ void main() {
     await tester.pump();
 
     expect(find.text('أثاث مكتبي'), findsNothing);
-    expect(find.text('مفروشات مكتبية'), findsOneWidget);
+    expect(
+      tester
+          .widget<AppDataTable>(primaryTable)
+          .rows
+          .where(
+            (row) =>
+                (row.cells[1] as Text).data == 'مفروشات مكتبية',
+          ),
+      hasLength(1),
+    );
 
     tester
         .widget<AppTableActionButton>(
@@ -132,7 +147,15 @@ void main() {
       find.byKey(const Key('designGroupsTypesDialogSecondaryCommit')),
     );
     await tester.pump();
-    expect(find.text('دفاتر'), findsOneWidget);
+    expect(
+      tester
+          .widget<AppDataTable>(
+            find.byKey(const Key('designGroupsTypesDialogSecondaryList')),
+          )
+          .rows
+          .where((row) => (row.cells[1] as Text).data == 'دفاتر'),
+      hasLength(1),
+    );
 
     expect(
       find.byType(AppManagementPanel),

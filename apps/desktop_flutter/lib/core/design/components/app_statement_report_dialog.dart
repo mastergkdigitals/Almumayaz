@@ -173,6 +173,7 @@ class _StatementReportBodyState extends State<_StatementReportBody> {
           ),
       };
       if (!mounted) return;
+      setState(() => _activeAction = null);
       await AppDocumentOutputDialog.show(
         context,
         result: result,
@@ -185,7 +186,9 @@ class _StatementReportBodyState extends State<_StatementReportBody> {
         AppToast.showError(context, 'تعذر تجهيز كشف الحساب حالياً');
       }
     } finally {
-      if (mounted) setState(() => _activeAction = null);
+      if (mounted && _activeAction == action) {
+        setState(() => _activeAction = null);
+      }
     }
   }
 
