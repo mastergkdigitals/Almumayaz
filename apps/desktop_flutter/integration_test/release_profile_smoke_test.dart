@@ -22,8 +22,8 @@ void main() {
       ),
     );
 
-    await tester.enterText(find.byKey(const Key('usernameField')), 'tester');
-    await tester.enterText(find.byKey(const Key('passwordField')), 'demo');
+    await tester.enterText(find.byKey(const Key('usernameField')), 'admin');
+    await tester.enterText(find.byKey(const Key('passwordField')), 'password');
     await tester.tap(find.byKey(const Key('loginButton')));
     await tester.pumpAndSettle();
 

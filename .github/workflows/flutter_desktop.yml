@@ -33,11 +33,18 @@ jobs:
       - name: Install Flutter stable
         uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          flutter-version: '3.44.8'
           cache: true
 
       - name: Resolve packages
         run: flutter pub get
+
+      - name: Capture resolved lockfile
+        uses: actions/upload-artifact@v4
+        with:
+          name: resolved-pubspec-lock
+          path: apps/desktop_flutter/pubspec.lock
+          retention-days: 1
 
       - name: Analyze
         run: flutter analyze
@@ -76,7 +83,7 @@ jobs:
       - name: Install Flutter stable
         uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          flutter-version: '3.44.8'
           cache: true
 
       - name: Resolve packages
