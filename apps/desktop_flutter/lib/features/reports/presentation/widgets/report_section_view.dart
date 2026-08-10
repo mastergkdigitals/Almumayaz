@@ -94,7 +94,9 @@ class _ReportSectionViewState extends State<ReportSectionView> {
   List<ReportRowDefinition> _initialRows(ReportVariantDefinition variant) {
     final service = widget.rowsService;
     final ReportRowsSnapshotProvider? snapshotProvider =
-        service is ReportRowsSnapshotProvider ? service : null;
+        service is ReportRowsSnapshotProvider
+        ? service as ReportRowsSnapshotProvider
+        : null;
     if (snapshotProvider == null) return const [];
     return snapshotProvider.snapshot(_rowsRequest(variant));
   }
