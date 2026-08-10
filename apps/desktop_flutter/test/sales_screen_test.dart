@@ -188,6 +188,18 @@ void main() {
     const invoiceButtons = <String, (IconData, String)>{
       'salesSearchButton': (Icons.search_rounded, 'بحث'),
       'salesPrintButton': (Icons.print_rounded, 'طباعة'),
+      'salesPrintWithoutPricesButton': (
+        Icons.money_off_rounded,
+        'طباعة بدون سعر',
+      ),
+      'salesPdfButton': (
+        Icons.picture_as_pdf_rounded,
+        'تصدير PDF',
+      ),
+      'salesExcelButton': (
+        Icons.table_view_rounded,
+        'تصدير Excel',
+      ),
       'salesInstallmentsButton': (
         Icons.table_chart_rounded,
         'جدول الأقساط',
@@ -214,7 +226,7 @@ void main() {
           .onPressed,
       isNull,
     );
-    _expectRightToLeftOrder(tester, invoiceButtons.keys.toList());
+    _expectRightToLeftWrapOrder(tester, invoiceButtons.keys.toList());
 
     expect(_fieldValue(tester, 'salesInvoiceNumberField'), '101');
     expect(
@@ -1449,6 +1461,23 @@ void _expectRightToLeftOrder(
     final current = tester.getTopLeft(find.byKey(Key(keys[index])));
     expect(previous.dx, greaterThan(current.dx));
     expect(previous.dy, closeTo(current.dy, 0.1));
+  }
+}
+
+void _expectRightToLeftWrapOrder(
+  WidgetTester tester,
+  List<String> keys,
+) {
+  for (var index = 1; index < keys.length; index++) {
+    final previous = tester.getTopLeft(find.byKey(Key(keys[index - 1])));
+    final current = tester.getTopLeft(find.byKey(Key(keys[index])));
+    final isSameRun = (previous.dy - current.dy).abs() <= 0.1;
+
+    if (isSameRun) {
+      expect(previous.dx, greaterThan(current.dx));
+    } else {
+      expect(current.dy, greaterThan(previous.dy));
+    }
   }
 }
 

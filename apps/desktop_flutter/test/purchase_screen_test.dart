@@ -356,6 +356,14 @@ void main() {
         Icons.money_off_rounded,
         'طباعة بدون سعر',
       ),
+      'purchasePdfButton': (
+        Icons.picture_as_pdf_rounded,
+        'تصدير PDF',
+      ),
+      'purchaseExcelButton': (
+        Icons.table_view_rounded,
+        'تصدير Excel',
+      ),
       'purchaseStatementButton': (
         Icons.receipt_long_rounded,
         'كشف الحساب',
@@ -368,7 +376,7 @@ void main() {
       expect(button.tooltip, entry.value.$2);
       expect(tester.getSize(finder), const Size.square(52));
     }
-    _expectRightToLeftOrder(tester, invoiceButtons.keys.toList());
+    _expectRightToLeftWrapOrder(tester, invoiceButtons.keys.toList());
 
     for (final key in const [
       'purchaseFirstButton',
@@ -1374,6 +1382,23 @@ void _expectRightToLeftOrder(
     final current = tester.getTopLeft(find.byKey(Key(keys[index])));
     expect(previous.dx, greaterThan(current.dx));
     expect(previous.dy, closeTo(current.dy, 0.1));
+  }
+}
+
+void _expectRightToLeftWrapOrder(
+  WidgetTester tester,
+  List<String> keys,
+) {
+  for (var index = 1; index < keys.length; index++) {
+    final previous = tester.getTopLeft(find.byKey(Key(keys[index - 1])));
+    final current = tester.getTopLeft(find.byKey(Key(keys[index])));
+    final isSameRun = (previous.dy - current.dy).abs() <= 0.1;
+
+    if (isSameRun) {
+      expect(previous.dx, greaterThan(current.dx));
+    } else {
+      expect(current.dy, greaterThan(previous.dy));
+    }
   }
 }
 

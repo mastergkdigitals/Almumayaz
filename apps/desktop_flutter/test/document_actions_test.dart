@@ -7,6 +7,7 @@ import 'package:erp/core/data/app_repository.dart';
 import 'package:erp/core/design/app_design_system.dart';
 import 'package:erp/core/domain/business_values.dart';
 import 'package:erp/core/printing/document_output_service.dart';
+import 'package:erp/core/responsive/responsive_shell.dart';
 import 'package:erp/features/purchases/domain/purchase_invoice.dart';
 import 'package:erp/features/purchases/domain/purchase_repository.dart';
 import 'package:erp/features/purchases/presentation/purchase_screen.dart';
@@ -661,6 +662,14 @@ Future<void> _openDocumentScreen(
 
   await tester.pumpWidget(
     MaterialApp(
+      builder: (context, child) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AppKeyboardScope(
+          child: ResponsiveDesktopShell(
+            child: child ?? const SizedBox.shrink(),
+          ),
+        ),
+      ),
       home: AppStoreProvider(store: effectiveStore, child: screen),
     ),
   );
