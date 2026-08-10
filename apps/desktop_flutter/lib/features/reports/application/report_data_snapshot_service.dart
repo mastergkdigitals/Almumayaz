@@ -12,9 +12,10 @@ class ReportDataSnapshot {
     Map<String, Iterable<ReportFilterOption>> filterOptions = const {},
     this.cashboxMetadata,
   })  : rows = List.unmodifiable(rows),
-        filterOptions = Map.unmodifiable({
+        filterOptions = Map<String, List<ReportFilterOption>>.unmodifiable({
           for (final entry in filterOptions.entries)
-            entry.key: List.unmodifiable(entry.value),
+            entry.key:
+                List<ReportFilterOption>.unmodifiable(entry.value),
         });
 
   final List<ReportRowDefinition> rows;

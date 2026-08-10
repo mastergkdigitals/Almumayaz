@@ -789,7 +789,13 @@ void main() {
     );
     expect(find.text('قائمة بيع رقم 101 — تضاف إلى حساب الزبون'), findsOneWidget);
     expect(find.text('سند قبض رقم 1 — دفعة على الحساب'), findsOneWidget);
-    expect(find.text('500,000'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: report,
+        matching: find.text('500,000'),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('shows loading and an error when party statement loading fails',
