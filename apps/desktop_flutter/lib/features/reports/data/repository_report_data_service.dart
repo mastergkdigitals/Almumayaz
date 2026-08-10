@@ -670,18 +670,19 @@ ReportRowDefinition _partyBalanceRow(
       : workplaceById[workplaceEntityId]?.name;
   final branchName =
       branchEntityId == null ? null : branchById[branchEntityId]?.name;
+  final filterValues = <String, String>{
+    'partyType': _partyTypeValue(party.type),
+    'direction': directions.join('|'),
+    'currency': currencies.isEmpty
+        ? '${AppCurrency.iqd.code}|${AppCurrency.usd.code}'
+        : currencies.join('|'),
+  };
+  if (workplaceId != null) filterValues['workEntity'] = workplaceId;
+  if (branchId != null) filterValues['branch'] = branchId;
   return ReportRowDefinition(
     id: party.entityId.value,
     date: party.createdAt,
-    filterValues: {
-      'partyType': _partyTypeValue(party.type),
-      'direction': directions.join('|'),
-      'currency': currencies.isEmpty
-          ? '${AppCurrency.iqd.code}|${AppCurrency.usd.code}'
-          : currencies.join('|'),
-      if (workplaceId != null) 'workEntity': workplaceId,
-      if (branchId != null) 'branch': branchId,
-    },
+    filterValues: filterValues,
     searchTerms: [party.alternatePhone, party.address, party.notes],
     cells: [
       '${index + 1}',

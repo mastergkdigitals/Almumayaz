@@ -201,9 +201,12 @@ class CashboxController extends ChangeNotifier {
       final accounts = await _repository.getMainAccounts();
       final openingBalance = await _repository.getOpeningBalance();
       final repository = _repository;
-      final nextVoucherNumber = repository is CashboxIssuedNumberRepository
-          ? await repository.nextVoucherNumber()
-          : _nextNumberFrom(vouchers);
+      final int nextVoucherNumber;
+      if (repository case CashboxIssuedNumberRepository issuedNumbers) {
+        nextVoucherNumber = await issuedNumbers.nextVoucherNumber();
+      } else {
+        nextVoucherNumber = _nextNumberFrom(vouchers);
+      }
       final defaults = await _settingsRepository.loadOperationalDefaults();
       final policies = await _settingsRepository.loadBusinessPolicies();
       if (_loadIsStale(generation)) return;

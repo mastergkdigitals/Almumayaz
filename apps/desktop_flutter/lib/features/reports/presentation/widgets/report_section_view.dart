@@ -214,11 +214,16 @@ class _ReportSectionViewState extends State<ReportSectionView> {
     try {
       final request = _rowsRequest(requestedVariant);
       final service = widget.rowsService;
-      final snapshot = service is ReportDataSnapshotService
-          ? await service.loadSnapshot(request)
-          : service is ReportRowsSnapshotProvider
-              ? ReportDataSnapshot(rows: service.snapshot(request))
-              : ReportDataSnapshot(rows: await service.load(request));
+      final ReportDataSnapshot snapshot;
+      if (service case ReportDataSnapshotService snapshotService) {
+        snapshot = await snapshotService.loadSnapshot(request);
+      } else if (service case ReportRowsSnapshotProvider snapshotProvider) {
+        snapshot = ReportDataSnapshot(
+          rows: snapshotProvider.snapshot(request),
+        );
+      } else {
+        snapshot = ReportDataSnapshot(rows: await service.load(request));
+      }
       if (!mounted ||
           generation != _loadGeneration ||
           _variant.id != requestedVariant.id) {
