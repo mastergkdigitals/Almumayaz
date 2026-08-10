@@ -1,0 +1,8 @@
+{
+  "APP_EDITION": "customer",
+  "SHOW_DESIGN_SYSTEM": "false",
+  "ENABLED_MODULES": "purchases,sales,cashbox,parties,company,warehouses,reports,settings,about",
+  "APP_TITLE": "المميز ERP",
+  "COMPANY_NAME": "شركة العميل",
+  "COMPANY_LOGO_ASSET": ""
+}
