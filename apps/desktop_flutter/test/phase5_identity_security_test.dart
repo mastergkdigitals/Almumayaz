@@ -15,6 +15,40 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('shared demo identity state', () {
+    test('seeded users authenticate with the documented demo passwords',
+        () async {
+      final state = DemoIdentityState(initialAuditRecords: const []);
+      final authentication = DemoAuthenticationService(
+        state: state,
+        startsAuthenticated: false,
+      );
+
+      final administrator = await authentication.signIn(
+        SignInCredentials(username: 'admin', password: 'password'),
+      );
+      expect(administrator.userId, EntityId.demo('user', 1));
+      await authentication.signOut(administrator.id);
+
+      final salesUser = await authentication.signIn(
+        SignInCredentials(username: 'ahmed', password: 'demo123'),
+      );
+      expect(salesUser.userId, EntityId.demo('user', 2));
+      await authentication.signOut(salesUser.id);
+
+      await expectLater(
+        authentication.signIn(
+          SignInCredentials(username: 'sara', password: 'demo123'),
+        ),
+        throwsA(
+          isA<ServiceFailure>().having(
+            (failure) => failure.code,
+            'code',
+            'account_locked',
+          ),
+        ),
+      );
+    });
+
     test('created users authenticate with permissions from assigned roles',
         () async {
       final state = DemoIdentityState(initialAuditRecords: const []);

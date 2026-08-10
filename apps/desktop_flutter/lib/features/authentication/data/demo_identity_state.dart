@@ -381,10 +381,12 @@ int _sequenceAfter(EntityId id, {required int current}) {
 }
 
 String _demoPasswordDigest(String salt, String password) {
-  var hash = 0xcbf29ce484222325;
+  var hash = BigInt.parse('cbf29ce484222325', radix: 16);
+  final prime = BigInt.from(0x100000001b3);
+  final unsigned64Mask = (BigInt.one << 64) - BigInt.one;
   for (final unit in '$salt:$password'.codeUnits) {
-    hash ^= unit;
-    hash = (hash * 0x100000001b3) & 0xFFFFFFFFFFFFFFFF;
+    hash ^= BigInt.from(unit);
+    hash = (hash * prime) & unsigned64Mask;
   }
   return hash.toRadixString(16).padLeft(16, '0');
 }
