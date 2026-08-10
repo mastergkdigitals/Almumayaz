@@ -246,7 +246,7 @@ class _SettingsPermissionNotice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: 620),
         child: AppInfoBanner(
@@ -266,7 +266,7 @@ class _SettingsViewPermissionNotice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: 620),
         child: AppInfoBanner(

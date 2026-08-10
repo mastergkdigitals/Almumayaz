@@ -10,9 +10,9 @@ import '../domain/backup_services.dart';
 class DemoBackupConfigurationRepository
     implements BackupConfigurationRepository {
   DemoBackupConfigurationRepository({BackupConfiguration? initialValue})
-      : _configurations = {
-          if (initialValue != null) initialValue.deviceId: initialValue,
-        };
+      : _configurations = initialValue == null
+            ? <String, BackupConfiguration>{}
+            : {initialValue.deviceId: initialValue};
 
   final Map<String, BackupConfiguration> _configurations;
 
