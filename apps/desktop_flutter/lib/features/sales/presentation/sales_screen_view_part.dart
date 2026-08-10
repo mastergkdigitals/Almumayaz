@@ -306,7 +306,7 @@ extension _SalesScreenViewPart on _SalesScreenState {
                 color: tint,
                 child: AppDataStateView<List<_DemoSalesInvoice>>(
                   state: _invoiceState,
-                  dataBuilder: (_, __) => const SizedBox.shrink(),
+                  dataBuilder: (_, _) => const SizedBox.shrink(),
                   emptyTitle: 'لا توجد قوائم بيع',
                   emptyActionLabel: 'قائمة بيع جديدة',
                   onEmptyAction: _openEmptyEditor,

@@ -602,7 +602,7 @@ class _PartiesScreenState extends State<PartiesScreen> {
                     )
                   : AppDataStateView<List<Party>>(
                       state: dataState,
-                      dataBuilder: (_, __) => const SizedBox.shrink(),
+                      dataBuilder: (_, _) => const SizedBox.shrink(),
                       loadingStateKey: const Key('partiesLoadingState'),
                       emptyStateKey: const Key('partiesEmptyState'),
                       missingReferenceStateKey:
@@ -640,6 +640,5 @@ typedef _PartyFormSnapshot = ({
 });
 
 String _stateErrorMessage(StateError error) {
-  final message = error.message;
-  return message is String ? message : error.toString();
+  return error.message;
 }

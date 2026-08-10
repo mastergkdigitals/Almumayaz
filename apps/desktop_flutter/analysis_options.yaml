@@ -1,1 +1,7 @@
 include: package:flutter_lints/flutter.yaml
+
+linter:
+  rules:
+    # Public named constructor parameters intentionally initialize private
+    # implementation fields throughout the repository.
+    prefer_initializing_formals: false

@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:excel/excel.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/services.dart';
@@ -111,7 +109,6 @@ class NativeDocumentPlatformGateway implements DocumentPlatformGateway {
       name: name,
       format: format,
       dynamicLayout: false,
-      windowsModernDialog: true,
       onLayout: (_) async => bytes,
     );
   }

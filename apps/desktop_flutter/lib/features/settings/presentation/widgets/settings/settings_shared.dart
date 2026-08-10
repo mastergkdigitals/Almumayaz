@@ -43,7 +43,7 @@ String _serviceMessage(Object error) =>
     error is ServiceFailure ? error.message : 'تعذر إكمال العملية التجريبية';
 
 String _settingsRepositoryMessage(Object error) {
-  if (error is StateError) return '${error.message}';
+  if (error is StateError) return error.message;
   if (error is FormatException) return 'أدخل القيم الرقمية بصيغة صحيحة';
   if (error is ArgumentError) return 'تحقق من القيم المدخلة';
   if (error is ServiceFailure) return error.message;

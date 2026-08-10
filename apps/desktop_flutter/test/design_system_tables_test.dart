@@ -294,7 +294,7 @@ void main() {
                   AppInvoiceFieldColumn('الاسم', 240),
                 ],
                 rowCount: 1,
-                rowCellsBuilder: (_, __) => const [
+                rowCellsBuilder: (_, _) => const [
                   Text('ABC-2'),
                   Text('مادة'),
                 ],

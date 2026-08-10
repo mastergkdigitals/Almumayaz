@@ -320,7 +320,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
       return result;
     } on StateError catch (error) {
       if (mounted) {
-        final message = '${error.message}';
+        final message = error.message;
         AppToast.showError(
           context,
           message.isEmpty ? failureMessage : message,

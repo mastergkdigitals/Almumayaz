@@ -518,7 +518,7 @@ class _ItemsScreenState extends State<ItemsScreen> {
                     )
                   : AppDataStateView<List<Item>>(
                       state: dataState,
-                      dataBuilder: (_, __) => const SizedBox.shrink(),
+                      dataBuilder: (_, _) => const SizedBox.shrink(),
                       loadingStateKey: const Key('itemsLoadingState'),
                       emptyStateKey: const Key('itemsEmptyState'),
                       missingReferenceStateKey:
@@ -554,6 +554,5 @@ typedef _ItemFormSnapshot = ({
 });
 
 String _stateErrorMessage(StateError error) {
-  final message = error.message;
-  return message is String ? message : error.toString();
+  return error.message;
 }

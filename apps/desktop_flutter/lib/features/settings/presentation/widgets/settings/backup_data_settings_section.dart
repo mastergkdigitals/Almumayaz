@@ -555,53 +555,60 @@ class _BackupDataSettingsSectionState
           title: 'الإجراءات',
           icon: Icons.settings_backup_restore_rounded,
           accentColor: widget.accentColor,
-          child: Wrap(
-            textDirection: TextDirection.rtl,
-            alignment: WrapAlignment.center,
-            spacing: AppSpacing.md,
-            runSpacing: AppSpacing.md,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              AppButton(
-                key: const Key('settingsSaveBackupConfigurationButton'),
-                label: 'حفظ إعدادات النسخ',
-                icon: Icons.save_outlined,
-                minWidth: 200,
-                onPressed: _isBusy ? null : () => _saveConfiguration(),
+              Wrap(
+                textDirection: TextDirection.rtl,
+                alignment: WrapAlignment.center,
+                spacing: AppSpacing.md,
+                runSpacing: AppSpacing.md,
+                children: [
+                  AppButton(
+                    key: const Key(
+                      'settingsSaveBackupConfigurationButton',
+                    ),
+                    label: 'حفظ إعدادات النسخ',
+                    icon: Icons.save_outlined,
+                    minWidth: 200,
+                    onPressed: _isBusy ? null : () => _saveConfiguration(),
+                  ),
+                  AppButton(
+                    key: const Key('settingsRunBackupButton'),
+                    label: 'إنشاء نسخة الآن',
+                    icon: Icons.backup_rounded,
+                    minWidth: 190,
+                    onPressed: _isBusy ? null : _createBackup,
+                  ),
+                  AppButton(
+                    key: const Key('settingsRestoreBackupButton'),
+                    label: 'استعادة نسخة',
+                    icon: Icons.restore_rounded,
+                    variant: AppButtonVariant.warning,
+                    minWidth: 190,
+                    onPressed: _isBusy ? null : _restoreBackup,
+                  ),
+                ],
               ),
-              AppButton(
-                key: const Key('settingsRunBackupButton'),
-                label: 'إنشاء نسخة الآن',
-                icon: Icons.backup_rounded,
-                minWidth: 190,
-                onPressed: _isBusy ? null : _createBackup,
-              ),
-              AppButton(
-                key: const Key('settingsRestoreBackupButton'),
-                label: 'استعادة نسخة',
-                icon: Icons.restore_rounded,
-                variant: AppButtonVariant.warning,
-                minWidth: 190,
-                onPressed: _isBusy ? null : _restoreBackup,
-              ),
+              if (_operationMessage != null) ...[
+                const SizedBox(height: AppSpacing.md),
+                AppInfoBanner(
+                  key: const Key('settingsBackupOperationState'),
+                  message: _operationMessage!,
+                  icon: _lastVerification?.canRestore == false
+                      ? Icons.error_outline_rounded
+                      : Icons.verified_outlined,
+                  foregroundColor: _lastVerification?.canRestore == false
+                      ? AppColors.danger
+                      : widget.accentColor,
+                  backgroundColor: Color.alphaBlend(
+                    widget.accentColor.withAlpha(18),
+                    AppColors.surface,
+                  ),
+                ),
+              ],
             ],
           ),
-          if (_operationMessage != null) ...[
-            const SizedBox(height: AppSpacing.md),
-            AppInfoBanner(
-              key: const Key('settingsBackupOperationState'),
-              message: _operationMessage!,
-              icon: _lastVerification?.canRestore == false
-                  ? Icons.error_outline_rounded
-                  : Icons.verified_outlined,
-              foregroundColor: _lastVerification?.canRestore == false
-                  ? AppColors.danger
-                  : widget.accentColor,
-              backgroundColor: Color.alphaBlend(
-                widget.accentColor.withAlpha(18),
-                AppColors.surface,
-              ),
-            ),
-          ],
         ),
         const SizedBox(height: AppSpacing.lg),
         SettingsTemplatePanel(

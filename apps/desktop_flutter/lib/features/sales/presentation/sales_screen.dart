@@ -547,7 +547,7 @@ class _SalesScreenState extends State<SalesScreen> {
       return result;
     } on StateError catch (error) {
       if (mounted) {
-        final message = '${error.message}';
+        final message = error.message;
         AppToast.showError(
           context,
           message.isEmpty ? failureMessage : message,

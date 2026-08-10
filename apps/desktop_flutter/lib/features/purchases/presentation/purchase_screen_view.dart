@@ -334,7 +334,7 @@ extension _PurchaseViewState on _PurchaseScreenState {
                 color: tint,
                 child: AppDataStateView<List<_DemoPurchaseInvoice>>(
                   state: _invoiceState,
-                  dataBuilder: (_, __) => const SizedBox.shrink(),
+                  dataBuilder: (_, _) => const SizedBox.shrink(),
                   emptyTitle: 'لا توجد قوائم شراء',
                   emptyActionLabel: 'قائمة شراء جديدة',
                   onEmptyAction: _openEmptyEditor,

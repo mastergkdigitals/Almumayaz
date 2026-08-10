@@ -751,7 +751,7 @@ class _CashboxScreenState extends State<CashboxScreen> {
                     )
                   : AppDataStateView<List<CashboxVoucher>>(
                       state: dataState,
-                      dataBuilder: (_, __) => const SizedBox.shrink(),
+                      dataBuilder: (_, _) => const SizedBox.shrink(),
                       loadingStateKey: const Key('cashboxLoadingState'),
                       emptyStateKey: const Key('cashboxEmptyState'),
                       missingReferenceStateKey:
@@ -790,6 +790,5 @@ typedef _CashboxFormSnapshot = ({
 });
 
 String _stateErrorMessage(StateError error) {
-  final message = error.message;
-  return message is String ? message : error.toString();
+  return error.message;
 }

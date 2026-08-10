@@ -130,9 +130,8 @@ class _ManagementDialogState extends State<_ManagementDialog> {
     int index,
     Map<String, int> numbersByParent,
   ) {
-    final parentId = _primaryEntries[
-      index.clamp(0, _primaryEntries.length - 1).toInt(),
-    ].id;
+    final parentIndex = index.clamp(0, _primaryEntries.length - 1).toInt();
+    final parentId = _primaryEntries[parentIndex].id;
     final number = (numbersByParent[parentId] ?? 0) + 1;
     numbersByParent[parentId] = number;
     return AppManagementEntry(

@@ -906,7 +906,7 @@ List<WarehouseTransferRecord> _seedHistory(List<Warehouse> warehouses) {
       fromWarehouseName: first.name,
       toWarehouseId: second.id,
       toWarehouseName: second.name,
-      lines: const [
+      lines: [
         WarehouseTransferLine(
           productCode: 'P-1003',
           productName: 'ورق تصوير A4',
@@ -922,7 +922,7 @@ List<WarehouseTransferRecord> _seedHistory(List<Warehouse> warehouses) {
       fromWarehouseName: third.name,
       toWarehouseId: first.id,
       toWarehouseName: first.name,
-      lines: const [
+      lines: [
         WarehouseTransferLine(
           productCode: 'P-1002',
           productName: 'حبر طابعة أسود',

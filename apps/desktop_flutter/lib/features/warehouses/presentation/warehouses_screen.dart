@@ -555,7 +555,7 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
                     )
                   : AppDataStateView<List<Warehouse>>(
                       state: dataState,
-                      dataBuilder: (_, __) => const SizedBox.shrink(),
+                      dataBuilder: (_, _) => const SizedBox.shrink(),
                       loadingStateKey:
                           const Key('warehousesLoadingState'),
                       emptyStateKey: const Key('warehousesEmptyState'),
@@ -588,6 +588,5 @@ typedef _WarehouseFormSnapshot = ({
 });
 
 String _stateErrorMessage(StateError error) {
-  final message = error.message;
-  return message is String ? message : error.toString();
+  return error.message;
 }
