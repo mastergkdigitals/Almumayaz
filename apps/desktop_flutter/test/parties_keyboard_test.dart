@@ -240,7 +240,13 @@ void main() {
 
     await tester.tap(find.byKey(const Key('partiesUndoButton')));
     await tester.pump();
-    await tester.tap(find.byKey(const Key('partyRow_party-004')));
+    tester
+        .widget<AppDataTable>(find.byKey(const Key('partiesTable')))
+        .rows
+        .singleWhere(
+          (row) => row.rowKey == const Key('partyRow_party-004'),
+        )
+        .onTap!();
     await tester.pump();
     await tester.tap(find.byKey(const Key('partiesDeleteButton')));
     await tester.pumpAndSettle();

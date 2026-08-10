@@ -133,7 +133,8 @@ void main() {
 
     expect(find.byKey(const Key('appConfirmDialog')), findsOneWidget);
     await tester.tap(find.byKey(const Key('appDialogConfirmButton')));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.text('مفروشات مكتبية'), findsNothing);
 
