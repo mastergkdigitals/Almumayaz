@@ -31,5 +31,5 @@ for configuration, validation, and customer-edition guidance.
 ## Verification
 
 Run analysis and widget tests from this directory. The cross-screen,
-backend-free workflow smoke test is in `integration_test/` and can be run on
-Windows as documented in the customer-editions guide.
+backend-free widget smoke test is in `smoke_test/` and runs without a
+connected desktop device, as documented in the customer-editions guide.

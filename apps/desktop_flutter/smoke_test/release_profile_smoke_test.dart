@@ -3,6 +3,8 @@ import 'package:erp/core/config/app_configuration.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+// This is a backend-free WidgetTester smoke. Keeping it outside
+// integration_test lets CI run it without a connected desktop device.
 void main() {
   testWidgets('customer profile completes a backend-free desktop workflow',
       (tester) async {

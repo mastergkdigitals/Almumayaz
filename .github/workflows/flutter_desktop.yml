@@ -46,7 +46,7 @@ jobs:
         run: flutter test
 
       - name: Run backend-free application workflow smoke test
-        run: flutter test integration_test/release_profile_smoke_test.dart
+        run: flutter test smoke_test/release_profile_smoke_test.dart
 
       - name: Verify customer profile cannot expose Design System
         run: >-

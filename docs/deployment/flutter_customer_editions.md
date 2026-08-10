@@ -66,10 +66,10 @@ its private configuration and logo with the same customer build script.
 ## Verification before delivery
 
 From `apps/desktop_flutter`, verify analysis and widget tests. Run the
-backend-free workflow smoke test on Windows with:
+backend-free widget smoke test without a connected device with:
 
 ```powershell
-flutter test integration_test\release_profile_smoke_test.dart
+flutter test smoke_test\release_profile_smoke_test.dart
 ```
 
 Check the restored window at 1280×720, 1366×768, 1920×1080, and 2560×1440.
