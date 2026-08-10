@@ -49,4 +49,34 @@ class AppRole {
   final bool isSystemRole;
 
   bool allows(PermissionCode permission) => permissions.contains(permission);
+
+  AppRole copyWith({
+    String? name,
+    Set<PermissionCode>? permissions,
+    bool? isSystemRole,
+  }) {
+    return AppRole(
+      id: id,
+      name: name ?? this.name,
+      permissions: permissions ?? this.permissions,
+      isSystemRole: isSystemRole ?? this.isSystemRole,
+    );
+  }
+}
+
+class RoleSaveRequest {
+  RoleSaveRequest({
+    this.id,
+    required String name,
+    required Set<PermissionCode> permissions,
+  })  : name = name.trim(),
+        permissions = Set.unmodifiable(permissions) {
+    if (this.name.isEmpty) {
+      throw ArgumentError.value(name, 'name', 'Must not be empty');
+    }
+  }
+
+  final EntityId? id;
+  final String name;
+  final Set<PermissionCode> permissions;
 }

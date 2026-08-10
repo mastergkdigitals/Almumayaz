@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/app_state/app_store.dart';
+import '../../../core/app_state/app_services.dart';
 import '../../../core/design/app_design_system.dart';
+import '../../permissions/domain/permission_models.dart';
 import 'widgets/settings_sections.dart';
 
 const _oldDefaultsSettingsPalette = AppModulePalette(
@@ -45,6 +47,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final store = AppStoreScope.of(context);
+    final canViewSettings = store.session == null ||
+        store.allows('settings', PermissionAction.view);
+    final canManageSettings = store.allows(
+      'settings',
+      PermissionAction.manage,
+    );
     final selectedSection = _selectedSection;
     final accentColor =
         selectedSection?.palette.middle ?? AppModuleColors.settings;
@@ -70,8 +79,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             padding: const EdgeInsets.all(AppSpacing.lg),
             child: Directionality(
               textDirection: TextDirection.rtl,
-              child: selectedSection == null
-                  ? _SettingsHub(onOpenSection: _openSection)
+              child: !canViewSettings
+                  ? const _SettingsViewPermissionNotice()
+                  : selectedSection == null
+                  ? _SettingsHub(
+                      canManageSettings: canManageSettings,
+                      onOpenSection: _openSection,
+                    )
                   : KeyedSubtree(
                       key: Key('settingsSection_${selectedSection.id}'),
                       child: _buildSection(selectedSection),
@@ -84,7 +98,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildSection(_SettingsSection section) {
-    final services = AppStoreScope.of(context, listen: false).services;
+    final store = AppStoreScope.of(context, listen: false);
+    final canViewSettings = store.session == null ||
+        store.allows('settings', PermissionAction.view);
+    if (!canViewSettings) return const _SettingsViewPermissionNotice();
+    final canManageSettings = store.allows(
+      'settings',
+      PermissionAction.manage,
+    );
+    if (!canManageSettings && section != _SettingsSection.usersSecurity) {
+      return const _SettingsPermissionNotice();
+    }
+    final services = store.services;
     return switch (section) {
       _SettingsSection.businessPolicies =>
         BusinessPoliciesSettingsSection(
@@ -102,6 +127,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           configurationRepository: services.backupConfiguration,
           backupService: services.backups,
           googleDriveService: services.googleDriveBackups,
+          fileSelectionService: services.backupFileSelection,
+          auditWriter: services.auditWriter,
+          deviceId: almumayazWindowsDeviceId,
         ),
       _SettingsSection.usersSecurity =>
         UsersSecuritySettingsSection(
@@ -111,6 +139,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           authenticationService: services.authentication,
           sessionPolicyRepository: services.sessionPolicies,
           auditRepository: services.audit,
+          administrationService: services.administration,
         ),
       _SettingsSection.archive =>
         ElectronicArchiveSettingsSection(
@@ -118,14 +147,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
           securityService: services.archiveSecurity,
           repository: services.archive,
           validationPolicy: services.archiveValidationPolicy,
+          fileSelectionService: services.archiveFileSelection,
+          auditWriter: services.auditWriter,
         ),
     };
   }
 }
 
 class _SettingsHub extends StatelessWidget {
-  const _SettingsHub({required this.onOpenSection});
+  const _SettingsHub({
+    required this.canManageSettings,
+    required this.onOpenSection,
+  });
 
+  final bool canManageSettings;
   final ValueChanged<_SettingsSection> onOpenSection;
 
   @override
@@ -139,6 +174,7 @@ class _SettingsHub extends StatelessWidget {
               _SettingsSection.businessPolicies,
               _SettingsSection.defaultSettings,
             ],
+            canManageSettings: canManageSettings,
             onOpenSection: onOpenSection,
           ),
         ),
@@ -149,6 +185,7 @@ class _SettingsHub extends StatelessWidget {
               _SettingsSection.masterData,
               _SettingsSection.backup,
             ],
+            canManageSettings: canManageSettings,
             onOpenSection: onOpenSection,
           ),
         ),
@@ -159,6 +196,7 @@ class _SettingsHub extends StatelessWidget {
               _SettingsSection.usersSecurity,
               _SettingsSection.archive,
             ],
+            canManageSettings: canManageSettings,
             onOpenSection: onOpenSection,
           ),
         ),
@@ -170,10 +208,12 @@ class _SettingsHub extends StatelessWidget {
 class _SettingsHubRow extends StatelessWidget {
   const _SettingsHubRow({
     required this.sections,
+    required this.canManageSettings,
     required this.onOpenSection,
   });
 
   final List<_SettingsSection> sections;
+  final bool canManageSettings;
   final ValueChanged<_SettingsSection> onOpenSection;
 
   @override
@@ -189,11 +229,54 @@ class _SettingsHubRow extends StatelessWidget {
               icon: sections[index].icon,
               colors: sections[index].palette.gradient,
               shadowColor: sections[index].palette.shadow,
-              onTap: () => onOpenSection(sections[index]),
+              onTap: canManageSettings ||
+                      sections[index] == _SettingsSection.usersSecurity
+                  ? () => onOpenSection(sections[index])
+                  : null,
             ),
           ),
         ],
       ],
+    );
+  }
+}
+
+class _SettingsPermissionNotice extends StatelessWidget {
+  const _SettingsPermissionNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: 620),
+        child: AppInfoBanner(
+          key: Key('settingsManagePermissionRequired'),
+          message: 'تتطلب هذه الصفحة صلاحية إدارة الإعدادات',
+          icon: Icons.lock_outline_rounded,
+          foregroundColor: AppColors.warning,
+          backgroundColor: AppColors.warningSurface,
+        ),
+      ),
+    );
+  }
+}
+
+class _SettingsViewPermissionNotice extends StatelessWidget {
+  const _SettingsViewPermissionNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: 620),
+        child: AppInfoBanner(
+          key: Key('settingsViewPermissionRequired'),
+          message: 'ليست لديك صلاحية عرض الإعدادات',
+          icon: Icons.lock_outline_rounded,
+          foregroundColor: AppColors.danger,
+          backgroundColor: AppColors.dangerSurface,
+        ),
+      ),
     );
   }
 }

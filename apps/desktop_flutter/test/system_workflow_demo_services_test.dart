@@ -86,11 +86,13 @@ void main() {
 
     test('local preflight never authorizes upload', () async {
       final security = DemoArchiveSecurityService();
+      final bytes = '%PDF-1.7\nInvoice'.codeUnits;
       final file = ArchiveFileCandidate(
         localPath: r'C:\Demo\invoice.pdf',
         fileName: 'invoice.pdf',
-        byteSize: 1024,
+        byteSize: bytes.length,
         declaredMimeType: 'application/pdf',
+        contentBytes: bytes,
       );
 
       final local = await security.validateLocally(
@@ -115,11 +117,23 @@ void main() {
 
     test('simulated authoritative malware result gates upload', () async {
       final security = DemoArchiveSecurityService();
+      final bytes = <int>[
+        0x89,
+        0x50,
+        0x4e,
+        0x47,
+        0x0d,
+        0x0a,
+        0x1a,
+        0x0a,
+        0x00,
+      ];
       final infected = ArchiveFileCandidate(
         localPath: r'C:\Demo\infected.png',
         fileName: 'infected.png',
-        byteSize: 2048,
+        byteSize: bytes.length,
         declaredMimeType: 'image/png',
+        contentBytes: bytes,
       );
 
       final report = await security.scanAuthoritatively(
@@ -142,6 +156,8 @@ void main() {
         fileName: 'oversized.pdf',
         byteSize: policy.maximumByteSize + 1,
         declaredMimeType: 'image/png',
+        contentBytes: '%PDF-1.7'.codeUnits,
+        contentIsComplete: false,
       );
 
       final report = await security.validateLocally(
@@ -162,16 +178,19 @@ void main() {
         () async {
       final security = DemoArchiveSecurityService();
       final repository = DemoArchiveRepository(initialDocuments: const []);
+      final bytes = '%PDF-1.7\nContract'.codeUnits;
       final file = ArchiveFileCandidate(
         localPath: r'C:\Demo\contract.pdf',
         fileName: 'contract.pdf',
-        byteSize: 4096,
+        byteSize: bytes.length,
         declaredMimeType: 'application/pdf',
+        contentBytes: bytes,
       );
       final report = await security.scanAuthoritatively(
         file: file,
         policy: policy,
       );
+      final progress = <ArchiveUploadStage>[];
       final uploaded = await repository.upload(
         ArchiveUploadRequest(
           draft: ArchiveDocumentDraft(
@@ -181,7 +200,11 @@ void main() {
           ),
           securityReport: report,
         ),
+        onProgress: (value) => progress.add(value.stage),
       );
+
+      expect(progress.first, ArchiveUploadStage.queued);
+      expect(progress.last, ArchiveUploadStage.completed);
 
       expect(
         await repository.search(const ArchiveQuery(searchText: 'اختبار')),
@@ -236,10 +259,16 @@ void main() {
         () async {
       final authentication = DemoAuthenticationService();
       final policies = DemoSessionPolicyRepository();
-      final locked = await authentication.lock(SessionLockReason.userRequest);
+      final initialSession = (await authentication.currentSession())!;
+      final locked = await authentication.lock(
+        initialSession.id,
+        SessionLockReason.userRequest,
+      );
       expect(locked.state, SessionState.locked);
-      expect((await authentication.unlock('password')).state,
-          SessionState.active);
+      expect(
+        (await authentication.unlock(locked.id, 'password')).state,
+        SessionState.active,
+      );
 
       await authentication.changePassword(
         PasswordChangeRequest(
@@ -248,7 +277,9 @@ void main() {
           newPassword: 'new-password',
         ),
       );
-      await authentication.signOut();
+      await authentication.signOut(
+        (await authentication.currentSession())!.id,
+      );
       expect(
         (await authentication.signIn(
           SignInCredentials(username: 'admin', password: 'new-password'),

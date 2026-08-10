@@ -32,6 +32,7 @@ class InventoryTransferDialog extends StatefulWidget {
     this.initialFromWarehouseId,
     this.transferHistory,
     this.onReverseTransfer,
+    this.allowTransfer = true,
   });
 
   final List<Warehouse> warehouses;
@@ -40,6 +41,7 @@ class InventoryTransferDialog extends StatefulWidget {
   final String? initialFromWarehouseId;
   final WarehouseTransferHistoryReader? transferHistory;
   final WarehouseTransferReverseHandler? onReverseTransfer;
+  final bool allowTransfer;
 
   static Future<bool> show(
     BuildContext context, {
@@ -49,6 +51,7 @@ class InventoryTransferDialog extends StatefulWidget {
     String? initialFromWarehouseId,
     WarehouseTransferHistoryReader? transferHistory,
     WarehouseTransferReverseHandler? onReverseTransfer,
+    bool allowTransfer = true,
   }) async {
     final result = await showDialog<bool>(
       context: context,
@@ -62,6 +65,7 @@ class InventoryTransferDialog extends StatefulWidget {
           initialFromWarehouseId: initialFromWarehouseId,
           transferHistory: transferHistory,
           onReverseTransfer: onReverseTransfer,
+          allowTransfer: allowTransfer,
         ),
       ),
     );
@@ -131,7 +135,8 @@ class _InventoryTransferDialogState
   bool get _canExecute {
     final sourceItem = _selectedSourceItem;
     final quantity = _transferQuantity;
-    return _fromWarehouseId != null &&
+    return widget.allowTransfer &&
+        _fromWarehouseId != null &&
         _toWarehouseId != null &&
         _fromWarehouseId != _toWarehouseId &&
         sourceItem != null &&
@@ -154,6 +159,9 @@ class _InventoryTransferDialogState
   @override
   void initState() {
     super.initState();
+    if (!widget.allowTransfer) {
+      _view = _InventoryTransferView.history;
+    }
     _fromWarehouseId = _resolveInitialSourceId();
     _toWarehouseId = _firstOtherWarehouseId(_fromWarehouseId);
     _selectedProductCode = _firstSourceProductCode();
@@ -228,7 +236,7 @@ class _InventoryTransferDialogState
   }
 
   Future<void> _executeTransfer() async {
-    if (_isMutating) return;
+    if (_isMutating || !widget.allowTransfer) return;
     final sourceId = _fromWarehouseId;
     final destinationId = _toWarehouseId;
     final sourceItem = _selectedSourceItem;
@@ -399,6 +407,7 @@ class _InventoryTransferDialogState
               children: [
                 _ViewSelector(
                   view: _view,
+                  allowCreate: widget.allowTransfer,
                   onChanged: _selectView,
                 ),
                 const SizedBox(height: AppSpacing.md),
@@ -667,10 +676,12 @@ class _InventoryTransferDialogState
 class _ViewSelector extends StatelessWidget {
   const _ViewSelector({
     required this.view,
+    required this.allowCreate,
     required this.onChanged,
   });
 
   final _InventoryTransferView view;
+  final bool allowCreate;
   final ValueChanged<_InventoryTransferView> onChanged;
 
   @override
@@ -694,7 +705,9 @@ class _ViewSelector extends StatelessWidget {
           foregroundColor: view == _InventoryTransferView.create
               ? AppModuleColors.warehouses
               : null,
-          onPressed: () => onChanged(_InventoryTransferView.create),
+          onPressed: allowCreate
+              ? () => onChanged(_InventoryTransferView.create)
+              : null,
         ),
         const SizedBox(width: AppSpacing.sm),
         AppButton(

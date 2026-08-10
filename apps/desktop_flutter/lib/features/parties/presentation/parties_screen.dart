@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../core/app_state/app_store.dart';
+import '../../../core/app_state/feature_action_permissions.dart';
 import '../../../core/data/app_repository.dart';
 import '../../../core/design/app_design_system.dart';
 import '../../../core/domain/business_values.dart';
+import '../../permissions/domain/permission_models.dart';
 import '../application/party_statement_service.dart';
 import '../domain/party.dart';
 import 'parties_controller.dart';
@@ -43,6 +45,12 @@ class _PartiesScreenState extends State<PartiesScreen> {
   bool _isApplyingFormState = false;
   bool _hasUnsavedChanges = false;
   Future<bool>? _pendingDiscardConfirmation;
+
+  bool _allowsPartyAction(PermissionAction action) =>
+      AppStoreScope.of(context, listen: false).allowsFeatureAction(
+        'parties',
+        action,
+      );
 
   Iterable<TextEditingController> get _editableControllers => [
         _formControllers.name,
@@ -319,6 +327,7 @@ class _PartiesScreenState extends State<PartiesScreen> {
   }
 
   Future<void> _save() async {
+    if (!_allowsPartyAction(PermissionAction.create)) return;
     if (!_validateName()) return;
     if (_partiesController.selectedParty != null) {
       AppToast.showWarning(context, 'استخدم زر تحديث لتعديل الطرف المحدد');
@@ -340,6 +349,7 @@ class _PartiesScreenState extends State<PartiesScreen> {
   }
 
   Future<void> _update() async {
+    if (!_allowsPartyAction(PermissionAction.update)) return;
     final selected = _partiesController.selectedParty;
     if (selected == null) {
       AppToast.showWarning(context, 'اختر طرفاً من الجدول لتحديثه');
@@ -374,6 +384,7 @@ class _PartiesScreenState extends State<PartiesScreen> {
   }
 
   Future<void> _delete() async {
+    if (!_allowsPartyAction(PermissionAction.delete)) return;
     final selected = _partiesController.selectedParty;
     if (selected == null) {
       AppToast.showWarning(context, 'اختر طرفاً من الجدول لحذفه');
@@ -466,6 +477,8 @@ class _PartiesScreenState extends State<PartiesScreen> {
           ),
       ],
       accentColor: AppModuleColors.parties,
+      allowPrint: _allowsPartyAction(PermissionAction.print),
+      allowExport: _allowsPartyAction(PermissionAction.export),
     );
   }
 
@@ -515,6 +528,9 @@ class _PartiesScreenState extends State<PartiesScreen> {
         final showEditor = dataState.status == AppDataStatus.ready ||
             (dataState.status == AppDataStatus.empty &&
                 _showEditorWhenEmpty);
+        final canCreate = _allowsPartyAction(PermissionAction.create);
+        final canUpdate = _allowsPartyAction(PermissionAction.update);
+        final canDelete = _allowsPartyAction(PermissionAction.delete);
 
         return PopScope(
           canPop: !_hasUnsavedChanges,
@@ -528,10 +544,12 @@ class _PartiesScreenState extends State<PartiesScreen> {
             onBack: _attemptBack,
             onSearch: _searchFocusNode.requestFocus,
             onSave: hasSelectedParty
-                ? _hasUnsavedChanges
+                ? _hasUnsavedChanges && canUpdate
                     ? _update
                     : null
-                : _save,
+                : canCreate
+                    ? _save
+                    : null,
             body: Padding(
               padding: const EdgeInsets.all(AppSpacing.lg),
               child: showEditor
@@ -579,11 +597,15 @@ class _PartiesScreenState extends State<PartiesScreen> {
                   onLast: canMoveToNextOrLast
                       ? () => _navigate(_partiesController.last)
                       : null,
-                  onSave: hasSelectedParty ? null : _save,
+                  onSave:
+                      hasSelectedParty || !canCreate ? null : _save,
                   onUpdate:
-                      hasSelectedParty && _hasUnsavedChanges ? _update : null,
+                      hasSelectedParty && _hasUnsavedChanges && canUpdate
+                          ? _update
+                          : null,
                   onUndo: _hasUnsavedChanges ? _undo : null,
-                  onDelete: hasSelectedParty ? _delete : null,
+                  onDelete:
+                      hasSelectedParty && canDelete ? _delete : null,
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Expanded(
@@ -611,12 +633,12 @@ class _PartiesScreenState extends State<PartiesScreen> {
                           const Key('partiesMissingReferenceState'),
                       errorStateKey: const Key('partiesErrorState'),
                       emptyActionLabel: 'إضافة طرف',
-                      onEmptyAction: () {
+                      onEmptyAction: canCreate ? () {
                         setState(() {
                           _showEditorWhenEmpty = true;
                           _setNewForm();
                         });
-                      },
+                      } : null,
                       missingReferenceActionLabel: 'إعادة المحاولة',
                       onMissingReferenceAction: _loadParties,
                       onRetry: _loadParties,

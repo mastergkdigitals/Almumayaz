@@ -71,6 +71,9 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
   final Map<String, EntityId> _warehouseIdsByLabel = {};
   List<AppInvoiceItemOption> _itemOptions = const [];
 
+  bool _allowsPurchaseAction(PermissionAction action) =>
+      _store?.allowsFeatureAction('purchases', action) ?? true;
+
   void _setPurchaseState(VoidCallback callback) => setState(callback);
 
   Iterable<TextEditingController> get _editableControllers => [
@@ -214,6 +217,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
   }
 
   Future<void> _save() async {
+    if (!_allowsPurchaseAction(PermissionAction.create)) return;
     if (!_validateForm()) return;
     if (_selectedInvoice != null) {
       AppToast.showWarning(
@@ -244,6 +248,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
   }
 
   Future<void> _update() async {
+    if (!_allowsPurchaseAction(PermissionAction.update)) return;
     final selected = _selectedInvoice;
     if (selected == null) {
       AppToast.showWarning(context, 'اختر قائمة شراء لتحديثها');
@@ -284,6 +289,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
   }
 
   Future<void> _delete() async {
+    if (!_allowsPurchaseAction(PermissionAction.delete)) return;
     final selected = _selectedInvoice;
     if (selected == null) {
       AppToast.showWarning(context, 'اختر قائمة شراء لحذفها');

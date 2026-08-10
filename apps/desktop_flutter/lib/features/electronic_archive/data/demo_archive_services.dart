@@ -1,14 +1,42 @@
+import 'dart:convert';
+
 import '../../../core/data/app_repository.dart';
 import '../../../core/domain/business_values.dart';
 import '../../../core/services/service_failure.dart';
 import '../domain/archive_models.dart';
 import '../domain/archive_services.dart';
 
-/// Metadata-only archive security demo.
+const _demoUploadStepDelay = Duration(milliseconds: 80);
+
+class DemoArchiveFileSelectionService
+    implements ArchiveFileSelectionService {
+  DemoArchiveFileSelectionService({
+    Iterable<ArchiveFileCandidate?> selections = const [],
+  }) : _selections = List<ArchiveFileCandidate?>.of(selections);
+
+  final List<ArchiveFileCandidate?> _selections;
+
+  @override
+  Future<ArchiveFileCandidate?> selectFile({
+    required ArchiveValidationPolicy policy,
+  }) async {
+    if (_selections.isNotEmpty) return _selections.removeAt(0);
+    final bytes = utf8.encode('%PDF-1.7\nAlmumayaz demo archive document');
+    return ArchiveFileCandidate(
+      localPath: r'C:\Almumayaz\DemoUpload\document_example.pdf',
+      fileName: 'document_example.pdf',
+      byteSize: bytes.length,
+      declaredMimeType: ArchiveFileType.pdf.mimeType,
+      contentBytes: bytes,
+    );
+  }
+}
+
+/// Byte-validating archive security demo.
 ///
-/// It performs no real malware inspection. Local validation is deliberately
-/// labelled as preflight and only [scanAuthoritatively] returns the simulated
-/// authoritative result required by [ArchiveUploadRequest].
+/// It performs real local signature/size/checksum validation but no real
+/// malware inspection. Only [scanAuthoritatively] returns the explicitly
+/// simulated authoritative result required by [ArchiveUploadRequest].
 class DemoArchiveSecurityService implements ArchiveSecurityService {
   @override
   Future<ArchiveSecurityReport> validateLocally({
@@ -46,18 +74,20 @@ class DemoArchiveSecurityService implements ArchiveSecurityService {
     final extension = normalizedName.contains('.')
         ? normalizedName.split('.').last
         : '';
-    final detectedType = switch (extension) {
+    final extensionType = switch (extension) {
       'pdf' => ArchiveFileType.pdf,
       'png' => ArchiveFileType.png,
       _ => null,
     };
+    final detectedType = file.signatureFileType;
     final issues = <ArchiveValidationIssue>[];
 
-    if (normalizedName.contains('unreadable')) {
+    if (!file.contentIsComplete &&
+        file.byteSize <= policy.maximumByteSize) {
       issues.add(
         const ArchiveValidationIssue(
           code: ArchiveValidationIssueCode.unreadable,
-          message: 'تعذر قراءة الملف التجريبي',
+          message: 'تعذر قراءة محتوى الملف المحدد',
         ),
       );
     }
@@ -78,7 +108,8 @@ class DemoArchiveSecurityService implements ArchiveSecurityService {
         ),
       );
     }
-    if (detectedType == null || !policy.allowedTypes.contains(detectedType)) {
+    if (extensionType == null ||
+        !policy.allowedTypes.contains(extensionType)) {
       issues.add(
         const ArchiveValidationIssue(
           code: ArchiveValidationIssueCode.unsupportedExtension,
@@ -89,10 +120,9 @@ class DemoArchiveSecurityService implements ArchiveSecurityService {
 
     final detectedMime = detectedType?.mimeType;
     final declaredMime = file.declaredMimeType?.trim().toLowerCase();
-    if (normalizedName.contains('signature_mismatch') ||
-        (declaredMime != null &&
-            detectedMime != null &&
-            declaredMime != detectedMime)) {
+    if (detectedType == null ||
+        extensionType != detectedType ||
+        (declaredMime != null && declaredMime != detectedMime)) {
       issues.add(
         const ArchiveValidationIssue(
           code: ArchiveValidationIssueCode.mimeSignatureMismatch,
@@ -100,7 +130,9 @@ class DemoArchiveSecurityService implements ArchiveSecurityService {
         ),
       );
     }
-    final checksumFailed = normalizedName.contains('checksum_failed');
+    final computedChecksum = file.contentChecksumSha256;
+    final checksumFailed = computedChecksum == null &&
+        file.byteSize <= policy.maximumByteSize;
     if (checksumFailed) {
       issues.add(
         const ArchiveValidationIssue(
@@ -136,10 +168,11 @@ class DemoArchiveSecurityService implements ArchiveSecurityService {
     return ArchiveSecurityReport(
       authority: authority,
       scanStatus: scanStatus,
-      checksumSha256: checksumFailed ? null : _archiveChecksum(file),
+      checksumSha256: checksumFailed ? null : computedChecksum,
       detectedMimeType: detectedMime,
       detectedFileType: detectedType,
       issues: issues,
+      candidateBindingSha256: file.contentBindingSha256,
     );
   }
 }
@@ -147,14 +180,24 @@ class DemoArchiveSecurityService implements ArchiveSecurityService {
 class DemoArchiveRepository implements ArchiveRepository {
   factory DemoArchiveRepository({
     Iterable<ArchiveDocument>? initialDocuments,
+    bool failNextUpload = false,
+    EntityId? Function()? currentUserId,
   }) {
     return DemoArchiveRepository._(
       List<ArchiveDocument>.of(initialDocuments ?? _seedDocuments()),
+      failNextUpload: failNextUpload,
+      currentUserId: currentUserId,
     );
   }
 
-  DemoArchiveRepository._(List<ArchiveDocument> initialDocuments)
-      : _documents = {
+  DemoArchiveRepository._(
+    List<ArchiveDocument> initialDocuments, {
+    required bool failNextUpload,
+    required EntityId? Function()? currentUserId,
+  })  : _failNextUpload = failNextUpload,
+        _currentUserId =
+            currentUserId ?? (() => EntityId.demo('user', 1)),
+        _documents = {
           for (final document in initialDocuments) document.id: document,
         },
         _previewPaths = {
@@ -172,7 +215,11 @@ class DemoArchiveRepository implements ArchiveRepository {
 
   final Map<EntityId, ArchiveDocument> _documents;
   final Map<EntityId, String> _previewPaths;
+  final EntityId? Function() _currentUserId;
+  bool _failNextUpload;
   int _nextSequence = 1;
+
+  void failNextUpload() => _failNextUpload = true;
 
   @override
   Future<List<ArchiveDocument>> search(ArchiveQuery query) async {
@@ -192,15 +239,64 @@ class DemoArchiveRepository implements ArchiveRepository {
               createdDate.compareTo(query.createdTo!) <= 0);
     }).toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    return List.unmodifiable(result);
+    return List<ArchiveDocument>.unmodifiable(result);
   }
 
   @override
   Future<ArchiveDocument?> getById(EntityId id) async => _documents[id];
 
   @override
-  Future<ArchiveDocument> upload(ArchiveUploadRequest request) async {
+  Future<ArchiveDocument> upload(
+    ArchiveUploadRequest request, {
+    ArchiveUploadProgressCallback? onProgress,
+  }) async {
+    final currentUserId = _currentUserId();
+    if (currentUserId == null) {
+      onProgress?.call(
+        ArchiveUploadProgress(
+          stage: ArchiveUploadStage.failed,
+          fraction: 0,
+          message: 'يجب تسجيل الدخول قبل رفع ملف إلى الأرشيف',
+        ),
+      );
+      throw const ServiceFailure(
+        kind: ServiceFailureKind.authenticationRequired,
+        code: 'archive_session_required',
+        message: 'يجب تسجيل الدخول قبل رفع ملف إلى الأرشيف',
+      );
+    }
     final sequence = _nextSequence++;
+    onProgress?.call(
+      ArchiveUploadProgress(
+        stage: ArchiveUploadStage.queued,
+        fraction: 0,
+        message: 'تمت جدولة الرفع التجريبي',
+      ),
+    );
+    await Future<void>.delayed(_demoUploadStepDelay);
+    onProgress?.call(
+      ArchiveUploadProgress(
+        stage: ArchiveUploadStage.uploading,
+        fraction: 0.45,
+        message: 'جارٍ رفع الملف إلى التخزين التجريبي',
+      ),
+    );
+    await Future<void>.delayed(_demoUploadStepDelay);
+    if (_failNextUpload) {
+      _failNextUpload = false;
+      onProgress?.call(
+        ArchiveUploadProgress(
+          stage: ArchiveUploadStage.failed,
+          fraction: 0.45,
+          message: 'تعذر رفع الملف التجريبي؛ يمكنك إعادة المحاولة',
+        ),
+      );
+      throw const ServiceFailure(
+        kind: ServiceFailureKind.unavailable,
+        code: 'demo_archive_upload_failed',
+        message: 'تعذر رفع الملف التجريبي؛ يمكنك إعادة المحاولة',
+      );
+    }
     final report = request.securityReport;
     final type = report.detectedFileType;
     final checksum = report.checksumSha256;
@@ -211,6 +307,14 @@ class DemoArchiveRepository implements ArchiveRepository {
         message: 'رفض تقرير الأمان الملف',
       );
     }
+    onProgress?.call(
+      ArchiveUploadProgress(
+        stage: ArchiveUploadStage.finalizing,
+        fraction: 0.85,
+        message: 'جارٍ تثبيت بيانات المستند التجريبية',
+      ),
+    );
+    await Future<void>.delayed(_demoUploadStepDelay);
     final document = ArchiveDocument(
       id: EntityId.demo('archive', sequence),
       displayName: request.draft.displayName,
@@ -218,12 +322,21 @@ class DemoArchiveRepository implements ArchiveRepository {
       fileType: type,
       byteSize: request.draft.file.byteSize,
       checksumSha256: checksum,
-      createdAt: AuditTimestamp(DateTime.utc(2026, 7, 29, 8, sequence)),
-      createdByUserId: EntityId.demo('user', 1),
+      createdAt: AuditTimestamp(
+        DateTime.utc(2026, 7, 29, 8).add(Duration(minutes: sequence)),
+      ),
+      createdByUserId: currentUserId,
       tags: request.draft.tags,
     );
     _documents[document.id] = document;
     _previewPaths[document.id] = request.draft.file.localPath;
+    onProgress?.call(
+      ArchiveUploadProgress(
+        stage: ArchiveUploadStage.completed,
+        fraction: 1,
+        message: 'اكتمل الرفع التجريبي',
+      ),
+    );
     return document;
   }
 
@@ -331,15 +444,4 @@ class DemoArchiveRepository implements ArchiveRepository {
           tags: const {'اتفاقيات', 'زبائن'},
         ),
       ];
-}
-
-String _archiveChecksum(ArchiveFileCandidate file) {
-  var hash = 0x811c9dc5;
-  for (final codeUnit
-      in '${file.localPath}|${file.fileName}|${file.byteSize}'.codeUnits) {
-    hash ^= codeUnit;
-    hash = (hash * 0x01000193) & 0xffffffff;
-  }
-  final chunk = hash.toRadixString(16).padLeft(8, '0');
-  return '$chunk$chunk$chunk$chunk$chunk$chunk$chunk$chunk';
 }

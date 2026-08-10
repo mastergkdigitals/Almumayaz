@@ -26,6 +26,8 @@ class ReportSectionView extends StatefulWidget {
     this.exportService = const DemoReportOutputService(),
     this.initialDropdownValues = const {},
     this.refreshToken = 0,
+    this.allowPrint = true,
+    this.allowExport = true,
   });
 
   final ReportDefinition definition;
@@ -36,6 +38,8 @@ class ReportSectionView extends StatefulWidget {
   final ReportExportService exportService;
   final Map<String, String> initialDropdownValues;
   final int refreshToken;
+  final bool allowPrint;
+  final bool allowExport;
 
   @override
   State<ReportSectionView> createState() => _ReportSectionViewState();
@@ -257,6 +261,12 @@ class _ReportSectionViewState extends State<ReportSectionView> {
   }
 
   Future<void> _runOutput(ReportOutputAction action) async {
+    final permitted = switch (action) {
+      ReportOutputAction.printPreview => widget.allowPrint,
+      ReportOutputAction.pdf || ReportOutputAction.excel =>
+        widget.allowExport,
+    };
+    if (!permitted) return;
     FocusManager.instance.primaryFocus?.unfocus();
     if (_activeOutput != null) return;
     setState(() => _activeOutput = action);
@@ -395,15 +405,18 @@ class _ReportSectionViewState extends State<ReportSectionView> {
 
     return CallbackShortcuts(
       bindings: {
-        const SingleActivator(LogicalKeyboardKey.keyP, control: true):
-            () => _runOutput(ReportOutputAction.printPreview),
-        const SingleActivator(
-          LogicalKeyboardKey.keyP,
-          control: true,
-          shift: true,
-        ): () => _runOutput(ReportOutputAction.pdf),
-        const SingleActivator(LogicalKeyboardKey.keyE, control: true):
-            () => _runOutput(ReportOutputAction.excel),
+        if (widget.allowPrint)
+          const SingleActivator(LogicalKeyboardKey.keyP, control: true):
+              () => _runOutput(ReportOutputAction.printPreview),
+        if (widget.allowExport) ...{
+          const SingleActivator(
+            LogicalKeyboardKey.keyP,
+            control: true,
+            shift: true,
+          ): () => _runOutput(ReportOutputAction.pdf),
+          const SingleActivator(LogicalKeyboardKey.keyE, control: true):
+              () => _runOutput(ReportOutputAction.excel),
+        },
       },
       child: AppShortcutScope(
         onSearch: _focusSearch,
@@ -423,6 +436,8 @@ class _ReportSectionViewState extends State<ReportSectionView> {
                   selectedVariant: _variant,
                   accentColor: _accentColor,
                   outputBusy: _activeOutput != null,
+                  allowPrint: widget.allowPrint,
+                  allowExport: widget.allowExport,
                   onDefinitionChanged: widget.onDefinitionChanged,
                   onVariantChanged: _changeVariant,
                   onPrint: () =>

@@ -7,9 +7,13 @@ abstract interface class UserRepository {
 
   Future<AppUser?> getById(EntityId id);
 
+  Future<AppUser?> getByUsername(String username);
+
   Future<AppUser> save(AppUser user);
 
   Future<AppUser> setStatus(EntityId id, UserAccountStatus status);
+
+  Future<AppUser> setLastLogin(EntityId id, AuditTimestamp timestamp);
 
   Future<DeleteDecision> canDelete(EntityId id);
 

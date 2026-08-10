@@ -8,6 +8,7 @@ import '../../about/presentation/about_screen.dart';
 import '../../authentication/presentation/login_screen.dart';
 import '../../cashbox/presentation/cashbox_screen.dart';
 import '../../parties/presentation/parties_screen.dart';
+import '../../permissions/domain/permission_models.dart';
 import '../../purchases/presentation/purchase_screen.dart';
 import '../../reports/presentation/reports_screen.dart';
 import '../../sales/presentation/sales_screen.dart';
@@ -79,10 +80,15 @@ class DashboardScreen extends StatelessWidget {
   ];
 
   void _openModule(BuildContext context, _ModuleItem item) {
-    final documentOutput = AppStoreScope.of(
+    final store = AppStoreScope.of(
       context,
       listen: false,
-    ).services.documentOutput;
+    );
+    if (!_canOpenModule(store, item)) {
+      AppToast.showError(context, 'ليس لديك صلاحية لفتح هذه الشاشة');
+      return;
+    }
+    final documentOutput = store.services.documentOutput;
     if (item.id == 'purchases') {
       Navigator.of(context).push(
         MaterialPageRoute<void>(
@@ -185,8 +191,13 @@ class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final configuration = AppConfigurationScope.of(context);
+    final store = AppStoreScope.of(context);
     final visibleModules = modules
-        .where((module) => configuration.isModuleKeyEnabled(module.id))
+        .where(
+          (module) =>
+              configuration.isModuleKeyEnabled(module.id) &&
+              _canOpenModule(store, module),
+        )
         .toList(growable: false);
 
     return AppShortcutScope(
@@ -249,6 +260,11 @@ class DashboardScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  bool _canOpenModule(AppStore store, _ModuleItem item) {
+    if (item.displayOnly || item.isAbout) return true;
+    return store.allows(item.id, PermissionAction.view);
   }
 }
 

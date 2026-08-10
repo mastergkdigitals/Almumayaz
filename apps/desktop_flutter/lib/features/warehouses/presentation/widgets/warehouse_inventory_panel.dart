@@ -23,7 +23,7 @@ class WarehouseInventoryPanel extends StatelessWidget {
   final int totalQuantity;
   final TextEditingController searchController;
   final ValueChanged<String> onSearchChanged;
-  final VoidCallback onOpenProducts;
+  final VoidCallback? onOpenProducts;
   final VoidCallback? onOpenTransfer;
   final double height;
 

@@ -7,12 +7,16 @@ class ElectronicArchiveSettingsSection extends StatefulWidget {
     this.securityService,
     this.repository,
     this.validationPolicy,
+    this.fileSelectionService,
+    this.auditWriter,
   });
 
   final Color accentColor;
   final ArchiveSecurityService? securityService;
   final ArchiveRepository? repository;
   final ArchiveValidationPolicy? validationPolicy;
+  final ArchiveFileSelectionService? fileSelectionService;
+  final AuditEventWriter? auditWriter;
 
   @override
   State<ElectronicArchiveSettingsSection> createState() =>
@@ -25,34 +29,10 @@ class _ElectronicArchiveSettingsSectionState
   late final ArchiveSecurityService _securityService;
   late final ArchiveRepository _repository;
   late final ArchiveValidationPolicy _validationPolicy;
+  late final ArchiveFileSelectionService _fileSelectionService;
   var _isLoading = true;
   String? _loadError;
-  final _documents = <_ArchiveDocument>[
-    const _ArchiveDocument(
-      id: 1,
-      name: 'عقد تجهيز شركة النور',
-      type: 'PDF',
-      fileName: 'noor_contract.pdf',
-      size: '1.8 MB',
-      createdAt: '2026/07/29',
-    ),
-    const _ArchiveDocument(
-      id: 2,
-      name: 'وصل استلام المخزن الرئيسي',
-      type: 'PNG',
-      fileName: 'warehouse_receipt.png',
-      size: '640 KB',
-      createdAt: '2026/07/28',
-    ),
-    const _ArchiveDocument(
-      id: 3,
-      name: 'اتفاقية الزبون أحمد كريم',
-      type: 'PDF',
-      fileName: 'customer_agreement.pdf',
-      size: '2.1 MB',
-      createdAt: '2026/07/26',
-    ),
-  ];
+  final _documents = <_ArchiveDocument>[];
 
   @override
   void initState() {
@@ -60,6 +40,8 @@ class _ElectronicArchiveSettingsSectionState
     _securityService =
         widget.securityService ?? DemoArchiveSecurityService();
     _repository = widget.repository ?? DemoArchiveRepository();
+    _fileSelectionService = widget.fileSelectionService ??
+        DemoArchiveFileSelectionService();
     _validationPolicy = widget.validationPolicy ??
         ArchiveValidationPolicy(maximumByteSize: 10 * 1024 * 1024);
     _refreshArchive(showLoading: true);
@@ -72,8 +54,19 @@ class _ElectronicArchiveSettingsSectionState
     super.dispose();
   }
 
+  Future<void> _writeAudit(AuditEvent event) async {
+    final writer = widget.auditWriter;
+    if (writer == null) return;
+    try {
+      await writer.write(event);
+    } on Object {
+      // Audit failure must not replace the archive workflow result.
+      debugPrint('Archive workflow audit write failed.');
+    }
+  }
+
   Future<void> _openUploadDialog() async {
-    final draft = await showDialog<_ArchiveDocumentDraft>(
+    final document = await showDialog<ArchiveDocument>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => Directionality(
@@ -81,33 +74,21 @@ class _ElectronicArchiveSettingsSectionState
         child: _ArchiveUploadDialog(
           accentColor: widget.accentColor,
           securityService: _securityService,
+          repository: _repository,
+          fileSelectionService: _fileSelectionService,
           validationPolicy: _validationPolicy,
+          auditWriter: widget.auditWriter,
         ),
       ),
     );
-    if (draft == null || !mounted) return;
-
-    try {
-      final document = await _repository.upload(
-        ArchiveUploadRequest(
-          draft: ArchiveDocumentDraft(
-            displayName: draft.name,
-            file: draft.file,
-          ),
-          securityReport: draft.securityReport,
-        ),
-      );
-      if (!mounted) return;
-      setState(() {
-        _documents.insert(0, _archiveDocumentFromDomain(document));
-      });
-      AppToast.showSuccess(
-        context,
-        'تم رفع الملف بعد نتيجة فحص خادم تجريبية نظيفة',
-      );
-    } on Object catch (error) {
-      if (mounted) AppToast.showError(context, _serviceMessage(error));
-    }
+    if (document == null || !mounted) return;
+    setState(() {
+      _documents.insert(0, _archiveDocumentFromDomain(document));
+    });
+    AppToast.showSuccess(
+      context,
+      'تم الرفع التجريبي بعد نتيجة فحص خادم مُحاكاة نظيفة',
+    );
   }
 
   Future<void> _renameDocument(_ArchiveDocument document) async {
@@ -127,13 +108,37 @@ class _ElectronicArchiveSettingsSectionState
     final index = _documents.indexWhere((entry) => entry.id == document.id);
     if (index < 0) return;
     try {
-      final renamed = await _repository.rename(document.domainId, name);
+      final renamed = await _repository.rename(document.id, name);
+      await _writeAudit(
+        AuditEvent(
+          action: AuditAction.update,
+          outcome: AuditOutcome.success,
+          summary: 'تم تعديل اسم مستند في الأرشيف الإلكتروني',
+          entityType: 'archiveDocument',
+          entityId: document.id,
+          before: {'displayName': document.name},
+          after: {'displayName': renamed.displayName},
+          details: {'fileType': document.type},
+        ),
+      );
       if (!mounted) return;
       setState(() {
         _documents[index] = _archiveDocumentFromDomain(renamed);
       });
       AppToast.showSuccess(context, 'تم تعديل اسم الملف');
     } on Object catch (error) {
+      await _writeAudit(
+        AuditEvent(
+          action: AuditAction.update,
+          outcome: AuditOutcome.failure,
+          summary: 'فشل تعديل اسم مستند في الأرشيف الإلكتروني',
+          entityType: 'archiveDocument',
+          entityId: document.id,
+          before: {'displayName': document.name},
+          after: {'displayName': name},
+          details: _auditFailureDetails(error),
+        ),
+      );
       if (mounted) AppToast.showError(context, _serviceMessage(error));
     }
   }
@@ -149,27 +154,53 @@ class _ElectronicArchiveSettingsSectionState
     if (!confirmed || !mounted) return;
 
     try {
-      final decision = await _repository.canDelete(document.domainId);
+      final decision = await _repository.canDelete(document.id);
       if (!decision.isAllowed) {
         throw ServiceFailure(
           kind: ServiceFailureKind.permissionDenied,
           message: decision.reason ?? 'لا يمكن حذف المستند',
         );
       }
-      await _repository.delete(document.domainId);
+      await _repository.delete(document.id);
+      await _writeAudit(
+        AuditEvent(
+          action: AuditAction.delete,
+          outcome: AuditOutcome.success,
+          summary: 'تم حذف مستند من الأرشيف الإلكتروني',
+          entityType: 'archiveDocument',
+          entityId: document.id,
+          before: {
+            'displayName': document.name,
+            'fileName': document.fileName,
+            'fileType': document.type,
+            'checksumSha256': document.checksum,
+          },
+          details: const {'storage': 'demoInMemory'},
+        ),
+      );
       if (!mounted) return;
       setState(() {
         _documents.removeWhere((entry) => entry.id == document.id);
       });
       AppToast.showDanger(context, 'تم حذف الملف التجريبي');
     } on Object catch (error) {
+      await _writeAudit(
+        AuditEvent(
+          action: AuditAction.delete,
+          outcome: AuditOutcome.failure,
+          summary: 'فشل حذف مستند من الأرشيف الإلكتروني',
+          entityType: 'archiveDocument',
+          entityId: document.id,
+          details: _auditFailureDetails(error),
+        ),
+      );
       if (mounted) AppToast.showError(context, _serviceMessage(error));
     }
   }
 
   Future<void> _viewDocument(_ArchiveDocument document) async {
     try {
-      final source = await _repository.preparePreview(document.domainId);
+      final source = await _repository.preparePreview(document.id);
       if (!mounted) return;
       await showDialog<void>(
         context: context,
@@ -248,8 +279,9 @@ class _ElectronicArchiveSettingsSectionState
         AppInfoBanner(
           key: const Key('settingsArchiveInfoBanner'),
           message:
-              'الأرشيف التجريبي يقبل PDF وPNG فقط. فحص الجهاز تمهيدي وغير حاسم؛ '
-              'لا يُتاح الرفع إلا بعد نتيجة فحص خادم موثوقة مُحاكاة بوضوح.',
+              'الأرشيف التجريبي يقبل PDF وPNG فقط. يتحقق الجهاز من التوقيع والحجم '
+              'والبصمة فعلياً؛ فحص الخادم للبرمجيات الخبيثة مُحاكاة تجريبية '
+              'ولا يمثل فحصاً موثوقاً فعلياً.',
           icon: Icons.inventory_2_outlined,
           foregroundColor: widget.accentColor,
           backgroundColor: Color.alphaBlend(
@@ -318,8 +350,10 @@ class _ElectronicArchiveSettingsSectionState
                 rows: [
                   for (final document in filteredDocuments)
                     AppTableRow(
-                      rowKey:
-                          Key('settingsArchiveRow_${document.id}'),
+                      rowKey: Key(
+                        'settingsArchiveRow_'
+                        '${_archiveWidgetId(document.id)}',
+                      ),
                       onTap: () => _viewDocument(document),
                       cells: [
                         Text(
@@ -350,7 +384,8 @@ class _ElectronicArchiveSettingsSectionState
                             children: [
                               AppTableActionButton(
                                 key: Key(
-                                  'settingsArchiveView_${document.id}',
+                                  'settingsArchiveView_'
+                                  '${_archiveWidgetId(document.id)}',
                                 ),
                                 icon: Icons.visibility_outlined,
                                 tooltip: 'معاينة',
@@ -359,7 +394,8 @@ class _ElectronicArchiveSettingsSectionState
                               ),
                               AppTableActionButton(
                                 key: Key(
-                                  'settingsArchiveRename_${document.id}',
+                                  'settingsArchiveRename_'
+                                  '${_archiveWidgetId(document.id)}',
                                 ),
                                 icon: Icons.drive_file_rename_outline,
                                 tooltip: 'تعديل الاسم',
@@ -369,7 +405,8 @@ class _ElectronicArchiveSettingsSectionState
                               ),
                               AppTableActionButton(
                                 key: Key(
-                                  'settingsArchiveDelete_${document.id}',
+                                  'settingsArchiveDelete_'
+                                  '${_archiveWidgetId(document.id)}',
                                 ),
                                 icon: Icons.delete_outline_rounded,
                                 tooltip: 'حذف',
@@ -409,36 +446,21 @@ class _ArchiveDocument {
     required this.fileName,
     required this.size,
     required this.createdAt,
-    this.checksum = 'demo-checksum',
+    required this.checksum,
   });
 
-  final int id;
+  final EntityId id;
   final String name;
   final String type;
   final String fileName;
   final String size;
   final String createdAt;
   final String checksum;
-
-  EntityId get domainId => EntityId.demo('archive', id);
-
-  _ArchiveDocument copyWith({String? name}) {
-    return _ArchiveDocument(
-      id: id,
-      name: name ?? this.name,
-      type: type,
-      fileName: fileName,
-      size: size,
-      createdAt: createdAt,
-      checksum: checksum,
-    );
-  }
 }
 
 _ArchiveDocument _archiveDocumentFromDomain(ArchiveDocument document) {
   return _ArchiveDocument(
-    id: int.tryParse(document.id.value.split('-').last) ??
-        document.id.value.hashCode.abs(),
+    id: document.id,
     name: document.displayName,
     type: document.fileType == ArchiveFileType.pdf ? 'PDF' : 'PNG',
     fileName: document.originalFileName,
@@ -447,6 +469,8 @@ _ArchiveDocument _archiveDocumentFromDomain(ArchiveDocument document) {
     checksum: document.checksumSha256,
   );
 }
+
+String _archiveWidgetId(EntityId id) => id.value;
 
 class _ArchivePreviewDialog extends StatelessWidget {
   const _ArchivePreviewDialog({
@@ -522,32 +546,22 @@ class _ArchivePreviewDialog extends StatelessWidget {
   }
 }
 
-class _ArchiveDocumentDraft {
-  const _ArchiveDocumentDraft({
-    required this.name,
-    required this.type,
-    required this.fileName,
-    required this.file,
-    required this.securityReport,
-  });
-
-  final String name;
-  final String type;
-  final String fileName;
-  final ArchiveFileCandidate file;
-  final ArchiveSecurityReport securityReport;
-}
-
 class _ArchiveUploadDialog extends StatefulWidget {
   const _ArchiveUploadDialog({
     required this.accentColor,
     required this.securityService,
+    required this.repository,
+    required this.fileSelectionService,
     required this.validationPolicy,
+    this.auditWriter,
   });
 
   final Color accentColor;
   final ArchiveSecurityService securityService;
+  final ArchiveRepository repository;
+  final ArchiveFileSelectionService fileSelectionService;
   final ArchiveValidationPolicy validationPolicy;
+  final AuditEventWriter? auditWriter;
 
   @override
   State<_ArchiveUploadDialog> createState() =>
@@ -558,57 +572,112 @@ class _ArchiveUploadDialogState extends State<_ArchiveUploadDialog> {
   final _nameController = TextEditingController();
   final _fileController =
       TextEditingController(text: 'لم يتم اختيار ملف');
-  var _type = 'PDF';
+  final _typeController = TextEditingController(text: 'غير محدد');
   var _fileName = '';
   ArchiveFileCandidate? _file;
   ArchiveSecurityReport? _localReport;
   ArchiveSecurityReport? _authoritativeReport;
   String? _scanFailureMessage;
+  String? _uploadFailureMessage;
+  ArchiveUploadProgress? _uploadProgress;
   var _isScanning = false;
+  var _isUploading = false;
 
   bool get _canUpload =>
       _nameController.text.trim().isNotEmpty &&
       _fileName.isNotEmpty &&
       _authoritativeReport?.isUploadAllowed == true &&
-      !_isScanning;
+      _authoritativeReport?.candidateBindingSha256 ==
+          _file?.contentBindingSha256 &&
+      _authoritativeReport?.checksumSha256 ==
+          _file?.contentChecksumSha256 &&
+      _authoritativeReport?.detectedFileType ==
+          _file?.signatureFileType &&
+      !_isScanning &&
+      !_isUploading;
 
   @override
   void dispose() {
     _nameController.dispose();
     _fileController.dispose();
+    _typeController.dispose();
     super.dispose();
   }
 
   void _close() => Navigator.of(context).pop();
 
+  Future<void> _writeAudit(AuditEvent event) async {
+    final writer = widget.auditWriter;
+    if (writer == null) return;
+    try {
+      await writer.write(event);
+    } on Object {
+      // Audit failure must not replace selection, validation, or upload state.
+      debugPrint('Archive upload audit write failed.');
+    }
+  }
+
   Future<void> _chooseFile() async {
-    final type = _type == 'PDF' ? ArchiveFileType.pdf : ArchiveFileType.png;
-    final fileName = _type == 'PDF'
-        ? 'document_example.pdf'
-        : 'image_example.png';
-    final file = ArchiveFileCandidate(
-      localPath: 'C:\\Almumayaz\\DemoUpload\\$fileName',
-      fileName: fileName,
-      byteSize: _type == 'PDF' ? 1258291 : 737280,
-      declaredMimeType: type.mimeType,
-    );
+    if (_isScanning || _isUploading) return;
     setState(() {
-      _fileName = fileName;
-      _fileController.text = _fileName;
-      _file = file;
+      _fileName = '';
+      _fileController.text = 'جارٍ اختيار الملف...';
+      _typeController.text = 'قيد الفحص';
+      _file = null;
       _localReport = null;
       _authoritativeReport = null;
       _scanFailureMessage = null;
+      _uploadFailureMessage = null;
+      _uploadProgress = null;
       _isScanning = true;
     });
     try {
+      final file = await widget.fileSelectionService.selectFile(
+        policy: widget.validationPolicy,
+      );
+      if (!mounted) return;
+      if (file == null) {
+        setState(() {
+          _fileController.text = 'لم يتم اختيار ملف';
+          _typeController.text = 'غير محدد';
+        });
+        return;
+      }
+      setState(() {
+        _file = file;
+        _fileName = file.fileName;
+        _fileController.text = file.fileName;
+      });
       final localReport = await widget.securityService.validateLocally(
         file: file,
         policy: widget.validationPolicy,
       );
       if (!mounted) return;
-      setState(() => _localReport = localReport);
-      if (localReport.issues.isNotEmpty) return;
+      setState(() {
+        _localReport = localReport;
+        _typeController.text = _archiveFileTypeLabel(
+          localReport.detectedFileType,
+        );
+      });
+      if (localReport.issues.isNotEmpty) {
+        await _writeAudit(
+          AuditEvent(
+            action: AuditAction.create,
+            outcome: AuditOutcome.blocked,
+            summary: 'رُفض ملف الأرشيف في التحقق المحلي',
+            details: {
+              'fileName': file.fileName,
+              'byteSize': file.byteSize,
+              'issues': [
+                for (final issue in localReport.issues) issue.code.name,
+              ],
+            },
+          ),
+        );
+        if (!mounted) return;
+        AppToast.showError(context, _archiveRejectionMessage(localReport));
+        return;
+      }
       final authoritative =
           await widget.securityService.scanAuthoritatively(
         file: file,
@@ -616,28 +685,150 @@ class _ArchiveUploadDialogState extends State<_ArchiveUploadDialog> {
       );
       if (!mounted) return;
       setState(() => _authoritativeReport = authoritative);
+      if (authoritative.candidateBindingSha256 !=
+              file.contentBindingSha256 ||
+          authoritative.checksumSha256 != file.contentChecksumSha256 ||
+          authoritative.detectedFileType != file.signatureFileType) {
+        await _writeAudit(
+          AuditEvent(
+            action: AuditAction.create,
+            outcome: AuditOutcome.blocked,
+            summary: 'رُفض ملف الأرشيف لعدم تطابق نتيجة الفحص',
+            details: {
+              'fileName': file.fileName,
+              'byteSize': file.byteSize,
+              'reason': 'securityReportBindingMismatch',
+            },
+          ),
+        );
+        if (!mounted) return;
+        AppToast.showError(
+          context,
+          'رُفض الملف لأن نتيجة الفحص لا تطابق الملف المحدد',
+        );
+      } else if (!authoritative.isUploadAllowed) {
+        await _writeAudit(
+          AuditEvent(
+            action: AuditAction.create,
+            outcome: AuditOutcome.blocked,
+            summary: 'رُفض ملف الأرشيف في فحص الخادم التجريبي',
+            details: {
+              'fileName': file.fileName,
+              'byteSize': file.byteSize,
+              'scanStatus': authoritative.scanStatus.name,
+              'issues': [
+                for (final issue in authoritative.issues) issue.code.name,
+              ],
+            },
+          ),
+        );
+        if (!mounted) return;
+        AppToast.showError(
+          context,
+          _archiveRejectionMessage(authoritative),
+        );
+      }
     } on Object catch (error) {
+      await _writeAudit(
+        AuditEvent(
+          action: AuditAction.create,
+          outcome: AuditOutcome.failure,
+          summary: 'تعذر اختيار ملف الأرشيف أو فحصه',
+          details: {
+            if (_file != null) 'fileName': _file!.fileName,
+            ..._auditFailureDetails(error),
+          },
+        ),
+      );
       if (mounted) {
-        setState(() => _scanFailureMessage = _serviceMessage(error));
+        final message = _serviceMessage(error);
+        setState(() {
+          _scanFailureMessage = message;
+          if (_file == null) {
+            _fileController.text = 'تعذر اختيار الملف';
+            _typeController.text = 'غير متاح';
+          }
+        });
+        AppToast.showError(context, message);
       }
     } finally {
       if (mounted) setState(() => _isScanning = false);
     }
   }
 
-  void _upload() {
+  Future<void> _upload() async {
     if (!_canUpload) return;
     final file = _file!;
     final report = _authoritativeReport!;
-    Navigator.of(context).pop(
-      _ArchiveDocumentDraft(
-        name: _nameController.text.trim(),
-        type: _type,
-        fileName: _fileName,
-        file: file,
-        securityReport: report,
-      ),
-    );
+    setState(() {
+      _isUploading = true;
+      _uploadFailureMessage = null;
+      _uploadProgress = ArchiveUploadProgress(
+        stage: ArchiveUploadStage.queued,
+        fraction: 0,
+        message: 'جارٍ تجهيز الرفع التجريبي...',
+      );
+    });
+    try {
+      final document = await widget.repository.upload(
+        ArchiveUploadRequest(
+          draft: ArchiveDocumentDraft(
+            displayName: _nameController.text.trim(),
+            file: file,
+          ),
+          securityReport: report,
+        ),
+        onProgress: (progress) {
+          if (mounted) setState(() => _uploadProgress = progress);
+        },
+      );
+      await _writeAudit(
+        AuditEvent(
+          action: AuditAction.create,
+          outcome: AuditOutcome.success,
+          summary: 'تم رفع مستند إلى الأرشيف الإلكتروني التجريبي',
+          entityType: 'archiveDocument',
+          entityId: document.id,
+          after: {
+            'displayName': document.displayName,
+            'fileName': document.originalFileName,
+            'fileType': document.fileType.name,
+            'byteSize': document.byteSize,
+            'checksumSha256': document.checksumSha256,
+          },
+          details: const {'storage': 'demoInMemory'},
+        ),
+      );
+      if (mounted) Navigator.of(context).pop(document);
+    } on Object catch (error) {
+      await _writeAudit(
+        AuditEvent(
+          action: AuditAction.create,
+          outcome: AuditOutcome.failure,
+          summary: 'فشل رفع مستند إلى الأرشيف الإلكتروني التجريبي',
+          details: {
+            'fileName': file.fileName,
+            'byteSize': file.byteSize,
+            ..._auditFailureDetails(error),
+          },
+        ),
+      );
+      if (!mounted) return;
+      final message = error is ArgumentError
+          ? 'رُفض الملف لأن نتيجة الفحص لا تطابق الملف المحدد'
+          : _serviceMessage(error);
+      setState(() {
+        _uploadFailureMessage = message;
+        _uploadProgress = ArchiveUploadProgress(
+          stage: ArchiveUploadStage.failed,
+          fraction: _uploadProgress?.fraction ?? 0,
+          message: message,
+        );
+      });
+      AppToast.showError(context, message);
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
+    }
   }
 
   @override
@@ -645,10 +836,10 @@ class _ArchiveUploadDialogState extends State<_ArchiveUploadDialog> {
     return AppModuleDialog(
       key: const Key('settingsArchiveUploadDialog'),
       title: 'رفع ملف إلى الأرشيف',
-      subtitle: 'الاختيار والفحص والرفع كلها محاكاة داخل الذاكرة',
+      subtitle: 'الاختيار والتحقق محليان؛ فحص الخادم والرفع محاكاة تجريبية',
       icon: Icons.upload_file_rounded,
       accentColor: widget.accentColor,
-      onClose: _close,
+      onClose: _isUploading ? () {} : _close,
       width: 680,
       actions: [
         AppButton(
@@ -657,11 +848,11 @@ class _ArchiveUploadDialogState extends State<_ArchiveUploadDialog> {
           icon: Icons.close_rounded,
           variant: AppButtonVariant.secondary,
           width: 145,
-          onPressed: _close,
+          onPressed: _isUploading ? null : _close,
         ),
         AppButton(
           key: const Key('settingsArchiveUploadConfirmButton'),
-          label: 'رفع',
+          label: _uploadFailureMessage == null ? 'رفع' : 'إعادة المحاولة',
           icon: Icons.upload_rounded,
           backgroundColor: widget.accentColor,
           width: 145,
@@ -676,37 +867,22 @@ class _ArchiveUploadDialogState extends State<_ArchiveUploadDialog> {
             label: 'اسم المستند',
             icon: Icons.title_rounded,
             accentColor: widget.accentColor,
+            enabled: !_isUploading,
             textDirection: TextDirection.rtl,
             textAlign: TextAlign.right,
             onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: AppSpacing.md),
-          AppDropdownField<String>(
+          AppTextField(
             fieldKey: const Key('settingsArchiveFileTypeField'),
-            label: 'نوع الملف',
+            controller: _typeController,
+            label: 'نوع الملف المكتشف',
             icon: Icons.description_outlined,
             accentColor: widget.accentColor,
-            value: _type,
-            options: const [
-              AppDropdownOption(value: 'PDF', label: 'PDF'),
-              AppDropdownOption(value: 'PNG', label: 'PNG'),
-            ],
-            useIntrinsicHeight: true,
+            readOnly: true,
+            enabled: false,
             textDirection: TextDirection.ltr,
             textAlign: TextAlign.left,
-            menuTextDirection: TextDirection.ltr,
-            onChanged: (value) {
-              if (value == null) return;
-              setState(() {
-                _type = value;
-                _fileName = '';
-                _file = null;
-                _localReport = null;
-                _authoritativeReport = null;
-                _scanFailureMessage = null;
-                _fileController.text = 'لم يتم اختيار ملف';
-              });
-            },
           ),
           const SizedBox(height: AppSpacing.md),
           AppTextField(
@@ -727,12 +903,30 @@ class _ArchiveUploadDialogState extends State<_ArchiveUploadDialog> {
               key: const Key('settingsArchiveChooseFileButton'),
               label: 'اختيار ملف',
               icon: Icons.folder_open_rounded,
-              onPressed: _chooseFile,
+              onPressed:
+                  _isScanning || _isUploading ? null : _chooseFile,
             ),
           ),
+          if (_isScanning && _file == null) ...[
+            const SizedBox(height: AppSpacing.md),
+            AppInfoBanner(
+              key: const Key('settingsArchiveSelectionState'),
+              message: 'جارٍ قراءة الملف المحدد بأمان...',
+              icon: Icons.hourglass_top_rounded,
+              foregroundColor: widget.accentColor,
+              backgroundColor: Color.alphaBlend(
+                widget.accentColor.withAlpha(18),
+                AppColors.surface,
+              ),
+            ),
+          ],
           if (_file != null) ...[
             const SizedBox(height: AppSpacing.md),
             _buildSecurityState(),
+          ],
+          if (_uploadProgress != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            _buildUploadState(),
           ],
         ],
       ),
@@ -784,6 +978,58 @@ class _ArchiveUploadDialogState extends State<_ArchiveUploadDialog> {
       ],
     );
   }
+
+  Widget _buildUploadState() {
+    final progress = _uploadProgress!;
+    final failed = progress.stage == ArchiveUploadStage.failed;
+    return Column(
+      key: const Key('settingsArchiveUploadProgressState'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Semantics(
+          label: 'تقدم رفع ملف الأرشيف',
+          value: '${(progress.fraction * 100).round()} بالمئة',
+          child: LinearProgressIndicator(
+            key: const Key('settingsArchiveUploadProgressIndicator'),
+            value: progress.fraction,
+            color: failed ? AppColors.danger : widget.accentColor,
+            backgroundColor: AppColors.neutralSurface,
+            minHeight: 8,
+            borderRadius: BorderRadius.circular(AppRadii.sm),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        AppInfoBanner(
+          key: const Key('settingsArchiveUploadProgressMessage'),
+          message: progress.message,
+          icon: failed
+              ? Icons.cloud_off_outlined
+              : Icons.cloud_upload_outlined,
+          foregroundColor: failed ? AppColors.danger : widget.accentColor,
+          backgroundColor: Color.alphaBlend(
+            (failed ? AppColors.danger : widget.accentColor).withAlpha(18),
+            AppColors.surface,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+String _archiveFileTypeLabel(ArchiveFileType? type) => switch (type) {
+      ArchiveFileType.pdf => 'PDF',
+      ArchiveFileType.png => 'PNG',
+      null => 'غير معروف',
+    };
+
+String _archiveRejectionMessage(ArchiveSecurityReport report) {
+  if (report.issues.isNotEmpty) {
+    return 'رُفض الملف: ${report.issues.map((issue) => issue.message).join(' — ')}';
+  }
+  if (report.scanStatus == MalwareScanStatus.failed) {
+    return 'رُفض الملف لأن خدمة فحص البرمجيات الخبيثة غير متاحة';
+  }
+  return 'رُفض الملف لأن نتيجة الفحص الموثوقة غير مكتملة';
 }
 
 class _ArchiveRenameDialog extends StatefulWidget {

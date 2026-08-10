@@ -2,6 +2,18 @@ import '../../../core/data/app_repository.dart';
 import '../../../core/domain/business_values.dart';
 import 'archive_models.dart';
 
+typedef ArchiveUploadProgressCallback = void Function(
+  ArchiveUploadProgress progress,
+);
+
+abstract interface class ArchiveFileSelectionService {
+  /// Selects and reads a local candidate without storing it in the archive.
+  /// Desktop implementations must avoid fully reading oversized files.
+  Future<ArchiveFileCandidate?> selectFile({
+    required ArchiveValidationPolicy policy,
+  });
+}
+
 abstract interface class ArchiveSecurityService {
   /// Performs quick client-side validation for immediate UI feedback.
   Future<ArchiveSecurityReport> validateLocally({
@@ -21,7 +33,10 @@ abstract interface class ArchiveRepository {
 
   Future<ArchiveDocument?> getById(EntityId id);
 
-  Future<ArchiveDocument> upload(ArchiveUploadRequest request);
+  Future<ArchiveDocument> upload(
+    ArchiveUploadRequest request, {
+    ArchiveUploadProgressCallback? onProgress,
+  });
 
   Future<ArchiveDocument> rename(EntityId id, String displayName);
 

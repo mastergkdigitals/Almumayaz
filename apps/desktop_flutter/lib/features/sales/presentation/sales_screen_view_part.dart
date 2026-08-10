@@ -11,6 +11,11 @@ extension _SalesScreenViewPart on _SalesScreenState {
         hasInvoices && selectedInvoiceIndex >= 0;
     final currencyName = _currency == 'USD' ? 'دولار' : 'دينار';
     final isEditorReady = _invoiceState.status == AppDataStatus.ready;
+    final canCreate = _allowsSalesAction(PermissionAction.create);
+    final canUpdate = _allowsSalesAction(PermissionAction.update);
+    final canDelete = _allowsSalesAction(PermissionAction.delete);
+    final canPrint = _allowsSalesAction(PermissionAction.print);
+    final canExport = _allowsSalesAction(PermissionAction.export);
     final canUseSavedInvoiceOutput =
         _canUseSelectedSalesInvoiceForOutput;
     final tint = Color.alphaBlend(
@@ -44,10 +49,12 @@ extension _SalesScreenViewPart on _SalesScreenState {
                 _isDocumentActionRunning
             ? null
             : hasSelectedInvoice
-            ? _hasUnsavedChanges
+            ? _hasUnsavedChanges && canUpdate
                 ? _update
                 : null
-            : _save,
+            : canCreate
+                ? _save
+                : null,
         body: ExcludeFocus(
           excluding: _isDocumentActionRunning,
           child: AbsorbPointer(
@@ -264,18 +271,19 @@ extension _SalesScreenViewPart on _SalesScreenState {
                   onSearch: !isEditorReady || _isRepositoryBusy
                       ? null
                       : _showSalesSearch,
-                  onPrint: canUseSavedInvoiceOutput
+                  onPrint: canUseSavedInvoiceOutput && canPrint
                       ? _printSalesInvoice
                       : null,
-                  onPrintWithoutPrices: canUseSavedInvoiceOutput
+                  onPrintWithoutPrices:
+                      canUseSavedInvoiceOutput && canPrint
                       ? () => _printSalesInvoice(includePrices: false)
                       : null,
-                  onExportPdf: canUseSavedInvoiceOutput
+                  onExportPdf: canUseSavedInvoiceOutput && canExport
                       ? () => _exportSalesInvoice(
                             DocumentExportFormat.pdf,
                           )
                       : null,
-                  onExportExcel: canUseSavedInvoiceOutput
+                  onExportExcel: canUseSavedInvoiceOutput && canExport
                       ? () => _exportSalesInvoice(
                             DocumentExportFormat.excel,
                           )
@@ -309,12 +317,14 @@ extension _SalesScreenViewPart on _SalesScreenState {
                 onLast: canMoveToNextOrLast
                     ? () => _navigate(_SalesNavigation.last)
                     : null,
-                onSave: !isEditorReady ||
+                onSave: !canCreate ||
+                        !isEditorReady ||
                         _isRepositoryBusy ||
                         hasSelectedInvoice
                     ? null
                     : _save,
-                onUpdate: isEditorReady &&
+                onUpdate: canUpdate &&
+                        isEditorReady &&
                         hasSelectedInvoice &&
                         _hasUnsavedChanges &&
                         !_isRepositoryBusy
@@ -322,7 +332,8 @@ extension _SalesScreenViewPart on _SalesScreenState {
                     : null,
                 onUndo:
                     isEditorReady && _hasUnsavedChanges ? _undo : null,
-                onDelete: isEditorReady &&
+                onDelete: canDelete &&
+                        isEditorReady &&
                         hasSelectedInvoice &&
                         !_isRepositoryBusy
                     ? _delete
@@ -340,7 +351,7 @@ extension _SalesScreenViewPart on _SalesScreenState {
                   dataBuilder: (_, _) => const SizedBox.shrink(),
                   emptyTitle: 'لا توجد قوائم بيع',
                   emptyActionLabel: 'قائمة بيع جديدة',
-                  onEmptyAction: _openEmptyEditor,
+                  onEmptyAction: canCreate ? _openEmptyEditor : null,
                   missingReferenceActionLabel: 'إعادة المحاولة',
                   onMissingReferenceAction: () => unawaited(_loadData()),
                   onRetry: () => unawaited(_loadData()),

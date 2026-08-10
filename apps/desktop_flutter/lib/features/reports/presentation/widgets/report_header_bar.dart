@@ -10,6 +10,8 @@ class ReportHeaderBar extends StatelessWidget {
     required this.selectedVariant,
     required this.accentColor,
     required this.outputBusy,
+    required this.allowPrint,
+    required this.allowExport,
     required this.onDefinitionChanged,
     required this.onVariantChanged,
     required this.onPrint,
@@ -23,6 +25,8 @@ class ReportHeaderBar extends StatelessWidget {
   final ReportVariantDefinition selectedVariant;
   final Color accentColor;
   final bool outputBusy;
+  final bool allowPrint;
+  final bool allowExport;
   final ValueChanged<ReportDefinition> onDefinitionChanged;
   final ValueChanged<ReportVariantDefinition> onVariantChanged;
   final VoidCallback onPrint;
@@ -81,7 +85,7 @@ class ReportHeaderBar extends StatelessWidget {
           label: 'طباعة',
           icon: Icons.print_rounded,
           backgroundColor: AppColors.blue,
-          enabled: !outputBusy,
+          enabled: allowPrint && !outputBusy,
           onPressed: onPrint,
         ),
         const SizedBox(width: AppSpacing.sm),
@@ -91,7 +95,7 @@ class ReportHeaderBar extends StatelessWidget {
           label: 'PDF',
           icon: Icons.picture_as_pdf_rounded,
           variant: AppButtonVariant.danger,
-          enabled: !outputBusy,
+          enabled: allowExport && !outputBusy,
           onPressed: onPdf,
         ),
         const SizedBox(width: AppSpacing.sm),
@@ -101,7 +105,7 @@ class ReportHeaderBar extends StatelessWidget {
           label: 'Excel',
           icon: Icons.table_chart_rounded,
           variant: AppButtonVariant.success,
-          enabled: !outputBusy,
+          enabled: allowExport && !outputBusy,
           onPressed: onExcel,
         ),
       ],

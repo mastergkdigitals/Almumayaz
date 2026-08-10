@@ -5,46 +5,49 @@ class _SettingsUser {
     required this.id,
     required this.fullName,
     required this.username,
-    required this.role,
-    required this.isEnabled,
-    required this.isLocked,
-    required this.lastLogin,
+    required this.roleIds,
+    required this.status,
+    required this.isSystemUser,
+    required this.lastLoginAt,
   });
 
-  final int id;
+  final EntityId id;
   final String fullName;
   final String username;
-  final String role;
-  final bool isEnabled;
-  final bool isLocked;
-  final String lastLogin;
+  final Set<EntityId> roleIds;
+  final UserAccountStatus status;
+  final bool isSystemUser;
+  final AuditTimestamp? lastLoginAt;
 
-  _SettingsUser copyWith({
-    String? role,
-    bool? isEnabled,
-    bool? isLocked,
-  }) {
-    return _SettingsUser(
-      id: id,
-      fullName: fullName,
-      username: username,
-      role: role ?? this.role,
-      isEnabled: isEnabled ?? this.isEnabled,
-      isLocked: isLocked ?? this.isLocked,
-      lastLogin: lastLogin,
-    );
-  }
+  bool get isEnabled => switch (status) {
+        UserAccountStatus.active || UserAccountStatus.locked => true,
+        UserAccountStatus.disabled || UserAccountStatus.disabledAndLocked =>
+          false,
+      };
+
+  bool get isLocked => switch (status) {
+        UserAccountStatus.locked || UserAccountStatus.disabledAndLocked => true,
+        UserAccountStatus.active || UserAccountStatus.disabled => false,
+      };
+
+  String get keySuffix => _entityKeySuffix(id);
+  String get displayNumber => _entityDisplayNumber(id);
 }
 class _SettingsRole {
   _SettingsRole({
     required this.id,
     required this.name,
     required this.permissions,
+    required this.isSystemRole,
   });
 
-  final int id;
+  final EntityId id;
   final String name;
   final Map<String, Set<String>> permissions;
+  final bool isSystemRole;
+
+  String get keySuffix => _entityKeySuffix(id);
+  String get displayNumber => _entityDisplayNumber(id);
 }
 
 const _settingsPermissionScreens = <({String id, String label})>[
@@ -100,19 +103,6 @@ Map<String, Set<String>> _settingsRolePermissions({
   };
 }
 
-Map<String, Set<String>> _allSettingsRolePermissions() {
-  return {
-    for (final screen in _settingsPermissionScreens)
-      screen.id: {..._allPermissionActionIds},
-  };
-}
-
-Map<String, Set<String>> _viewOnlySettingsRolePermissions() {
-  return {
-    for (final screen in _settingsPermissionScreens) screen.id: {'view'},
-  };
-}
-
 Map<String, Set<String>> _copySettingsRolePermissions(
   Map<String, Set<String>> source,
 ) {
@@ -151,14 +141,16 @@ class _SettingsAuditEntry {
     required this.type,
     required this.details,
     required this.status,
+    required this.record,
   });
 
-  final int id;
+  final EntityId id;
   final String createdAt;
   final String username;
   final String type;
   final String details;
   final String status;
+  final AuditRecord record;
 }
 
 _SettingsRole _settingsRoleFromDomain(AppRole role) {
@@ -170,15 +162,18 @@ _SettingsRole _settingsRoleFromDomain(AppRole role) {
     }
   }
   return _SettingsRole(
-    id: int.tryParse(role.id.value.split('-').last) ?? 1,
+    id: role.id,
     name: role.name,
     permissions: permissions,
+    isSystemRole: role.isSystemRole,
   );
 }
 
-AppRole _appRoleFromSettings(_SettingsRole role) {
+Set<PermissionCode> _permissionCodesFromSettings(
+  Map<String, Set<String>> source,
+) {
   final permissions = <PermissionCode>{};
-  for (final entry in role.permissions.entries) {
+  for (final entry in source.entries) {
     for (final actionId in entry.value) {
       final action = _permissionActionValue(actionId);
       if (action != null) {
@@ -186,53 +181,20 @@ AppRole _appRoleFromSettings(_SettingsRole role) {
       }
     }
   }
-  return AppRole(
-    id: EntityId.demo('role', role.id),
-    name: role.name,
-    permissions: permissions,
-    isSystemRole: role.id == 1,
-  );
+  return permissions;
 }
 
 _SettingsUser _settingsUserFromDomain(
   AppUser user,
-  Map<EntityId, String> roleNames,
 ) {
-  final roleName = user.roleIds
-          .map((roleId) => roleNames[roleId])
-          .whereType<String>()
-          .firstOrNull ??
-      'دور غير معروف';
-  final (isEnabled, isLocked) = switch (user.status) {
-    UserAccountStatus.active => (true, false),
-    UserAccountStatus.disabled => (false, false),
-    UserAccountStatus.locked => (true, true),
-    UserAccountStatus.disabledAndLocked => (false, true),
-  };
   return _SettingsUser(
-    id: int.tryParse(user.id.value.split('-').last) ?? 1,
+    id: user.id,
     fullName: user.fullName,
     username: user.username,
-    role: roleName,
-    isEnabled: isEnabled,
-    isLocked: isLocked,
-    lastLogin: user.lastLoginAt == null
-        ? 'لم يسجل الدخول'
-        : _formatAuditTimestamp(user.lastLoginAt!),
-  );
-}
-
-AppUser _appUserFromSettings(_SettingsUser user, int roleId) {
-  return AppUser(
-    id: EntityId.demo('user', user.id),
-    fullName: user.fullName,
-    username: user.username,
-    roleIds: {EntityId.demo('role', roleId)},
-    status: _userStatusValue(
-      isEnabled: user.isEnabled,
-      isLocked: user.isLocked,
-    ),
-    isSystemUser: user.username == 'admin',
+    roleIds: user.roleIds,
+    status: user.status,
+    isSystemUser: user.isSystemUser,
+    lastLoginAt: user.lastLoginAt,
   );
 }
 
@@ -273,8 +235,7 @@ String? _settingsPermissionActionId(
 
 _SettingsAuditEntry _settingsAuditFromDomain(AuditRecord record) {
   return _SettingsAuditEntry(
-    id: int.tryParse(record.id.value.split('-').last) ??
-        record.id.value.hashCode.abs(),
+    id: record.id,
     createdAt: _formatAuditTimestamp(record.occurredAt),
     username: record.actorUsername,
     type: _auditActionLabel(record.action),
@@ -284,12 +245,35 @@ _SettingsAuditEntry _settingsAuditFromDomain(AuditRecord record) {
       AuditOutcome.failure => 'فشل',
       AuditOutcome.blocked => 'محظور',
     },
+    record: record,
   );
+}
+
+String _entityKeySuffix(EntityId id) {
+  return id.value;
+}
+
+String _entityDisplayNumber(EntityId id) =>
+    int.tryParse(id.value.split('-').last)?.toString() ?? id.value;
+
+String _settingsUserRoleLabel(
+  _SettingsUser user,
+  Iterable<_SettingsRole> roles,
+) {
+  final roleNames = [
+    for (final roleId in user.roleIds)
+      roles.where((role) => role.id == roleId).firstOrNull?.name,
+  ].whereType<String>().toList();
+  if (roleNames.length != user.roleIds.length) return 'مرجع دور مفقود';
+  return roleNames.join('، ');
 }
 
 String _auditActionLabel(AuditAction action) => switch (action) {
       AuditAction.signIn => 'تسجيل الدخول',
       AuditAction.signOut => 'تسجيل الخروج',
+      AuditAction.sessionLock => 'قفل الجلسة',
+      AuditAction.sessionUnlock => 'فتح الجلسة',
+      AuditAction.activity => 'نشاط الجلسة',
       AuditAction.create => 'إضافة',
       AuditAction.update => 'تعديل',
       AuditAction.delete => 'حذف',
@@ -298,15 +282,35 @@ String _auditActionLabel(AuditAction action) => switch (action) {
       AuditAction.export => 'تصدير',
       AuditAction.permissionChange => 'صلاحيات',
       AuditAction.accountStatusChange => 'حالة حساب',
+      AuditAction.passwordChange => 'كلمة المرور',
       AuditAction.backup => 'نسخ احتياطي',
       AuditAction.other => 'أخرى',
     };
 
 AuditAction? _auditActionForLabel(String label) => switch (label) {
       'تسجيل الدخول' => AuditAction.signIn,
+      'تسجيل الخروج' => AuditAction.signOut,
+      'قفل الجلسة' => AuditAction.sessionLock,
+      'فتح الجلسة' => AuditAction.sessionUnlock,
+      'نشاط الجلسة' => AuditAction.activity,
+      'إضافة' => AuditAction.create,
       'تعديل' => AuditAction.update,
       'حذف' => AuditAction.delete,
       'استعادة' => AuditAction.restore,
+      'طباعة' => AuditAction.print,
+      'تصدير' => AuditAction.export,
+      'صلاحيات' => AuditAction.permissionChange,
+      'حالة حساب' => AuditAction.accountStatusChange,
+      'كلمة المرور' => AuditAction.passwordChange,
+      'نسخ احتياطي' => AuditAction.backup,
+      'أخرى' => AuditAction.other,
+      _ => null,
+    };
+
+AuditOutcome? _auditOutcomeForLabel(String label) => switch (label) {
+      'مكتمل' => AuditOutcome.success,
+      'فشل' => AuditOutcome.failure,
+      'محظور' => AuditOutcome.blocked,
       _ => null,
     };
 
@@ -317,25 +321,127 @@ String _sessionStateLabel(SessionState state) => switch (state) {
       SessionState.signedOut => 'مسجل خروجها',
     };
 
+class _SettingsAuditDetailsDialog extends StatelessWidget {
+  const _SettingsAuditDetailsDialog({
+    required this.record,
+    required this.accentColor,
+  });
+
+  final AuditRecord record;
+  final Color accentColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppModuleDialog(
+      key: Key(
+        'settingsAuditDetailsDialog_${_entityKeySuffix(record.id)}',
+      ),
+      title: 'تفاصيل سجل التدقيق',
+      subtitle: record.summary,
+      icon: Icons.manage_search_rounded,
+      accentColor: accentColor,
+      onClose: () => Navigator.of(context).pop(),
+      width: 760,
+      actions: [
+        AppButton(
+          key: const Key('settingsAuditDetailsCloseButton'),
+          label: 'إغلاق',
+          icon: Icons.close_rounded,
+          variant: AppButtonVariant.secondary,
+          width: 145,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ],
+      child: SelectionArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _AuditDetailLine(label: 'المستخدم', value: record.actorUsername),
+            _AuditDetailLine(
+              label: 'العملية',
+              value: _auditActionLabel(record.action),
+            ),
+            _AuditDetailLine(
+              label: 'النتيجة',
+              value: switch (record.outcome) {
+                AuditOutcome.success => 'مكتمل',
+                AuditOutcome.failure => 'فشل',
+                AuditOutcome.blocked => 'محظور',
+              },
+            ),
+            _AuditDetailLine(
+              label: 'الجهاز',
+              value: record.metadata.deviceId,
+            ),
+            _AuditDetailLine(
+              label: 'معرّف الطلب',
+              value: record.metadata.requestId,
+            ),
+            if (record.entityType != null)
+              _AuditDetailLine(
+                label: 'السجل المرتبط',
+                value: '${record.entityType}: ${record.entityId}',
+              ),
+            _AuditDetailLine(
+              label: 'التفاصيل',
+              value: _auditMapText(record.details),
+            ),
+            _AuditDetailLine(
+              label: 'قبل',
+              value: _auditMapText(record.metadata.before),
+            ),
+            _AuditDetailLine(
+              label: 'بعد',
+              value: _auditMapText(record.metadata.after),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AuditDetailLine extends StatelessWidget {
+  const _AuditDetailLine({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Text('$label: $value'),
+    );
+  }
+}
+
+String _auditMapText(Map<String, Object?> values) {
+  if (values.isEmpty) return 'لا توجد بيانات';
+  return values.entries
+      .map((entry) => '${entry.key}=${entry.value ?? '-'}')
+      .join('، ');
+}
+
 class _SettingsUserDraft {
   const _SettingsUserDraft({
     required this.fullName,
     required this.username,
-    required this.role,
+    required this.roleIds,
+    this.initialPassword,
   });
 
   final String fullName;
   final String username;
-  final String role;
+  final Set<EntityId> roleIds;
+  final String? initialPassword;
 }
 
 class _SettingsUserPasswordDraft {
   const _SettingsUserPasswordDraft({
-    required this.currentPassword,
     required this.newPassword,
   });
 
-  final String currentPassword;
   final String newPassword;
 }
 
@@ -355,7 +461,6 @@ class _SettingsUserPasswordDialog extends StatefulWidget {
 
 class _SettingsUserPasswordDialogState
     extends State<_SettingsUserPasswordDialog> {
-  late final TextEditingController _currentPasswordController;
   final _passwordController = TextEditingController();
   final _confirmationController = TextEditingController();
 
@@ -368,23 +473,13 @@ class _SettingsUserPasswordDialogState
   }
 
   bool get _canSave =>
-      _currentPasswordController.text.isNotEmpty &&
       _passwordController.text.isNotEmpty &&
       _passwordController.text.length >= 6 &&
       _confirmationController.text.isNotEmpty &&
       _confirmationError == null;
 
   @override
-  void initState() {
-    super.initState();
-    _currentPasswordController = TextEditingController(
-      text: widget.user.username == 'admin' ? 'password' : 'demo123',
-    );
-  }
-
-  @override
   void dispose() {
-    _currentPasswordController.dispose();
     _passwordController.dispose();
     _confirmationController.dispose();
     super.dispose();
@@ -396,7 +491,6 @@ class _SettingsUserPasswordDialogState
     if (!_canSave) return;
     Navigator.of(context).pop(
       _SettingsUserPasswordDraft(
-        currentPassword: _currentPasswordController.text,
         newPassword: _passwordController.text,
       ),
     );
@@ -404,11 +498,11 @@ class _SettingsUserPasswordDialogState
 
   @override
   Widget build(BuildContext context) {
-    final userId = widget.user.id;
+    final userId = widget.user.keySuffix;
     return AppModuleDialog(
       key: Key('settingsUserPasswordDialog_$userId'),
-      title: 'تغيير كلمة مرور المستخدم',
-      subtitle: '${widget.user.fullName} — بيانات اعتماد تجريبية فقط',
+      title: 'إعادة تعيين كلمة مرور المستخدم',
+      subtitle: '${widget.user.fullName} — لن تظهر كلمة المرور الحالية',
       icon: Icons.password_rounded,
       accentColor: widget.accentColor,
       onClose: _close,
@@ -433,18 +527,6 @@ class _SettingsUserPasswordDialogState
       ],
       child: Column(
         children: [
-          AppTextField(
-            fieldKey: Key('settingsUserPasswordCurrentField_$userId'),
-            controller: _currentPasswordController,
-            label: 'كلمة المرور الحالية',
-            icon: Icons.lock_outline_rounded,
-            accentColor: widget.accentColor,
-            obscureText: true,
-            textDirection: TextDirection.rtl,
-            textAlign: TextAlign.right,
-            onChanged: (_) => setState(() {}),
-          ),
-          const SizedBox(height: AppSpacing.md),
           AppTextField(
             fieldKey: Key('settingsUserPasswordNewField_$userId'),
             controller: _passwordController,
@@ -757,13 +839,15 @@ class _SettingsRoleDialogState extends State<_SettingsRoleDialog> {
 class _SettingsUserDialog extends StatefulWidget {
   const _SettingsUserDialog({
     required this.accentColor,
-    required this.roleNames,
+    required this.roles,
     required this.existingUsernames,
-  }) : assert(roleNames.length > 0);
+    this.initialUser,
+  }) : assert(roles.length > 0);
 
   final Color accentColor;
-  final List<String> roleNames;
+  final List<_SettingsRole> roles;
   final Set<String> existingUsernames;
+  final _SettingsUser? initialUser;
 
   @override
   State<_SettingsUserDialog> createState() =>
@@ -771,35 +855,69 @@ class _SettingsUserDialog extends StatefulWidget {
 }
 
 class _SettingsUserDialogState extends State<_SettingsUserDialog> {
-  final _fullNameController = TextEditingController();
-  final _usernameController = TextEditingController();
-  late String _role;
+  late final TextEditingController _fullNameController;
+  late final TextEditingController _usernameController;
+  final _passwordController = TextEditingController();
+  final _confirmationController = TextEditingController();
+  late final Set<EntityId> _roleIds;
+
+  bool get _isEditing => widget.initialUser != null;
 
   String? get _usernameError {
     final username = _usernameController.text.trim().toLowerCase();
     if (username.isEmpty) return null;
-    return widget.existingUsernames.contains(username)
-        ? 'اسم المستخدم مستخدم مسبقاً'
-        : null;
+    if (!RegExp(r'^[a-z0-9._-]+$').hasMatch(username)) {
+      return 'استخدم أحرفاً إنجليزية وأرقاماً و . _ - فقط';
+    }
+    if (widget.existingUsernames.contains(username)) {
+      return 'اسم المستخدم مستخدم مسبقاً';
+    }
+    return null;
+  }
+
+  String? get _passwordError {
+    if (_isEditing || _passwordController.text.isEmpty) return null;
+    return PasswordPolicy.validationMessage(_passwordController.text);
+  }
+
+  String? get _confirmationError {
+    if (_isEditing || _confirmationController.text.isEmpty) return null;
+    return _confirmationController.text == _passwordController.text
+        ? null
+        : 'كلمتا المرور غير متطابقتين';
   }
 
   bool get _canSave =>
       _fullNameController.text.trim().isNotEmpty &&
       _usernameController.text.trim().isNotEmpty &&
-      _usernameError == null;
+      _usernameError == null &&
+      _roleIds.isNotEmpty &&
+      (_isEditing ||
+          (_passwordController.text.isNotEmpty &&
+              _confirmationController.text.isNotEmpty &&
+              _passwordError == null &&
+              _confirmationError == null));
 
   @override
   void initState() {
     super.initState();
-    _role = widget.roleNames.contains('المبيعات')
-        ? 'المبيعات'
-        : widget.roleNames.first;
+    final initial = widget.initialUser;
+    _fullNameController = TextEditingController(text: initial?.fullName ?? '');
+    _usernameController = TextEditingController(text: initial?.username ?? '');
+    _roleIds = initial == null
+        ? {widget.roles.firstWhere(
+            (role) => role.name == 'المبيعات',
+            orElse: () => widget.roles.first,
+          ).id}
+        : {...initial.roleIds};
   }
 
   @override
   void dispose() {
     _fullNameController.dispose();
     _usernameController.dispose();
+    _passwordController.dispose();
+    _confirmationController.dispose();
     super.dispose();
   }
 
@@ -811,7 +929,8 @@ class _SettingsUserDialogState extends State<_SettingsUserDialog> {
       _SettingsUserDraft(
         fullName: _fullNameController.text.trim(),
         username: _usernameController.text.trim(),
-        role: _role,
+        roleIds: Set.unmodifiable(_roleIds),
+        initialPassword: _isEditing ? null : _passwordController.text,
       ),
     );
   }
@@ -819,13 +938,15 @@ class _SettingsUserDialogState extends State<_SettingsUserDialog> {
   @override
   Widget build(BuildContext context) {
     return AppModuleDialog(
-      key: const Key('settingsAddUserDialog'),
-      title: 'إضافة مستخدم',
-      subtitle: 'نموذج تجريبي لبيانات الحساب الأساسية',
+      key: Key(_isEditing ? 'settingsEditUserDialog' : 'settingsAddUserDialog'),
+      title: _isEditing ? 'تعديل المستخدم' : 'إضافة مستخدم',
+      subtitle: _isEditing
+          ? 'حدّث بيانات الحساب وأدواره باستخدام المعرّف المستقر نفسه'
+          : 'أنشئ الحساب وكلمة مروره الأولية ضمن عملية واحدة',
       icon: Icons.person_add_alt_1_rounded,
       accentColor: widget.accentColor,
       onClose: _close,
-      width: 620,
+      width: 720,
       actions: [
         AppButton(
           key: const Key('settingsAddUserCancelButton'),
@@ -836,9 +957,16 @@ class _SettingsUserDialogState extends State<_SettingsUserDialog> {
           onPressed: _close,
         ),
         AppButton(
-          key: const Key('settingsAddUserConfirmButton'),
-          label: 'إضافة',
-          icon: Icons.add_rounded,
+          key: Key(
+            _isEditing
+                ? 'settingsEditUserConfirmButton'
+                : 'settingsAddUserConfirmButton',
+          ),
+          label: _isEditing ? 'تحديث' : 'إضافة',
+          icon: _isEditing ? Icons.refresh_rounded : Icons.add_rounded,
+          variant: _isEditing
+              ? AppButtonVariant.success
+              : AppButtonVariant.primary,
           width: 145,
           onPressed: _canSave ? _save : null,
         ),
@@ -865,27 +993,63 @@ class _SettingsUserDialogState extends State<_SettingsUserDialog> {
             errorText: _usernameError,
             textDirection: TextDirection.ltr,
             textAlign: TextAlign.left,
+            enabled: !(widget.initialUser?.isSystemUser ?? false),
             onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: AppSpacing.md),
-          AppDropdownField<String>(
-            fieldKey: const Key('settingsAddUserRoleField'),
-            label: 'الدور',
-            icon: Icons.admin_panel_settings_outlined,
-            accentColor: widget.accentColor,
-            value: _role,
-            options: [
-              for (final roleName in widget.roleNames)
-                AppDropdownOption(value: roleName, label: roleName),
-            ],
-            useIntrinsicHeight: true,
-            textDirection: TextDirection.rtl,
-            textAlign: TextAlign.right,
-            menuTextDirection: TextDirection.rtl,
-            onChanged: (value) {
-              if (value != null) setState(() => _role = value);
-            },
+          InputDecorator(
+            decoration: InputDecoration(
+              labelText: 'الأدوار',
+              prefixIcon: const Icon(Icons.admin_panel_settings_outlined),
+              errorText: _roleIds.isEmpty ? 'اختر دوراً واحداً على الأقل' : null,
+            ),
+            child: Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.xs,
+              children: [
+                for (final role in widget.roles)
+                  FilterChip(
+                    key: Key('settingsUserRole_${role.keySuffix}'),
+                    label: Text(role.name),
+                    selected: _roleIds.contains(role.id),
+                    onSelected: widget.initialUser?.isSystemUser ?? false
+                        ? null
+                        : (selected) => setState(() {
+                            if (selected) {
+                              _roleIds.add(role.id);
+                            } else {
+                              _roleIds.remove(role.id);
+                            }
+                          }),
+                  ),
+              ],
+            ),
           ),
+          if (!_isEditing) ...[
+            const SizedBox(height: AppSpacing.md),
+            AppTextField(
+              fieldKey: const Key('settingsAddUserPasswordField'),
+              controller: _passwordController,
+              label: 'كلمة المرور الأولية',
+              icon: Icons.password_rounded,
+              accentColor: widget.accentColor,
+              obscureText: true,
+              errorText: _passwordError,
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            AppTextField(
+              fieldKey: const Key('settingsAddUserPasswordConfirmField'),
+              controller: _confirmationController,
+              label: 'تأكيد كلمة المرور',
+              icon: Icons.verified_user_outlined,
+              accentColor: widget.accentColor,
+              obscureText: true,
+              errorText: _confirmationError,
+              onChanged: (_) => setState(() {}),
+              onSubmitted: (_) => _save(),
+            ),
+          ],
         ],
       ),
     );

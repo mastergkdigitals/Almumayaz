@@ -3,8 +3,6 @@ import '../../../core/services/service_failure.dart';
 import '../domain/backup_models.dart';
 import '../domain/backup_services.dart';
 
-const _demoDeviceId = 'desktop-demo-01';
-
 /// Volatile configuration storage used by the Settings demo.
 ///
 /// A production implementation can persist the same domain object without
@@ -12,17 +10,11 @@ const _demoDeviceId = 'desktop-demo-01';
 class DemoBackupConfigurationRepository
     implements BackupConfigurationRepository {
   DemoBackupConfigurationRepository({BackupConfiguration? initialValue})
-      : _configuration = initialValue ??
-            BackupConfiguration(
-              deviceId: _demoDeviceId,
-              localPath: r'D:\Almumayaz\Backups',
-              schedule: const BackupSchedule(
-                isEnabled: true,
-                frequency: BackupFrequency.daily,
-              ),
-            );
+      : _configurations = {
+          if (initialValue != null) initialValue.deviceId: initialValue,
+        };
 
-  BackupConfiguration _configuration;
+  final Map<String, BackupConfiguration> _configurations;
 
   @override
   Future<BackupConfiguration> load(String deviceId) async {
@@ -32,12 +24,56 @@ class DemoBackupConfigurationRepository
         message: 'معرّف الجهاز مطلوب',
       );
     }
-    return _configuration;
+    final normalizedDeviceId = deviceId.trim();
+    return _configurations.putIfAbsent(
+      normalizedDeviceId,
+      () => BackupConfiguration(
+        deviceId: normalizedDeviceId,
+        localPath: r'D:\Almumayaz\Backups',
+        schedule: const BackupSchedule(
+          isEnabled: true,
+          frequency: BackupFrequency.daily,
+        ),
+      ),
+    );
   }
 
   @override
   Future<void> save(BackupConfiguration configuration) async {
-    _configuration = configuration;
+    _configurations[configuration.deviceId] = configuration;
+  }
+}
+
+class DemoBackupFileSelectionService
+    implements BackupFileSelectionService {
+  DemoBackupFileSelectionService({
+    Iterable<String?> directorySelections = const [],
+    Iterable<ExternalBackupSource?> restoreSelections = const [],
+  })  : _directorySelections = List<String?>.of(directorySelections),
+        _restoreSelections =
+            List<ExternalBackupSource?>.of(restoreSelections);
+
+  final List<String?> _directorySelections;
+  final List<ExternalBackupSource?> _restoreSelections;
+
+  @override
+  Future<String?> selectBackupDirectory({String? initialDirectory}) async {
+    if (_directorySelections.isNotEmpty) {
+      return _directorySelections.removeAt(0);
+    }
+    return r'D:\Almumayaz\Backups\Local';
+  }
+
+  @override
+  Future<ExternalBackupSource?> selectRestoreSource({
+    String? initialDirectory,
+  }) async {
+    if (_restoreSelections.isNotEmpty) {
+      return _restoreSelections.removeAt(0);
+    }
+    return ExternalBackupSource(
+      localPath: r'D:\Almumayaz\Backups\external_demo.backup',
+    );
   }
 }
 

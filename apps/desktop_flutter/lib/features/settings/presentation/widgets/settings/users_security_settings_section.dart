@@ -9,6 +9,7 @@ class UsersSecuritySettingsSection extends StatefulWidget {
     this.authenticationService,
     this.sessionPolicyRepository,
     this.auditRepository,
+    this.administrationService,
   });
 
   final Color accentColor;
@@ -17,6 +18,7 @@ class UsersSecuritySettingsSection extends StatefulWidget {
   final AuthenticationService? authenticationService;
   final SessionPolicyRepository? sessionPolicyRepository;
   final AuditRepository? auditRepository;
+  final SecurityAdministrationService? administrationService;
 
   @override
   State<UsersSecuritySettingsSection> createState() =>
@@ -34,9 +36,11 @@ class _UsersSecuritySettingsSectionState
   var _idleLockEnabled = true;
   var _idleLockDuration = '15 دقيقة';
   var _logType = 'الكل';
-  var _nextUserId = 4;
-  var _nextRoleId = 5;
-  var _nextAuditId = 6;
+  var _logOutcome = 'الكل';
+  EntityId? _logUserId;
+  DateTimeRange? _logDateRange;
+  var _auditRefreshGeneration = 0;
+  var _auditTotalCount = 0;
   var _isLoading = true;
   String? _loadError;
   late final UserRepository _userRepository;
@@ -44,121 +48,55 @@ class _UsersSecuritySettingsSectionState
   late final AuthenticationService _authenticationService;
   late final SessionPolicyRepository _sessionPolicyRepository;
   late final AuditRepository _auditRepository;
+  late final SecurityAdministrationService _administrationService;
   AppSession? _currentSession;
-  final _users = <_SettingsUser>[
-    const _SettingsUser(
-      id: 1,
-      fullName: 'مدير النظام',
-      username: 'admin',
-      role: 'مدير النظام',
-      isEnabled: true,
-      isLocked: false,
-      lastLogin: '2026/07/29 09:02 ص',
-    ),
-    const _SettingsUser(
-      id: 2,
-      fullName: 'أحمد كريم',
-      username: 'ahmed',
-      role: 'المبيعات',
-      isEnabled: true,
-      isLocked: false,
-      lastLogin: '2026/07/28 05:40 م',
-    ),
-    const _SettingsUser(
-      id: 3,
-      fullName: 'سارة علي',
-      username: 'sara',
-      role: 'الحسابات',
-      isEnabled: true,
-      isLocked: true,
-      lastLogin: '2026/07/26 11:20 ص',
-    ),
-  ];
+  final _users = <_SettingsUser>[];
+  final _roles = <_SettingsRole>[];
+  final _auditEntries = <_SettingsAuditEntry>[];
 
-  final _roles = <_SettingsRole>[
-    _SettingsRole(
-      id: 1,
-      name: 'مدير النظام',
-      permissions: _allSettingsRolePermissions(),
-    ),
-    _SettingsRole(
-      id: 2,
-      name: 'المبيعات',
-      permissions: _settingsRolePermissions(
-        sales: _allPermissionActionIds,
-        parties: {'view', 'edit'},
-        reports: {'view', 'print'},
-      ),
-    ),
-    _SettingsRole(
-      id: 3,
-      name: 'الحسابات',
-      permissions: _settingsRolePermissions(
-        cashbox: _allPermissionActionIds,
-        parties: {'view'},
-        reports: {'view', 'print'},
-      ),
-    ),
-    _SettingsRole(
-      id: 4,
-      name: 'عرض فقط',
-      permissions: _viewOnlySettingsRolePermissions(),
-    ),
-  ];
-
-  final _auditEntries = <_SettingsAuditEntry>[
-    _SettingsAuditEntry(
-      id: 1,
-      createdAt: '2026/07/29 09:02 ص',
-      username: 'admin',
-      type: 'تسجيل الدخول',
-      details: 'تسجيل دخول ناجح من جهاز المكتب الرئيسي',
-      status: 'ناجح',
-    ),
-    _SettingsAuditEntry(
-      id: 2,
-      createdAt: '2026/07/29 09:18 ص',
-      username: 'admin',
-      type: 'تعديل',
-      details: 'تعديل بيانات المادة: ورق A4',
-      status: 'مكتمل',
-    ),
-    _SettingsAuditEntry(
-      id: 3,
-      createdAt: '2026/07/29 09:27 ص',
-      username: 'ahmed',
-      type: 'حذف',
-      details: 'حذف قائمة بيع تجريبية رقم 1042',
-      status: 'مكتمل',
-    ),
-    _SettingsAuditEntry(
-      id: 4,
-      createdAt: '2026/07/29 09:31 ص',
-      username: 'admin',
-      type: 'استعادة',
-      details: 'استعادة قائمة البيع رقم 1042',
-      status: 'مكتمل',
-    ),
-    _SettingsAuditEntry(
-      id: 5,
-      createdAt: '2026/07/28 04:12 م',
-      username: 'sara',
-      type: 'تسجيل الدخول',
-      details: 'محاولة دخول بكلمة مرور غير صحيحة',
-      status: 'فشل',
-    ),
-  ];
+  bool get _canManageSecurity =>
+      _currentSession?.allows(
+        PermissionCode(
+          module: 'settings',
+          action: PermissionAction.manage,
+        ),
+      ) ??
+      false;
 
   @override
   void initState() {
     super.initState();
-    _userRepository = widget.userRepository ?? DemoUserRepository();
-    _roleRepository = widget.roleRepository ?? DemoRoleRepository();
-    _authenticationService =
-        widget.authenticationService ?? DemoAuthenticationService();
+    final useStandaloneBundle = widget.userRepository == null &&
+        widget.roleRepository == null &&
+        widget.authenticationService == null &&
+        widget.sessionPolicyRepository == null &&
+        widget.auditRepository == null &&
+        widget.administrationService == null;
+    final defaults =
+        useStandaloneBundle ? DemoIdentityServiceBundle() : null;
+    _userRepository = widget.userRepository ??
+        defaults?.users ??
+        DemoUserRepository();
+    _roleRepository = widget.roleRepository ??
+        defaults?.roles ??
+        DemoRoleRepository();
+    _authenticationService = widget.authenticationService ??
+        defaults?.authentication ??
+        DemoAuthenticationService();
     _sessionPolicyRepository = widget.sessionPolicyRepository ??
+        defaults?.sessionPolicies ??
         DemoSessionPolicyRepository();
-    _auditRepository = widget.auditRepository ?? DemoAuditRepository();
+    _auditRepository = widget.auditRepository ??
+        defaults?.audit ??
+        DemoAuditRepository();
+    _administrationService = widget.administrationService ??
+        defaults?.administration ??
+        DemoSecurityAdministrationService.fromAdapters(
+          users: _userRepository,
+          roles: _roleRepository,
+          authentication: _authenticationService,
+          audit: _auditRepository,
+        );
     _loadSecurityState();
   }
 
@@ -176,34 +114,20 @@ class _UsersSecuritySettingsSectionState
       final session = await _authenticationService.currentSession();
       final auditPage = await _auditRepository.search(AuditQuery());
       if (!mounted) return;
-      final roleNames = {for (final role in roles) role.id: role.name};
       setState(() {
-        _nextRoleId = _nextEntitySequence(
-          roles.map((role) => role.id),
-          fallback: 5,
-        );
-        _nextUserId = _nextEntitySequence(
-          users.map((user) => user.id),
-          fallback: 4,
-        );
-        _nextAuditId = _nextEntitySequence(
-          auditPage.records.map((record) => record.id),
-          fallback: 6,
-        );
         _roles
           ..clear()
           ..addAll(roles.map(_settingsRoleFromDomain));
         _users
           ..clear()
-          ..addAll(
-            users.map((user) => _settingsUserFromDomain(user, roleNames)),
-          );
+          ..addAll(users.map(_settingsUserFromDomain));
         _idleLockEnabled = policy.isEnabled;
         _idleLockDuration = '${policy.idleTimeout.inMinutes} دقيقة';
         _currentSession = session;
         _auditEntries
           ..clear()
           ..addAll(auditPage.records.map(_settingsAuditFromDomain));
+        _auditTotalCount = auditPage.totalCount;
         _isLoading = false;
       });
     } on Object catch (error) {
@@ -229,7 +153,6 @@ class _UsersSecuritySettingsSectionState
   }
 
   Future<void> _openAddUserDialog() async {
-    final roleNames = _roles.map((role) => role.name).toList();
     final draft = await showDialog<_SettingsUserDraft>(
       context: context,
       barrierDismissible: false,
@@ -237,7 +160,7 @@ class _UsersSecuritySettingsSectionState
         textDirection: TextDirection.rtl,
         child: _SettingsUserDialog(
           accentColor: widget.accentColor,
-          roleNames: roleNames,
+          roles: _roles,
           existingUsernames: {
             for (final user in _users) user.username.toLowerCase(),
           },
@@ -245,41 +168,58 @@ class _UsersSecuritySettingsSectionState
       ),
     );
     if (draft == null || !mounted) return;
-
-    final normalizedUsername = draft.username.toLowerCase();
-    if (_users.any(
-      (user) => user.username.toLowerCase() == normalizedUsername,
-    )) {
-      AppToast.showWarning(context, 'اسم المستخدم مستخدم مسبقاً');
-      return;
-    }
-
-    final role = _roles.where((entry) => entry.name == draft.role).firstOrNull;
-    if (role == null) {
-      AppToast.showError(context, 'الدور المحدد غير موجود');
-      return;
-    }
-    final user = _SettingsUser(
-      id: _nextUserId++,
-      fullName: draft.fullName,
-      username: draft.username,
-      role: draft.role,
-      isEnabled: true,
-      isLocked: false,
-      lastLogin: 'لم يسجل الدخول',
-    );
     try {
-      await _userRepository.save(_appUserFromSettings(user, role.id));
-      if (!mounted) return;
-      setState(() => _users.add(user));
-      await _appendAudit(
-        action: AuditAction.create,
-        outcome: AuditOutcome.success,
-        summary: 'إضافة المستخدم ${user.username}',
-        entityType: 'user',
-        entityId: EntityId.demo('user', user.id),
+      final created = await _administrationService.createUser(
+        UserCreateRequest(
+          fullName: draft.fullName,
+          username: draft.username,
+          roleIds: draft.roleIds,
+          initialPassword: draft.initialPassword!,
+        ),
       );
-      if (mounted) AppToast.showInfo(context, 'تمت إضافة مستخدم تجريبي');
+      if (!mounted) return;
+      setState(() => _users.add(_settingsUserFromDomain(created)));
+      await _refreshAudit();
+      if (mounted) AppToast.showInfo(context, 'تمت إضافة المستخدم');
+    } on Object catch (error) {
+      if (mounted) AppToast.showError(context, _serviceMessage(error));
+    }
+  }
+
+  Future<void> _openEditUserDialog(_SettingsUser user) async {
+    final draft = await showDialog<_SettingsUserDraft>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: _SettingsUserDialog(
+          accentColor: widget.accentColor,
+          roles: _roles,
+          initialUser: user,
+          existingUsernames: {
+            for (final entry in _users)
+              if (entry.id != user.id) entry.username.toLowerCase(),
+          },
+        ),
+      ),
+    );
+    if (draft == null || !mounted) return;
+    try {
+      final updated = await _administrationService.updateUser(
+        UserUpdateRequest(
+          id: user.id,
+          fullName: draft.fullName,
+          username: draft.username,
+          roleIds: draft.roleIds,
+        ),
+      );
+      if (!mounted) return;
+      final index = _users.indexWhere((entry) => entry.id == user.id);
+      if (index >= 0) {
+        setState(() => _users[index] = _settingsUserFromDomain(updated));
+      }
+      await _refreshSessionAndAudit();
+      if (mounted) AppToast.showSuccess(context, 'تم تحديث المستخدم');
     } on Object catch (error) {
       if (mounted) AppToast.showError(context, _serviceMessage(error));
     }
@@ -294,23 +234,11 @@ class _UsersSecuritySettingsSectionState
       isLocked: user.isLocked,
     );
     try {
-      await _userRepository.setStatus(
-        EntityId.demo('user', user.id),
-        status,
-      );
+      final updated =
+          await _administrationService.setUserStatus(user.id, status);
       if (!mounted) return;
-      setState(() {
-        _users[index] = user.copyWith(isEnabled: isEnabled);
-      });
-      await _appendAudit(
-        action: AuditAction.accountStatusChange,
-        outcome: AuditOutcome.success,
-        summary: isEnabled
-            ? 'تفعيل حساب ${user.username}'
-            : 'تعطيل حساب ${user.username}',
-        entityType: 'user',
-        entityId: EntityId.demo('user', user.id),
-      );
+      setState(() => _users[index] = _settingsUserFromDomain(updated));
+      await _refreshAudit();
     } on Object catch (error) {
       if (mounted) AppToast.showError(context, _serviceMessage(error));
       return;
@@ -328,26 +256,16 @@ class _UsersSecuritySettingsSectionState
     if (index < 0) return;
     final isLocked = !user.isLocked;
     try {
-      await _userRepository.setStatus(
-        EntityId.demo('user', user.id),
+      final updated = await _administrationService.setUserStatus(
+        user.id,
         _userStatusValue(
           isEnabled: user.isEnabled,
           isLocked: isLocked,
         ),
       );
       if (!mounted) return;
-      setState(() {
-        _users[index] = user.copyWith(isLocked: isLocked);
-      });
-      await _appendAudit(
-        action: AuditAction.accountStatusChange,
-        outcome: AuditOutcome.success,
-        summary: isLocked
-            ? 'قفل حساب ${user.username}'
-            : 'فتح قفل حساب ${user.username}',
-        entityType: 'user',
-        entityId: EntityId.demo('user', user.id),
-      );
+      setState(() => _users[index] = _settingsUserFromDomain(updated));
+      await _refreshAudit();
     } on Object catch (error) {
       if (mounted) AppToast.showError(context, _serviceMessage(error));
       return;
@@ -373,25 +291,38 @@ class _UsersSecuritySettingsSectionState
     );
     if (draft == null || !mounted) return;
     try {
-      await _authenticationService.changePassword(
-        PasswordChangeRequest(
-          userId: EntityId.demo('user', user.id),
-          currentPassword: draft.currentPassword,
+      await _administrationService.resetUserPassword(
+        AdminPasswordResetRequest(
+          userId: user.id,
           newPassword: draft.newPassword,
         ),
       );
-      await _appendAudit(
-        action: AuditAction.update,
-        outcome: AuditOutcome.success,
-        summary: 'تغيير كلمة مرور ${user.username}',
-        entityType: 'user',
-        entityId: EntityId.demo('user', user.id),
-      );
+      await _refreshAudit();
       if (!mounted) return;
       AppToast.showSuccess(
         context,
-        'تم تغيير كلمة مرور ${user.fullName} تجريبياً',
+        'تمت إعادة تعيين كلمة مرور ${user.fullName}',
       );
+    } on Object catch (error) {
+      if (mounted) AppToast.showError(context, _serviceMessage(error));
+    }
+  }
+
+  Future<void> _deleteUser(_SettingsUser user) async {
+    final confirmed = await AppDialogs.confirm(
+      context: context,
+      title: 'حذف المستخدم',
+      message: 'سيتم حذف حساب ${user.fullName} نهائياً من البيانات التجريبية.',
+      confirmLabel: 'حذف',
+      isDanger: true,
+    );
+    if (!confirmed || !mounted) return;
+    try {
+      await _administrationService.deleteUser(user.id);
+      if (!mounted) return;
+      setState(() => _users.removeWhere((entry) => entry.id == user.id));
+      await _refreshAudit();
+      if (mounted) AppToast.showSuccess(context, 'تم حذف المستخدم');
     } on Object catch (error) {
       if (mounted) AppToast.showError(context, _serviceMessage(error));
     }
@@ -414,82 +345,57 @@ class _UsersSecuritySettingsSectionState
       ),
     );
     if (draft == null || !mounted) return;
-
-    final duplicate = _roles.any(
-      (entry) =>
-          entry.id != role?.id &&
-          entry.name.trim().toLowerCase() ==
-              draft.name.trim().toLowerCase(),
-    );
-    if (duplicate) {
-      AppToast.showWarning(context, 'اسم الدور مستخدم مسبقاً');
-      return;
-    }
-
-    if (role == null) {
-      final newRole = _SettingsRole(
-        id: _nextRoleId++,
-        name: draft.name,
-        permissions: draft.permissions,
-      );
-      try {
-        await _roleRepository.save(_appRoleFromSettings(newRole));
-        if (!mounted) return;
-        setState(() => _roles.add(newRole));
-        await _appendAudit(
-          action: AuditAction.permissionChange,
-          outcome: AuditOutcome.success,
-          summary: 'إضافة الدور ${newRole.name}',
-          entityType: 'role',
-          entityId: EntityId.demo('role', newRole.id),
-        );
-        if (mounted) AppToast.showInfo(context, 'تمت إضافة دور تجريبي');
-      } on Object catch (error) {
-        if (mounted) AppToast.showError(context, _serviceMessage(error));
-      }
-      return;
-    }
-
-    final index = _roles.indexWhere((entry) => entry.id == role.id);
-    if (index < 0) return;
-    final updatedRole = _SettingsRole(
-      id: role.id,
-      name: draft.name,
-      permissions: draft.permissions,
-    );
     try {
-      await _roleRepository.save(_appRoleFromSettings(updatedRole));
+      final saved = await _administrationService.saveRole(
+        RoleSaveRequest(
+          id: role?.id,
+          name: draft.name,
+          permissions: _permissionCodesFromSettings(draft.permissions),
+        ),
+      );
       if (!mounted) return;
+      final view = _settingsRoleFromDomain(saved);
       setState(() {
-        _roles[index] = updatedRole;
-        if (role.name != draft.name) {
-          for (var userIndex = 0;
-              userIndex < _users.length;
-              userIndex++) {
-            final user = _users[userIndex];
-            if (user.role == role.name) {
-              _users[userIndex] = user.copyWith(role: draft.name);
-            }
-          }
+        final index = _roles.indexWhere((entry) => entry.id == saved.id);
+        if (index < 0) {
+          _roles.add(view);
+        } else {
+          _roles[index] = view;
         }
       });
-      await _appendAudit(
-        action: AuditAction.permissionChange,
-        outcome: AuditOutcome.success,
-        summary: 'تحديث الدور والصلاحيات: ${updatedRole.name}',
-        entityType: 'role',
-        entityId: EntityId.demo('role', updatedRole.id),
-      );
+      await _refreshSessionAndAudit();
       if (mounted) {
-        AppToast.showSuccess(context, 'تم تحديث الدور والصلاحيات');
+        role == null
+            ? AppToast.showInfo(context, 'تمت إضافة الدور')
+            : AppToast.showSuccess(context, 'تم تحديث الدور والصلاحيات');
       }
     } on Object catch (error) {
       if (mounted) AppToast.showError(context, _serviceMessage(error));
     }
   }
 
-  int _roleUsersCount(String roleName) {
-    return _users.where((user) => user.role == roleName).length;
+  Future<void> _deleteRole(_SettingsRole role) async {
+    final confirmed = await AppDialogs.confirm(
+      context: context,
+      title: 'حذف الدور',
+      message: 'سيتم حذف الدور ${role.name} نهائياً إذا لم يكن مرتبطاً بمستخدم.',
+      confirmLabel: 'حذف',
+      isDanger: true,
+    );
+    if (!confirmed || !mounted) return;
+    try {
+      await _administrationService.deleteRole(role.id);
+      if (!mounted) return;
+      setState(() => _roles.removeWhere((entry) => entry.id == role.id));
+      await _refreshAudit();
+      if (mounted) AppToast.showSuccess(context, 'تم حذف الدور');
+    } on Object catch (error) {
+      if (mounted) AppToast.showError(context, _serviceMessage(error));
+    }
+  }
+
+  int _roleUsersCount(EntityId roleId) {
+    return _users.where((user) => user.roleIds.contains(roleId)).length;
   }
 
   void _focusLogSearch() {
@@ -497,6 +403,13 @@ class _UsersSecuritySettingsSectionState
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _logSearchFocusNode.requestFocus();
     });
+  }
+
+  Future<void> _refreshSessionAndAudit() async {
+    final scope = context.getInheritedWidgetOfExactType<AppStoreScope>();
+    await scope?.notifier?.refreshSession();
+    _currentSession = await _authenticationService.currentSession();
+    await _refreshAudit();
   }
 
   Future<void> _savePassword() async {
@@ -511,7 +424,11 @@ class _UsersSecuritySettingsSectionState
       AppToast.showError(context, 'كلمتا المرور الجديدتان غير متطابقتين');
       return;
     }
-    final userId = _currentSession?.userId ?? EntityId.demo('user', 1);
+    final userId = _currentSession?.userId;
+    if (userId == null) {
+      AppToast.showError(context, 'لا توجد جلسة حالية');
+      return;
+    }
     try {
       await _authenticationService.changePassword(
         PasswordChangeRequest(
@@ -520,18 +437,12 @@ class _UsersSecuritySettingsSectionState
           newPassword: password,
         ),
       );
-      await _appendAudit(
-        action: AuditAction.update,
-        outcome: AuditOutcome.success,
-        summary: 'تغيير كلمة مرور المستخدم الحالي',
-        entityType: 'user',
-        entityId: userId,
-      );
+      await _refreshAudit();
       if (!mounted) return;
       _currentPasswordController.clear();
       _newPasswordController.clear();
       _confirmPasswordController.clear();
-      AppToast.showSuccess(context, 'تم تغيير كلمة المرور تجريبياً');
+      AppToast.showSuccess(context, 'تم تغيير كلمة المرور');
     } on Object catch (error) {
       if (mounted) AppToast.showError(context, _serviceMessage(error));
     }
@@ -546,20 +457,23 @@ class _UsersSecuritySettingsSectionState
           idleTimeout: Duration(minutes: minutes),
         ),
       );
-      await _authenticationService.recordActivity();
+      if (!mounted) return;
+      final scope = context.getInheritedWidgetOfExactType<AppStoreScope>();
+      final store = scope?.notifier;
+      if (store != null) {
+        await store.reloadSessionPolicy();
+        await store.recordActivity();
+      } else {
+        final current = await _authenticationService.currentSession();
+        if (current != null) {
+          await _authenticationService.recordActivity(current.id);
+        }
+      }
       _currentSession = await _authenticationService.currentSession();
-      await _appendAudit(
-        action: AuditAction.update,
-        outcome: AuditOutcome.success,
-        summary: _idleLockEnabled
-            ? 'تفعيل القفل التلقائي بعد $minutes دقيقة'
-            : 'تعطيل القفل التلقائي',
-        entityType: 'session_policy',
-        entityId: EntityId.demo('session_policy', 1),
-      );
+      await _refreshAudit();
       if (!mounted) return;
       setState(() {});
-      AppToast.showSuccess(context, 'تم حفظ سياسة القفل التجريبية');
+      AppToast.showSuccess(context, 'تم حفظ سياسة القفل');
     } on Object catch (error) {
       if (mounted) AppToast.showError(context, _serviceMessage(error));
     }
@@ -567,86 +481,66 @@ class _UsersSecuritySettingsSectionState
 
   Future<void> _toggleCurrentSessionLock() async {
     try {
-      final current = await _authenticationService.currentSession();
-      if (current == null) {
+      final scope = context.getInheritedWidgetOfExactType<AppStoreScope>();
+      final store = scope?.notifier;
+      final current = store?.session ??
+          await _authenticationService.currentSession();
+      if (current == null || current.state != SessionState.active) {
         throw const ServiceFailure(
           kind: ServiceFailureKind.authenticationRequired,
-          message: 'لا توجد جلسة تجريبية حالية',
+          message: 'لا توجد جلسة نشطة حالية',
         );
       }
-      final session = current.state == SessionState.locked
-          ? await _authenticationService.unlock('password')
-          : await _authenticationService.lock(SessionLockReason.idleTimeout);
+      final session = store == null
+          ? await _authenticationService.lock(
+              current.id,
+              SessionLockReason.userRequest,
+            )
+          : await store.lock(SessionLockReason.userRequest);
       if (!mounted) return;
       setState(() => _currentSession = session);
-      await _appendAudit(
-        action: AuditAction.other,
-        outcome: AuditOutcome.success,
-        summary: session.state == SessionState.locked
-            ? 'قفل الجلسة التجريبية لمحاكاة الخمول'
-            : 'فتح الجلسة التجريبية',
-        entityType: 'session',
-        entityId: session.id,
-      );
-      if (mounted) {
-        AppToast.showInfo(
-          context,
-          session.state == SessionState.locked
-              ? 'تم قفل الجلسة تجريبياً'
-              : 'تم فتح الجلسة تجريبياً',
-        );
-      }
+      await _refreshAudit();
     } on Object catch (error) {
       if (mounted) AppToast.showError(context, _serviceMessage(error));
     }
   }
 
-  Future<void> _appendAudit({
-    required AuditAction action,
-    required AuditOutcome outcome,
-    required String summary,
-    String? entityType,
-    EntityId? entityId,
-  }) async {
-    final actorId = _currentSession?.userId ?? EntityId.demo('user', 1);
-    final actor = _users.where(
-      (user) => EntityId.demo('user', user.id) == actorId,
-    ).firstOrNull;
-    final record = AuditRecord(
-      id: EntityId.demo('audit', _nextAuditId++),
-      occurredAt: AuditTimestamp(
-        DateTime.utc(2026, 7, 29, 7, 30 + _nextAuditId),
-      ),
-      actorUserId: actorId,
-      actorUsername: actor?.username ?? 'admin',
-      action: action,
-      outcome: outcome,
-      summary: summary,
-      details: const {'mode': 'demo'},
-      entityType: entityType,
-      entityId: entityId,
-    );
-    await _auditRepository.append(record);
-    if (!mounted) return;
-    setState(() => _auditEntries.insert(0, _settingsAuditFromDomain(record)));
-  }
-
   Future<void> _refreshAudit() async {
+    final generation = ++_auditRefreshGeneration;
+    final range = _logDateRange;
     try {
       final page = await _auditRepository.search(
         AuditQuery(
           searchText: _logSearchController.text,
+          actorUserId: _logUserId,
           action: _auditActionForLabel(_logType),
+          outcome: _auditOutcomeForLabel(_logOutcome),
+          from: range == null ? null : AuditTimestamp(range.start),
+          to: range == null
+              ? null
+              : AuditTimestamp(
+                  DateTime(
+                    range.end.year,
+                    range.end.month,
+                    range.end.day,
+                    23,
+                    59,
+                    59,
+                    999,
+                  ),
+                ),
         ),
       );
-      if (!mounted) return;
+      if (!mounted || generation != _auditRefreshGeneration) return;
       setState(() {
         _auditEntries
           ..clear()
           ..addAll(page.records.map(_settingsAuditFromDomain));
+        _auditTotalCount = page.totalCount;
       });
     } on Object catch (error) {
-      if (mounted) AppToast.showError(context, _serviceMessage(error));
+      if (!mounted || generation != _auditRefreshGeneration) return;
+      AppToast.showError(context, _serviceMessage(error));
     }
   }
 
@@ -737,7 +631,7 @@ class _UsersSecuritySettingsSectionState
           key: const Key('settingsAddUserButton'),
           label: 'مستخدم جديد',
           icon: Icons.person_add_alt_1_rounded,
-          onPressed: _openAddUserDialog,
+          onPressed: _canManageSecurity ? _openAddUserDialog : null,
         ),
       ],
       child: Column(
@@ -776,27 +670,50 @@ class _UsersSecuritySettingsSectionState
               AppTableColumn(label: 'الدور', flex: 1),
               AppTableColumn(label: 'الحالة', flex: 0.8),
               AppTableColumn(label: 'آخر دخول', numeric: true, flex: 1.35),
-              AppTableColumn(label: 'الإجراءات', flex: 1.15),
+              AppTableColumn(label: 'الإجراءات', flex: 1.7),
             ],
             rows: [
               for (final user in _users)
                 AppTableRow(
-                  rowKey: Key('settingsUserRow_${user.id}'),
+                  rowKey: Key('settingsUserRow_${user.keySuffix}'),
                   cells: [
                     Text(user.fullName),
                     Text(user.username, textDirection: TextDirection.ltr),
-                    Text(user.role),
+                    Builder(
+                      builder: (context) {
+                        final label = _settingsUserRoleLabel(user, _roles);
+                        final missing = label == 'مرجع دور مفقود';
+                        return Text(
+                          label,
+                          key: missing
+                              ? Key(
+                                  'settingsUserMissingRole_'
+                                  '${user.keySuffix}',
+                                )
+                              : null,
+                          style: missing
+                              ? const TextStyle(color: AppColors.danger)
+                              : null,
+                        );
+                      },
+                    ),
                     Center(
-                      key: Key('settingsUserStatus_${user.id}'),
+                      key: Key('settingsUserStatus_${user.keySuffix}'),
                       child: _userStatusBadge(user),
                     ),
-                    Text(user.lastLogin),
+                    Text(
+                      user.lastLoginAt == null
+                          ? 'لم يسجل الدخول'
+                          : _formatAuditTimestamp(user.lastLoginAt!),
+                    ),
                     Center(
                       child: Wrap(
                         spacing: AppSpacing.xs,
                         children: [
                           AppTableActionButton(
-                            key: Key('settingsUserEnable_${user.id}'),
+                            key: Key(
+                              'settingsUserEnable_${user.keySuffix}',
+                            ),
                             icon: user.isEnabled
                                 ? Icons.person_off_outlined
                                 : Icons.person_outline_rounded,
@@ -806,12 +723,14 @@ class _UsersSecuritySettingsSectionState
                             variant: user.isEnabled
                                 ? AppButtonVariant.warning
                                 : AppButtonVariant.success,
-                            onPressed: user.username == 'admin'
+                            onPressed: user.isSystemUser || !_canManageSecurity
                                 ? null
                                 : () => _toggleUserEnabled(user),
                           ),
                           AppTableActionButton(
-                            key: Key('settingsUserLock_${user.id}'),
+                            key: Key(
+                              'settingsUserLock_${user.keySuffix}',
+                            ),
                             icon: user.isLocked
                                 ? Icons.lock_open_rounded
                                 : Icons.lock_outline_rounded,
@@ -819,16 +738,40 @@ class _UsersSecuritySettingsSectionState
                                 ? 'فتح القفل'
                                 : 'قفل الحساب',
                             variant: AppButtonVariant.warning,
-                            onPressed: user.username == 'admin'
+                            onPressed: user.isSystemUser || !_canManageSecurity
                                 ? null
                                 : () => _toggleUserLock(user),
                           ),
                           AppTableActionButton(
-                            key: Key('settingsUserPassword_${user.id}'),
+                            key: Key(
+                              'settingsUserPassword_${user.keySuffix}',
+                            ),
                             icon: Icons.password_rounded,
-                            tooltip: 'تغيير كلمة المرور',
-                            onPressed: () =>
-                                _openUserPasswordDialog(user),
+                            tooltip: 'إعادة تعيين كلمة المرور',
+                            onPressed: _canManageSecurity
+                                ? () => _openUserPasswordDialog(user)
+                                : null,
+                          ),
+                          AppTableActionButton(
+                            key: Key(
+                              'settingsUserEdit_${user.keySuffix}',
+                            ),
+                            icon: Icons.edit_outlined,
+                            tooltip: 'تعديل المستخدم',
+                            onPressed: _canManageSecurity
+                                ? () => _openEditUserDialog(user)
+                                : null,
+                          ),
+                          AppTableActionButton(
+                            key: Key(
+                              'settingsUserDelete_${user.keySuffix}',
+                            ),
+                            icon: Icons.delete_outline_rounded,
+                            tooltip: 'حذف المستخدم',
+                            variant: AppButtonVariant.danger,
+                            onPressed: user.isSystemUser || !_canManageSecurity
+                                ? null
+                                : () => _deleteUser(user),
                           ),
                         ],
                       ),
@@ -853,7 +796,7 @@ class _UsersSecuritySettingsSectionState
           key: const Key('settingsAddRoleButton'),
           label: 'دور جديد',
           icon: Icons.add_moderator_outlined,
-          onPressed: _openRoleDialog,
+          onPressed: _canManageSecurity ? _openRoleDialog : null,
         ),
       ],
       child: Column(
@@ -891,32 +834,56 @@ class _UsersSecuritySettingsSectionState
                 flex: 0.9,
               ),
               AppTableColumn(label: 'ملخص الصلاحيات', flex: 2),
-              AppTableColumn(label: 'الإجراءات', flex: 0.7),
+              AppTableColumn(label: 'الإجراءات', flex: 0.9),
             ],
             rows: [
               for (final role in _roles)
                 AppTableRow(
-                  rowKey: Key('settingsRoleRow_${role.id}'),
+                  rowKey: Key('settingsRoleRow_${role.keySuffix}'),
                   cells: [
-                    Text('${role.id}', textAlign: TextAlign.center),
+                    Text(role.displayNumber, textAlign: TextAlign.center),
                     Text(role.name),
                     Text(
-                      '${_roleUsersCount(role.name)}',
-                      key: Key('settingsRoleUserCount_${role.id}'),
+                      '${_roleUsersCount(role.id)}',
+                      key: Key(
+                        'settingsRoleUserCount_${role.keySuffix}',
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     Text(
                       _rolePermissionSummary(role.permissions),
-                      key: Key('settingsRoleSummary_${role.id}'),
+                      key: Key('settingsRoleSummary_${role.keySuffix}'),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     Center(
-                      child: AppTableActionButton(
-                        key: Key('settingsRolePermissions_${role.id}'),
-                        icon: Icons.rule_rounded,
-                        tooltip: 'تعديل الصلاحيات',
-                        onPressed: () => _openRoleDialog(role: role),
+                      child: Wrap(
+                        spacing: AppSpacing.xs,
+                        children: [
+                          AppTableActionButton(
+                            key: Key(
+                              'settingsRolePermissions_${role.keySuffix}',
+                            ),
+                            icon: Icons.rule_rounded,
+                            tooltip: role.isSystemRole
+                                ? 'دور النظام محمي'
+                                : 'تعديل الصلاحيات',
+                            onPressed: role.isSystemRole || !_canManageSecurity
+                                ? null
+                                : () => _openRoleDialog(role: role),
+                          ),
+                          AppTableActionButton(
+                            key: Key(
+                              'settingsRoleDelete_${role.keySuffix}',
+                            ),
+                            icon: Icons.delete_outline_rounded,
+                            tooltip: 'حذف الدور',
+                            variant: AppButtonVariant.danger,
+                            onPressed: role.isSystemRole || !_canManageSecurity
+                                ? null
+                                : () => _deleteRole(role),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -1066,13 +1033,11 @@ class _UsersSecuritySettingsSectionState
                 alignment: Alignment.centerRight,
                 child: AppRegularButton(
                   key: const Key('settingsToggleDemoSessionLockButton'),
-                  label: _currentSession?.state == SessionState.locked
-                      ? 'فتح الجلسة التجريبية'
-                      : 'محاكاة القفل الآن',
-                  icon: _currentSession?.state == SessionState.locked
-                      ? Icons.lock_open_rounded
-                      : Icons.lock_clock_outlined,
-                  onPressed: _toggleCurrentSessionLock,
+                  label: 'قفل الجلسة الآن',
+                  icon: Icons.lock_clock_outlined,
+                  onPressed: _currentSession?.state == SessionState.active
+                      ? _toggleCurrentSessionLock
+                      : null,
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
@@ -1083,7 +1048,7 @@ class _UsersSecuritySettingsSectionState
                   label: 'حفظ إعداد القفل',
                   icon: Icons.save_outlined,
                   minWidth: 180,
-                  onPressed: _saveIdleLock,
+                  onPressed: _canManageSecurity ? _saveIdleLock : null,
                 ),
               ),
             ],
@@ -1093,17 +1058,20 @@ class _UsersSecuritySettingsSectionState
     );
   }
 
-  Widget _buildLogsTemplate() {
-    final query = _logSearchController.text.trim().toLowerCase();
-    final filteredEntries = _auditEntries.where((entry) {
-      final matchesType = _logType == 'الكل' || entry.type == _logType;
-      final haystack =
-          '${entry.createdAt} ${entry.username} ${entry.type} '
-          '${entry.details} ${entry.status}'
-              .toLowerCase();
-      return matchesType && (query.isEmpty || haystack.contains(query));
-    }).toList();
+  Future<void> _showAuditDetails(AuditRecord record) {
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: _SettingsAuditDetailsDialog(
+          record: record,
+          accentColor: widget.accentColor,
+        ),
+      ),
+    );
+  }
 
+  Widget _buildLogsTemplate() {
     return SettingsTemplatePanel(
       key: const Key('settingsSecurityLogsPanel'),
       title: 'سجل الدخول والنشاط والتعديلات',
@@ -1113,7 +1081,7 @@ class _UsersSecuritySettingsSectionState
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SettingsResponsiveGrid(
-            preferredColumns: 2,
+            preferredColumns: 3,
             children: [
               AppSearchField(
                 fieldKey: const Key('settingsSecurityLogSearchField'),
@@ -1132,13 +1100,22 @@ class _UsersSecuritySettingsSectionState
                 value: _logType,
                 options: const [
                   AppDropdownOption(value: 'الكل', label: 'الكل'),
-                  AppDropdownOption(
-                    value: 'تسجيل الدخول',
-                    label: 'تسجيل الدخول',
-                  ),
+                  AppDropdownOption(value: 'تسجيل الدخول', label: 'تسجيل الدخول'),
+                  AppDropdownOption(value: 'تسجيل الخروج', label: 'تسجيل الخروج'),
+                  AppDropdownOption(value: 'قفل الجلسة', label: 'قفل الجلسة'),
+                  AppDropdownOption(value: 'فتح الجلسة', label: 'فتح الجلسة'),
+                  AppDropdownOption(value: 'نشاط الجلسة', label: 'نشاط الجلسة'),
+                  AppDropdownOption(value: 'إضافة', label: 'إضافة'),
                   AppDropdownOption(value: 'تعديل', label: 'تعديل'),
                   AppDropdownOption(value: 'حذف', label: 'حذف'),
                   AppDropdownOption(value: 'استعادة', label: 'استعادة'),
+                  AppDropdownOption(value: 'طباعة', label: 'طباعة'),
+                  AppDropdownOption(value: 'تصدير', label: 'تصدير'),
+                  AppDropdownOption(value: 'صلاحيات', label: 'صلاحيات'),
+                  AppDropdownOption(value: 'حالة حساب', label: 'حالة حساب'),
+                  AppDropdownOption(value: 'كلمة المرور', label: 'كلمة المرور'),
+                  AppDropdownOption(value: 'نسخ احتياطي', label: 'نسخ احتياطي'),
+                  AppDropdownOption(value: 'أخرى', label: 'أخرى'),
                 ],
                 useIntrinsicHeight: true,
                 textDirection: TextDirection.rtl,
@@ -1150,9 +1127,91 @@ class _UsersSecuritySettingsSectionState
                   _refreshAudit();
                 },
               ),
+              AppDropdownField<String>(
+                fieldKey: const Key('settingsSecurityLogOutcomeField'),
+                label: 'نتيجة العملية',
+                icon: Icons.fact_check_outlined,
+                accentColor: widget.accentColor,
+                value: _logOutcome,
+                options: const [
+                  AppDropdownOption(value: 'الكل', label: 'الكل'),
+                  AppDropdownOption(value: 'مكتمل', label: 'مكتمل'),
+                  AppDropdownOption(value: 'فشل', label: 'فشل'),
+                  AppDropdownOption(value: 'محظور', label: 'محظور'),
+                ],
+                useIntrinsicHeight: true,
+                textDirection: TextDirection.rtl,
+                textAlign: TextAlign.right,
+                menuTextDirection: TextDirection.rtl,
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() => _logOutcome = value);
+                  _refreshAudit();
+                },
+              ),
+              AppDropdownField<String>(
+                fieldKey: const Key('settingsSecurityLogUserField'),
+                label: 'المستخدم',
+                icon: Icons.person_search_outlined,
+                accentColor: widget.accentColor,
+                value: _logUserId?.value ?? 'all',
+                options: [
+                  const AppDropdownOption(value: 'all', label: 'الكل'),
+                  for (final user in _users)
+                    AppDropdownOption(
+                      value: user.id.value,
+                      label: '${user.fullName} (${user.username})',
+                    ),
+                ],
+                useIntrinsicHeight: true,
+                textDirection: TextDirection.rtl,
+                textAlign: TextAlign.right,
+                menuTextDirection: TextDirection.rtl,
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() {
+                    _logUserId = value == 'all' ? null : EntityId(value);
+                  });
+                  _refreshAudit();
+                },
+              ),
+              AppDateRangeField(
+                fieldKey: const Key('settingsSecurityLogDateRangeField'),
+                label: 'الفترة الزمنية',
+                value: _logDateRange,
+                accentColor: widget.accentColor,
+                onChanged: (value) {
+                  setState(() => _logDateRange = value);
+                  _refreshAudit();
+                },
+              ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: AppRegularButton(
+                  key: const Key('settingsSecurityLogResetFiltersButton'),
+                  label: 'إعادة ضبط المرشحات',
+                  icon: Icons.filter_alt_off_outlined,
+                  onPressed: () {
+                    _logSearchController.clear();
+                    setState(() {
+                      _logType = 'الكل';
+                      _logOutcome = 'الكل';
+                      _logUserId = null;
+                      _logDateRange = null;
+                    });
+                    _refreshAudit();
+                  },
+                ),
+              ),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
+          Text(
+            'عدد النتائج: $_auditTotalCount',
+            key: const Key('settingsSecurityLogResultCount'),
+            style: const TextStyle(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: AppSpacing.sm),
           AppDataTable(
             key: const Key('settingsSecurityLogsTable'),
             height: 430,
@@ -1177,9 +1236,12 @@ class _UsersSecuritySettingsSectionState
               AppTableColumn(label: 'الحالة', flex: 0.75),
             ],
             rows: [
-              for (final entry in filteredEntries)
+              for (final entry in _auditEntries)
                 AppTableRow(
-                  rowKey: Key('settingsAuditRow_${entry.id}'),
+                  rowKey: Key(
+                    'settingsAuditRow_${_entityKeySuffix(entry.id)}',
+                  ),
+                  onTap: () => _showAuditDetails(entry.record),
                   cells: [
                     Text(entry.createdAt),
                     Text(
@@ -1191,9 +1253,11 @@ class _UsersSecuritySettingsSectionState
                     Center(
                       child: AppStatusBadge(
                         label: entry.status,
-                        tone: entry.status == 'فشل'
-                            ? AppStatusTone.danger
-                            : AppStatusTone.success,
+                        tone: switch (entry.record.outcome) {
+                          AuditOutcome.success => AppStatusTone.success,
+                          AuditOutcome.failure => AppStatusTone.danger,
+                          AuditOutcome.blocked => AppStatusTone.warning,
+                        },
                       ),
                     ),
                   ],

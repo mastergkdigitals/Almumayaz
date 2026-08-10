@@ -1,21 +1,28 @@
 import '../../../core/data/app_repository.dart';
 import '../../../core/domain/business_values.dart';
 import '../../../core/services/service_failure.dart';
+import '../../authentication/data/demo_identity_state.dart';
 import '../domain/user_models.dart';
 import '../domain/user_repository.dart';
 
 class DemoUserRepository implements UserRepository {
-  DemoUserRepository({Iterable<AppUser>? initialUsers})
-      : _users = {
-          for (final user in initialUsers ?? demoUsers()) user.id: user,
-        };
+  DemoUserRepository({
+    DemoIdentityState? state,
+    Iterable<AppUser>? initialUsers,
+  })  : assert(
+          state == null || initialUsers == null,
+          'Do not combine shared state with adapter-specific seeds.',
+        ),
+        _state = state ?? DemoIdentityState(initialUsers: initialUsers);
 
-  final Map<EntityId, AppUser> _users;
+  final DemoIdentityState _state;
+
+  DemoIdentityState get identityState => _state;
 
   @override
   Future<List<AppUser>> search(UserQuery query) async {
     final text = query.searchText.trim().toLowerCase();
-    final users = _users.values.where((user) {
+    final users = _state.usersById.values.where((user) {
       final matchesText = text.isEmpty ||
           '${user.fullName} ${user.username}'.toLowerCase().contains(text);
       return matchesText &&
@@ -26,15 +33,136 @@ class DemoUserRepository implements UserRepository {
   }
 
   @override
-  Future<AppUser?> getById(EntityId id) async => _users[id];
+  Future<AppUser?> getById(EntityId id) async => _state.usersById[id];
 
   @override
-  Future<AppUser> save(AppUser user) async {
-    final normalizedUsername = user.username.toLowerCase();
-    final duplicate = _users.values.any(
+  Future<AppUser?> getByUsername(String username) async {
+    final normalized = username.trim().toLowerCase();
+    return _state.usersById.values.where(
+      (user) => user.username.toLowerCase() == normalized,
+    ).firstOrNull;
+  }
+
+  @override
+  Future<AppUser> save(AppUser user) {
+    return _state.mutate(() {
+      _validateRoleReferences(user.roleIds);
+      _validateUsername(user);
+      final stored = _state.usersById[user.id];
+      if (stored == null && user.isSystemUser) {
+        throw const ServiceFailure(
+          kind: ServiceFailureKind.permissionDenied,
+          code: 'system_user_flag_protected',
+          message: 'لا يمكن إنشاء مستخدم نظام إضافي',
+        );
+      }
+      if (stored?.isSystemUser ?? false) {
+        final protectedUser = stored!;
+        final changesProtectedIdentity = !user.isSystemUser ||
+            user.username.toLowerCase() !=
+                protectedUser.username.toLowerCase() ||
+            user.status != UserAccountStatus.active ||
+            !_sameRoleIds(user.roleIds, protectedUser.roleIds);
+        if (changesProtectedIdentity) {
+          throw const ServiceFailure(
+            kind: ServiceFailureKind.permissionDenied,
+            code: 'system_user_protected',
+            message: 'لا يمكن تغيير هوية مستخدم النظام أو صلاحياته الأساسية',
+          );
+        }
+      } else if (user.isSystemUser) {
+        throw const ServiceFailure(
+          kind: ServiceFailureKind.permissionDenied,
+          code: 'system_user_flag_protected',
+          message: 'لا يمكن تحويل المستخدم إلى مستخدم نظام',
+        );
+      }
+      // Authentication owns last-login updates. A profile editor may hold a
+      // stale user snapshot while a sign-in completes, so never let a normal
+      // repository save roll the live timestamp back.
+      final saved = stored == null
+          ? user
+          : user.copyWith(lastLoginAt: stored.lastLoginAt);
+      _state.usersById[user.id] = saved;
+      _state.observeUserId(user.id);
+      return saved;
+    });
+  }
+
+  @override
+  Future<AppUser> setStatus(EntityId id, UserAccountStatus status) {
+    return _state.mutate(() {
+      final user = _requireUser(id);
+      if (user.isSystemUser && status != UserAccountStatus.active) {
+        throw const ServiceFailure(
+          kind: ServiceFailureKind.permissionDenied,
+          code: 'system_user_status_protected',
+          message: 'لا يمكن تعطيل أو قفل مستخدم النظام',
+        );
+      }
+      final updated = user.copyWith(status: status);
+      _state.usersById[id] = updated;
+      return updated;
+    });
+  }
+
+  @override
+  Future<AppUser> setLastLogin(EntityId id, AuditTimestamp timestamp) {
+    return _state.mutate(() {
+      final user = _requireUser(id);
+      final updated = user.copyWith(lastLoginAt: timestamp);
+      _state.usersById[id] = updated;
+      return updated;
+    });
+  }
+
+  @override
+  Future<DeleteDecision> canDelete(EntityId id) async {
+    final user = _state.usersById[id];
+    if (user == null) return const DeleteDecision.blocked('المستخدم غير موجود');
+    if (user.isSystemUser) {
+      return const DeleteDecision.blocked('لا يمكن حذف مستخدم النظام');
+    }
+    if (_state.currentSession?.userId == id) {
+      return const DeleteDecision.blocked('لا يمكن حذف المستخدم الحالي');
+    }
+    return const DeleteDecision.allowed();
+  }
+
+  @override
+  Future<void> delete(EntityId id) {
+    return _state.mutate(() async {
+      final decision = await canDelete(id);
+      if (!decision.isAllowed) {
+        throw ServiceFailure(
+          kind: ServiceFailureKind.permissionDenied,
+          code: 'user_delete_blocked',
+          message: decision.reason ?? 'لا يمكن حذف المستخدم',
+        );
+      }
+      _state.usersById.remove(id);
+      _state.credentialsByUserId.remove(id);
+    });
+  }
+
+  AppUser _requireUser(EntityId id) {
+    final user = _state.usersById[id];
+    if (user == null) {
+      throw const ServiceFailure(
+        kind: ServiceFailureKind.notFound,
+        code: 'user_not_found',
+        message: 'المستخدم غير موجود',
+      );
+    }
+    return user;
+  }
+
+  void _validateUsername(AppUser user) {
+    final normalized = user.username.toLowerCase();
+    final duplicate = _state.usersById.values.any(
       (candidate) =>
           candidate.id != user.id &&
-          candidate.username.toLowerCase() == normalizedUsername,
+          candidate.username.toLowerCase() == normalized,
     );
     if (duplicate) {
       throw const ServiceFailure(
@@ -43,90 +171,24 @@ class DemoUserRepository implements UserRepository {
         message: 'اسم المستخدم مستخدم مسبقاً',
       );
     }
-    _users[user.id] = user;
-    return user;
   }
 
-  @override
-  Future<AppUser> setStatus(EntityId id, UserAccountStatus status) async {
-    final user = _users[id];
-    if (user == null) {
-      throw const ServiceFailure(
-        kind: ServiceFailureKind.notFound,
-        code: 'user_not_found',
-        message: 'المستخدم غير موجود',
-      );
-    }
-    if (user.isSystemUser && status != UserAccountStatus.active) {
-      throw const ServiceFailure(
-        kind: ServiceFailureKind.permissionDenied,
-        code: 'system_user_status_protected',
-        message: 'لا يمكن تعطيل أو قفل مستخدم النظام',
-      );
-    }
-    final updated = AppUser(
-      id: user.id,
-      fullName: user.fullName,
-      username: user.username,
-      roleIds: user.roleIds,
-      status: status,
-      isSystemUser: user.isSystemUser,
-      lastLoginAt: user.lastLoginAt,
+  void _validateRoleReferences(Set<EntityId> roleIds) {
+    final missing = roleIds.where(
+      (roleId) => !_state.rolesById.containsKey(roleId),
     );
-    _users[id] = updated;
-    return updated;
-  }
-
-  @override
-  Future<DeleteDecision> canDelete(EntityId id) async {
-    final user = _users[id];
-    if (user == null) return const DeleteDecision.blocked('المستخدم غير موجود');
-    if (user.isSystemUser) {
-      return const DeleteDecision.blocked('لا يمكن حذف مستخدم النظام');
-    }
-    return const DeleteDecision.allowed();
-  }
-
-  @override
-  Future<void> delete(EntityId id) async {
-    final decision = await canDelete(id);
-    if (!decision.isAllowed) {
+    if (missing.isNotEmpty) {
       throw ServiceFailure(
-        kind: ServiceFailureKind.permissionDenied,
-        message: decision.reason ?? 'لا يمكن حذف المستخدم',
+        kind: ServiceFailureKind.validation,
+        code: 'user_role_not_found',
+        message: 'الدور المحدد غير موجود: ${missing.first.value}',
       );
     }
-    _users.remove(id);
   }
-
 }
 
-List<AppUser> demoUsers() => [
-      AppUser(
-        id: EntityId.demo('user', 1),
-        fullName: 'مدير النظام',
-        username: 'admin',
-        roleIds: {EntityId.demo('role', 1)},
-        status: UserAccountStatus.active,
-        isSystemUser: true,
-        lastLoginAt: AuditTimestamp(DateTime.utc(2026, 7, 29, 6, 2)),
-      ),
-      AppUser(
-        id: EntityId.demo('user', 2),
-        fullName: 'أحمد كريم',
-        username: 'ahmed',
-        roleIds: {EntityId.demo('role', 2)},
-        status: UserAccountStatus.active,
-        isSystemUser: false,
-        lastLoginAt: AuditTimestamp(DateTime.utc(2026, 7, 28, 14, 40)),
-      ),
-      AppUser(
-        id: EntityId.demo('user', 3),
-        fullName: 'سارة علي',
-        username: 'sara',
-        roleIds: {EntityId.demo('role', 3)},
-        status: UserAccountStatus.locked,
-        isSystemUser: false,
-        lastLoginAt: AuditTimestamp(DateTime.utc(2026, 7, 26, 8, 20)),
-      ),
-    ];
+List<AppUser> demoUsers() => demoIdentityUsers();
+
+bool _sameRoleIds(Set<EntityId> first, Set<EntityId> second) {
+  return first.length == second.length && first.containsAll(second);
+}

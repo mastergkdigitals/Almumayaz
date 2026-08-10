@@ -7,6 +7,9 @@ import '../core/design/components/app_shortcuts.dart';
 import '../core/printing/document_output_scope.dart';
 import '../core/responsive/responsive_shell.dart';
 import '../features/authentication/presentation/login_screen.dart';
+import '../features/authentication/presentation/session_activity_guard.dart';
+
+final almumayazNavigatorKey = GlobalKey<NavigatorState>();
 
 class AlmumayazApp extends StatelessWidget {
   const AlmumayazApp({super.key, this.configuration, this.store});
@@ -33,15 +36,37 @@ class AlmumayazApp extends StatelessWidget {
             child: AppConfigurationScope(
               configuration: effectiveConfiguration,
               child: MaterialApp(
+                navigatorKey: almumayazNavigatorKey,
                 title: effectiveConfiguration.applicationTitle,
                 debugShowCheckedModeBanner: false,
                 theme: AppTheme.light(),
                 locale: const Locale('ar', 'IQ'),
                 builder: (context, child) => Directionality(
                   textDirection: TextDirection.rtl,
-                  child: AppKeyboardScope(
-                    child: ResponsiveDesktopShell(
-                      child: child ?? const SizedBox.shrink(),
+                  child: SessionActivityGuard(
+                    onRequireSignIn: () async {
+                      try {
+                        await AppStoreScope.of(
+                          storeContext,
+                          listen: false,
+                        ).signOut();
+                      } on Object {
+                        // A remotely expired session may already be absent.
+                        // Returning to sign-in must remain possible.
+                      } finally {
+                        almumayazNavigatorKey.currentState
+                            ?.pushAndRemoveUntil(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const LoginScreen(),
+                          ),
+                          (_) => false,
+                        );
+                      }
+                    },
+                    child: AppKeyboardScope(
+                      child: ResponsiveDesktopShell(
+                        child: child ?? const SizedBox.shrink(),
+                      ),
                     ),
                   ),
                 ),

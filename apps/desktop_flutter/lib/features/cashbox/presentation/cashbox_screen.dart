@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../core/app_state/app_store.dart';
+import '../../../core/app_state/feature_action_permissions.dart';
 import '../../../core/data/app_repository.dart';
 import '../../../core/design/app_design_system.dart';
 import '../../../core/printing/document_output_service.dart';
 import '../../../core/services/service_failure.dart';
+import '../../permissions/domain/permission_models.dart';
 import '../domain/cashbox_voucher.dart';
 import 'cashbox_controller.dart';
 import 'widgets/cashbox_form.dart';
@@ -44,6 +46,12 @@ class _CashboxScreenState extends State<CashboxScreen> {
   bool _hasUnsavedChanges = false;
   bool _isPrinting = false;
   Future<bool>? _pendingDiscardConfirmation;
+
+  bool _allowsCashboxAction(PermissionAction action) =>
+      AppStoreScope.of(context, listen: false).allowsFeatureAction(
+        'cashbox',
+        action,
+      );
 
   Iterable<TextEditingController> get _editableControllers => [
         _formControllers.mainAccount,
@@ -464,6 +472,7 @@ class _CashboxScreenState extends State<CashboxScreen> {
   }
 
   Future<void> _save() async {
+    if (!_allowsCashboxAction(PermissionAction.create)) return;
     if (!_validateForm()) return;
     if (_cashboxController.selectedVoucher != null) {
       AppToast.showWarning(context, 'استخدم زر تحديث لتعديل السند المحدد');
@@ -486,6 +495,7 @@ class _CashboxScreenState extends State<CashboxScreen> {
   }
 
   Future<void> _update() async {
+    if (!_allowsCashboxAction(PermissionAction.update)) return;
     final selected = _cashboxController.selectedVoucher;
     if (selected == null) {
       AppToast.showWarning(context, 'اختر سنداً من الجدول لتحديثه');
@@ -576,6 +586,7 @@ class _CashboxScreenState extends State<CashboxScreen> {
   }
 
   Future<void> _print() async {
+    if (!_allowsCashboxAction(PermissionAction.print)) return;
     if (_isPrinting) return;
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() => _isPrinting = true);
@@ -600,6 +611,7 @@ class _CashboxScreenState extends State<CashboxScreen> {
   }
 
   Future<void> _delete() async {
+    if (!_allowsCashboxAction(PermissionAction.delete)) return;
     final selected = _cashboxController.selectedVoucher;
     if (selected == null) {
       AppToast.showWarning(context, 'اختر سنداً من الجدول لحذفه');
@@ -664,6 +676,10 @@ class _CashboxScreenState extends State<CashboxScreen> {
         final showEditor = dataState.status == AppDataStatus.ready ||
             (dataState.status == AppDataStatus.empty &&
                 _showEditorWhenEmpty);
+        final canCreate = _allowsCashboxAction(PermissionAction.create);
+        final canUpdate = _allowsCashboxAction(PermissionAction.update);
+        final canDelete = _allowsCashboxAction(PermissionAction.delete);
+        final canPrint = _allowsCashboxAction(PermissionAction.print);
 
         return PopScope(
           canPop: !_hasUnsavedChanges,
@@ -681,17 +697,21 @@ class _CashboxScreenState extends State<CashboxScreen> {
             onBack: _attemptBack,
             onSearch: _searchFocusNode.requestFocus,
             onSave: hasSelectedVoucher
-                ? selectedVoucherIsEditable && _hasUnsavedChanges
+                ? selectedVoucherIsEditable &&
+                        _hasUnsavedChanges &&
+                        canUpdate
                     ? _update
                     : null
-                : _save,
+                : canCreate
+                    ? _save
+                    : null,
             actions: [
             AppHeaderIconButton(
               key: const Key('cashboxPrintButton'),
               tooltipKey: const Key('cashboxPrintTooltip'),
               icon: Icons.print_rounded,
               tooltip: 'طباعة',
-              onPressed: _isPrinting ? null : _print,
+              onPressed: _isPrinting || !canPrint ? null : _print,
             ),
           ],
             body: Padding(
@@ -742,13 +762,17 @@ class _CashboxScreenState extends State<CashboxScreen> {
                   onLast: canMoveToNextOrLast
                       ? () => _navigate(_cashboxController.last)
                       : null,
-                  onSave: hasSelectedVoucher ? null : _save,
+                  onSave:
+                      hasSelectedVoucher || !canCreate ? null : _save,
                   onUpdate:
-                      selectedVoucherIsEditable && _hasUnsavedChanges
+                      selectedVoucherIsEditable &&
+                              _hasUnsavedChanges &&
+                              canUpdate
                       ? _update
                       : null,
                   onUndo: _hasUnsavedChanges ? _undo : null,
-                  onDelete: selectedVoucherIsEditable ? _delete : null,
+                  onDelete:
+                      selectedVoucherIsEditable && canDelete ? _delete : null,
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Expanded(
@@ -775,12 +799,12 @@ class _CashboxScreenState extends State<CashboxScreen> {
                           const Key('cashboxMissingReferenceState'),
                       errorStateKey: const Key('cashboxErrorState'),
                       emptyActionLabel: 'إضافة سند صندوق',
-                      onEmptyAction: () {
+                      onEmptyAction: canCreate ? () {
                         setState(() {
                           _showEditorWhenEmpty = true;
                           _setNewForm();
                         });
-                      },
+                      } : null,
                       missingReferenceActionLabel: 'إعادة المحاولة',
                       onMissingReferenceAction: _loadCashbox,
                       onRetry: _loadCashbox,

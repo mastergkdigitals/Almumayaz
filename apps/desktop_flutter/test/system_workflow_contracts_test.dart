@@ -7,11 +7,13 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('archive upload requires an authoritative clean security report', () {
+    final bytes = '%PDF-1.7\nAlmumayaz contract test'.codeUnits;
     final file = ArchiveFileCandidate(
       localPath: r'C:\Temp\invoice.pdf',
       fileName: 'invoice.pdf',
-      byteSize: 1024,
+      byteSize: bytes.length,
       declaredMimeType: 'application/pdf',
+      contentBytes: bytes,
     );
     final draft = ArchiveDocumentDraft(
       displayName: 'فاتورة تجهيز',
@@ -20,10 +22,11 @@ void main() {
     final localReport = ArchiveSecurityReport(
       authority: SecurityCheckAuthority.localPreflight,
       scanStatus: MalwareScanStatus.clean,
-      checksumSha256: 'demo-checksum',
+      checksumSha256: file.contentChecksumSha256,
       detectedMimeType: 'application/pdf',
       detectedFileType: ArchiveFileType.pdf,
       issues: const [],
+      candidateBindingSha256: file.contentBindingSha256,
     );
 
     expect(localReport.isUploadAllowed, isFalse);
@@ -38,10 +41,11 @@ void main() {
     final authoritativeReport = ArchiveSecurityReport(
       authority: SecurityCheckAuthority.serverAuthoritative,
       scanStatus: MalwareScanStatus.clean,
-      checksumSha256: 'demo-checksum',
+      checksumSha256: file.contentChecksumSha256,
       detectedMimeType: 'application/pdf',
       detectedFileType: ArchiveFileType.pdf,
       issues: const [],
+      candidateBindingSha256: file.contentBindingSha256,
     );
     expect(authoritativeReport.isUploadAllowed, isTrue);
     expect(
@@ -50,6 +54,25 @@ void main() {
         securityReport: authoritativeReport,
       ).draft,
       same(draft),
+    );
+
+    final changedBytes = '%PDF-1.7\nDifferent content'.codeUnits;
+    final changedDraft = ArchiveDocumentDraft(
+      displayName: 'ملف مختلف',
+      file: ArchiveFileCandidate(
+        localPath: file.localPath,
+        fileName: file.fileName,
+        byteSize: changedBytes.length,
+        declaredMimeType: file.declaredMimeType,
+        contentBytes: changedBytes,
+      ),
+    );
+    expect(
+      () => ArchiveUploadRequest(
+        draft: changedDraft,
+        securityReport: authoritativeReport,
+      ),
+      throwsArgumentError,
     );
   });
 

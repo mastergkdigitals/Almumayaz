@@ -191,6 +191,13 @@ extension _SalesScreenOutputPart on _SalesScreenState {
   Future<void> _runSalesDocumentAction(
     DocumentOutputAction action,
   ) async {
+    final requiredPermission = switch (action) {
+      DocumentOutputAction.print ||
+      DocumentOutputAction.printWithoutPrices => PermissionAction.print,
+      DocumentOutputAction.pdf || DocumentOutputAction.excel =>
+        PermissionAction.export,
+    };
+    if (!_allowsSalesAction(requiredPermission)) return;
     if (!_canUseSelectedSalesInvoiceForOutput) return;
     FocusManager.instance.primaryFocus?.unfocus();
     _setSalesState(() => _isDocumentActionRunning = true);
@@ -376,6 +383,8 @@ extension _SalesScreenOutputPart on _SalesScreenState {
         accentColor: AppModuleColors.sales,
         printService: widget.printService,
         exportService: widget.exportService,
+        allowPrint: _allowsSalesAction(PermissionAction.print),
+        allowExport: _allowsSalesAction(PermissionAction.export),
       );
     } on ServiceFailure catch (failure) {
       if (mounted) AppToast.showError(context, failure.message);

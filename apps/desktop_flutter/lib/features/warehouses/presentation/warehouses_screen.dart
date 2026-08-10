@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../core/app_state/app_store.dart';
+import '../../../core/app_state/feature_action_permissions.dart';
 import '../../../core/data/app_repository.dart';
 import '../../../core/design/app_design_system.dart';
+import '../../permissions/domain/permission_models.dart';
 import '../../items/presentation/items_screen.dart';
 import '../domain/warehouse.dart';
 import 'warehouses_controller.dart';
@@ -38,6 +40,18 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
   bool _hasUnsavedChanges = false;
   Future<bool>? _pendingDiscardConfirmation;
   String _inventoryQuery = '';
+
+  bool _allowsWarehouseAction(PermissionAction action) =>
+      AppStoreScope.of(context, listen: false).allowsFeatureAction(
+        'warehouses',
+        action,
+      );
+
+  bool _allowsItemAction(PermissionAction action) =>
+      AppStoreScope.of(context, listen: false).allowsFeatureAction(
+        'items',
+        action,
+      );
 
   Iterable<TextEditingController> get _editableControllers => [
         _formControllers.name,
@@ -246,6 +260,7 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
   }
 
   Future<void> _save() async {
+    if (!_allowsWarehouseAction(PermissionAction.create)) return;
     if (!_validateName()) return;
     if (_warehousesController.selectedWarehouse != null) {
       AppToast.showWarning(
@@ -268,6 +283,7 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
   }
 
   Future<void> _update() async {
+    if (!_allowsWarehouseAction(PermissionAction.update)) return;
     final selected = _warehousesController.selectedWarehouse;
     if (selected == null) {
       AppToast.showWarning(context, 'اختر مخزناً من الجدول لتحديثه');
@@ -298,6 +314,7 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
   }
 
   Future<void> _delete() async {
+    if (!_allowsWarehouseAction(PermissionAction.delete)) return;
     final selected = _warehousesController.selectedWarehouse;
     if (selected == null) {
       AppToast.showWarning(context, 'اختر مخزناً من الجدول لحذفه');
@@ -334,6 +351,7 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
   }
 
   Future<void> _openProducts() async {
+    if (!_allowsItemAction(PermissionAction.view)) return;
     final controller = _warehousesController;
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -345,6 +363,11 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
   }
 
   Future<void> _openTransfer() async {
+    final canCreateTransfer =
+        _allowsWarehouseAction(PermissionAction.create);
+    final canReverseTransfer =
+        _allowsWarehouseAction(PermissionAction.update);
+    if (!canCreateTransfer && !canReverseTransfer) return;
     final controller = _warehousesController;
     final selected = controller.selectedWarehouse;
     if (selected == null) return;
@@ -353,14 +376,17 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
       context,
       warehouses: controller.state.warehouses,
       inventoryFor: controller.inventoryFor,
+      allowTransfer: canCreateTransfer,
       transferHistory: () => controller.state.transferRecords,
-      onReverseTransfer: controller.reverseTransfer,
+      onReverseTransfer:
+          canReverseTransfer ? controller.reverseTransfer : null,
       initialFromWarehouseId: selected.id,
       onTransfer: ({
         required String fromWarehouseId,
         required String toWarehouseId,
         required Map<String, int> quantitiesByProductCode,
       }) async {
+        if (!canCreateTransfer) return false;
         return controller.transferInventory(
           fromWarehouseId: fromWarehouseId,
           toWarehouseId: toWarehouseId,
@@ -405,6 +431,14 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
         final showEditor = dataState.status == AppDataStatus.ready ||
             (dataState.status == AppDataStatus.empty &&
                 _showEditorWhenEmpty);
+        final canCreate =
+            _allowsWarehouseAction(PermissionAction.create);
+        final canUpdate =
+            _allowsWarehouseAction(PermissionAction.update);
+        final canDelete =
+            _allowsWarehouseAction(PermissionAction.delete);
+        final canOpenItems = _allowsItemAction(PermissionAction.view);
+        final canOpenTransfer = canCreate || canUpdate;
 
         return PopScope(
           canPop: !_hasUnsavedChanges,
@@ -422,10 +456,12 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
             onBack: _attemptBack,
             onSearch: _searchFocusNode.requestFocus,
             onSave: selected != null
-                ? _hasUnsavedChanges
+                ? _hasUnsavedChanges && canUpdate
                     ? _update
                     : null
-                : _save,
+                : canCreate
+                    ? _save
+                    : null,
             body: Padding(
               padding: const EdgeInsets.all(AppSpacing.lg),
               child: showEditor
@@ -471,12 +507,16 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
                   onLast: canMoveToNextOrLast
                       ? () => _navigate(_warehousesController.last)
                       : null,
-                  onSave: selected == null ? _save : null,
+                  onSave: selected == null && canCreate ? _save : null,
                   onUpdate:
-                      selected != null && _hasUnsavedChanges ? _update : null,
+                      selected != null && _hasUnsavedChanges && canUpdate
+                          ? _update
+                          : null,
                   onUndo: _hasUnsavedChanges ? _undo : null,
                   onDelete:
-                      selected != null && !selected.isMain ? _delete : null,
+                      selected != null && !selected.isMain && canDelete
+                          ? _delete
+                          : null,
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Expanded(
@@ -540,9 +580,12 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
                               onSearchChanged: (value) {
                                 setState(() => _inventoryQuery = value);
                               },
-                              onOpenProducts: _openProducts,
-                              onOpenTransfer:
-                                  selected == null ? null : _openTransfer,
+                              onOpenProducts:
+                                  canOpenItems ? _openProducts : null,
+                              onOpenTransfer: selected == null ||
+                                      !canOpenTransfer
+                                  ? null
+                                  : _openTransfer,
                               height: inventoryHeight,
                             ),
                           ),
@@ -563,12 +606,12 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
                           const Key('warehousesMissingReferenceState'),
                       errorStateKey: const Key('warehousesErrorState'),
                       emptyActionLabel: 'إضافة مخزن',
-                      onEmptyAction: () {
+                      onEmptyAction: canCreate ? () {
                         setState(() {
                           _showEditorWhenEmpty = true;
                           _setNewForm();
                         });
-                      },
+                      } : null,
                       missingReferenceActionLabel: 'إعادة المحاولة',
                       onMissingReferenceAction: _loadWarehouses,
                       onRetry: _loadWarehouses,

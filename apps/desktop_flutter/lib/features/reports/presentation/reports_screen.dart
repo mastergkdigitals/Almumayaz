@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/app_state/app_store.dart';
+import '../../../core/app_state/feature_action_permissions.dart';
 import '../../../core/design/app_design_system.dart';
+import '../../permissions/domain/permission_models.dart';
 import '../data/report_demo_catalog.dart';
 import '../data/repository_report_data_service.dart';
 import 'report_definition.dart';
@@ -85,6 +87,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         refreshToken: store.revision,
                         printService: reportOutput,
                         exportService: reportOutput,
+                        allowPrint: store.allowsFeatureAction(
+                          'reports',
+                          PermissionAction.print,
+                        ),
+                        allowExport: store.allowsFeatureAction(
+                          'reports',
+                          PermissionAction.export,
+                        ),
                       ),
                     ),
             ),

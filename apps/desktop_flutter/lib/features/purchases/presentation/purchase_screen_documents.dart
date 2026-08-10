@@ -182,6 +182,13 @@ extension _PurchaseDocumentState on _PurchaseScreenState {
   Future<void> _runPurchaseDocumentAction(
     DocumentOutputAction action,
   ) async {
+    final requiredPermission = switch (action) {
+      DocumentOutputAction.print ||
+      DocumentOutputAction.printWithoutPrices => PermissionAction.print,
+      DocumentOutputAction.pdf || DocumentOutputAction.excel =>
+        PermissionAction.export,
+    };
+    if (!_allowsPurchaseAction(requiredPermission)) return;
     if (!_canUseSelectedPurchaseInvoiceForOutput) return;
     FocusManager.instance.primaryFocus?.unfocus();
     _setPurchaseState(() => _isDocumentActionRunning = true);
@@ -311,6 +318,8 @@ extension _PurchaseDocumentState on _PurchaseScreenState {
         accentColor: AppModuleColors.purchases,
         printService: widget.printService,
         exportService: widget.exportService,
+        allowPrint: _allowsPurchaseAction(PermissionAction.print),
+        allowExport: _allowsPurchaseAction(PermissionAction.export),
       );
     } on ServiceFailure catch (failure) {
       if (mounted) AppToast.showError(context, failure.message);

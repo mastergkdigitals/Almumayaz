@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../core/app_state/app_store.dart';
+import '../../../core/app_state/feature_action_permissions.dart';
 import '../../../core/data/app_repository.dart';
 import '../../../core/design/app_design_system.dart';
+import '../../permissions/domain/permission_models.dart';
 import '../domain/item.dart';
 import 'items_controller.dart';
 import 'widgets/item_form.dart';
@@ -35,6 +37,12 @@ class _ItemsScreenState extends State<ItemsScreen> {
   bool _isApplyingFormState = false;
   bool _hasUnsavedChanges = false;
   Future<bool>? _pendingDiscardConfirmation;
+
+  bool _allowsItemAction(PermissionAction action) =>
+      AppStoreScope.of(context, listen: false).allowsFeatureAction(
+        'items',
+        action,
+      );
 
   Iterable<TextEditingController> get _editableControllers => [
         _formControllers.code,
@@ -327,6 +335,7 @@ class _ItemsScreenState extends State<ItemsScreen> {
   }
 
   Future<void> _save() async {
+    if (!_allowsItemAction(PermissionAction.create)) return;
     if (!_validateForm()) return;
     if (_itemsController.selectedItem != null) {
       AppToast.showWarning(
@@ -347,6 +356,7 @@ class _ItemsScreenState extends State<ItemsScreen> {
   }
 
   Future<void> _update() async {
+    if (!_allowsItemAction(PermissionAction.update)) return;
     final selected = _itemsController.selectedItem;
     if (selected == null) {
       AppToast.showWarning(context, 'اختر مادة من الجدول لتحديثها');
@@ -377,6 +387,7 @@ class _ItemsScreenState extends State<ItemsScreen> {
   }
 
   Future<void> _delete() async {
+    if (!_allowsItemAction(PermissionAction.delete)) return;
     final selected = _itemsController.selectedItem;
     if (selected == null) {
       AppToast.showWarning(context, 'اختر مادة من الجدول لحذفها');
@@ -425,6 +436,9 @@ class _ItemsScreenState extends State<ItemsScreen> {
         final showEditor = dataState.status == AppDataStatus.ready ||
             (dataState.status == AppDataStatus.empty &&
                 _showEditorWhenEmpty);
+        final canCreate = _allowsItemAction(PermissionAction.create);
+        final canUpdate = _allowsItemAction(PermissionAction.update);
+        final canDelete = _allowsItemAction(PermissionAction.delete);
 
         return PopScope(
           canPop: !_hasUnsavedChanges,
@@ -442,10 +456,12 @@ class _ItemsScreenState extends State<ItemsScreen> {
             onBack: _attemptBack,
             onSearch: _searchFocusNode.requestFocus,
             onSave: selected != null
-                ? _hasUnsavedChanges
+                ? _hasUnsavedChanges && canUpdate
                     ? _update
                     : null
-                : _save,
+                : canCreate
+                    ? _save
+                    : null,
             body: Padding(
               padding: const EdgeInsets.all(AppSpacing.lg),
               child: showEditor
@@ -494,11 +510,13 @@ class _ItemsScreenState extends State<ItemsScreen> {
                   onLast: canMoveToNextOrLast
                       ? () => _navigate(_itemsController.last)
                       : null,
-                  onSave: selected == null ? _save : null,
+                  onSave: selected == null && canCreate ? _save : null,
                   onUpdate:
-                      selected != null && _hasUnsavedChanges ? _update : null,
+                      selected != null && _hasUnsavedChanges && canUpdate
+                          ? _update
+                          : null,
                   onUndo: _hasUnsavedChanges ? _undo : null,
-                  onDelete: selected != null ? _delete : null,
+                  onDelete: selected != null && canDelete ? _delete : null,
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Expanded(
@@ -525,12 +543,12 @@ class _ItemsScreenState extends State<ItemsScreen> {
                           const Key('itemsMissingReferenceState'),
                       errorStateKey: const Key('itemsErrorState'),
                       emptyActionLabel: 'إضافة مادة',
-                      onEmptyAction: () {
+                      onEmptyAction: canCreate ? () {
                         setState(() {
                           _showEditorWhenEmpty = true;
                           _setNewForm();
                         });
-                      },
+                      } : null,
                       missingReferenceActionLabel: 'إعادة المحاولة',
                       onMissingReferenceAction: _loadItems,
                       onRetry: _loadItems,

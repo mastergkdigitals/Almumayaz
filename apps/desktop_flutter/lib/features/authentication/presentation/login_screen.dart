@@ -241,7 +241,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: AppSpacing.md),
               const AppInfoBanner(
-                message: 'نسخة تصميمية: admin / password',
+                message: 'نسخة تجريبية محلية — بيانات الدخول غير معروضة',
                 icon: null,
                 textAlign: TextAlign.center,
               ),

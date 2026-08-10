@@ -749,7 +749,7 @@ void main() {
     await tester.tap(
       find.byKey(const Key('settingsToggleDriveConnectionButton')),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(find.text('الحساب مرتبط وجاهز للنسخ'), findsOneWidget);
 
     await tester.drag(
@@ -892,7 +892,7 @@ void main() {
     await tester.tap(
       find.byKey(const Key('settingsArchiveChooseFileButton')),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
     await tester.tap(
       find.byKey(const Key('settingsArchiveUploadConfirmButton')),
     );
@@ -913,7 +913,9 @@ void main() {
     AppStatusBadge userStatus(int userId) =>
         tester.widget<AppStatusBadge>(
           find.descendant(
-            of: find.byKey(Key('settingsUserStatus_$userId')),
+            of: find.byKey(
+              Key('settingsUserStatus_demo-user-$userId'),
+            ),
             matching: find.byType(AppStatusBadge),
           ),
         );
@@ -925,52 +927,56 @@ void main() {
     }
 
     expect(userStatus(2).label, 'نشط');
-    pressUserAction('settingsUserEnable_2');
-    await tester.pump();
+    pressUserAction('settingsUserEnable_demo-user-2');
+    await tester.pumpAndSettle();
     expect(userStatus(2).label, 'معطل');
 
-    pressUserAction('settingsUserLock_2');
-    await tester.pump();
+    pressUserAction('settingsUserLock_demo-user-2');
+    await tester.pumpAndSettle();
     expect(userStatus(2).label, 'معطل ومقفل');
 
-    pressUserAction('settingsUserLock_2');
-    await tester.pump();
+    pressUserAction('settingsUserLock_demo-user-2');
+    await tester.pumpAndSettle();
     expect(userStatus(2).label, 'معطل');
 
-    pressUserAction('settingsUserPassword_2');
+    pressUserAction('settingsUserPassword_demo-user-2');
     await tester.pumpAndSettle();
     expect(
-      find.byKey(const Key('settingsUserPasswordDialog_2')),
+      find.byKey(const Key('settingsUserPasswordDialog_demo-user-2')),
       findsOneWidget,
     );
     expect(
-      find.byKey(const Key('settingsUserPasswordConfirm_2')),
+      find.byKey(const Key('settingsUserPasswordConfirm_demo-user-2')),
       findsOneWidget,
     );
 
     await tester.enterText(
-      find.byKey(const Key('settingsUserPasswordNewField_2')),
+      find.byKey(const Key('settingsUserPasswordNewField_demo-user-2')),
       'password-2',
     );
     await tester.enterText(
-      find.byKey(const Key('settingsUserPasswordConfirmField_2')),
+      find.byKey(
+        const Key('settingsUserPasswordConfirmField_demo-user-2'),
+      ),
       'password-2',
     );
     await tester.pump();
     expect(
       tester
           .widget<AppButton>(
-            find.byKey(const Key('settingsUserPasswordConfirm_2')),
+            find.byKey(
+              const Key('settingsUserPasswordConfirm_demo-user-2'),
+            ),
           )
           .onPressed,
       isNotNull,
     );
     await tester.tap(
-      find.byKey(const Key('settingsUserPasswordConfirm_2')),
+      find.byKey(const Key('settingsUserPasswordConfirm_demo-user-2')),
     );
     await tester.pumpAndSettle();
     expect(
-      find.byKey(const Key('settingsUserPasswordDialog_2')),
+      find.byKey(const Key('settingsUserPasswordDialog_demo-user-2')),
       findsNothing,
     );
 

@@ -7,12 +7,18 @@ class BackupDataSettingsSection extends StatefulWidget {
     this.configurationRepository,
     this.backupService,
     this.googleDriveService,
+    this.fileSelectionService,
+    this.auditWriter,
+    this.deviceId = 'desktop-demo-01',
   });
 
   final Color accentColor;
   final BackupConfigurationRepository? configurationRepository;
   final BackupService? backupService;
   final GoogleDriveBackupService? googleDriveService;
+  final BackupFileSelectionService? fileSelectionService;
+  final AuditEventWriter? auditWriter;
+  final String deviceId;
 
   @override
   State<BackupDataSettingsSection> createState() =>
@@ -20,16 +26,11 @@ class BackupDataSettingsSection extends StatefulWidget {
 }
 class _BackupDataSettingsSectionState
     extends State<BackupDataSettingsSection> {
-  static const _deviceId = 'desktop-demo-01';
   final _localPathController = TextEditingController(
     text: r'D:\Almumayaz\Backups',
   );
-  final _driveFolderController = TextEditingController(
-    text: 'Almumayaz ERP Backups',
-  );
   var _automaticBackup = true;
   var _backupFrequency = 'يومياً';
-  var _driveConnected = false;
   var _isBusy = false;
   var _isLoading = true;
   String? _loadError;
@@ -38,35 +39,15 @@ class _BackupDataSettingsSectionState
   late final BackupConfigurationRepository _configurationRepository;
   late final BackupService _backupService;
   late final GoogleDriveBackupService _googleDriveService;
+  late final BackupFileSelectionService _fileSelectionService;
   CloudConnection _driveConnection = const CloudConnection(
     status: CloudConnectionStatus.disconnected,
   );
-  final _history = <_BackupHistoryEntry>[
-    const _BackupHistoryEntry(
-      id: 1,
-      createdAt: '2026/07/29 09:15 ص',
-      destination: 'محلي',
-      size: '18.4 MB',
-      status: 'مكتملة',
-      isSuccessful: true,
-    ),
-    const _BackupHistoryEntry(
-      id: 2,
-      createdAt: '2026/07/28 06:00 م',
-      destination: 'محلي + Google Drive',
-      size: '18.1 MB',
-      status: 'مكتملة',
-      isSuccessful: true,
-    ),
-    const _BackupHistoryEntry(
-      id: 3,
-      createdAt: '2026/07/27 06:00 م',
-      destination: 'Google Drive',
-      size: '17.9 MB',
-      status: 'تعذر الرفع',
-      isSuccessful: false,
-    ),
-  ];
+  List<CloudFolder> _driveFolders = const [];
+
+  bool get _driveConnected =>
+      _driveConnection.status == CloudConnectionStatus.connected;
+  final _history = <_BackupHistoryEntry>[];
 
   @override
   void initState() {
@@ -75,6 +56,8 @@ class _BackupDataSettingsSectionState
         DemoBackupConfigurationRepository();
     _googleDriveService =
         widget.googleDriveService ?? DemoGoogleDriveBackupService();
+    _fileSelectionService = widget.fileSelectionService ??
+        DemoBackupFileSelectionService();
     _backupService = widget.backupService ??
         DemoBackupService(googleDriveService: _googleDriveService);
     _loadBackupState();
@@ -83,8 +66,19 @@ class _BackupDataSettingsSectionState
   @override
   void dispose() {
     _localPathController.dispose();
-    _driveFolderController.dispose();
     super.dispose();
+  }
+
+  Future<void> _writeAudit(AuditEvent event) async {
+    final writer = widget.auditWriter;
+    if (writer == null) return;
+    try {
+      await writer.write(event);
+    } on Object {
+      // Auditing is best-effort in the Flutter demo and must never replace the
+      // workflow's original success or failure result.
+      debugPrint('Backup workflow audit write failed.');
+    }
   }
 
   Future<void> _loadBackupState() async {
@@ -95,9 +89,26 @@ class _BackupDataSettingsSectionState
       });
     }
     try {
-      final configuration = await _configurationRepository.load(_deviceId);
+      final configuration =
+          await _configurationRepository.load(widget.deviceId);
       final history = await _backupService.listHistory();
-      final connection = await _googleDriveService.connection();
+      var connection = await _googleDriveService.connection();
+      final folders = connection.status == CloudConnectionStatus.connected
+          ? await _googleDriveService.listFolders()
+          : const <CloudFolder>[];
+      if (connection.status == CloudConnectionStatus.connected &&
+          configuration.googleDriveFolderId != null) {
+        final configuredFolder = folders
+            .where(
+              (folder) => folder.id == configuration.googleDriveFolderId,
+            )
+            .firstOrNull;
+        if (configuredFolder != null &&
+            connection.selectedFolder?.id != configuredFolder.id) {
+          connection =
+              await _googleDriveService.selectFolder(configuredFolder);
+        }
+      }
       if (!mounted) return;
       setState(() {
         _localPathController.text = configuration.localPath;
@@ -106,11 +117,7 @@ class _BackupDataSettingsSectionState
           configuration.schedule.frequency,
         );
         _driveConnection = connection;
-        _driveConnected =
-            connection.status == CloudConnectionStatus.connected;
-        if (connection.selectedFolder != null) {
-          _driveFolderController.text = connection.selectedFolder!.name;
-        }
+        _driveFolders = List<CloudFolder>.unmodifiable(folders);
         _replaceHistory(history);
         _isLoading = false;
       });
@@ -128,28 +135,67 @@ class _BackupDataSettingsSectionState
 
   Future<void> _toggleDriveConnection() async {
     if (_isBusy) return;
+    final operation = _driveConnected ? 'disconnect' : 'connect';
     setState(() => _isBusy = true);
     try {
       if (_driveConnected) {
         await _googleDriveService.disconnect();
+        await _writeAudit(
+          AuditEvent(
+            action: AuditAction.update,
+            outcome: AuditOutcome.success,
+            summary: 'فصل اتصال Google Drive التجريبي',
+            details: const {
+              'workflow': 'googleDriveBackup',
+              'operation': 'disconnect',
+            },
+          ),
+        );
         if (!mounted) return;
         setState(() {
-          _driveConnected = false;
           _driveConnection = const CloudConnection(
             status: CloudConnectionStatus.disconnected,
           );
+          _driveFolders = const [];
         });
         AppToast.showWarning(context, 'تم فصل اتصال Google Drive التجريبي');
       } else {
-        final connection = await _googleDriveService.connect();
+        setState(() {
+          _driveConnection = const CloudConnection(
+            status: CloudConnectionStatus.connecting,
+            message: 'جارٍ ربط حساب Google Drive التجريبي',
+          );
+        });
+        var connection = await _googleDriveService.connect();
+        final folders = await _googleDriveService.listFolders();
+        final configuration =
+            await _configurationRepository.load(widget.deviceId);
+        final configuredFolder = folders
+            .where(
+              (folder) => folder.id == configuration.googleDriveFolderId,
+            )
+            .firstOrNull;
+        if (configuredFolder != null &&
+            configuredFolder.id != connection.selectedFolder?.id) {
+          connection =
+              await _googleDriveService.selectFolder(configuredFolder);
+        }
+        await _writeAudit(
+          AuditEvent(
+            action: AuditAction.update,
+            outcome: AuditOutcome.success,
+            summary: 'ربط Google Drive في الوضع التجريبي',
+            details: {
+              'workflow': 'googleDriveBackup',
+              'operation': 'connect',
+              'folderId': connection.selectedFolder?.id,
+            },
+          ),
+        );
         if (!mounted) return;
         setState(() {
           _driveConnection = connection;
-          _driveConnected =
-              connection.status == CloudConnectionStatus.connected;
-          if (connection.selectedFolder != null) {
-            _driveFolderController.text = connection.selectedFolder!.name;
-          }
+          _driveFolders = List<CloudFolder>.unmodifiable(folders);
         });
         AppToast.showSuccess(
           context,
@@ -157,7 +203,31 @@ class _BackupDataSettingsSectionState
         );
       }
     } on Object catch (error) {
-      if (mounted) AppToast.showError(context, _serviceMessage(error));
+      await _writeAudit(
+        AuditEvent(
+          action: AuditAction.update,
+          outcome: AuditOutcome.failure,
+          summary: operation == 'connect'
+              ? 'فشل ربط Google Drive التجريبي'
+              : 'فشل فصل Google Drive التجريبي',
+          details: {
+            'workflow': 'googleDriveBackup',
+            'operation': operation,
+            ..._auditFailureDetails(error),
+          },
+        ),
+      );
+      if (mounted) {
+        final message = _serviceMessage(error);
+        setState(() {
+          _driveConnection = CloudConnection(
+            status: CloudConnectionStatus.error,
+            message: message,
+          );
+          _driveFolders = const [];
+        });
+        AppToast.showError(context, message);
+      }
     } finally {
       if (mounted) setState(() => _isBusy = false);
     }
@@ -175,21 +245,21 @@ class _BackupDataSettingsSectionState
       CloudFolder? selectedFolder = _driveConnection.selectedFolder;
       if (_driveConnected) {
         final folders = await _googleDriveService.listFolders();
-        final folderName = _driveFolderController.text.trim();
-        selectedFolder = folders.where(
-          (folder) => folder.name.toLowerCase() == folderName.toLowerCase(),
-        ).firstOrNull;
+        final selectedId = selectedFolder?.id;
+        selectedFolder = folders
+            .where((folder) => folder.id == selectedId)
+            .firstOrNull;
         if (selectedFolder == null) {
           throw const ServiceFailure(
             kind: ServiceFailureKind.validation,
-            message: 'اختر أحد مجلدات Google Drive التجريبية المتاحة',
+            message: 'اختر مجلد Google Drive قبل حفظ الإعدادات',
           );
         }
         _driveConnection =
             await _googleDriveService.selectFolder(selectedFolder);
       }
       final configuration = BackupConfiguration(
-        deviceId: _deviceId,
+        deviceId: widget.deviceId,
         localPath: localPath,
         schedule: BackupSchedule(
           isEnabled: _automaticBackup,
@@ -214,21 +284,52 @@ class _BackupDataSettingsSectionState
     if (_isBusy) return;
     setState(() {
       _isBusy = true;
-      _operationMessage = 'جارٍ إنشاء نسخة محلية مشفرة...';
+      _operationMessage = 'جارٍ محاكاة إنشاء نسخة محلية مشفرة...';
     });
+    BackupRecord? createdRecord;
     try {
       final configuration = await _saveConfiguration(
         showConfirmation: false,
       );
-      if (configuration == null) return;
+      if (configuration == null) {
+        await _writeAudit(
+          AuditEvent(
+            action: AuditAction.backup,
+            outcome: AuditOutcome.failure,
+            summary: 'تعذر بدء النسخ بسبب إعدادات غير صالحة',
+            details: const {'failureKind': 'configurationRejected'},
+          ),
+        );
+        return;
+      }
       final record = await _backupService.createBackup(
         configuration: configuration,
         uploadToGoogleDrive: _driveConnected,
       );
+      createdRecord = record;
       final verification = await _backupService.verifyRestoreSource(
         StoredBackupSource(record.id),
       );
       final history = await _backupService.listHistory();
+      final cloudFailed = record.status == BackupStatus.uploadFailed;
+      await _writeAudit(
+        AuditEvent(
+          action: AuditAction.backup,
+          outcome:
+              cloudFailed ? AuditOutcome.failure : AuditOutcome.success,
+          summary: cloudFailed
+              ? 'اكتملت النسخة المحلية وتعذر رفع نسخة Google Drive'
+              : 'اكتمل إنشاء النسخة الاحتياطية التجريبية',
+          entityType: 'backup',
+          entityId: record.id,
+          details: {
+            'destination': record.destination.name,
+            'status': record.status.name,
+            'byteSize': record.byteSize,
+            'localBackupAvailable': true,
+          },
+        ),
+      );
       if (!mounted) return;
       setState(() {
         _replaceHistory(history);
@@ -246,6 +347,16 @@ class _BackupDataSettingsSectionState
         AppToast.showSuccess(context, 'تم إنشاء نسخة تجريبية والتحقق منها');
       }
     } on Object catch (error) {
+      await _writeAudit(
+        AuditEvent(
+          action: AuditAction.backup,
+          outcome: AuditOutcome.failure,
+          summary: 'فشل إنشاء النسخة الاحتياطية التجريبية',
+          entityType: createdRecord == null ? null : 'backup',
+          entityId: createdRecord?.id,
+          details: _auditFailureDetails(error),
+        ),
+      );
       if (mounted) {
         setState(() => _operationMessage = _serviceMessage(error));
         AppToast.showError(context, _serviceMessage(error));
@@ -265,12 +376,77 @@ class _BackupDataSettingsSectionState
     );
   }
 
+  Future<void> _chooseBackupDirectory() async {
+    if (_isBusy) return;
+    try {
+      final selected = await _fileSelectionService.selectBackupDirectory(
+        initialDirectory: _localPathController.text.trim(),
+      );
+      if (!mounted || selected == null) return;
+      final normalized = selected.trim();
+      if (normalized.isEmpty) {
+        AppToast.showError(context, 'مسار النسخ المحلي غير صالح');
+        return;
+      }
+      setState(() => _localPathController.text = normalized);
+      AppToast.showInfo(context, 'تم اختيار مجلد النسخ المحلي');
+    } on Object catch (error) {
+      if (mounted) AppToast.showError(context, _serviceMessage(error));
+    }
+  }
+
+  Future<void> _selectDriveFolder(String? folderId) async {
+    if (folderId == null || _isBusy || !_driveConnected) return;
+    final folder = _driveFolders
+        .where((candidate) => candidate.id == folderId)
+        .firstOrNull;
+    if (folder == null) {
+      AppToast.showError(context, 'مجلد Google Drive غير موجود');
+      return;
+    }
+    setState(() => _isBusy = true);
+    try {
+      final connection = await _googleDriveService.selectFolder(folder);
+      if (!mounted) return;
+      setState(() => _driveConnection = connection);
+      AppToast.showSuccess(context, 'تم اختيار مجلد Google Drive');
+    } on Object catch (error) {
+      if (mounted) AppToast.showError(context, _serviceMessage(error));
+    } finally {
+      if (mounted) setState(() => _isBusy = false);
+    }
+  }
+
   Future<void> _restoreBackup([_BackupHistoryEntry? entry]) async {
+    final BackupRestoreSource restoreSource;
+    if (entry?.backupId == null) {
+      ExternalBackupSource? selectedSource;
+      try {
+        selectedSource = await _fileSelectionService.selectRestoreSource(
+          initialDirectory: _localPathController.text.trim(),
+        );
+      } on Object catch (error) {
+        await _writeAudit(
+          AuditEvent(
+            action: AuditAction.restore,
+            outcome: AuditOutcome.failure,
+            summary: 'تعذر اختيار ملف النسخة المراد استعادتها',
+            details: _auditFailureDetails(error),
+          ),
+        );
+        if (mounted) AppToast.showError(context, _serviceMessage(error));
+        return;
+      }
+      if (selectedSource == null || !mounted) return;
+      restoreSource = selectedSource;
+    } else {
+      restoreSource = StoredBackupSource(entry!.backupId!);
+    }
     final confirmed = await AppDialogs.confirm(
       context: context,
       title: 'استعادة نسخة احتياطية',
       message: entry == null
-          ? 'سيتم اختيار ملف نسخة احتياطية ثم استعادته. هل تريد المتابعة؟'
+          ? 'تم التحقق من اختيار ملف النسخة. هل تريد بدء الاستعادة؟'
           : 'هل تريد استعادة نسخة ${entry.createdAt}؟',
       confirmLabel: 'استعادة',
       cancelLabel: 'إلغاء',
@@ -278,13 +454,13 @@ class _BackupDataSettingsSectionState
       size: AppDialogSize.medium,
     );
     if (!confirmed || !mounted) return;
-    final source = entry?.backupId == null
-        ? ExternalBackupSource(
-            localPath: r'D:\Almumayaz\Backups\external_demo.backup',
-          )
-        : StoredBackupSource(entry!.backupId!);
+    setState(() {
+      _isBusy = true;
+      _operationMessage = 'جارٍ التحقق من النسخة قبل الاستعادة...';
+    });
     try {
-      final verification = await _backupService.verifyRestoreSource(source);
+      final verification =
+          await _backupService.verifyRestoreSource(restoreSource);
       if (!verification.canRestore) {
         throw ServiceFailure(
           kind: ServiceFailureKind.securityRejected,
@@ -292,7 +468,25 @@ class _BackupDataSettingsSectionState
         );
       }
       final result = await _backupService.restore(
-        RestoreRequest(source: source, confirmedByUser: true),
+        RestoreRequest(source: restoreSource, confirmedByUser: true),
+      );
+      await _writeAudit(
+        AuditEvent(
+          action: AuditAction.restore,
+          outcome: AuditOutcome.success,
+          summary: 'اكتملت استعادة النسخة الاحتياطية التجريبية',
+          entityType:
+              restoreSource is StoredBackupSource ? 'backup' : null,
+          entityId: restoreSource is StoredBackupSource
+              ? restoreSource.backupId
+              : null,
+          details: {
+            'source': restoreSource is StoredBackupSource
+                ? 'storedBackup'
+                : 'externalBackup',
+            'restartRequired': result.restartRequired,
+          },
+        ),
       );
       if (!mounted) return;
       setState(() {
@@ -303,7 +497,30 @@ class _BackupDataSettingsSectionState
       });
       AppToast.showWarning(context, _operationMessage!);
     } on Object catch (error) {
-      if (mounted) AppToast.showError(context, _serviceMessage(error));
+      await _writeAudit(
+        AuditEvent(
+          action: AuditAction.restore,
+          outcome: AuditOutcome.failure,
+          summary: 'فشلت استعادة النسخة الاحتياطية التجريبية',
+          entityType:
+              restoreSource is StoredBackupSource ? 'backup' : null,
+          entityId: restoreSource is StoredBackupSource
+              ? restoreSource.backupId
+              : null,
+          details: {
+            'source': restoreSource is StoredBackupSource
+                ? 'storedBackup'
+                : 'externalBackup',
+            ..._auditFailureDetails(error),
+          },
+        ),
+      );
+      if (mounted) {
+        setState(() => _operationMessage = _serviceMessage(error));
+        AppToast.showError(context, _serviceMessage(error));
+      }
+    } finally {
+      if (mounted) setState(() => _isBusy = false);
     }
   }
 
@@ -354,7 +571,8 @@ class _BackupDataSettingsSectionState
         AppInfoBanner(
           key: const Key('settingsBackupPolicyBanner'),
           message:
-              'يُنشأ النسخ التلقائي محلياً دائماً، وتُرفع نسخة إضافية إلى Google Drive عند ربط الحساب.',
+              'هذه محاكاة لسياسة النسخ: تبقى النسخة المحلية عند فشل Google Drive. '
+              'لا تُنشأ ملفات أو جدولة أو استعادة بيانات حقيقية حالياً.',
           icon: Icons.shield_outlined,
           foregroundColor: widget.accentColor,
           backgroundColor: Color.alphaBlend(
@@ -385,14 +603,7 @@ class _BackupDataSettingsSectionState
                       icon: Icons.folder_open_rounded,
                       tooltip: 'اختيار مجلد',
                       color: widget.accentColor,
-                      onPressed: () {
-                        _localPathController.text =
-                            r'D:\Almumayaz\Backups\Local';
-                        AppToast.showInfo(
-                          context,
-                          'تم اختيار مسار تجريبي',
-                        );
-                      },
+                      onPressed: _isBusy ? null : _chooseBackupDirectory,
                     ),
                     accentColor: widget.accentColor,
                     textDirection: TextDirection.ltr,
@@ -407,7 +618,14 @@ class _BackupDataSettingsSectionState
                     accentColor: widget.accentColor,
                     value: _automaticBackup,
                     onChanged: (value) {
-                      setState(() => _automaticBackup = value);
+                      setState(() {
+                        _automaticBackup = value;
+                        if (!value) {
+                          _backupFrequency = 'يدوياً';
+                        } else if (_backupFrequency == 'يدوياً') {
+                          _backupFrequency = 'يومياً';
+                        }
+                      });
                     },
                   ),
                   const SizedBox(height: AppSpacing.md),
@@ -419,21 +637,27 @@ class _BackupDataSettingsSectionState
                     accentColor: widget.accentColor,
                     value: _backupFrequency,
                     enabled: _automaticBackup,
-                    options: const [
-                      AppDropdownOption(
-                        value: 'يدوياً',
-                        label: 'يدوياً',
-                      ),
-                      AppDropdownOption(value: 'يومياً', label: 'يومياً'),
-                      AppDropdownOption(
-                        value: 'أسبوعياً',
-                        label: 'أسبوعياً',
-                      ),
-                      AppDropdownOption(
-                        value: 'شهرياً',
-                        label: 'شهرياً',
-                      ),
-                    ],
+                    options: _automaticBackup
+                        ? const [
+                            AppDropdownOption(
+                              value: 'يومياً',
+                              label: 'يومياً',
+                            ),
+                            AppDropdownOption(
+                              value: 'أسبوعياً',
+                              label: 'أسبوعياً',
+                            ),
+                            AppDropdownOption(
+                              value: 'شهرياً',
+                              label: 'شهرياً',
+                            ),
+                          ]
+                        : const [
+                            AppDropdownOption(
+                              value: 'يدوياً',
+                              label: 'يدوياً',
+                            ),
+                          ],
                     useIntrinsicHeight: true,
                     textDirection: TextDirection.rtl,
                     textAlign: TextAlign.right,
@@ -472,19 +696,36 @@ class _BackupDataSettingsSectionState
                     child: Row(
                       children: [
                         Icon(
-                          _driveConnected
-                              ? Icons.cloud_done_rounded
-                              : Icons.cloud_off_rounded,
-                          color: _driveConnected
-                              ? AppColors.green
-                              : AppColors.grey,
+                          switch (_driveConnection.status) {
+                            CloudConnectionStatus.connected =>
+                              Icons.cloud_done_rounded,
+                            CloudConnectionStatus.connecting =>
+                              Icons.cloud_sync_rounded,
+                            CloudConnectionStatus.error =>
+                              Icons.cloud_off_rounded,
+                            CloudConnectionStatus.disconnected =>
+                              Icons.cloud_off_rounded,
+                          },
+                          color: switch (_driveConnection.status) {
+                            CloudConnectionStatus.connected => AppColors.green,
+                            CloudConnectionStatus.error => AppColors.danger,
+                            _ => AppColors.grey,
+                          },
                         ),
                         const SizedBox(width: AppSpacing.md),
                         Expanded(
                           child: Text(
-                            _driveConnected
-                                ? 'الحساب مرتبط وجاهز للنسخ'
-                                : 'لم يتم ربط حساب Google Drive',
+                            switch (_driveConnection.status) {
+                              CloudConnectionStatus.connected =>
+                                'الحساب مرتبط وجاهز للنسخ',
+                              CloudConnectionStatus.connecting =>
+                                'جارٍ ربط حساب Google Drive...',
+                              CloudConnectionStatus.error =>
+                                _driveConnection.message ??
+                                    'تعذر ربط Google Drive',
+                              CloudConnectionStatus.disconnected =>
+                                'لم يتم ربط حساب Google Drive',
+                            },
                             style: AppTypography.fieldText,
                           ),
                         ),
@@ -496,47 +737,69 @@ class _BackupDataSettingsSectionState
                           icon: _driveConnected
                               ? Icons.link_off_rounded
                               : Icons.link_rounded,
-                          onPressed: _toggleDriveConnection,
+                          onPressed: _isBusy ? null : _toggleDriveConnection,
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(height: AppSpacing.md),
-                  AppTextField(
+                  AppDropdownField<String>(
                     fieldKey:
                         const Key('settingsDriveFolderField'),
-                    controller: _driveFolderController,
                     label: 'مجلد Google Drive',
                     icon: Icons.drive_folder_upload_outlined,
-                    suffixIcon: _driveConnected &&
-                            _googleDriveService
-                                is DemoGoogleDriveBackupService
-                        ? AppFieldIconButton(
-                            buttonKey: const Key(
-                              'settingsFailNextDriveUploadButton',
-                            ),
-                            icon: Icons.cloud_off_outlined,
-                            tooltip: 'محاكاة فشل الرفع التالي',
-                            color: AppColors.warning,
-                            onPressed: _failNextDriveUpload,
-                          )
-                        : null,
                     accentColor: widget.accentColor,
-                    enabled: _driveConnected,
-                    readOnly: !_driveConnected,
+                    value: _driveConnection.selectedFolder?.id,
+                    options: [
+                      for (final folder in _driveFolders)
+                        AppDropdownOption(
+                          value: folder.id,
+                          label: folder.name,
+                        ),
+                    ],
+                    enabled: _driveConnected && !_isBusy,
+                    useIntrinsicHeight: true,
                     textDirection: TextDirection.rtl,
                     textAlign: TextAlign.right,
+                    menuTextDirection: TextDirection.rtl,
+                    onChanged: _selectDriveFolder,
                   ),
+                  if (_driveConnected &&
+                      _googleDriveService is DemoGoogleDriveBackupService) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: AppRegularButton(
+                        key: const Key(
+                          'settingsFailNextDriveUploadButton',
+                        ),
+                        label: 'محاكاة فشل الرفع التالي',
+                        icon: Icons.cloud_off_outlined,
+                        onPressed: _isBusy ? null : _failNextDriveUpload,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: AppSpacing.md),
                   AppInfoBanner(
-                    message: _driveConnected
-                        ? '${_driveConnection.accountLabel ?? 'حساب تجريبي'} — '
-                            'سيتم رفع نسخة إضافية محاكاةً، مع بقاء النسخة المحلية عند الفشل.'
-                        : 'اربط الحساب لتفعيل مجلد Google Drive والرفع السحابي.',
+                    message: switch (_driveConnection.status) {
+                      CloudConnectionStatus.connected =>
+                        '${_driveConnection.accountLabel ?? 'حساب تجريبي'} — '
+                            'سيتم رفع نسخة إضافية محاكاةً، مع بقاء النسخة المحلية عند الفشل.',
+                      CloudConnectionStatus.connecting =>
+                        'جارٍ تجهيز الاتصال التجريبي...',
+                      CloudConnectionStatus.error =>
+                        _driveConnection.message ??
+                            'تعذر اتصال Google Drive التجريبي.',
+                      CloudConnectionStatus.disconnected =>
+                        'اربط الحساب لتفعيل مجلد Google Drive والرفع السحابي.',
+                    },
                     icon: Icons.info_outline_rounded,
-                    foregroundColor: _driveConnected
-                        ? widget.accentColor
-                        : AppColors.grey,
+                    foregroundColor:
+                        _driveConnection.status == CloudConnectionStatus.error
+                            ? AppColors.danger
+                            : _driveConnected
+                                ? widget.accentColor
+                                : AppColors.grey,
                     backgroundColor: _driveConnected
                         ? Color.alphaBlend(
                             widget.accentColor.withAlpha(18),
@@ -670,7 +933,9 @@ class _BackupDataSettingsSectionState
                 rows: [
                   for (final entry in _history)
                     AppTableRow(
-                      rowKey: Key('settingsBackupHistoryRow_${entry.id}'),
+                      rowKey: Key(
+                        'settingsBackupHistoryRow_${entry.keySuffix}',
+                      ),
                       cells: [
                         Text(entry.createdAt),
                         Text(entry.destination),
@@ -689,7 +954,7 @@ class _BackupDataSettingsSectionState
                             children: [
                               AppTableActionButton(
                                 key: Key(
-                                  'settingsVerifyHistory_${entry.id}',
+                                  'settingsVerifyHistory_${entry.keySuffix}',
                                 ),
                                 icon: Icons.verified_outlined,
                                 tooltip: 'التحقق من النسخة',
@@ -700,7 +965,7 @@ class _BackupDataSettingsSectionState
                               ),
                               AppTableActionButton(
                                 key: Key(
-                                  'settingsRestoreHistory_${entry.id}',
+                                  'settingsRestoreHistory_${entry.keySuffix}',
                                 ),
                                 icon: Icons.restore_rounded,
                                 tooltip: 'استعادة هذه النسخة',
@@ -740,7 +1005,7 @@ class _BackupDataSettingsSectionState
 
 class _BackupHistoryEntry {
   const _BackupHistoryEntry({
-    required this.id,
+    required this.keySuffix,
     required this.createdAt,
     required this.destination,
     required this.size,
@@ -750,7 +1015,7 @@ class _BackupHistoryEntry {
     this.isRestorable = false,
   });
 
-  final int id;
+  final String keySuffix;
   final String createdAt;
   final String destination;
   final String size;
@@ -761,14 +1026,12 @@ class _BackupHistoryEntry {
 }
 
 _BackupHistoryEntry _backupHistoryEntry(BackupRecord record) {
-  final sequence = int.tryParse(record.id.value.split('-').last) ??
-      record.id.value.hashCode.abs();
   final isRestorable = record.isEncrypted &&
       record.checksum != null &&
       (record.status == BackupStatus.completed ||
           record.status == BackupStatus.uploadFailed);
   return _BackupHistoryEntry(
-    id: sequence,
+    keySuffix: record.id.value,
     backupId: record.id,
     createdAt: _formatAuditTimestamp(record.createdAt),
     destination: switch (record.destination) {
@@ -791,3 +1054,11 @@ _BackupHistoryEntry _backupHistoryEntry(BackupRecord record) {
     isRestorable: isRestorable,
   );
 }
+
+Map<String, Object?> _auditFailureDetails(Object error) =>
+    error is ServiceFailure
+        ? {
+            'failureKind': error.kind.name,
+            if (error.code != null) 'failureCode': error.code,
+          }
+        : {'failureKind': 'unknown'};

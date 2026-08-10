@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import '../../../core/domain/business_values.dart';
+import 'archive_sha256.dart';
 
 enum ArchiveFileType {
   pdf(extension: 'pdf', mimeType: 'application/pdf'),
@@ -32,7 +35,7 @@ class ArchiveValidationPolicy {
       ArchiveFileType.pdf,
       ArchiveFileType.png,
     },
-  }) : allowedTypes = Set.unmodifiable(allowedTypes) {
+  }) : allowedTypes = Set<ArchiveFileType>.unmodifiable(allowedTypes) {
     if (maximumByteSize < 1) {
       throw ArgumentError.value(
         maximumByteSize,
@@ -59,8 +62,12 @@ class ArchiveFileCandidate {
     required String fileName,
     required this.byteSize,
     this.declaredMimeType,
+    List<int>? contentBytes,
+    bool? contentIsComplete,
   })  : localPath = localPath.trim(),
-        fileName = fileName.trim() {
+        fileName = fileName.trim(),
+        contentBytes = List<int>.unmodifiable(contentBytes ?? const <int>[]),
+        contentIsComplete = contentIsComplete ?? contentBytes != null {
     if (this.localPath.isEmpty) {
       throw ArgumentError.value(localPath, 'localPath', 'Must not be empty');
     }
@@ -70,12 +77,66 @@ class ArchiveFileCandidate {
     if (byteSize < 0) {
       throw ArgumentError.value(byteSize, 'byteSize', 'Must not be negative');
     }
+    if (this.contentIsComplete && this.contentBytes.length != byteSize) {
+      throw ArgumentError.value(
+        contentBytes,
+        'contentBytes',
+        'Complete content length must equal byteSize',
+      );
+    }
+    if (this.contentBytes.any((byte) => byte < 0 || byte > 255)) {
+      throw ArgumentError.value(
+        contentBytes,
+        'contentBytes',
+        'Content values must be bytes',
+      );
+    }
   }
 
   final String localPath;
   final String fileName;
   final int byteSize;
   final String? declaredMimeType;
+  final List<int> contentBytes;
+  final bool contentIsComplete;
+
+  ArchiveFileType? get signatureFileType {
+    const pdfSignature = <int>[0x25, 0x50, 0x44, 0x46, 0x2d];
+    const pngSignature = <int>[
+      0x89,
+      0x50,
+      0x4e,
+      0x47,
+      0x0d,
+      0x0a,
+      0x1a,
+      0x0a,
+    ];
+    if (_startsWithBytes(contentBytes, pdfSignature)) {
+      return ArchiveFileType.pdf;
+    }
+    if (_startsWithBytes(contentBytes, pngSignature)) {
+      return ArchiveFileType.png;
+    }
+    return null;
+  }
+
+  /// SHA-256 over immutable file bytes. Metadata-only candidates return null
+  /// and must never be authorized for upload.
+  late final String? contentChecksumSha256 =
+      contentIsComplete ? archiveSha256Hex(contentBytes) : null;
+
+  /// Binds a security report to this exact immutable selection, including its
+  /// path, name, declared size, MIME declaration, and byte content.
+  late final String? contentBindingSha256 = contentIsComplete
+      ? archiveSha256Hex(<int>[
+          ...utf8.encode(
+            '$localPath\u0000$fileName\u0000$byteSize\u0000'
+            '${declaredMimeType?.trim().toLowerCase() ?? ''}\u0000',
+          ),
+          ...contentBytes,
+        ])
+      : null;
 }
 
 class ArchiveValidationIssue {
@@ -96,7 +157,8 @@ class ArchiveSecurityReport {
     required this.detectedMimeType,
     required this.detectedFileType,
     required List<ArchiveValidationIssue> issues,
-  }) : issues = List.unmodifiable(issues);
+    this.candidateBindingSha256,
+  }) : issues = List<ArchiveValidationIssue>.unmodifiable(issues);
 
   final SecurityCheckAuthority authority;
   final MalwareScanStatus scanStatus;
@@ -104,11 +166,13 @@ class ArchiveSecurityReport {
   final String? detectedMimeType;
   final ArchiveFileType? detectedFileType;
   final List<ArchiveValidationIssue> issues;
+  final String? candidateBindingSha256;
 
   bool get isUploadAllowed =>
       authority == SecurityCheckAuthority.serverAuthoritative &&
       scanStatus == MalwareScanStatus.clean &&
       checksumSha256 != null &&
+      candidateBindingSha256 != null &&
       detectedFileType != null &&
       issues.isEmpty;
 }
@@ -119,7 +183,7 @@ class ArchiveDocumentDraft {
     required this.file,
     Set<String> tags = const {},
   })  : displayName = displayName.trim(),
-        tags = Set.unmodifiable(
+        tags = Set<String>.unmodifiable(
           tags.map((tag) => tag.trim()).where((tag) => tag.isNotEmpty),
         ) {
     if (this.displayName.isEmpty) {
@@ -148,6 +212,17 @@ class ArchiveUploadRequest {
         'An authoritative clean security report is required',
       );
     }
+    if (draft.file.contentBindingSha256 == null ||
+        draft.file.contentBindingSha256 !=
+            securityReport.candidateBindingSha256 ||
+        draft.file.contentChecksumSha256 != securityReport.checksumSha256 ||
+        draft.file.signatureFileType != securityReport.detectedFileType) {
+      throw ArgumentError.value(
+        securityReport,
+        'securityReport',
+        'The report does not belong to the selected immutable file',
+      );
+    }
   }
 
   final ArchiveDocumentDraft draft;
@@ -166,7 +241,7 @@ class ArchiveDocument {
     required this.createdByUserId,
     required Set<String> tags,
   })  : displayName = displayName.trim(),
-        tags = Set.unmodifiable(tags) {
+        tags = Set<String>.unmodifiable(tags) {
     if (this.displayName.isEmpty) {
       throw ArgumentError.value(
         displayName,
@@ -211,4 +286,39 @@ class ArchiveQuery {
   final ArchiveFileType? fileType;
   final BusinessDate? createdFrom;
   final BusinessDate? createdTo;
+}
+
+enum ArchiveUploadStage {
+  queued,
+  uploading,
+  finalizing,
+  completed,
+  failed,
+}
+
+class ArchiveUploadProgress {
+  ArchiveUploadProgress({
+    required this.stage,
+    required this.fraction,
+    required String message,
+  }) : message = message.trim() {
+    if (!fraction.isFinite || fraction < 0 || fraction > 1) {
+      throw ArgumentError.value(fraction, 'fraction', 'Must be from 0 to 1');
+    }
+    if (this.message.isEmpty) {
+      throw ArgumentError.value(message, 'message', 'Must not be empty');
+    }
+  }
+
+  final ArchiveUploadStage stage;
+  final double fraction;
+  final String message;
+}
+
+bool _startsWithBytes(List<int> bytes, List<int> signature) {
+  if (bytes.length < signature.length) return false;
+  for (var index = 0; index < signature.length; index++) {
+    if (bytes[index] != signature[index]) return false;
+  }
+  return true;
 }

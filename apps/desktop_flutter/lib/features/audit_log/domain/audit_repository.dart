@@ -7,3 +7,10 @@ abstract interface class AuditRepository {
 
   Future<AuditRecord> append(AuditRecord record);
 }
+
+/// Allocates audit identity, timestamp and request metadata outside widgets.
+/// When [AuditEvent.actor] is omitted, implementations use the current
+/// authenticated actor.
+abstract interface class AuditEventWriter {
+  Future<AuditRecord> write(AuditEvent event);
+}

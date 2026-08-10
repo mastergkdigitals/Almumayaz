@@ -1,5 +1,15 @@
 import 'backup_models.dart';
 
+abstract interface class BackupFileSelectionService {
+  /// Returns null when the user cancels the native directory picker.
+  Future<String?> selectBackupDirectory({String? initialDirectory});
+
+  /// Returns null when the user cancels the native backup-file picker.
+  Future<ExternalBackupSource?> selectRestoreSource({
+    String? initialDirectory,
+  });
+}
+
 abstract interface class BackupConfigurationRepository {
   Future<BackupConfiguration> load(String deviceId);
 

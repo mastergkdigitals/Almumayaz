@@ -47,11 +47,42 @@ class PasswordChangeRequest {
         'New password must be different',
       );
     }
+    PasswordPolicy.validateOrThrow(newPassword);
   }
 
   final EntityId userId;
   final String currentPassword;
   final String newPassword;
+}
+
+class AdminPasswordResetRequest {
+  AdminPasswordResetRequest({
+    required this.userId,
+    required String newPassword,
+  }) : newPassword = newPassword {
+    PasswordPolicy.validateOrThrow(newPassword);
+  }
+
+  final EntityId userId;
+  final String newPassword;
+}
+
+abstract final class PasswordPolicy {
+  static const minimumLength = 6;
+
+  static String? validationMessage(String password) {
+    if (password.length < minimumLength) {
+      return 'يجب ألا تقل كلمة المرور عن $minimumLength محارف';
+    }
+    return null;
+  }
+
+  static void validateOrThrow(String password) {
+    final message = validationMessage(password);
+    if (message != null) {
+      throw ArgumentError.value(password, 'password', message);
+    }
+  }
 }
 
 enum SessionState { active, locked, expired, signedOut }

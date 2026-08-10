@@ -45,6 +45,8 @@ abstract final class AppStatementReportDialog {
     Color accentColor = AppModuleColors.parties,
     DocumentPrintService? printService,
     DocumentExportService? exportService,
+    bool allowPrint = true,
+    bool allowExport = true,
   }) {
     final outputScope = DocumentOutputScope.maybeOf(context);
     return showDialog<void>(
@@ -64,6 +66,8 @@ abstract final class AppStatementReportDialog {
           exportService: exportService ??
               outputScope?.exportService ??
               const DemoDocumentOutputService(),
+          allowPrint: allowPrint,
+          allowExport: allowExport,
         ),
       ),
     );
@@ -79,6 +83,8 @@ class _StatementReportBody extends StatefulWidget {
     required this.accentColor,
     required this.printService,
     required this.exportService,
+    required this.allowPrint,
+    required this.allowExport,
   });
 
   final String partyName;
@@ -88,6 +94,8 @@ class _StatementReportBody extends StatefulWidget {
   final Color accentColor;
   final DocumentPrintService printService;
   final DocumentExportService exportService;
+  final bool allowPrint;
+  final bool allowExport;
 
   @override
   State<_StatementReportBody> createState() =>
@@ -163,6 +171,13 @@ class _StatementReportBodyState extends State<_StatementReportBody> {
   }
 
   Future<void> _runOutput(DocumentOutputAction action) async {
+    final permitted = switch (action) {
+      DocumentOutputAction.print ||
+      DocumentOutputAction.printWithoutPrices => widget.allowPrint,
+      DocumentOutputAction.pdf || DocumentOutputAction.excel =>
+        widget.allowExport,
+    };
+    if (!permitted) return;
     if (_activeAction != null) return;
     setState(() => _activeAction = action);
 
@@ -235,7 +250,7 @@ class _StatementReportBodyState extends State<_StatementReportBody> {
           variant: AppButtonVariant.danger,
           width: 132,
           isLoading: _activeAction == DocumentOutputAction.pdf,
-          onPressed: _activeAction == null
+          onPressed: widget.allowExport && _activeAction == null
               ? () => _export(DocumentExportFormat.pdf)
               : null,
         ),
@@ -246,7 +261,8 @@ class _StatementReportBodyState extends State<_StatementReportBody> {
           width: 132,
           backgroundColor: AppColors.blue,
           isLoading: _activeAction == DocumentOutputAction.print,
-          onPressed: _activeAction == null ? _print : null,
+          onPressed:
+              widget.allowPrint && _activeAction == null ? _print : null,
         ),
         AppButton(
           key: const Key('appStatementExcel'),
@@ -255,7 +271,7 @@ class _StatementReportBodyState extends State<_StatementReportBody> {
           variant: AppButtonVariant.success,
           width: 132,
           isLoading: _activeAction == DocumentOutputAction.excel,
-          onPressed: _activeAction == null
+          onPressed: widget.allowExport && _activeAction == null
               ? () => _export(DocumentExportFormat.excel)
               : null,
         ),
