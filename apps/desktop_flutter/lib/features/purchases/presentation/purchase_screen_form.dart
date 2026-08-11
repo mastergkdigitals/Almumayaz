@@ -39,7 +39,7 @@ extension on _PurchaseScreenState {
       );
       final refreshed = await repository.getAll();
       if (!mounted) return;
-      setState(() {
+      _setPurchaseState(() {
         _supplierOptions = List.unmodifiable(
           refreshed.where(
             (party) =>
@@ -114,7 +114,7 @@ extension on _PurchaseScreenState {
         code: created.code,
         name: created.name,
       );
-      setState(() {
+      _setPurchaseState(() {
         _knownItemIds
           ..clear()
           ..addAll(refreshed.map((item) => item.entityId));
