@@ -244,6 +244,39 @@ void main() {
       expect(hydratedStore.requiresAuthentication, isTrue);
     });
 
+    testWidgets('hydrated active session loads and enforces auto-lock policy',
+        (tester) async {
+      final services = AppServices.demo();
+      final sourceStore = AppStore(
+        repositories: AppRepositories.demo(),
+        services: services,
+      )..suspendIdleMonitoring();
+      final hydratedStore = AppStore(
+        repositories: AppRepositories.demo(),
+        services: services,
+      );
+      addTearDown(sourceStore.dispose);
+      addTearDown(hydratedStore.dispose);
+
+      await sourceStore.signIn(
+        SignInCredentials(username: 'admin', password: 'password'),
+      );
+      await services.sessionPolicies.saveAutoLockPolicy(
+        AutoLockPolicy(
+          isEnabled: true,
+          idleTimeout: const Duration(milliseconds: 50),
+        ),
+      );
+      await hydratedStore.refreshSession();
+      expect(hydratedStore.session?.state, SessionState.active);
+
+      await tester.pump(const Duration(milliseconds: 60));
+      await tester.pump();
+      await tester.pump();
+      expect(hydratedStore.session?.state, SessionState.locked);
+      expect(hydratedStore.requiresAuthentication, isTrue);
+    });
+
     test('activity refresh adopts an authoritative expiry or sign-out',
         () async {
       final store = _demoStoreWithIdleMonitoringSuspended();
@@ -374,7 +407,7 @@ void main() {
       expect(lockPair.replacement.session?.state, SessionState.active);
     });
 
-    test('an explicitly signed-out store cannot hydrate another session',
+    test('explicit sign-out cannot hydrate another store session',
         () async {
       final services = AppServices.demo();
       final signedOutStore = AppStore(
@@ -399,10 +432,7 @@ void main() {
       await signedOutStore.refreshSession();
       expect(signedOutStore.session, isNull);
       expect(signedOutStore.requiresAuthentication, isFalse);
-      expect(
-        (await services.authentication.currentSession())?.id,
-        otherSession.id,
-      );
+      expect(otherStore.session?.id, otherSession.id);
     });
 
     test('failed idle lock adopts an authoritative remote sign-out',

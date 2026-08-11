@@ -41,7 +41,7 @@ class AppStore extends ChangeNotifier {
   bool _activitySyncCoolingDown = false;
   bool _idleMonitoringEnabled = true;
   bool _hasAuthenticated = false;
-  bool _allowsInitialHydration = true;
+  bool _initialHydrationAvailable = true;
   bool _isDisposed = false;
   int _sessionGeneration = 0;
   int _activitySyncGeneration = 0;
@@ -53,7 +53,7 @@ class AppStore extends ChangeNotifier {
   int get revision => _revision;
 
   Future<AppSession> signIn(SignInCredentials credentials) async {
-    _allowsInitialHydration = false;
+    _initialHydrationAvailable = false;
     final generation = ++_sessionGeneration;
     final session = await services.authentication.signIn(credentials);
     final policy = await _loadAutoLockPolicy();
@@ -68,7 +68,7 @@ class AppStore extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
-    _allowsInitialHydration = false;
+    _initialHydrationAvailable = false;
     final expectedSessionId = _session?.id;
     final generation = ++_sessionGeneration;
     _idleTimer?.cancel();
@@ -145,7 +145,7 @@ class AppStore extends ChangeNotifier {
   }
 
   Future<void> _reconcileAfterFailedSessionTransition({
-    required EntityId? expectedSessionId,
+    required EntityId expectedSessionId,
     required int generation,
   }) async {
     AppSession? authoritative;
@@ -291,25 +291,29 @@ class AppStore extends ChangeNotifier {
 
   Future<void> refreshSession() async {
     final expectedSessionId = _session?.id;
-    final hadLocalAuthentication =
-        _hasAuthenticated || expectedSessionId != null;
-    final mayHydrate = _allowsInitialHydration &&
+    final mayHydrate = _initialHydrationAvailable &&
         !_hasAuthenticated &&
         expectedSessionId == null;
     final generation = ++_sessionGeneration;
     try {
       final session = await services.authentication.currentSession();
-      _requireCurrentSessionOperation(generation);
-      _allowsInitialHydration = false;
       final authoritativeSessionIsExpected = session == null ||
           (expectedSessionId == null
               ? mayHydrate
               : session.id == expectedSessionId);
+      final policy = authoritativeSessionIsExpected && session != null
+          ? await _loadAutoLockPolicy()
+          : _autoLockPolicy;
+      _requireCurrentSessionOperation(generation);
+      _initialHydrationAvailable = false;
       // Hydration may adopt the first authoritative session. Once this store
       // has participated in authentication, a different session must never be
       // adopted implicitly (for example after another user signs in).
       _session = authoritativeSessionIsExpected ? session : null;
-      _hasAuthenticated = _session != null || hadLocalAuthentication;
+      if (authoritativeSessionIsExpected && session != null) {
+        _hasAuthenticated = true;
+        _autoLockPolicy = policy;
+      }
       _resetActivitySyncThrottle();
       _scheduleIdleLock();
       notifyListeners();
