@@ -58,6 +58,9 @@ class _AppTooltipState extends State<AppTooltip> {
     return Tooltip(
       key: widget.tooltipKey,
       message: widget.message,
+      // Interactive wrappers own their accessible label; keep RawTooltip
+      // from inserting a second semantics node around the control.
+      excludeFromSemantics: true,
       preferBelow: true,
       verticalOffset: (targetHeight / 2) + _targetGap,
       decoration: BoxDecoration(

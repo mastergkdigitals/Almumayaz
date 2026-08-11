@@ -1157,8 +1157,22 @@ void main() {
         find.byKey(const Key('purchaseSupplierNameField'));
     await tester.tap(supplier);
     await tester.pump();
-    expect(find.text('شركة التجارة العالمية'), findsOneWidget);
+    final autocomplete = tester.widget<AppAutocompleteField<Party>>(
+      find.ancestor(
+        of: supplier,
+        matching: find.byType(AppAutocompleteField<Party>),
+      ),
+    );
+    expect(
+      autocomplete.options.map((party) => party.name),
+      containsAll(['شركة التجارة العالمية', 'مجهز الفرات']),
+    );
     expect(find.text('مجهز الفرات'), findsOneWidget);
+
+    await tester.enterText(supplier, 'العالمية');
+    await tester.pump();
+    expect(find.text('شركة التجارة العالمية'), findsOneWidget);
+    expect(find.text('مجهز الفرات'), findsNothing);
 
     await tester.enterText(supplier, 'الفر');
     await tester.pump();

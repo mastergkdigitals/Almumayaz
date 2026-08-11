@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import '../app_formatters.dart';
 import '../app_tokens.dart';
 import 'app_date_picker_dialog.dart';
-import 'app_header_button.dart';
 import 'app_text_fields.dart';
 
 class AppDateField extends StatefulWidget {
@@ -108,13 +107,11 @@ class _AppDateFieldState extends State<AppDateField> {
           onTap: _pickDate,
           onSubmitted: (_) => _pickDate(),
           suffixIcon: widget.showPickerButton
-              ? AppTooltip(
-                  message: 'اختيار التاريخ',
-                  child: AppFieldIconButton(
-                    icon: Icons.edit_calendar_rounded,
-                    color: widget.accentColor ?? AppColors.primary,
-                    onPressed: widget.enabled ? _pickDate : null,
-                  ),
+              ? AppFieldIconButton(
+                  icon: Icons.edit_calendar_rounded,
+                  tooltip: 'اختيار التاريخ',
+                  color: widget.accentColor ?? AppColors.primary,
+                  onPressed: widget.enabled ? _pickDate : null,
                 )
               : null,
         ),
@@ -221,13 +218,11 @@ class _AppDateRangeFieldState extends State<AppDateRangeField> {
           textAlign: TextAlign.right,
           onTap: _pickRange,
           onSubmitted: (_) => _pickRange(),
-          suffixIcon: AppTooltip(
-            message: 'اختيار نطاق التاريخ',
-            child: AppFieldIconButton(
-              icon: Icons.calendar_view_week_rounded,
-              color: widget.accentColor ?? AppColors.primary,
-              onPressed: widget.enabled ? _pickRange : null,
-            ),
+          suffixIcon: AppFieldIconButton(
+            icon: Icons.calendar_view_week_rounded,
+            tooltip: 'اختيار نطاق التاريخ',
+            color: widget.accentColor ?? AppColors.primary,
+            onPressed: widget.enabled ? _pickRange : null,
           ),
         ),
       ),

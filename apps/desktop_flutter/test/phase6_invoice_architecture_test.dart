@@ -134,6 +134,7 @@ void main() {
       find.byKey(const Key('salesNotesField')),
       'تحديث هوية المبيعات',
     );
+    await tester.pump();
     await tester.tap(find.byKey(const Key('salesUpdateButton')));
     await tester.pumpAndSettle();
     final updatedSale = await store.repositories.sales.getById(
@@ -176,6 +177,7 @@ void main() {
       find.byKey(const Key('purchaseNotesField')),
       'تحديث هوية المشتريات',
     );
+    await tester.pump();
     await tester.tap(find.byKey(const Key('purchaseUpdateButton')));
     await tester.pumpAndSettle();
     final updatedPurchase = await store.repositories.purchases.getById(

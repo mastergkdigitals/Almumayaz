@@ -427,7 +427,10 @@ void main() {
     final clear = find.byKey(const Key('designSearchClearButton'));
     expect(clear, findsOneWidget);
     expect(tester.widget<IconButton>(clear).onPressed, isNotNull);
-    final tooltip = tester.widget<Tooltip>(find.byTooltip('مسح البحث'));
+    final tooltip = tester.widget<Tooltip>(
+      find.ancestor(of: clear, matching: find.byType(Tooltip)),
+    );
+    expect(tooltip.excludeFromSemantics, isTrue);
     expect(
       (tooltip.decoration! as BoxDecoration).color,
       AppTooltipColors.background,

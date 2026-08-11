@@ -23,6 +23,7 @@ class AppFieldIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final message = tooltip?.trim();
     final button = IconButton(
       key: buttonKey,
       onPressed: onPressed,
@@ -46,12 +47,14 @@ class AppFieldIconButton extends StatelessWidget {
         splashFactory: NoSplash.splashFactory,
       ),
     );
-    final message = tooltip?.trim();
+    final labeledButton = message == null || message.isEmpty
+        ? button
+        : Semantics(label: message, child: button);
 
     return ExcludeFocus(
       child: message == null || message.isEmpty
-          ? button
-          : AppTooltip(message: message, child: button),
+          ? labeledButton
+          : AppTooltip(message: message, child: labeledButton),
     );
   }
 }
