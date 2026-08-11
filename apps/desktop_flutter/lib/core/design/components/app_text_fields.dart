@@ -49,7 +49,15 @@ class AppFieldIconButton extends StatelessWidget {
     );
     final labeledButton = message == null || message.isEmpty
         ? button
-        : Semantics(label: message, child: button);
+        : Semantics(
+            container: true,
+            excludeSemantics: true,
+            label: message,
+            button: true,
+            enabled: onPressed != null,
+            onTap: onPressed,
+            child: button,
+          );
 
     return ExcludeFocus(
       child: message == null || message.isEmpty
