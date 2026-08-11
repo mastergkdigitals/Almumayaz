@@ -4,10 +4,12 @@ on:
   push:
     branches: [main]
     paths:
+      - '.gitattributes'
       - 'apps/desktop_flutter/**'
       - '.github/workflows/flutter_desktop.yml'
   pull_request:
     paths:
+      - '.gitattributes'
       - 'apps/desktop_flutter/**'
       - '.github/workflows/flutter_desktop.yml'
   workflow_dispatch:
