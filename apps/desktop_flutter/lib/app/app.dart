@@ -43,29 +43,33 @@ class AlmumayazApp extends StatelessWidget {
                 locale: const Locale('ar', 'IQ'),
                 builder: (context, child) => Directionality(
                   textDirection: TextDirection.rtl,
-                  child: SessionActivityGuard(
-                    onRequireSignIn: () async {
-                      try {
-                        await AppStoreScope.of(
-                          storeContext,
-                          listen: false,
-                        ).signOut();
-                      } on Object {
-                        // A remotely expired session may already be absent.
-                        // Returning to sign-in must remain possible.
-                      } finally {
-                        almumayazNavigatorKey.currentState
-                            ?.pushAndRemoveUntil(
-                          MaterialPageRoute<void>(
-                            builder: (_) => const LoginScreen(),
-                          ),
-                          (_) => false,
-                        );
-                      }
-                    },
-                    child: AppKeyboardScope(
-                      child: ResponsiveDesktopShell(
-                        child: child ?? const SizedBox.shrink(),
+                  // MaterialApp.builder sits above the Navigator overlay.
+                  // The session-lock editor needs this local Overlay ancestor.
+                  child: Overlay.wrap(
+                    child: SessionActivityGuard(
+                      onRequireSignIn: () async {
+                        try {
+                          await AppStoreScope.of(
+                            storeContext,
+                            listen: false,
+                          ).signOut();
+                        } on Object {
+                          // A remotely expired session may already be absent.
+                          // Returning to sign-in must remain possible.
+                        } finally {
+                          almumayazNavigatorKey.currentState
+                              ?.pushAndRemoveUntil(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const LoginScreen(),
+                            ),
+                            (_) => false,
+                          );
+                        }
+                      },
+                      child: AppKeyboardScope(
+                        child: ResponsiveDesktopShell(
+                          child: child ?? const SizedBox.shrink(),
+                        ),
                       ),
                     ),
                   ),

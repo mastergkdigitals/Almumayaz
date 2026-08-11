@@ -1,8 +1,10 @@
 import 'package:erp/app/app.dart';
+import 'package:erp/core/app_state/app_store.dart';
 import 'package:erp/core/design/app_tokens.dart';
 import 'package:erp/core/design/components/app_button.dart';
 import 'package:erp/core/design/components/app_screen_shell.dart';
 import 'package:erp/core/responsive/responsive_shell.dart';
+import 'package:erp/features/authentication/domain/session_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -134,6 +136,50 @@ void main() {
       Colors.transparent,
     );
     expect(purchasesInkWell.splashFactory, NoSplash.splashFactory);
+  });
+
+  testWidgets('locks and unlocks with a valid application overlay', (
+    tester,
+  ) async {
+    final store = AppStore.demo();
+    addTearDown(store.dispose);
+    await tester.pumpWidget(AlmumayazApp(store: store));
+    await _login(tester);
+
+    await store.lock(SessionLockReason.userRequest);
+    await tester.pump();
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    final passwordField = find.byKey(const Key('sessionUnlockPasswordField'));
+    final editableText = find.descendant(
+      of: passwordField,
+      matching: find.byType(EditableText),
+    );
+    expect(find.byKey(const Key('sessionLockOverlay')), findsOneWidget);
+    expect(passwordField, findsOneWidget);
+    expect(
+      Overlay.maybeOf(tester.element(editableText)),
+      isNotNull,
+    );
+    expect(
+      tester.widget<EditableText>(editableText).focusNode.hasFocus,
+      isTrue,
+    );
+
+    await tester.tap(passwordField);
+    await tester.enterText(passwordField, 'password');
+    expect(
+      tester.widget<EditableText>(editableText).focusNode.hasFocus,
+      isTrue,
+    );
+    await tester.tap(find.byKey(const Key('sessionUnlockButton')));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(store.session?.state, SessionState.active);
+    expect(find.byKey(const Key('sessionLockOverlay')), findsNothing);
+    expect(find.byKey(const Key('dashboardCard_parties')), findsOneWidget);
   });
 
   testWidgets('keeps full login layout at 1440 width', (tester) async {

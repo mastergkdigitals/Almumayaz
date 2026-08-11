@@ -94,6 +94,13 @@ jobs:
           flutter build windows --release
           --dart-define-from-file=${{ matrix.configuration }}
 
+      - name: Verify generated Windows plugin files are current
+        shell: pwsh
+        run: >-
+          git diff --exit-code --
+          windows/flutter/generated_plugin_registrant.cc
+          windows/flutter/generated_plugins.cmake
+
       - name: Package Windows edition
         shell: pwsh
         run: >-
