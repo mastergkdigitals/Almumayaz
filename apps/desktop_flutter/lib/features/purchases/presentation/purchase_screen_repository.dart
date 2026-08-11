@@ -10,7 +10,7 @@ extension _PurchaseRepositoryState on _PurchaseScreenState {
     if (showLoading && mounted) {
       _setPurchaseState(() => _invoiceState = const AppDataState.loading());
     }
-    final selectedEntityId = selectEntityId ?? _selectedInvoice?.source.id;
+    final selectedEntityId = selectEntityId ?? _selectedInvoice?.entityId;
     final state = await coordinator.load();
     if (!mounted) return;
     _setPurchaseState(() {
@@ -26,20 +26,15 @@ extension _PurchaseRepositoryState on _PurchaseScreenState {
       _purchaseInvoices
         ..clear()
         ..addAll(records);
-      _DemoPurchaseInvoice? selected;
-      if (selectedEntityId != null) {
-        for (final candidate in records) {
-          if (candidate.source.id == selectedEntityId) {
-            selected = candidate;
-            break;
-          }
-        }
-      }
-      _loadInvoice(selected ?? records.first);
+      final selected = coordinator.selection.select(
+        selectedEntityId,
+        fallbackToFirst: true,
+      );
+      if (selected != null) _loadInvoice(selected);
     });
   }
 
-  Future<List<_DemoPurchaseInvoice>> _loadRepositoryInvoices() async {
+  Future<List<_PurchaseInvoiceViewData>> _loadRepositoryInvoices() async {
     final repositories = _store!.repositories;
     final parties = await repositories.parties.getAll();
     final items = await repositories.items.getAll();
@@ -52,28 +47,23 @@ extension _PurchaseRepositoryState on _PurchaseScreenState {
     final invoices = [...loadedInvoices]
       ..sort((left, right) => left.documentNumber.compareTo(right.documentNumber));
 
-    final partiesById = {for (final party in parties) EntityId(party.id): party};
-    final itemsById = {for (final item in items) EntityId(item.id): item};
+    final partiesById = {for (final party in parties) party.entityId: party};
+    final itemsById = {for (final item in items) item.entityId: item};
     final warehousesById = {
-      for (final warehouse in warehouses) EntityId(warehouse.id): warehouse,
+      for (final warehouse in warehouses) warehouse.entityId: warehouse,
     };
 
-    _supplierIdsByName.clear();
-    for (final party in parties.where(
-      (party) =>
-          party.type == PartyType.supplier ||
-          party.type == PartyType.customerAndSupplier,
-    )) {
-      _supplierIdsByName[party.name] = EntityId(party.id);
-    }
-    _supplierOptions = List.unmodifiable(_supplierIdsByName.keys);
-    _itemIdsByLabel.clear();
+    _supplierOptions = List.unmodifiable(
+      parties.where(
+        (party) =>
+            party.type == PartyType.supplier ||
+            party.type == PartyType.customerAndSupplier,
+      ),
+    );
     _knownItemIds.clear();
     for (final item in items) {
-      final itemId = EntityId(item.id);
+      final itemId = item.entityId;
       _knownItemIds.add(itemId);
-      _itemIdsByLabel[_normalizedLookup(item.code)] = itemId;
-      _itemIdsByLabel[_normalizedLookup(item.name)] = itemId;
     }
     _itemOptions = List.unmodifiable(
       items.map(
@@ -84,24 +74,29 @@ extension _PurchaseRepositoryState on _PurchaseScreenState {
         ),
       ),
     );
-    _warehouseIdsByLabel.clear();
+    _warehouseNamesById.clear();
     final orderedWarehouses = [...warehouses]
-      ..sort(
-        (left, right) => _warehouseOrder(EntityId(left.id))
-            .compareTo(_warehouseOrder(EntityId(right.id))),
-      );
+      ..sort((left, right) => left.number.compareTo(right.number));
     for (final warehouse in orderedWarehouses) {
-      _warehouseIdsByLabel[_warehouseLabel(EntityId(warehouse.id))] =
-          EntityId(warehouse.id);
+      _warehouseNamesById[warehouse.id] = warehouse.name;
     }
     _warehouseOptions = List.unmodifiable(
-      orderedWarehouses.map((warehouse) {
-        final label = _warehouseLabel(EntityId(warehouse.id));
-        return AppDropdownOption(value: label, label: label);
-      }),
+      orderedWarehouses.map(
+        (warehouse) => AppDropdownOption(
+          value: warehouse.id,
+          label: warehouse.name,
+        ),
+      ),
     );
 
-    _defaultWarehouse = _warehouseLabel(defaults.purchases.warehouseId);
+    final defaultWarehouse = warehousesById[defaults.purchases.warehouseId];
+    if (defaultWarehouse == null) {
+      throw const InvoiceMissingReferenceException(
+        'المخزن الافتراضي لقوائم الشراء غير موجود.',
+      );
+    }
+    _defaultWarehouseId = defaultWarehouse.id;
+    _defaultWarehouseName = defaultWarehouse.name;
     _defaultPurchaseType = _purchaseKindLabel(defaults.purchases.purchaseKind);
     _defaultPaymentType =
         defaults.purchases.paymentKind == PaymentKind.cash ? 'نقدي' : 'آجل';
@@ -110,7 +105,7 @@ extension _PurchaseRepositoryState on _PurchaseScreenState {
       policies.defaultExchangeRate,
     );
 
-    final result = <_DemoPurchaseInvoice>[];
+    final result = <_PurchaseInvoiceViewData>[];
     for (final invoice in invoices) {
       final party = partiesById[invoice.supplierId];
       final warehouse = warehousesById[invoice.defaultWarehouseId];
@@ -139,7 +134,7 @@ extension _PurchaseRepositoryState on _PurchaseScreenState {
     return result;
   }
 
-  _DemoPurchaseInvoice _purchaseViewFromDomain(
+  _PurchaseInvoiceViewData _purchaseViewFromDomain(
     PurchaseInvoice invoice, {
     required Party party,
     required Map<EntityId, Item> itemsById,
@@ -157,9 +152,10 @@ extension _PurchaseRepositoryState on _PurchaseScreenState {
           name: line.itemNameSnapshot.isNotEmpty
               ? line.itemNameSnapshot
               : itemsById[line.itemId]!.name,
+          warehouseId: line.warehouseId.value,
           warehouse: line.warehouseNameSnapshot.isNotEmpty
               ? line.warehouseNameSnapshot
-              : _warehouseLabel(EntityId(warehousesById[line.warehouseId]!.id)),
+              : warehousesById[line.warehouseId]!.name,
           quantity: '${line.quantity.value}',
           container: '${line.containerQuantity.value}',
           purchasePrice: _formatMoney(line.purchasePrice),
@@ -177,11 +173,12 @@ extension _PurchaseRepositoryState on _PurchaseScreenState {
     );
     final date =
         '${_twoDigits(dateTime.day)}/${_twoDigits(dateTime.month)}/${dateTime.year}';
-    return _DemoPurchaseInvoice(
+    return _PurchaseInvoiceViewData(
       source: invoice,
-      id: '${invoice.documentNumber}',
+      documentNumber: invoice.documentNumber,
       dateTime: dateTime,
-      warehouse: _warehouseLabel(invoice.defaultWarehouseId),
+      warehouseId: invoice.defaultWarehouseId,
+      warehouse: warehousesById[invoice.defaultWarehouseId]!.name,
       purchaseType: _purchaseTransactionLabel(invoice.purchaseKind),
       paymentType: invoice.settlementKind == PurchaseSettlementKind.cash
           ? 'نقدي'
@@ -237,22 +234,6 @@ extension _PurchaseRepositoryState on _PurchaseScreenState {
         value.value,
         decimalPlaces: value.tenThousandths % 10000 == 0 ? 0 : 4,
       );
-
-  String _warehouseLabel(EntityId id) => switch (id.value) {
-        'warehouse-001' => 'الرئيسي',
-        'warehouse-002' => 'الكرادة',
-        'warehouse-003' => 'الرصافة',
-        'warehouse-004' => 'المنصور',
-        _ => id.value,
-      };
-
-  int _warehouseOrder(EntityId id) => switch (id.value) {
-        'warehouse-001' => 0,
-        'warehouse-003' => 1,
-        'warehouse-002' => 2,
-        'warehouse-004' => 3,
-        _ => 100,
-      };
 
   String _purchaseKindLabel(PurchaseKind kind) => switch (kind) {
         PurchaseKind.local => 'محلي',

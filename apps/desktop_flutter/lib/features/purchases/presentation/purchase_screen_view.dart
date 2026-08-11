@@ -3,7 +3,7 @@ part of 'purchase_screen.dart';
 extension _PurchaseViewState on _PurchaseScreenState {
   Widget _buildPurchaseScreen(BuildContext context) {
     final hasSelectedInvoice = _selectedInvoice != null;
-    final selectedInvoiceIndex = _selectedInvoiceIndex;
+    final selectedInvoiceIndex = _coordinator?.selection.selectedIndex ?? -1;
     final hasInvoices = _purchaseInvoices.isNotEmpty;
     final canMoveToFirstOrPrevious =
         hasInvoices && selectedInvoiceIndex != 0;
@@ -104,7 +104,7 @@ extension _PurchaseViewState on _PurchaseScreenState {
                     textDirection: TextDirection.rtl,
                     textAlign: TextAlign.right,
                     menuTextDirection: TextDirection.rtl,
-                    value: _warehouse,
+                    value: _warehouseId,
                     options: _warehouseOptions,
                     onChanged: (value) {
                       if (value == null) return;
@@ -177,15 +177,22 @@ extension _PurchaseViewState on _PurchaseScreenState {
               const SizedBox(height: AppSpacing.md),
               _PurchaseFieldRow(
                 children: [
-                  AppAutocompleteField<String>(
+                  AppAutocompleteField<Party>(
                     fieldKey: const Key('purchaseSupplierNameField'),
                     controller: _supplierNameController,
                     label: 'اسم المجهز',
                     icon: Icons.person_search_rounded,
                     accentColor: AppModuleColors.purchases,
                     options: _supplierOptions,
-                    displayStringForOption: (value) => value,
-                    onSelected: (_) {},
+                    displayStringForOption: (party) => party.name,
+                    searchTermsForOption: (party) => [
+                      party.name,
+                      '${party.number}',
+                      party.phone,
+                    ],
+                    optionSubtitle: (party) => 'رقم ${party.number}',
+                    onSelected: _selectSupplier,
+                    onChanged: _changeSupplierText,
                     textDirection: TextDirection.rtl,
                     textAlign: TextAlign.right,
                   ),
@@ -214,6 +221,9 @@ extension _PurchaseViewState on _PurchaseScreenState {
                   currencyCode: _currency,
                   invoiceAdjustment: _invoiceAdjustment,
                   itemOptions: _itemOptions,
+                  warehouseOptions: _warehouseOptions,
+                  defaultWarehouse: _defaultWarehouseId,
+                  defaultWarehouseLabel: _defaultWarehouseName,
                   onRowsChanged: _changeItems,
                 ),
               ),
@@ -328,16 +338,16 @@ extension _PurchaseViewState on _PurchaseScreenState {
                 deleteButtonKey: const Key('purchaseDeleteButton'),
                 accentColor: AppModuleColors.purchases,
                 onFirst: canMoveToFirstOrPrevious
-                    ? () => _navigate(_PurchaseNavigation.first)
+                    ? () => _navigate(InvoiceEditorNavigation.first)
                     : null,
                 onPrevious: canMoveToFirstOrPrevious
-                    ? () => _navigate(_PurchaseNavigation.previous)
+                    ? () => _navigate(InvoiceEditorNavigation.previous)
                     : null,
                 onNext: canMoveToNextOrLast
-                    ? () => _navigate(_PurchaseNavigation.next)
+                    ? () => _navigate(InvoiceEditorNavigation.next)
                     : null,
                 onLast: canMoveToNextOrLast
-                    ? () => _navigate(_PurchaseNavigation.last)
+                    ? () => _navigate(InvoiceEditorNavigation.last)
                     : null,
                 onSave: !canCreate ||
                         !isEditorReady ||
@@ -368,7 +378,7 @@ extension _PurchaseViewState on _PurchaseScreenState {
             if (_invoiceState.status != AppDataStatus.ready)
               ColoredBox(
                 color: tint,
-                child: AppDataStateView<List<_DemoPurchaseInvoice>>(
+                child: AppDataStateView<List<_PurchaseInvoiceViewData>>(
                   state: _invoiceState,
                   dataBuilder: (_, _) => const SizedBox.shrink(),
                   emptyTitle: 'لا توجد قوائم شراء',

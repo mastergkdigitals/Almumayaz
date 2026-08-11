@@ -10,7 +10,7 @@ extension _SalesScreenDataPart on _SalesScreenState {
     if (showLoading && mounted) {
       _setSalesState(() => _invoiceState = const AppDataState.loading());
     }
-    final selectedEntityId = selectEntityId ?? _selectedInvoice?.source.id;
+    final selectedEntityId = selectEntityId ?? _selectedInvoice?.entityId;
     final state = await coordinator.load();
     if (!mounted) return;
     _setSalesState(() {
@@ -26,20 +26,15 @@ extension _SalesScreenDataPart on _SalesScreenState {
       _salesInvoices
         ..clear()
         ..addAll(records);
-      _DemoSalesInvoice? selected;
-      if (selectedEntityId != null) {
-        for (final candidate in records) {
-          if (candidate.source.id == selectedEntityId) {
-            selected = candidate;
-            break;
-          }
-        }
-      }
-      _loadInvoice(selected ?? records.first);
+      final selected = coordinator.selection.select(
+        selectedEntityId,
+        fallbackToFirst: true,
+      );
+      if (selected != null) _loadInvoice(selected);
     });
   }
 
-  Future<List<_DemoSalesInvoice>> _loadRepositoryInvoices() async {
+  Future<List<_SalesInvoiceViewData>> _loadRepositoryInvoices() async {
     final repositories = _store!.repositories;
     final parties = await repositories.parties.getAll();
     final items = await repositories.items.getAll();
@@ -52,31 +47,23 @@ extension _SalesScreenDataPart on _SalesScreenState {
     final invoices = [...loadedInvoices]
       ..sort((left, right) => left.documentNumber.compareTo(right.documentNumber));
 
-    final partiesById = {for (final party in parties) EntityId(party.id): party};
-    final itemsById = {for (final item in items) EntityId(item.id): item};
+    final partiesById = {for (final party in parties) party.entityId: party};
+    final itemsById = {for (final item in items) item.entityId: item};
     final warehousesById = {
-      for (final warehouse in warehouses) EntityId(warehouse.id): warehouse,
+      for (final warehouse in warehouses) warehouse.entityId: warehouse,
     };
 
-    _customerIdsByName
-      ..clear()
-      ..addEntries(
-        parties
-            .where(
-              (party) =>
-                  party.type == PartyType.customer ||
-                  party.type == PartyType.customerAndSupplier,
-            )
-            .map((party) => MapEntry(party.name, EntityId(party.id))),
-      );
-    _customerOptions = List.unmodifiable(_customerIdsByName.keys);
-    _itemIdsByLabel.clear();
+    _customerOptions = List.unmodifiable(
+      parties.where(
+        (party) =>
+            party.type == PartyType.customer ||
+            party.type == PartyType.customerAndSupplier,
+      ),
+    );
     _knownItemIds.clear();
     for (final item in items) {
-      final itemId = EntityId(item.id);
+      final itemId = item.entityId;
       _knownItemIds.add(itemId);
-      _itemIdsByLabel[_normalizedLookup(item.code)] = itemId;
-      _itemIdsByLabel[_normalizedLookup(item.name)] = itemId;
     }
     _itemOptions = List.unmodifiable(
       items.map(
@@ -87,31 +74,36 @@ extension _SalesScreenDataPart on _SalesScreenState {
         ),
       ),
     );
-    _warehouseIdsByLabel.clear();
+    _warehouseNamesById.clear();
     final orderedWarehouses = [...warehouses]
-      ..sort(
-        (left, right) => _warehouseOrder(EntityId(left.id))
-            .compareTo(_warehouseOrder(EntityId(right.id))),
-      );
+      ..sort((left, right) => left.number.compareTo(right.number));
     for (final warehouse in orderedWarehouses) {
-      _warehouseIdsByLabel[_warehouseLabel(EntityId(warehouse.id))] =
-          EntityId(warehouse.id);
+      _warehouseNamesById[warehouse.id] = warehouse.name;
     }
     _warehouseOptions = List.unmodifiable(
-      orderedWarehouses.map((warehouse) {
-        final label = _warehouseLabel(EntityId(warehouse.id));
-        return AppDropdownOption(value: label, label: label);
-      }),
+      orderedWarehouses.map(
+        (warehouse) => AppDropdownOption(
+          value: warehouse.id,
+          label: warehouse.name,
+        ),
+      ),
     );
 
-    _defaultWarehouse = _warehouseLabel(defaults.sales.warehouseId);
+    final defaultWarehouse = warehousesById[defaults.sales.warehouseId];
+    if (defaultWarehouse == null) {
+      throw const InvoiceMissingReferenceException(
+        'المخزن الافتراضي لقوائم البيع غير موجود.',
+      );
+    }
+    _defaultWarehouseId = defaultWarehouse.id;
+    _defaultWarehouseName = defaultWarehouse.name;
     _defaultSaleType = _saleKindLabel(defaults.sales.saleKind);
     _defaultCurrency = defaults.sales.currency.code;
     _defaultExchangeRate = _formatExchangeRate(
       policies.defaultExchangeRate,
     );
 
-    final result = <_DemoSalesInvoice>[];
+    final result = <_SalesInvoiceViewData>[];
     for (final invoice in invoices) {
       final party = partiesById[invoice.customerId];
       final warehouse = warehousesById[invoice.defaultWarehouseId];
@@ -140,7 +132,7 @@ extension _SalesScreenDataPart on _SalesScreenState {
     return result;
   }
 
-  _DemoSalesInvoice _salesViewFromDomain(
+  _SalesInvoiceViewData _salesViewFromDomain(
     SalesInvoice invoice, {
     required Party party,
     required Map<EntityId, Item> itemsById,
@@ -158,9 +150,10 @@ extension _SalesScreenDataPart on _SalesScreenState {
           name: line.itemNameSnapshot.isNotEmpty
               ? line.itemNameSnapshot
               : itemsById[line.itemId]!.name,
+          warehouseId: line.warehouseId.value,
           warehouse: line.warehouseNameSnapshot.isNotEmpty
               ? line.warehouseNameSnapshot
-              : _warehouseLabel(EntityId(warehousesById[line.warehouseId]!.id)),
+              : warehousesById[line.warehouseId]!.name,
           quantity: '${line.quantity.value}',
           salePrice: _formatMoney(line.unitPrice),
           discount: _formatMoney(line.discountPerUnit),
@@ -176,11 +169,12 @@ extension _SalesScreenDataPart on _SalesScreenState {
     );
     final date =
         '${_twoDigits(dateTime.day)}/${_twoDigits(dateTime.month)}/${dateTime.year}';
-    return _DemoSalesInvoice(
+    return _SalesInvoiceViewData(
       source: invoice,
-      id: '${invoice.documentNumber}',
+      documentNumber: invoice.documentNumber,
       dateTime: dateTime,
-      warehouse: _warehouseLabel(invoice.defaultWarehouseId),
+      warehouseId: invoice.defaultWarehouseId,
+      warehouse: warehousesById[invoice.defaultWarehouseId]!.name,
       saleType: _salesSettlementLabel(invoice.settlementKind),
       currency: currency,
       exchangeRate: _formatExchangeRate(invoice.exchangeRate),
@@ -246,22 +240,6 @@ extension _SalesScreenDataPart on _SalesScreenState {
         decimalPlaces: value.tenThousandths % 10000 == 0 ? 0 : 4,
       );
 
-  String _warehouseLabel(EntityId id) => switch (id.value) {
-        'warehouse-001' => 'الرئيسي',
-        'warehouse-002' => 'الكرادة',
-        'warehouse-003' => 'الرصافة',
-        'warehouse-004' => 'المنصور',
-        _ => id.value,
-      };
-
-  int _warehouseOrder(EntityId id) => switch (id.value) {
-        'warehouse-001' => 0,
-        'warehouse-003' => 1,
-        'warehouse-002' => 2,
-        'warehouse-004' => 3,
-        _ => 100,
-      };
-
   String _saleKindLabel(SaleKind kind) => switch (kind) {
         SaleKind.cash => 'نقدي',
         SaleKind.credit => 'آجل',
@@ -274,16 +252,18 @@ extension _SalesScreenDataPart on _SalesScreenState {
         SalesSettlementKind.installments => 'أقساط',
       };
 
-  void _loadInvoice(_DemoSalesInvoice invoice) {
+  void _loadInvoice(_SalesInvoiceViewData invoice) {
     _isApplyingFormState = true;
     _selectedInvoice = invoice;
-    _invoiceNumberController.text = invoice.id;
+    _coordinator?.selection.select(invoice.entityId);
+    _invoiceNumberController.text = '${invoice.documentNumber}';
     _invoiceDateTime = invoice.dateTime;
-    _warehouse = invoice.warehouse;
+    _warehouseId = invoice.warehouseId.value;
     _saleType = invoice.saleType;
     _currency = invoice.currency;
     _exchangeRateController.text = invoice.exchangeRate;
     _customerNameController.text = invoice.customerName;
+    _selectedCustomerId = invoice.source.customerId;
     _notesController.text = invoice.notes;
     _driverNameController.text = invoice.driverName;
     _invoiceDiscountController.text = invoice.invoiceDiscount;
@@ -303,20 +283,22 @@ extension _SalesScreenDataPart on _SalesScreenState {
     _syncCalculatedFields();
     _tableDataVersion++;
     _isApplyingFormState = false;
-    _baseline = _currentSnapshot();
+    _dirtyTracker.accept(_currentSnapshot());
     _hasUnsavedChanges = false;
   }
 
   void _setNewForm() {
     _isApplyingFormState = true;
     _selectedInvoice = null;
+    _coordinator?.selection.clear();
     _invoiceNumberController.text = '$_nextInvoiceNumber';
     _invoiceDateTime = DateTime.now();
-    _warehouse = _defaultWarehouse;
+    _warehouseId = _defaultWarehouseId;
     _saleType = _defaultSaleType;
     _currency = _defaultCurrency;
     _exchangeRateController.text = _defaultExchangeRate;
     _customerNameController.clear();
+    _selectedCustomerId = null;
     _notesController.clear();
     _driverNameController.clear();
     _invoiceDiscountController.text = '0';
@@ -326,22 +308,26 @@ extension _SalesScreenDataPart on _SalesScreenState {
     _nonCashReceivedText = '0';
     _receivedController.text = '0';
     _activeItems = List<AppSalesInvoiceTableRowData>.unmodifiable([
-      const AppSalesInvoiceTableRowData().withCalculatedValues(_currency),
+      AppSalesInvoiceTableRowData(
+        warehouseId: _defaultWarehouseId,
+        warehouse: _defaultWarehouseName,
+      ).withCalculatedValues(_currency),
     ]);
     _syncCalculatedFields();
     _tableDataVersion++;
     _isApplyingFormState = false;
-    _baseline = _currentSnapshot();
+    _dirtyTracker.accept(_currentSnapshot());
     _hasUnsavedChanges = false;
   }
 
   _SalesFormSnapshot _currentSnapshot() => (
         invoiceDateTime: _invoiceDateTime,
-        warehouse: _warehouse,
+        warehouse: _warehouseId,
         saleType: _saleType,
         currency: _currency,
         exchangeRate: _exchangeRateController.text,
         customerName: _customerNameController.text,
+        customerId: _selectedCustomerId?.value,
         notes: _notesController.text,
         driverName: _driverNameController.text,
         invoiceDiscount: _invoiceDiscountController.text,
@@ -358,6 +344,7 @@ extension _SalesScreenDataPart on _SalesScreenState {
           (item) => [
             item.code,
             item.name,
+            item.warehouseId ?? '',
             item.warehouse,
             item.quantity,
             item.salePrice,

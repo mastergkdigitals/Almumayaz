@@ -3,13 +3,13 @@ part of 'sales_screen.dart';
 extension _SalesScreenCalculationsPart on _SalesScreenState {
   void _refreshUnsavedState() {
     if (_isApplyingFormState || !mounted) return;
-    final hasUnsavedChanges = _currentSnapshot() != _baseline;
+    final hasUnsavedChanges = _dirtyTracker.hasChanges(_currentSnapshot());
     if (_hasUnsavedChanges == hasUnsavedChanges) return;
     _setSalesState(() => _hasUnsavedChanges = hasUnsavedChanges);
   }
 
   void _refreshSelectionState() {
-    _hasUnsavedChanges = _currentSnapshot() != _baseline;
+    _hasUnsavedChanges = _dirtyTracker.hasChanges(_currentSnapshot());
   }
 
   void _changeDate(DateTime value) {
@@ -26,9 +26,24 @@ extension _SalesScreenCalculationsPart on _SalesScreenState {
   }
 
   void _changeWarehouse(String value) {
-    if (_warehouse == value) return;
+    if (_warehouseId == value) return;
     _setSalesState(() {
-      _warehouse = value;
+      _warehouseId = value;
+      _refreshSelectionState();
+    });
+  }
+
+  void _changeCustomerText(String _) {
+    if (_selectedCustomerId == null) return;
+    _setSalesState(() {
+      _selectedCustomerId = null;
+      _refreshSelectionState();
+    });
+  }
+
+  void _selectCustomer(Party party) {
+    _setSalesState(() {
+      _selectedCustomerId = party.entityId;
       _refreshSelectionState();
     });
   }

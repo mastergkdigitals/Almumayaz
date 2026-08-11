@@ -1,4 +1,4 @@
-import '../presentation/report_definition.dart';
+import '../domain/report_models.dart';
 
 /// Calculates report summaries from the rows that are currently visible.
 ///

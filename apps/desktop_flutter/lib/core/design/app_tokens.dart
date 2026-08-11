@@ -127,6 +127,18 @@ abstract final class AppModulePalettes {
     light: Color(0xFFD1D5DB),
     shadow: AppModuleColors.settings,
   );
+  static const settingsDefaults = AppModulePalette(
+    dark: Color(0xFF312E81),
+    middle: Color(0xFF4F46E5),
+    light: Color(0xFFA5B4FC),
+    shadow: Color(0xFF4F46E5),
+  );
+  static const settingsSecurity = AppModulePalette(
+    dark: Color(0xFF7F1D1D),
+    middle: Color(0xFFDC2626),
+    light: Color(0xFFFCA5A5),
+    shadow: Color(0xFFB91C1C),
+  );
   static const about = AppModulePalette(
     dark: Color(0xFF155E75),
     middle: AppModuleColors.about,

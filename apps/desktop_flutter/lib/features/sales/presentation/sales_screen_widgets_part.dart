@@ -141,8 +141,6 @@ class _SalesMoneyField extends StatelessWidget {
   }
 }
 
-enum _SalesNavigation { first, previous, next, last }
-
 enum _InvoiceDiscountInputSource { amount, percentage }
 
 typedef _SalesFormSnapshot = ({
@@ -152,6 +150,7 @@ typedef _SalesFormSnapshot = ({
   String currency,
   String exchangeRate,
   String customerName,
+  String? customerId,
   String notes,
   String driverName,
   String invoiceDiscount,

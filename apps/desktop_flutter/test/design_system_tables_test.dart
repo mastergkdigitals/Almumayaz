@@ -25,6 +25,115 @@ void main() {
       ).hasRequiredValues,
       isTrue,
     );
+    expect(
+      const AppSalesInvoiceTableRowData(
+        warehouse: 'مخزن الفرع',
+      ).isEmptyForDefaultWarehouse('مخزن الفرع'),
+      isTrue,
+    );
+    expect(
+      const AppPurchaseInvoiceTableRowData(
+        warehouse: 'مخزن الفرع',
+      ).isEmptyForDefaultWarehouse('مخزن الفرع'),
+      isTrue,
+    );
+  });
+
+  testWidgets(
+      'invoice warehouse options retain historical values with a custom default',
+      (tester) async {
+    List<AppSalesInvoiceTableRowData> salesRows = const [];
+    List<AppPurchaseInvoiceTableRowData> purchaseRows = const [];
+    Widget host(Widget child) {
+      return MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: SizedBox(width: 1900, height: 360, child: child),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(
+      host(
+        AppSalesInvoiceTableTemplate(
+          warehouseOptions: const [
+            AppDropdownOption(
+              value: 'warehouse-branch',
+              label: 'مخزن الفرع',
+            ),
+          ],
+          defaultWarehouse: 'warehouse-branch',
+          defaultWarehouseLabel: 'مخزن الفرع',
+          initialRows: const [
+            AppSalesInvoiceTableRowData(
+              warehouseId: 'warehouse-archived',
+              warehouse: 'مخزن مؤرشف',
+            ),
+          ],
+          onRowsChanged: (rows) => salesRows = rows,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final salesDropdown = tester.widget<AppDropdownField<String>>(
+      find.ancestor(
+        of: find.byKey(
+          const Key('appSalesInvoiceTemplateWarehouseDropdown-r1'),
+        ),
+        matching: find.byType(AppDropdownField<String>),
+      ),
+    );
+    expect(salesDropdown.value, 'warehouse-archived');
+    expect(
+      salesDropdown.options.map((option) => option.value),
+      ['warehouse-archived', 'warehouse-branch'],
+    );
+    salesDropdown.onChanged('warehouse-branch');
+    await tester.pump();
+    expect(salesRows.single.warehouseId, 'warehouse-branch');
+    expect(salesRows.single.warehouse, 'مخزن الفرع');
+
+    await tester.pumpWidget(
+      host(
+        AppPurchaseInvoiceTableTemplate(
+          warehouseOptions: const [
+            AppDropdownOption(
+              value: 'warehouse-branch',
+              label: 'مخزن الفرع',
+            ),
+          ],
+          defaultWarehouse: 'warehouse-branch',
+          defaultWarehouseLabel: 'مخزن الفرع',
+          initialRows: const [
+            AppPurchaseInvoiceTableRowData(
+              warehouseId: 'warehouse-archived',
+              warehouse: 'مخزن مؤرشف',
+            ),
+          ],
+          onRowsChanged: (rows) => purchaseRows = rows,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final purchaseDropdown = tester.widget<AppDropdownField<String>>(
+      find.ancestor(
+        of: find.byKey(
+          const Key('appPurchaseInvoiceTemplateWarehouseDropdown-r1'),
+        ),
+        matching: find.byType(AppDropdownField<String>),
+      ),
+    );
+    expect(purchaseDropdown.value, 'warehouse-archived');
+    expect(
+      purchaseDropdown.options.map((option) => option.value),
+      ['warehouse-archived', 'warehouse-branch'],
+    );
+    purchaseDropdown.onChanged('warehouse-branch');
+    await tester.pump();
+    expect(purchaseRows.single.warehouseId, 'warehouse-branch');
+    expect(purchaseRows.single.warehouse, 'مخزن الفرع');
   });
 
   testWidgets('keeps the list table header fixed while rows scroll',
@@ -414,6 +523,29 @@ void main() {
     for (final key in salesFieldKeys) {
       expect(find.byKey(Key(key)), findsOneWidget);
     }
+    expect(
+      find.ancestor(
+        of: find.byKey(
+          const Key('appSalesInvoiceTemplateQuantityField-r1'),
+        ),
+        matching: find.byType(AppIntegerField),
+      ),
+      findsOneWidget,
+    );
+    for (final key in const [
+      'appSalesInvoiceTemplateSalePriceField-r1',
+      'appSalesInvoiceTemplateDiscountField-r1',
+    ]) {
+      final moneyField = tester.widget<AppMoneyField>(
+        find.ancestor(
+          of: find.byKey(Key(key)),
+          matching: find.byType(AppMoneyField),
+        ),
+      );
+      expect(moneyField.showLabel, isFalse);
+      expect(moneyField.borderRadius, AppRadii.sm);
+      expect(moneyField.icon, isNull);
+    }
 
     final salesTable = tester.widget<Container>(
       find.byKey(const Key('appSalesInvoiceTableTemplate')),
@@ -579,6 +711,34 @@ void main() {
       'appPurchaseInvoiceTemplateTotalCostField-r1',
       'appPurchaseInvoiceTemplateSalePriceField-r1',
     ];
+    for (final key in const [
+      'appPurchaseInvoiceTemplateQuantityField-r1',
+      'appPurchaseInvoiceTemplateContainerField-r1',
+    ]) {
+      final integerField = tester.widget<AppIntegerField>(
+        find.ancestor(
+          of: find.byKey(Key(key)),
+          matching: find.byType(AppIntegerField),
+        ),
+      );
+      expect(integerField.showLabel, isFalse);
+      expect(integerField.borderRadius, AppRadii.sm);
+    }
+    for (final key in const [
+      'appPurchaseInvoiceTemplatePurchasePriceField-r1',
+      'appPurchaseInvoiceTemplateDiscountField-r1',
+      'appPurchaseInvoiceTemplateSalePriceField-r1',
+    ]) {
+      final moneyField = tester.widget<AppMoneyField>(
+        find.ancestor(
+          of: find.byKey(Key(key)),
+          matching: find.byType(AppMoneyField),
+        ),
+      );
+      expect(moneyField.showLabel, isFalse);
+      expect(moneyField.borderRadius, AppRadii.sm);
+      expect(moneyField.icon, isNull);
+    }
     for (final key in purchaseFieldKeys) {
       expect(find.byKey(Key(key)), findsOneWidget);
     }

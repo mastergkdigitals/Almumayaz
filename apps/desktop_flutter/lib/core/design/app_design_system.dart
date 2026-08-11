@@ -22,6 +22,7 @@ export 'components/app_management_panel.dart';
 export 'components/app_module_card.dart';
 export 'components/app_module_dialog.dart';
 export 'components/app_screen_shell.dart';
+export 'components/app_section_layout.dart';
 export 'components/app_shortcuts.dart';
 export 'components/app_statement_dialog.dart';
 export 'components/app_statement_report_dialog.dart';

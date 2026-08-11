@@ -7,11 +7,10 @@ import 'app_autocomplete_field.dart';
 import 'app_dropdown_field.dart';
 import 'app_invoice_field_table.dart';
 import 'app_invoice_item_option.dart';
-import 'app_number_input_formatters.dart';
 import 'app_table.dart';
 import 'app_text_fields.dart';
 
-const _salesInvoiceWarehouseOptions = <AppDropdownOption<String>>[
+const _salesInvoiceDefaultWarehouseOptions = <AppDropdownOption<String>>[
   AppDropdownOption(value: 'الرئيسي', label: 'الرئيسي'),
   AppDropdownOption(value: 'الرصافة', label: 'الرصافة'),
   AppDropdownOption(value: 'الكرادة', label: 'الكرادة'),
@@ -37,6 +36,7 @@ class AppSalesInvoiceTableRowData {
     this.itemId,
     this.code = '',
     this.name = '',
+    this.warehouseId,
     this.warehouse = 'الرئيسي',
     this.quantity = '0',
     this.salePrice = '0',
@@ -49,6 +49,11 @@ class AppSalesInvoiceTableRowData {
   final String? itemId;
   final String code;
   final String name;
+
+  /// Stable repository identity used for validation and persistence.
+  final String? warehouseId;
+
+  /// Display-only snapshot retained for historical invoice lines.
   final String warehouse;
   final String quantity;
   final String salePrice;
@@ -64,12 +69,19 @@ class AppSalesInvoiceTableRowData {
       quantityValue > 0;
 
   bool get isEmpty =>
+      isEmptyForDefaultWarehouse(
+        _salesInvoiceDefaultWarehouseOptions.first.value,
+      );
+
+  bool isEmptyForDefaultWarehouse(String defaultWarehouseId) =>
       code.trim().isEmpty &&
       name.trim().isEmpty &&
       _isBlankOrZeroNumber(quantity) &&
       _isBlankOrZeroNumber(salePrice) &&
       _isBlankOrZeroNumber(discount) &&
-      warehouse.trim() == 'الرئيسي';
+      (warehouseId?.trim().isNotEmpty ?? false
+          ? warehouseId!.trim() == defaultWarehouseId.trim()
+          : warehouse.trim() == defaultWarehouseId.trim());
 
   num get salePriceValue => AppFormatters.parseNumber(salePrice) ?? 0;
 
@@ -111,6 +123,7 @@ class AppSalesInvoiceTableRowData {
       itemId: itemId,
       code: code,
       name: name,
+      warehouseId: warehouseId,
       warehouse: warehouse,
       quantity: quantity,
       salePrice: AppFormatters.moneyByCurrency(
@@ -132,6 +145,7 @@ class AppSalesInvoiceTableRowData {
       itemId: itemId,
       code: code,
       name: name,
+      warehouseId: warehouseId,
       warehouse: warehouse,
       quantity: quantity,
       salePrice: salePrice,
@@ -148,6 +162,42 @@ class AppSalesInvoiceTableRowData {
 num _moneyValueForCurrency(num value, String currencyCode) {
   final formatted = AppFormatters.moneyByCurrency(value, currencyCode);
   return AppFormatters.parseNumber(formatted) ?? 0;
+}
+
+List<AppDropdownOption<String>> _salesWarehouseDropdownOptions({
+  required Iterable<AppDropdownOption<String>> configuredOptions,
+  required String defaultWarehouseId,
+  required String defaultWarehouseLabel,
+  required String? currentWarehouseId,
+  required String currentWarehouseLabel,
+}) {
+  final options = <AppDropdownOption<String>>[];
+  final seen = <String>{};
+
+  void addOption(String value, String label) {
+    final normalizedValue = value.trim();
+    final normalizedLabel = label.trim();
+    if (normalizedValue.isEmpty || !seen.add(normalizedValue)) return;
+    options.add(
+      AppDropdownOption<String>(
+        value: normalizedValue,
+        label: normalizedLabel.isEmpty ? normalizedValue : normalizedLabel,
+      ),
+    );
+  }
+
+  if (currentWarehouseId != null) {
+    addOption(currentWarehouseId, currentWarehouseLabel);
+  }
+  for (final option in configuredOptions) {
+    addOption(option.value, option.label);
+  }
+  addOption(defaultWarehouseId, defaultWarehouseLabel);
+  if (currentWarehouseId == null) {
+    addOption(currentWarehouseLabel, currentWarehouseLabel);
+  }
+
+  return options;
 }
 
 bool _isBlankOrZeroNumber(String value) {
@@ -173,6 +223,7 @@ class _SalesInvoiceTemplateRow {
         priceAfterDiscountController =
             TextEditingController(text: data.priceAfterDiscount),
         totalController = TextEditingController(text: data.total),
+        warehouseId = data.warehouseId,
         warehouse = data.warehouse;
 
   final String id;
@@ -189,6 +240,7 @@ class _SalesInvoiceTemplateRow {
   final codeFocusNode = FocusNode();
   final nameFocusNode = FocusNode();
   final quantityFocusNode = FocusNode();
+  String? warehouseId;
   String warehouse;
 
   void setIndex(int value) {
@@ -220,6 +272,9 @@ class AppSalesInvoiceTableTemplate extends StatefulWidget {
     this.summaryTotal = '0',
     this.currencyCode = 'IQD',
     this.itemOptions = const [],
+    this.warehouseOptions = _salesInvoiceDefaultWarehouseOptions,
+    this.defaultWarehouse = 'الرئيسي',
+    this.defaultWarehouseLabel = '',
     this.onRowsChanged,
   });
 
@@ -230,6 +285,13 @@ class AppSalesInvoiceTableTemplate extends StatefulWidget {
   final String summaryTotal;
   final String currencyCode;
   final List<AppInvoiceItemOption> itemOptions;
+  final List<AppDropdownOption<String>> warehouseOptions;
+
+  /// Stable ID used as the dropdown value and persisted in emitted rows.
+  final String defaultWarehouse;
+
+  /// Display label for [defaultWarehouse].
+  final String defaultWarehouseLabel;
   final ValueChanged<List<AppSalesInvoiceTableRowData>>? onRowsChanged;
 
   @override
@@ -242,6 +304,25 @@ class _AppSalesInvoiceTableTemplateState
   final _tableScrollController = ScrollController();
   late List<_SalesInvoiceTemplateRow> _rows;
   var _nextRowId = 1;
+
+  String get _defaultWarehouse {
+    final configuredDefault = widget.defaultWarehouse.trim();
+    if (configuredDefault.isNotEmpty) return configuredDefault;
+    for (final option in widget.warehouseOptions) {
+      final normalized = option.value.trim();
+      if (normalized.isNotEmpty) return normalized;
+    }
+    return _salesInvoiceDefaultWarehouseOptions.first.value;
+  }
+
+  String get _defaultWarehouseLabel {
+    final configuredLabel = widget.defaultWarehouseLabel.trim();
+    if (configuredLabel.isNotEmpty) return configuredLabel;
+    for (final option in widget.warehouseOptions) {
+      if (option.value.trim() == _defaultWarehouse) return option.label;
+    }
+    return _defaultWarehouse;
+  }
 
   @override
   void initState() {
@@ -283,13 +364,17 @@ class _AppSalesInvoiceTableTemplateState
 
   _SalesInvoiceTemplateRow _newRow(
     int index, [
-    AppSalesInvoiceTableRowData data =
-        const AppSalesInvoiceTableRowData(),
+    AppSalesInvoiceTableRowData? data,
   ]) {
+    final rowData = data ??
+        AppSalesInvoiceTableRowData(
+          warehouseId: _defaultWarehouse,
+          warehouse: _defaultWarehouseLabel,
+        );
     return _SalesInvoiceTemplateRow(
       id: 'r${_nextRowId++}',
       index: index,
-      data: data.withCalculatedValues(widget.currencyCode),
+      data: rowData.withCalculatedValues(widget.currencyCode),
     );
   }
 
@@ -325,7 +410,18 @@ class _AppSalesInvoiceTableTemplateState
     String? value,
   ) {
     if (value == null) return;
-    setState(() => row.warehouse = value);
+    final options = _salesWarehouseDropdownOptions(
+      configuredOptions: widget.warehouseOptions,
+      defaultWarehouseId: _defaultWarehouse,
+      defaultWarehouseLabel: _defaultWarehouseLabel,
+      currentWarehouseId: row.warehouseId,
+      currentWarehouseLabel: row.warehouse,
+    );
+    final selected = options.firstWhere((option) => option.value == value);
+    setState(() {
+      row.warehouseId = selected.value;
+      row.warehouse = selected.label;
+    });
     _notifyRowsChanged();
   }
 
@@ -398,6 +494,7 @@ class _AppSalesInvoiceTableTemplateState
             itemId: row.itemId,
             code: row.codeController.text,
             name: row.nameController.text,
+            warehouseId: row.warehouseId,
             warehouse: row.warehouse,
             quantity: row.quantityController.text,
             salePrice: row.salePriceController.text,
@@ -518,15 +615,21 @@ class _AppSalesInvoiceTableTemplateState
         label: 'المخزن',
         icon: Icons.warehouse_rounded,
         accentColor: AppModuleColors.sales,
-        value: row.warehouse,
-        options: _salesInvoiceWarehouseOptions,
+        value: row.warehouseId ?? row.warehouse,
+        options: _salesWarehouseDropdownOptions(
+          configuredOptions: widget.warehouseOptions,
+          defaultWarehouseId: _defaultWarehouse,
+          defaultWarehouseLabel: _defaultWarehouseLabel,
+          currentWarehouseId: row.warehouseId,
+          currentWarehouseLabel: row.warehouse,
+        ),
         onChanged: (value) => _changeWarehouse(row, value),
         useIntrinsicHeight: true,
         minimumHeight: AppControlHeights.invoiceField,
         showLabel: false,
         borderRadius: AppRadii.sm,
       ),
-      AppTextField(
+      AppIntegerField(
         fieldKey: Key(
           'appSalesInvoiceTemplateQuantityField-${row.id}',
         ),
@@ -536,50 +639,38 @@ class _AppSalesInvoiceTableTemplateState
         accentColor: AppModuleColors.sales,
         textAlign: TextAlign.center,
         textDirection: TextDirection.ltr,
-        keyboardType: TextInputType.number,
-        inputFormatters: const [AppIntegerInputFormatter()],
         textInputAction: TextInputAction.next,
         onChanged: (_) => _changeCalculatedValue(row),
         showLabel: false,
         borderRadius: AppRadii.sm,
       ),
-      AppTextField(
+      AppMoneyField(
         fieldKey: Key(
           'appSalesInvoiceTemplateSalePriceField-${row.id}',
         ),
         controller: row.salePriceController,
         label: 'سعر البيع',
+        icon: null,
         accentColor: AppModuleColors.sales,
         textAlign: TextAlign.center,
         textDirection: TextDirection.ltr,
-        keyboardType:
-            const TextInputType.numberWithOptions(decimal: true),
-        inputFormatters: [
-          AppMoneyInputFormatter(
-            decimalPlaces: widget.currencyCode == 'USD' ? 2 : 0,
-          ),
-        ],
+        decimalPlaces: widget.currencyCode == 'USD' ? 2 : 0,
         textInputAction: TextInputAction.next,
         onChanged: (_) => _changeCalculatedValue(row),
         showLabel: false,
         borderRadius: AppRadii.sm,
       ),
-      AppTextField(
+      AppMoneyField(
         fieldKey: Key(
           'appSalesInvoiceTemplateDiscountField-${row.id}',
         ),
         controller: row.discountController,
         label: 'الخصم',
+        icon: null,
         accentColor: AppModuleColors.sales,
         textAlign: TextAlign.center,
         textDirection: TextDirection.ltr,
-        keyboardType:
-            const TextInputType.numberWithOptions(decimal: true),
-        inputFormatters: [
-          AppMoneyInputFormatter(
-            decimalPlaces: widget.currencyCode == 'USD' ? 2 : 0,
-          ),
-        ],
+        decimalPlaces: widget.currencyCode == 'USD' ? 2 : 0,
         textInputAction: TextInputAction.next,
         onChanged: (_) => _changeCalculatedValue(row),
         showLabel: false,

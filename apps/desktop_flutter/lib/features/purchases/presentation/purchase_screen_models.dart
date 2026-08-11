@@ -1,12 +1,5 @@
 part of 'purchase_screen.dart';
 
-const _purchaseWarehouseOptions = <AppDropdownOption<String>>[
-  AppDropdownOption(value: 'الرئيسي', label: 'الرئيسي'),
-  AppDropdownOption(value: 'الرصافة', label: 'الرصافة'),
-  AppDropdownOption(value: 'الكرادة', label: 'الكرادة'),
-  AppDropdownOption(value: 'المنصور', label: 'المنصور'),
-];
-
 const _purchaseTypeOptions = <AppDropdownOption<String>>[
   AppDropdownOption(value: 'محلي', label: 'محلي'),
   AppDropdownOption(value: 'إستيراد', label: 'إستيراد'),
@@ -23,19 +16,12 @@ const _purchaseCurrencyOptions = <AppDropdownOption<String>>[
   AppDropdownOption(value: 'USD', label: 'دولار'),
 ];
 
-const _purchaseSupplierOptions = <String>[
-  'شركة الرافدين للتجهيز',
-  'شركة التجارة العالمية',
-  'مجهز الكرادة',
-  'مجهز الفرات',
-  'شركة الموصل الحديثة',
-];
-
-class _DemoPurchaseInvoice {
-  const _DemoPurchaseInvoice({
+class _PurchaseInvoiceViewData {
+  const _PurchaseInvoiceViewData({
     required this.source,
-    required this.id,
+    required this.documentNumber,
     required this.dateTime,
+    required this.warehouseId,
     required this.warehouse,
     required this.purchaseType,
     required this.paymentType,
@@ -55,8 +41,12 @@ class _DemoPurchaseInvoice {
   });
 
   final PurchaseInvoice source;
-  final String id;
+  final int documentNumber;
+
+  EntityId get entityId => source.id;
+
   final DateTime dateTime;
+  final EntityId warehouseId;
   final String warehouse;
   final String purchaseType;
   final String paymentType;
@@ -75,8 +65,6 @@ class _DemoPurchaseInvoice {
   final List<AppPurchaseInvoiceTableRowData> items;
 }
 
-enum _PurchaseNavigation { first, previous, next, last }
-
 enum _PurchaseDiscountInputSource { amount, percentage }
 
 typedef _PurchaseFormSnapshot = ({
@@ -87,6 +75,7 @@ typedef _PurchaseFormSnapshot = ({
   String currency,
   String exchangeRate,
   String supplierName,
+  String? supplierId,
   String notes,
   String expenses,
   String invoiceDiscount,

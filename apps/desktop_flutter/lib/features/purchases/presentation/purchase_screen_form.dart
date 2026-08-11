@@ -1,17 +1,19 @@
 part of 'purchase_screen.dart';
 
 extension _PurchaseFormState on _PurchaseScreenState {
-  void _loadInvoice(_DemoPurchaseInvoice invoice) {
+  void _loadInvoice(_PurchaseInvoiceViewData invoice) {
     _isApplyingFormState = true;
     _selectedInvoice = invoice;
-    _invoiceNumberController.text = invoice.id;
+    _coordinator?.selection.select(invoice.entityId);
+    _invoiceNumberController.text = '${invoice.documentNumber}';
     _invoiceDateTime = invoice.dateTime;
-    _warehouse = invoice.warehouse;
+    _warehouseId = invoice.warehouseId.value;
     _purchaseType = invoice.purchaseType;
     _paymentType = invoice.paymentType;
     _currency = invoice.currency;
     _exchangeRateController.text = invoice.exchangeRate;
     _supplierNameController.text = invoice.supplierName;
+    _selectedSupplierId = invoice.source.supplierId;
     _notesController.text = invoice.notes;
     _expensesController.text = invoice.expenses;
     _invoiceDiscountController.text = invoice.invoiceDiscount;
@@ -29,21 +31,23 @@ extension _PurchaseFormState on _PurchaseScreenState {
     _syncCalculatedFields();
     _tableDataVersion++;
     _isApplyingFormState = false;
-    _baseline = _currentSnapshot();
+    _dirtyTracker.accept(_currentSnapshot());
     _hasUnsavedChanges = false;
   }
 
   void _setNewForm() {
     _isApplyingFormState = true;
     _selectedInvoice = null;
+    _coordinator?.selection.clear();
     _invoiceNumberController.text = '$_nextInvoiceNumber';
     _invoiceDateTime = DateTime.now();
-    _warehouse = _defaultWarehouse;
+    _warehouseId = _defaultWarehouseId;
     _purchaseType = _defaultPurchaseType;
     _paymentType = _defaultPaymentType;
     _currency = _defaultCurrency;
     _exchangeRateController.text = _defaultExchangeRate;
     _supplierNameController.clear();
+    _selectedSupplierId = null;
     _notesController.clear();
     _expensesController.text = '0';
     _invoiceDiscountController.text = '0';
@@ -52,22 +56,28 @@ extension _PurchaseFormState on _PurchaseScreenState {
     _balanceBeforeInvoice = 0;
     _nonCashPaidText = '0';
     _paidController.text = '0';
-    _activeItems = const [AppPurchaseInvoiceTableRowData()];
+    _activeItems = [
+      AppPurchaseInvoiceTableRowData(
+        warehouseId: _defaultWarehouseId,
+        warehouse: _defaultWarehouseName,
+      ),
+    ];
     _syncCalculatedFields();
     _tableDataVersion++;
     _isApplyingFormState = false;
-    _baseline = _currentSnapshot();
+    _dirtyTracker.accept(_currentSnapshot());
     _hasUnsavedChanges = false;
   }
 
   _PurchaseFormSnapshot _currentSnapshot() => (
         invoiceDateTime: _invoiceDateTime,
-        warehouse: _warehouse,
+        warehouse: _warehouseId,
         purchaseType: _purchaseType,
         paymentType: _paymentType,
         currency: _currency,
         exchangeRate: _exchangeRateController.text,
         supplierName: _supplierNameController.text,
+        supplierId: _selectedSupplierId?.value,
         notes: _notesController.text,
         expenses: _expensesController.text,
         invoiceDiscount: _invoiceDiscountController.text,
@@ -84,6 +94,7 @@ extension _PurchaseFormState on _PurchaseScreenState {
           (item) => [
             item.code,
             item.name,
+            item.warehouseId ?? '',
             item.warehouse,
             item.quantity,
             item.container,
@@ -101,13 +112,13 @@ extension _PurchaseFormState on _PurchaseScreenState {
 
   void _refreshUnsavedState() {
     if (_isApplyingFormState || !mounted) return;
-    final hasUnsavedChanges = _currentSnapshot() != _baseline;
+    final hasUnsavedChanges = _dirtyTracker.hasChanges(_currentSnapshot());
     if (_hasUnsavedChanges == hasUnsavedChanges) return;
     _setPurchaseState(() => _hasUnsavedChanges = hasUnsavedChanges);
   }
 
   void _refreshSelectionState() {
-    _hasUnsavedChanges = _currentSnapshot() != _baseline;
+    _hasUnsavedChanges = _dirtyTracker.hasChanges(_currentSnapshot());
   }
 
   void _changeDate(DateTime value) {
@@ -124,9 +135,24 @@ extension _PurchaseFormState on _PurchaseScreenState {
   }
 
   void _changeWarehouse(String value) {
-    if (_warehouse == value) return;
+    if (_warehouseId == value) return;
     _setPurchaseState(() {
-      _warehouse = value;
+      _warehouseId = value;
+      _refreshSelectionState();
+    });
+  }
+
+  void _changeSupplierText(String _) {
+    if (_selectedSupplierId == null) return;
+    _setPurchaseState(() {
+      _selectedSupplierId = null;
+      _refreshSelectionState();
+    });
+  }
+
+  void _selectSupplier(Party party) {
+    _setPurchaseState(() {
+      _selectedSupplierId = party.entityId;
       _refreshSelectionState();
     });
   }
@@ -299,6 +325,7 @@ extension _PurchaseFormState on _PurchaseScreenState {
         rows: _activeItems,
         currencyCode: _currency,
         invoiceAdjustment: _invoiceAdjustment,
+        defaultWarehouse: _defaultWarehouseId,
       );
       _activeItems = rowCalculation.rows;
       _summaryQuantity = AppFormatters.quantity(quantity);
@@ -379,12 +406,25 @@ extension _PurchaseFormState on _PurchaseScreenState {
       AppToast.showWarning(context, 'أدخل اسم المجهز أولاً');
       return false;
     }
-    if (_resolveSupplierId(supplierName) == null) {
+    _selectedSupplierId ??= _uniqueSupplierIdForText(supplierName);
+    if (_selectedSupplierId == null ||
+        !_supplierOptions.any(
+          (party) => party.entityId == _selectedSupplierId,
+        )) {
       AppToast.showWarning(context, 'اختر مجهزاً موجوداً من القائمة');
       return false;
     }
+    if (!_warehouseNamesById.containsKey(_warehouseId)) {
+      AppToast.showWarning(context, 'اختر مخزناً موجوداً');
+      return false;
+    }
 
-    final meaningfulItems = _activeItems.where((item) => !item.isEmpty).toList();
+    final meaningfulItems = _activeItems
+        .where(
+          (item) =>
+              !item.isEmptyForDefaultWarehouse(_defaultWarehouseId),
+        )
+        .toList();
     if (meaningfulItems.any((item) => !item.hasRequiredValues)) {
       AppToast.showWarning(
         context,
@@ -418,7 +458,9 @@ extension _PurchaseFormState on _PurchaseScreenState {
       return false;
     }
     if (meaningfulItems.any(
-      (item) => !_warehouseIdsByLabel.containsKey(item.warehouse),
+      (item) =>
+          item.warehouseId == null ||
+          !_warehouseNamesById.containsKey(item.warehouseId),
     )) {
       AppToast.showWarning(context, 'اختر مخزناً موجوداً لكل سطر');
       return false;
@@ -426,9 +468,22 @@ extension _PurchaseFormState on _PurchaseScreenState {
     return true;
   }
 
+  EntityId? _uniqueSupplierIdForText(String value) {
+    final normalized = normalizePartyName(value);
+    if (normalized.isEmpty) return null;
+    final matches = _supplierOptions.where(
+      (party) => normalizePartyName(party.name) == normalized,
+    );
+    if (matches.length != 1) return null;
+    return matches.single.entityId;
+  }
+
   PurchaseInvoice _domainInvoiceFromForm({required EntityId entityId}) {
     final items = List<AppPurchaseInvoiceTableRowData>.unmodifiable(
-      _activeItems.where((item) => !item.isEmpty),
+      _activeItems.where(
+        (item) =>
+            !item.isEmptyForDefaultWarehouse(_defaultWarehouseId),
+      ),
     );
     final currency = AppCurrency.parse(_currency);
     final supplierName = _supplierNameController.text.trim();
@@ -447,7 +502,7 @@ extension _PurchaseFormState on _PurchaseScreenState {
             row.name,
             itemId: row.itemId,
           )!,
-          warehouseId: _warehouseIdsByLabel[row.warehouse]!,
+          warehouseId: EntityId(row.warehouseId!),
           quantity: WholeQuantity(row.quantityValue),
           containerQuantity: WholeQuantity(
             AppFormatters.parseInteger(row.container) ?? 0,
@@ -469,9 +524,9 @@ extension _PurchaseFormState on _PurchaseScreenState {
       documentNumber: int.parse(_invoiceNumberController.text),
       date: BusinessDate.fromDateTime(_invoiceDateTime),
       minuteOfDay: _invoiceDateTime.hour * 60 + _invoiceDateTime.minute,
-      supplierId: _resolveSupplierId(supplierName)!,
+      supplierId: _selectedSupplierId!,
       supplierNameSnapshot: supplierName,
-      defaultWarehouseId: _warehouseIdsByLabel[_warehouse]!,
+      defaultWarehouseId: EntityId(_warehouseId),
       currency: currency,
       exchangeRate: ExchangeRate.parse(_exchangeRateController.text),
       purchaseKind: switch (_purchaseType) {
@@ -492,14 +547,6 @@ extension _PurchaseFormState on _PurchaseScreenState {
     );
   }
 
-  EntityId? _resolveSupplierId(String name) {
-    final normalized = normalizePartyName(name);
-    for (final entry in _supplierIdsByName.entries) {
-      if (normalizePartyName(entry.key) == normalized) return entry.value;
-    }
-    return null;
-  }
-
   EntityId? _resolveItemId(
     String code,
     String name, {
@@ -509,22 +556,16 @@ extension _PurchaseFormState on _PurchaseScreenState {
       final resolvedId = EntityId(itemId);
       return _knownItemIds.contains(resolvedId) ? resolvedId : null;
     }
-    final legacyId = _legacyPurchaseItemId(code, name);
-    if (legacyId != null) return legacyId;
-    final codeId = _itemIdsByLabel[_normalizedLookup(code)];
-    final nameId = _itemIdsByLabel[_normalizedLookup(name)];
-    return codeId != null && codeId == nameId ? codeId : null;
+    final normalizedCode = _normalizedLookup(code);
+    final normalizedName = _normalizedLookup(name);
+    final matches = _itemOptions.where(
+      (option) =>
+          _normalizedLookup(option.code) == normalizedCode &&
+          _normalizedLookup(option.name) == normalizedName,
+    );
+    if (matches.length != 1) return null;
+    return EntityId(matches.single.id);
   }
-
-  EntityId? _legacyPurchaseItemId(String code, String name) =>
-      switch ('${code.trim()}|${_normalizedLookup(name)}') {
-        'P1001|ورق طباعة a4' => EntityId('item-003'),
-        'P1002|حبر طابعة' => EntityId('item-002'),
-        'P2001|طابعة حرارية' => EntityId('item-007'),
-        'P2002|ماسح باركود' => EntityId('item-008'),
-        'P3001|حافظة مستندات' => EntityId('item-006'),
-        _ => null,
-      };
 
   String _twoDigits(int value) => value.toString().padLeft(2, '0');
 }

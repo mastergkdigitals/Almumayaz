@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/design/app_design_system.dart';
+import '../domain/report_models.dart';
+
+export '../domain/report_models.dart';
 
 class ReportDefinition {
   const ReportDefinition({
@@ -26,7 +29,6 @@ class ReportVariantDefinition {
     required this.filters,
     required this.metrics,
     required this.columns,
-    this.rows = const [],
     this.minimumColumnWidth = 135,
   }) : assert(columns.length > 0);
 
@@ -36,17 +38,8 @@ class ReportVariantDefinition {
   final List<ReportFilterDefinition> filters;
   final List<ReportMetricDefinition> metrics;
   final List<ReportColumnDefinition> columns;
-
-  /// Kept only for source compatibility with early report definitions.
-  ///
-  /// Production and demo rows are loaded through `ReportRowsService`; report
-  /// metadata must not own the current result set.
-  @Deprecated('Load report rows through ReportRowsService instead.')
-  final List<ReportRowDefinition> rows;
   final double minimumColumnWidth;
 }
-
-enum ReportFilterKind { dateRange, dropdown }
 
 class ReportFilterDefinition {
   const ReportFilterDefinition.dateRange({
@@ -82,31 +75,6 @@ class ReportFilterDefinition {
   }
 }
 
-class ReportFilterOption {
-  const ReportFilterOption(this.value, this.label);
-
-  final String value;
-  final String label;
-}
-
-class ReportMetricDefinition {
-  const ReportMetricDefinition({
-    required this.label,
-  });
-
-  final String label;
-}
-
-class ReportMetricValue {
-  const ReportMetricValue({
-    required this.label,
-    required this.value,
-  });
-
-  final String label;
-  final String value;
-}
-
 class ReportColumnDefinition {
   const ReportColumnDefinition({
     required this.label,
@@ -117,26 +85,4 @@ class ReportColumnDefinition {
   final String label;
   final bool numeric;
   final double flex;
-}
-
-class ReportRowDefinition {
-  const ReportRowDefinition({
-    required this.id,
-    required this.cells,
-    this.date,
-    this.filterValues = const {},
-    this.searchTerms = const [],
-  });
-
-  final String id;
-  final List<String> cells;
-  final DateTime? date;
-  final Map<String, String> filterValues;
-  final List<String> searchTerms;
-
-  bool matchesSearch(String query) {
-    if (query.isEmpty) return true;
-    final searchable = [...cells, ...searchTerms].join(' ').toLowerCase();
-    return searchable.contains(query.toLowerCase());
-  }
 }

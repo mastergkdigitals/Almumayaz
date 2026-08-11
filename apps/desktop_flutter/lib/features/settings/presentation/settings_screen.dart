@@ -6,20 +6,6 @@ import '../../../core/design/app_design_system.dart';
 import '../../permissions/domain/permission_models.dart';
 import 'widgets/settings_sections.dart';
 
-const _oldDefaultsSettingsPalette = AppModulePalette(
-  dark: Color(0xFF312E81),
-  middle: Color(0xFF4F46E5),
-  light: Color(0xFFA5B4FC),
-  shadow: Color(0xFF4F46E5),
-);
-
-const _oldActivityLogPalette = AppModulePalette(
-  dark: Color(0xFF7F1D1D),
-  middle: Color(0xFFDC2626),
-  light: Color(0xFFFCA5A5),
-  shadow: Color(0xFFB91C1C),
-);
-
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -292,7 +278,7 @@ enum _SettingsSection {
     id: 'defaultSettings',
     title: 'الإعدادات الافتراضية',
     icon: Icons.tune_rounded,
-    palette: _oldDefaultsSettingsPalette,
+    palette: AppModulePalettes.settingsDefaults,
   ),
   masterData(
     id: 'masterData',
@@ -310,7 +296,7 @@ enum _SettingsSection {
     id: 'usersSecurity',
     title: 'المستخدمون والأمان',
     icon: Icons.admin_panel_settings_rounded,
-    palette: _oldActivityLogPalette,
+    palette: AppModulePalettes.settingsSecurity,
   ),
   archive(
     id: 'archive',

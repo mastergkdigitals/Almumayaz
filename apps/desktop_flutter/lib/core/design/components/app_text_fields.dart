@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../app_tokens.dart';
+import 'app_header_button.dart';
 import 'app_number_input_formatters.dart';
 
 class AppFieldIconButton extends StatelessWidget {
@@ -22,31 +23,35 @@ class AppFieldIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ExcludeFocus(
-      child: IconButton(
-        key: buttonKey,
-        tooltip: tooltip,
-        onPressed: onPressed,
-        icon: Icon(icon),
-        style: ButtonStyle(
-          foregroundColor: WidgetStatePropertyAll<Color>(color),
-          elevation: const WidgetStatePropertyAll<double>(0),
-          backgroundColor:
-              const WidgetStatePropertyAll<Color>(Colors.transparent),
-          shadowColor:
-              const WidgetStatePropertyAll<Color>(Colors.transparent),
-          surfaceTintColor:
-              const WidgetStatePropertyAll<Color>(Colors.transparent),
-          overlayColor:
-              const WidgetStatePropertyAll<Color>(Colors.transparent),
-          mouseCursor: WidgetStateProperty.resolveWith<MouseCursor?>(
-            (states) => states.contains(WidgetState.disabled)
-                ? SystemMouseCursors.basic
-                : SystemMouseCursors.click,
-          ),
-          splashFactory: NoSplash.splashFactory,
+    final button = IconButton(
+      key: buttonKey,
+      onPressed: onPressed,
+      icon: Icon(icon),
+      style: ButtonStyle(
+        foregroundColor: WidgetStatePropertyAll<Color>(color),
+        elevation: const WidgetStatePropertyAll<double>(0),
+        backgroundColor:
+            const WidgetStatePropertyAll<Color>(Colors.transparent),
+        shadowColor:
+            const WidgetStatePropertyAll<Color>(Colors.transparent),
+        surfaceTintColor:
+            const WidgetStatePropertyAll<Color>(Colors.transparent),
+        overlayColor:
+            const WidgetStatePropertyAll<Color>(Colors.transparent),
+        mouseCursor: WidgetStateProperty.resolveWith<MouseCursor?>(
+          (states) => states.contains(WidgetState.disabled)
+              ? SystemMouseCursors.basic
+              : SystemMouseCursors.click,
         ),
+        splashFactory: NoSplash.splashFactory,
       ),
+    );
+    final message = tooltip?.trim();
+
+    return ExcludeFocus(
+      child: message == null || message.isEmpty
+          ? button
+          : AppTooltip(message: message, child: button),
     );
   }
 }
@@ -399,6 +404,8 @@ class AppIntegerField extends StatelessWidget {
     this.textAlign = TextAlign.right,
     this.enabled = true,
     this.readOnly = false,
+    this.showLabel = true,
+    this.borderRadius,
   });
 
   final TextEditingController controller;
@@ -415,6 +422,8 @@ class AppIntegerField extends StatelessWidget {
   final TextAlign textAlign;
   final bool enabled;
   final bool readOnly;
+  final bool showLabel;
+  final double? borderRadius;
 
   @override
   Widget build(BuildContext context) {
@@ -435,6 +444,8 @@ class AppIntegerField extends StatelessWidget {
       textInputAction: textInputAction,
       keyboardType: TextInputType.number,
       inputFormatters: const [AppIntegerInputFormatter()],
+      showLabel: showLabel,
+      borderRadius: borderRadius,
     );
   }
 }
@@ -457,12 +468,14 @@ class AppMoneyField extends StatelessWidget {
     this.enabled = true,
     this.readOnly = false,
     this.decimalPlaces = 4,
+    this.showLabel = true,
+    this.borderRadius,
   }) : assert(decimalPlaces >= 0);
 
   final TextEditingController controller;
   final String label;
   final Key? fieldKey;
-  final IconData icon;
+  final IconData? icon;
   final Color? accentColor;
   final FocusNode? focusNode;
   final String? Function(String?)? validator;
@@ -474,6 +487,8 @@ class AppMoneyField extends StatelessWidget {
   final bool enabled;
   final bool readOnly;
   final int decimalPlaces;
+  final bool showLabel;
+  final double? borderRadius;
 
   @override
   Widget build(BuildContext context) {
@@ -496,6 +511,8 @@ class AppMoneyField extends StatelessWidget {
       inputFormatters: [
         AppMoneyInputFormatter(decimalPlaces: decimalPlaces),
       ],
+      showLabel: showLabel,
+      borderRadius: borderRadius,
     );
   }
 }

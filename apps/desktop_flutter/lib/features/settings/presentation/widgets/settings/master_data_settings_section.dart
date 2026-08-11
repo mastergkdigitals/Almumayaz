@@ -147,7 +147,7 @@ class _MasterDataSettingsSectionState
       primary: false,
       padding: const EdgeInsets.all(AppSpacing.md),
       children: [
-        SettingsTemplateTabs<String>(
+        AppSelectionTabs<String>(
           keyPrefix: 'masterDataTab_',
           accentColor: widget.accentColor,
           selected: _selectedTab,
@@ -236,7 +236,7 @@ class _GroupsTypesTemplate extends StatelessWidget {
       records,
       OperationalMasterDataKind.itemType,
     );
-    return SettingsResponsiveGrid(
+    return AppResponsiveGrid(
       key: const Key('settingsGroupsTypesTemplate'),
       preferredColumns: 2,
       minimumChildHeight: 620,
@@ -300,7 +300,7 @@ class _WorkplacesBranchesTemplate extends StatelessWidget {
       records,
       OperationalMasterDataKind.branch,
     );
-    return SettingsResponsiveGrid(
+    return AppResponsiveGrid(
       key: const Key('settingsWorkplacesBranchesTemplate'),
       preferredColumns: 2,
       minimumChildHeight: 620,
@@ -364,7 +364,7 @@ class _CashboxAccountsTemplate extends StatelessWidget {
       records,
       OperationalMasterDataKind.cashboxSubaccount,
     );
-    return SettingsResponsiveGrid(
+    return AppResponsiveGrid(
       key: const Key('settingsCashboxAccountsTemplate'),
       preferredColumns: 2,
       minimumChildHeight: 620,
@@ -438,7 +438,7 @@ class _SettingsManagementPanelAdapter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SettingsTemplatePanel(
+    return AppSectionPanel(
       key: Key('${keyPrefix}Panel'),
       title: title,
       icon: icon,

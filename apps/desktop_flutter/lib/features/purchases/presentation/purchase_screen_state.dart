@@ -28,11 +28,11 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
   final _currentBalanceController = TextEditingController(text: '0');
   final _expensesFocusNode = FocusNode();
 
-  final List<_DemoPurchaseInvoice> _purchaseInvoices = [];
+  final List<_PurchaseInvoiceViewData> _purchaseInvoices = [];
   DateTime _invoiceDateTime = DateTime.now();
-  _DemoPurchaseInvoice? _selectedInvoice;
+  _PurchaseInvoiceViewData? _selectedInvoice;
   List<AppPurchaseInvoiceTableRowData> _activeItems = const [];
-  var _warehouse = 'الرئيسي';
+  var _warehouseId = '';
   var _purchaseType = 'محلي';
   var _paymentType = 'نقدي';
   var _currency = 'IQD';
@@ -45,30 +45,30 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
   var _discountInputSource = _PurchaseDiscountInputSource.amount;
   num _balanceBeforeInvoice = 0;
   var _nonCashPaidText = '0';
-  late _PurchaseFormSnapshot _baseline;
+  late final InvoiceEditorDirtyTracker<_PurchaseFormSnapshot> _dirtyTracker;
   var _isApplyingFormState = false;
   var _hasUnsavedChanges = false;
   var _isDocumentActionRunning = false;
   Future<bool>? _pendingDiscardConfirmation;
   AppStore? _store;
   late PartyStatementService _statementService;
-  InvoiceEditorCoordinator<_DemoPurchaseInvoice>? _coordinator;
-  AppDataState<List<_DemoPurchaseInvoice>> _invoiceState =
+  InvoiceEditorCoordinator<_PurchaseInvoiceViewData>? _coordinator;
+  AppDataState<List<_PurchaseInvoiceViewData>> _invoiceState =
       const AppDataState.loading();
   var _didStartLoading = false;
   var _isRepositoryBusy = false;
-  var _supplierOptions = _purchaseSupplierOptions;
-  var _warehouseOptions = _purchaseWarehouseOptions;
-  var _defaultWarehouse = 'الرئيسي';
+  List<Party> _supplierOptions = const [];
+  EntityId? _selectedSupplierId;
+  List<AppDropdownOption<String>> _warehouseOptions = const [];
+  var _defaultWarehouseId = '';
+  var _defaultWarehouseName = '';
   var _defaultPurchaseType = 'محلي';
   var _defaultPaymentType = 'نقدي';
   var _defaultCurrency = 'IQD';
   var _defaultExchangeRate = '1,310';
   var _repositoryNextInvoiceNumber = 1;
-  final Map<String, EntityId> _supplierIdsByName = {};
-  final Map<String, EntityId> _itemIdsByLabel = {};
   final Set<EntityId> _knownItemIds = {};
-  final Map<String, EntityId> _warehouseIdsByLabel = {};
+  final Map<String, String> _warehouseNamesById = {};
   List<AppInvoiceItemOption> _itemOptions = const [];
 
   bool _allowsPurchaseAction(PermissionAction action) =>
@@ -86,23 +86,15 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
         _paidController,
       ];
 
-  int get _selectedInvoiceIndex {
-    final selectedId = _selectedInvoice?.id;
-    if (selectedId == null) return -1;
-    return _purchaseInvoices.indexWhere(
-      (invoice) => invoice.id == selectedId,
-    );
-  }
-
   int get _nextInvoiceNumber {
     return _repositoryNextInvoiceNumber;
   }
 
-  List<AppSearchRecord<String>> get _purchaseSearchRecords => [
+  List<AppSearchRecord<EntityId>> get _purchaseSearchRecords => [
         for (final invoice in _purchaseInvoices)
           AppSearchRecord(
-            value: invoice.id,
-            title: 'قائمة شراء رقم ${invoice.id}',
+            value: invoice.entityId,
+            title: 'قائمة شراء رقم ${invoice.documentNumber}',
             subtitle: invoice.supplierName,
             details: invoice.searchDetails,
             searchTerms: invoice.searchTerms,
@@ -113,7 +105,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
   @override
   void initState() {
     super.initState();
-    _baseline = _currentSnapshot();
+    _dirtyTracker = InvoiceEditorDirtyTracker(_currentSnapshot());
     for (final controller in _editableControllers) {
       controller.addListener(_refreshUnsavedState);
     }
@@ -132,8 +124,9 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
       purchases: repositories.purchases,
       cashbox: repositories.cashbox,
     );
-    _coordinator = InvoiceEditorCoordinator<_DemoPurchaseInvoice>(
+    _coordinator = InvoiceEditorCoordinator<_PurchaseInvoiceViewData>(
       loadRecords: _loadRepositoryInvoices,
+      idOf: (invoice) => invoice.entityId,
     );
     unawaited(_loadData());
   }
@@ -176,12 +169,12 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
     Navigator.of(context).pop();
   }
 
-  void _navigate(_PurchaseNavigation destination) {
+  void _navigate(InvoiceEditorNavigation destination) {
     unawaited(_navigateAfterConfirmation(destination));
   }
 
   Future<void> _navigateAfterConfirmation(
-    _PurchaseNavigation destination,
+    InvoiceEditorNavigation destination,
   ) async {
     if (!await _confirmDiscardChanges() || !mounted) return;
 
@@ -190,22 +183,9 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
       return;
     }
 
-    final selectedIndex = _selectedInvoiceIndex;
-    final target = switch (destination) {
-      _PurchaseNavigation.first => _purchaseInvoices.first,
-      _PurchaseNavigation.previous => selectedIndex < 0
-          ? _purchaseInvoices.last
-          : _purchaseInvoices[selectedIndex <= 0 ? 0 : selectedIndex - 1],
-      _PurchaseNavigation.next => selectedIndex < 0
-          ? _purchaseInvoices.first
-          : selectedIndex >= _purchaseInvoices.length - 1
-              ? null
-              : _purchaseInvoices[selectedIndex + 1],
-      _PurchaseNavigation.last =>
-        selectedIndex == _purchaseInvoices.length - 1
-            ? null
-            : _purchaseInvoices.last,
-    };
+    final coordinator = _coordinator!;
+    coordinator.selection.select(_selectedInvoice?.entityId);
+    final target = coordinator.selection.navigate(destination);
 
     setState(() {
       if (target == null) {
@@ -258,7 +238,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
 
     late final PurchaseInvoice updated;
     try {
-      updated = _domainInvoiceFromForm(entityId: selected.source.id);
+      updated = _domainInvoiceFromForm(entityId: selected.entityId);
     } catch (_) {
       AppToast.showError(context, 'تحقق من قيم قائمة الشراء المدخلة');
       return;
@@ -280,7 +260,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
         _setNewForm();
       } else {
         final stored = _purchaseInvoices.firstWhere(
-          (invoice) => invoice.id == selected.id,
+          (invoice) => invoice.entityId == selected.entityId,
         );
         _loadInvoice(stored);
       }
@@ -299,7 +279,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
     final confirmed = await AppDialogs.confirm(
       context: context,
       title: 'حذف قائمة الشراء',
-      message: 'هل تريد حذف قائمة الشراء رقم ${selected.id}؟',
+      message: 'هل تريد حذف قائمة الشراء رقم ${selected.documentNumber}؟',
       confirmLabel: 'حذف',
       isDanger: true,
     );
@@ -308,7 +288,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
     final deleted = await _runRepositoryMutation(
       () async {
         await _store!.repositories.purchases
-            .deleteInvoicePermanently(selected.source.id);
+            .deleteInvoicePermanently(selected.entityId);
         return true;
       },
       failureMessage: 'تعذر حذف قائمة الشراء',
@@ -350,7 +330,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
   }
 
   Future<void> _showPurchaseSearch() async {
-    final result = await AppRecordSearchDialog.show<String>(
+    final result = await AppRecordSearchDialog.show<EntityId>(
       context,
       title: 'بحث قوائم الشراء',
       subtitle: 'ابحث عن قائمة شراء محفوظة ثم اخترها',
@@ -367,11 +347,14 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
 
     if (!mounted || result == null) return;
     final invoice = _purchaseInvoices.firstWhere(
-      (candidate) => candidate.id == result,
+      (candidate) => candidate.entityId == result,
     );
     if (!await _confirmDiscardChanges() || !mounted) return;
     setState(() => _loadInvoice(invoice));
-    AppToast.showInfo(context, 'تم اختيار قائمة الشراء رقم $result');
+    AppToast.showInfo(
+      context,
+      'تم اختيار قائمة الشراء رقم ${invoice.documentNumber}',
+    );
   }
 
   void _openEmptyEditor() {

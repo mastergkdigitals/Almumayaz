@@ -2,6 +2,7 @@ import 'package:erp/app/app.dart';
 import 'package:erp/core/app_state/app_store.dart';
 import 'package:erp/core/design/app_design_system.dart';
 import 'package:erp/core/domain/business_values.dart';
+import 'package:erp/features/parties/domain/party.dart';
 import 'package:erp/features/settings/domain/settings_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -83,7 +84,7 @@ void main() {
     expect(
       find.ancestor(
         of: find.byKey(const Key('salesCustomerNameField')),
-        matching: find.byType(AppAutocompleteField<String>),
+        matching: find.byType(AppAutocompleteField<Party>),
       ),
       findsOneWidget,
     );
@@ -181,6 +182,27 @@ void main() {
       find.byKey(const Key('appSalesInvoiceTableSummary')),
       findsOneWidget,
     );
+    expect(
+      find.ancestor(
+        of: _invoiceFieldByPrefix(
+          'appSalesInvoiceTemplateQuantityField-',
+        ),
+        matching: find.byType(AppIntegerField),
+      ),
+      findsOneWidget,
+    );
+    for (final key in const [
+      'appSalesInvoiceTemplateSalePriceField',
+      'appSalesInvoiceTemplateDiscountField',
+    ]) {
+      expect(
+        find.ancestor(
+          of: _invoiceFieldByPrefix('$key-'),
+          matching: find.byType(AppMoneyField),
+        ),
+        findsOneWidget,
+      );
+    }
 
     expect(find.byKey(const Key('salesActionBar')), findsOneWidget);
     expect(find.byKey(const Key('salesSearchField')), findsNothing);
@@ -369,7 +391,7 @@ void main() {
     await _openSalesScreen(tester, store: store);
     await _openNewSalesForm(tester);
 
-    expect(_dropdown(tester, 'salesWarehouseField').value, 'المنصور');
+    expect(_dropdown(tester, 'salesWarehouseField').value, 'warehouse-004');
     expect(_dropdown(tester, 'salesTypeField').value, 'أقساط');
     expect(_dropdown(tester, 'salesCurrencyField').value, 'USD');
     expect(_fieldValue(tester, 'salesExchangeRateField'), '1,310');

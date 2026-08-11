@@ -1,5 +1,5 @@
 import '../../../core/domain/business_values.dart';
-import '../presentation/report_definition.dart';
+import '../domain/report_models.dart';
 import 'report_rows_service.dart';
 
 /// A coherent report read-model built from one refresh of the repositories.

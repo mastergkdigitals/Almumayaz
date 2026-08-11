@@ -2,6 +2,7 @@ import 'package:erp/app/app.dart';
 import 'package:erp/core/app_state/app_store.dart';
 import 'package:erp/core/design/app_design_system.dart';
 import 'package:erp/core/domain/business_values.dart';
+import 'package:erp/features/parties/domain/party.dart';
 import 'package:erp/features/settings/domain/settings_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -196,7 +197,7 @@ void main() {
     expect(
       find.ancestor(
         of: find.byKey(const Key('purchaseSupplierNameField')),
-        matching: find.byType(AppAutocompleteField<String>),
+        matching: find.byType(AppAutocompleteField<Party>),
       ),
       findsOneWidget,
     );
@@ -293,6 +294,31 @@ void main() {
       find.byKey(const Key('appPurchaseInvoiceTableSummary')),
       findsOneWidget,
     );
+    for (final key in const [
+      'appPurchaseInvoiceTemplateQuantityField',
+      'appPurchaseInvoiceTemplateContainerField',
+    ]) {
+      expect(
+        find.ancestor(
+          of: _invoiceFieldByPrefix('$key-'),
+          matching: find.byType(AppIntegerField),
+        ),
+        findsOneWidget,
+      );
+    }
+    for (final key in const [
+      'appPurchaseInvoiceTemplatePurchasePriceField',
+      'appPurchaseInvoiceTemplateDiscountField',
+      'appPurchaseInvoiceTemplateSalePriceField',
+    ]) {
+      expect(
+        find.ancestor(
+          of: _invoiceFieldByPrefix('$key-'),
+          matching: find.byType(AppMoneyField),
+        ),
+        findsOneWidget,
+      );
+    }
     for (final label in const [
       'الحاوية',
       'سعر الشراء',
@@ -1086,7 +1112,10 @@ void main() {
     await _openPurchaseScreen(tester, store: store);
     await _openNewPurchaseForm(tester);
 
-    expect(_dropdown(tester, 'purchaseWarehouseField').value, 'المنصور');
+    expect(
+      _dropdown(tester, 'purchaseWarehouseField').value,
+      'warehouse-004',
+    );
     expect(_dropdown(tester, 'purchaseTypeField').value, 'إستيراد');
     expect(_dropdown(tester, 'purchasePaymentTypeField').value, 'آجل');
     expect(_dropdown(tester, 'purchaseCurrencyField').value, 'USD');

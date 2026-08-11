@@ -1,18 +1,22 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../../../core/design/app_design_system.dart';
 import '../../application/report_data_snapshot_service.dart';
 import '../../application/report_output_service.dart';
+import '../../application/report_output_request_factory.dart';
+import '../../application/report_row_filter.dart';
 import '../../application/report_rows_service.dart';
 import '../../application/report_summary_calculator.dart';
+import '../../data/demo_report_rows_service.dart';
 import '../report_definition.dart';
+import 'report_action_bar.dart';
 import 'report_filter_panel.dart';
 import 'report_header_bar.dart';
 import 'report_output_result_dialog.dart';
 import 'report_results_panel.dart';
+import 'report_shortcut_scope.dart';
 import 'report_summary_bar.dart';
 
 class ReportSectionView extends StatefulWidget {
@@ -144,23 +148,18 @@ class _ReportSectionViewState extends State<ReportSectionView> {
   }
 
   String? get _missingReferenceMessage {
-    for (final filter in _effectiveFilters) {
-      if (filter.kind != ReportFilterKind.dropdown) continue;
-      if (filter.options.isEmpty) {
-        return 'لا توجد قيم متاحة في ${filter.label}. '
-            'راجع البيانات المرجعية ثم أعد المحاولة.';
-      }
-      final selectedValue = _dropdownValues[filter.id];
-      if (selectedValue == null) continue;
-      final referenceExists = filter.options.any(
-        (option) => option.value == selectedValue,
-      );
-      if (!referenceExists) {
-        return 'القيمة المحددة في ${filter.label} لم تعد متاحة. '
-            'امسح التصفية ثم اختر قيمة أخرى.';
-      }
-    }
-    return null;
+    return ReportRowFilter.missingReferenceMessage(
+      filters: [
+        for (final filter in _effectiveFilters)
+          if (filter.kind == ReportFilterKind.dropdown)
+            ReportFilterAvailability(
+              id: filter.id,
+              label: filter.label,
+              options: filter.options,
+            ),
+      ],
+      selectedValues: _dropdownValues,
+    );
   }
 
   void _changeVariant(ReportVariantDefinition variant) {
@@ -292,19 +291,12 @@ class _ReportSectionViewState extends State<ReportSectionView> {
           'تم تجهيز معاينة طباعة ${widget.definition.title}',
         );
       }
-      final request = ReportOutputRequest(
+      final request = ReportOutputRequestFactory.create(
         reportTitle: widget.definition.title,
         variantLabel: _variant.label,
-        columnLabels: [
-          for (final column in _variant.columns) column.label,
-        ],
-        rowValues: [
-          for (final row in rows) row.cells,
-        ],
-        metrics: {
-          for (final metric in _calculatedMetrics)
-            metric.label: metric.value,
-        },
+        columnLabels: _variant.columns.map((column) => column.label),
+        rows: rows,
+        metrics: _calculatedMetrics,
       );
       final result = switch (action) {
         ReportOutputAction.printPreview =>
@@ -356,35 +348,17 @@ class _ReportSectionViewState extends State<ReportSectionView> {
   }
 
   List<ReportRowDefinition> get _visibleRows {
-    final query = _searchController.text.trim();
-
-    return _loadedRows.where((row) {
-      if (_dateRange != null) {
-        final date = row.date;
-        final startDate = DateUtils.dateOnly(_dateRange!.start);
-        final endDate = DateUtils.dateOnly(_dateRange!.end);
-        final rowDate = date == null ? null : DateUtils.dateOnly(date);
-        if (rowDate == null ||
-            rowDate.isBefore(startDate) ||
-            rowDate.isAfter(endDate)) {
-          return false;
-        }
-      }
-
-      for (final filter in _variant.filters) {
-        if (filter.kind != ReportFilterKind.dropdown) continue;
-        final selectedValue = _dropdownValues[filter.id];
-        if (selectedValue == null || selectedValue == 'all') continue;
-        final rowValues =
-            (row.filterValues[filter.id] ?? '').split('|');
-        if (!rowValues.contains('all') &&
-            !rowValues.contains(selectedValue)) {
-          return false;
-        }
-      }
-
-      return row.matchesSearch(query);
-    }).toList(growable: false);
+    return ReportRowFilter.apply(
+      rows: _loadedRows,
+      dropdownFilterIds: [
+        for (final filter in _variant.filters)
+          if (filter.kind == ReportFilterKind.dropdown) filter.id,
+      ],
+      selectedValues: _dropdownValues,
+      startDate: _dateRange?.start,
+      endDate: _dateRange?.end,
+      query: _searchController.text,
+    );
   }
 
   List<ReportMetricValue> get _calculatedMetrics {
@@ -403,156 +377,117 @@ class _ReportSectionViewState extends State<ReportSectionView> {
   Widget build(BuildContext context) {
     final reportId = widget.definition.id;
 
-    return CallbackShortcuts(
-      bindings: {
-        if (widget.allowPrint)
-          const SingleActivator(LogicalKeyboardKey.keyP, control: true):
-              () => _runOutput(ReportOutputAction.printPreview),
-        if (widget.allowExport) ...{
-          const SingleActivator(
-            LogicalKeyboardKey.keyP,
-            control: true,
-            shift: true,
-          ): () => _runOutput(ReportOutputAction.pdf),
-          const SingleActivator(LogicalKeyboardKey.keyE, control: true):
-              () => _runOutput(ReportOutputAction.excel),
-        },
-      },
-      child: AppShortcutScope(
-        onSearch: _focusSearch,
-        child: FocusTraversalGroup(
-          policy: OrderedTraversalPolicy(),
-          child: AppLoadingOverlay(
-            key: Key('reportOutputLoading_$reportId'),
-            isLoading: _activeOutput != null,
-            message: _activeOutput?.loadingMessage ?? 'جاري تجهيز التقرير',
-            child: Column(
-              key: Key('reportContent_$reportId'),
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                ReportHeaderBar(
-                  definition: widget.definition,
-                  definitions: widget.definitions,
-                  selectedVariant: _variant,
-                  accentColor: _accentColor,
-                  outputBusy: _activeOutput != null,
-                  allowPrint: widget.allowPrint,
-                  allowExport: widget.allowExport,
-                  onDefinitionChanged: widget.onDefinitionChanged,
-                  onVariantChanged: _changeVariant,
-                  onPrint: () =>
-                      _runOutput(ReportOutputAction.printPreview),
-                  onPdf: () => _runOutput(ReportOutputAction.pdf),
-                  onExcel: () => _runOutput(ReportOutputAction.excel),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                ReportFilterPanel(
+    return ReportShortcutScope(
+      allowPrint: widget.allowPrint,
+      allowExport: widget.allowExport,
+      onSearch: _focusSearch,
+      onPrint: () => _runOutput(ReportOutputAction.printPreview),
+      onPdf: () => _runOutput(ReportOutputAction.pdf),
+      onExcel: () => _runOutput(ReportOutputAction.excel),
+      child: FocusTraversalGroup(
+        policy: OrderedTraversalPolicy(),
+        child: AppLoadingOverlay(
+          key: Key('reportOutputLoading_$reportId'),
+          isLoading: _activeOutput != null,
+          message: _activeOutput?.loadingMessage ?? 'جاري تجهيز التقرير',
+          child: Column(
+            key: Key('reportContent_$reportId'),
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ReportHeaderBar(
+                definition: widget.definition,
+                definitions: widget.definitions,
+                selectedVariant: _variant,
+                accentColor: _accentColor,
+                outputBusy: _activeOutput != null,
+                allowPrint: widget.allowPrint,
+                allowExport: widget.allowExport,
+                onDefinitionChanged: widget.onDefinitionChanged,
+                onVariantChanged: _changeVariant,
+                onPrint: () =>
+                    _runOutput(ReportOutputAction.printPreview),
+                onPdf: () => _runOutput(ReportOutputAction.pdf),
+                onExcel: () => _runOutput(ReportOutputAction.excel),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              ReportFilterPanel(
+                reportId: reportId,
+                filters: _effectiveFilters,
+                dropdownValues: _dropdownValues,
+                dateRange: _dateRange,
+                accentColor: _accentColor,
+                onDateRangeChanged: (value) {
+                  setState(() {
+                    _dateRange = value;
+                    _loadError = null;
+                  });
+                },
+                onDropdownChanged: (filterId, value) {
+                  final filter = _effectiveFilters.singleWhere(
+                    (candidate) => candidate.id == filterId,
+                  );
+                  setState(() {
+                    _dropdownValues[filterId] =
+                        value ?? filter.options.first.value;
+                    _loadError = null;
+                  });
+                },
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              ReportActionBar(
+                reportId: reportId,
+                searchController: _searchController,
+                searchFocusNode: _searchFocusNode,
+                accentColor: _accentColor,
+                isLoading: _isLoading,
+                onSearchChanged: (_) {
+                  setState(() => _loadError = null);
+                },
+                onSearchSubmitted: (_) => _showReport(),
+                onShow: _showReport,
+                onReset: _resetFilters,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Expanded(
+                child: ReportResultsPanel(
                   reportId: reportId,
-                  filters: _effectiveFilters,
-                  dropdownValues: _dropdownValues,
-                  dateRange: _dateRange,
+                  reportTitle: widget.definition.title,
+                  variant: _variant,
+                  rows: _visibleRows,
+                  selectedRowId: _selectedRowId,
                   accentColor: _accentColor,
-                  onDateRangeChanged: (value) {
+                  isLoading: _isLoading,
+                  loadError: _loadError,
+                  missingReference: _missingReferenceMessage,
+                  tableFocusNode: _tableFocusNode,
+                  tableScrollController: _tableScrollController,
+                  onKeyboardSelectionChanged: (index) {
+                    final rows = _visibleRows;
+                    if (index < 0 || index >= rows.length) return;
+                    setState(() => _selectedRowId = rows[index].id);
+                  },
+                  onRetry: _showReport,
+                  onResetFilters: _resetFilters,
+                  onRowTap: (row) {
+                    _tableFocusNode.requestFocus();
                     setState(() {
-                      _dateRange = value;
-                      _loadError = null;
+                      _selectedRowId = _selectedRowId == row.id
+                          ? null
+                          : row.id;
                     });
                   },
-                  onDropdownChanged: (filterId, value) {
-                    final filter = _effectiveFilters.singleWhere(
-                      (candidate) => candidate.id == filterId,
-                    );
-                    setState(() {
-                      _dropdownValues[filterId] =
-                          value ?? filter.options.first.value;
-                      _loadError = null;
-                    });
-                  },
                 ),
-                const SizedBox(height: AppSpacing.sm),
-                Row(
-                  key: Key('reportActionBar_$reportId'),
-                  children: [
-                    SizedBox(
-                      width: 360,
-                      child: AppSearchField(
-                        fieldKey: Key('reportSearch_$reportId'),
-                        clearButtonKey:
-                            Key('reportSearchClear_$reportId'),
-                        controller: _searchController,
-                        focusNode: _searchFocusNode,
-                        label: 'بحث في النتائج',
-                        hint: 'رقم أو اسم',
-                        accentColor: _accentColor,
-                        onChanged: (_) {
-                          setState(() => _loadError = null);
-                        },
-                        onSubmitted: (_) => _showReport(),
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    AppButton(
-                      key: Key('reportShowButton_$reportId'),
-                      label: 'عرض التقرير',
-                      icon: Icons.assessment_rounded,
-                      variant: AppButtonVariant.primary,
-                      backgroundColor: _accentColor,
-                      minWidth: 142,
-                      height: AppRegularButton.defaultHeight,
-                      onPressed: _isLoading ? null : _showReport,
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    AppRegularButton(
-                      key: Key('reportResetButton_$reportId'),
-                      label: 'مسح التصفية',
-                      icon: Icons.filter_alt_off_rounded,
-                      onPressed: _resetFilters,
-                    ),
-                    const Spacer(),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Expanded(
-                  child: ReportResultsPanel(
-                    reportId: reportId,
-                    reportTitle: widget.definition.title,
-                    variant: _variant,
-                    rows: _visibleRows,
-                    selectedRowId: _selectedRowId,
-                    accentColor: _accentColor,
-                    isLoading: _isLoading,
-                    loadError: _loadError,
-                    missingReference: _missingReferenceMessage,
-                    tableFocusNode: _tableFocusNode,
-                    tableScrollController: _tableScrollController,
-                    onKeyboardSelectionChanged: (index) {
-                      final rows = _visibleRows;
-                      if (index < 0 || index >= rows.length) return;
-                      setState(() => _selectedRowId = rows[index].id);
-                    },
-                    onRetry: _showReport,
-                    onResetFilters: _resetFilters,
-                    onRowTap: (row) {
-                      _tableFocusNode.requestFocus();
-                      setState(() {
-                        _selectedRowId = _selectedRowId == row.id
-                            ? null
-                            : row.id;
-                      });
-                    },
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                ReportSummaryBar(
-                  key: Key('reportSummaryPanel_$reportId'),
-                  reportId: reportId,
-                  variantId: _variant.id,
-                  metrics: _calculatedMetrics,
-                  matchingCount: _visibleRows.length,
-                  accentColor: _accentColor,
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              ReportSummaryBar(
+                key: Key('reportSummaryPanel_$reportId'),
+                reportId: reportId,
+                variantId: _variant.id,
+                metrics: _calculatedMetrics,
+                matchingCount: _visibleRows.length,
+                accentColor: _accentColor,
+              ),
+            ],
           ),
         ),
       ),

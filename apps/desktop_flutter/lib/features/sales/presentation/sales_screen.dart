@@ -25,13 +25,6 @@ part 'sales_screen_output_part.dart';
 part 'sales_screen_view_part.dart';
 part 'sales_screen_widgets_part.dart';
 
-const _salesWarehouseOptions = <AppDropdownOption<String>>[
-  AppDropdownOption(value: 'الرئيسي', label: 'الرئيسي'),
-  AppDropdownOption(value: 'الرصافة', label: 'الرصافة'),
-  AppDropdownOption(value: 'الكرادة', label: 'الكرادة'),
-  AppDropdownOption(value: 'المنصور', label: 'المنصور'),
-];
-
 const _salesTypeOptions = <AppDropdownOption<String>>[
   AppDropdownOption(value: 'نقدي', label: 'نقدي'),
   AppDropdownOption(value: 'آجل', label: 'آجل'),
@@ -43,20 +36,12 @@ const _salesCurrencyOptions = <AppDropdownOption<String>>[
   AppDropdownOption(value: 'USD', label: 'دولار'),
 ];
 
-const _salesCustomerOptions = <String>[
-  'شركة النخيل للتجارة',
-  'أحمد كريم',
-  'أسواق دجلة',
-  'مكتب البصرة',
-  'علي حسن',
-];
-
-
-class _DemoSalesInvoice {
-  const _DemoSalesInvoice({
+class _SalesInvoiceViewData {
+  const _SalesInvoiceViewData({
     required this.source,
-    required this.id,
+    required this.documentNumber,
     required this.dateTime,
+    required this.warehouseId,
     required this.warehouse,
     required this.saleType,
     required this.currency,
@@ -79,8 +64,12 @@ class _DemoSalesInvoice {
   });
 
   final SalesInvoice source;
-  final String id;
+  final int documentNumber;
+
+  EntityId get entityId => source.id;
+
   final DateTime dateTime;
+  final EntityId warehouseId;
   final String warehouse;
   final String saleType;
   final String currency;
@@ -131,11 +120,11 @@ class _SalesScreenState extends State<SalesScreen> {
   final _remainingIqdController = TextEditingController(text: '0');
   final _currentBalanceIqdController = TextEditingController(text: '0');
 
-  final List<_DemoSalesInvoice> _salesInvoices = [];
+  final List<_SalesInvoiceViewData> _salesInvoices = [];
   DateTime _invoiceDateTime = DateTime.now();
-  _DemoSalesInvoice? _selectedInvoice;
+  _SalesInvoiceViewData? _selectedInvoice;
   List<AppSalesInvoiceTableRowData> _activeItems = const [];
-  var _warehouse = 'الرئيسي';
+  var _warehouseId = '';
   var _saleType = 'نقدي';
   var _currency = 'IQD';
   var _summaryQuantity = '0';
@@ -145,29 +134,29 @@ class _SalesScreenState extends State<SalesScreen> {
   var _discountInputSource = _InvoiceDiscountInputSource.amount;
   num _balanceBeforeInvoice = 0;
   var _nonCashReceivedText = '0';
-  late _SalesFormSnapshot _baseline;
+  late final InvoiceEditorDirtyTracker<_SalesFormSnapshot> _dirtyTracker;
   var _isApplyingFormState = false;
   var _hasUnsavedChanges = false;
   var _isDocumentActionRunning = false;
   Future<bool>? _pendingDiscardConfirmation;
   AppStore? _store;
   late PartyStatementService _statementService;
-  InvoiceEditorCoordinator<_DemoSalesInvoice>? _coordinator;
-  AppDataState<List<_DemoSalesInvoice>> _invoiceState =
+  InvoiceEditorCoordinator<_SalesInvoiceViewData>? _coordinator;
+  AppDataState<List<_SalesInvoiceViewData>> _invoiceState =
       const AppDataState.loading();
   var _didStartLoading = false;
   var _isRepositoryBusy = false;
-  var _customerOptions = _salesCustomerOptions;
-  var _warehouseOptions = _salesWarehouseOptions;
-  var _defaultWarehouse = 'الرئيسي';
+  List<Party> _customerOptions = const [];
+  EntityId? _selectedCustomerId;
+  List<AppDropdownOption<String>> _warehouseOptions = const [];
+  var _defaultWarehouseId = '';
+  var _defaultWarehouseName = '';
   var _defaultSaleType = 'نقدي';
   var _defaultCurrency = 'IQD';
   var _defaultExchangeRate = '1,310';
   var _repositoryNextInvoiceNumber = 1;
-  final Map<String, EntityId> _customerIdsByName = {};
-  final Map<String, EntityId> _itemIdsByLabel = {};
   final Set<EntityId> _knownItemIds = {};
-  final Map<String, EntityId> _warehouseIdsByLabel = {};
+  final Map<String, String> _warehouseNamesById = {};
   List<AppInvoiceItemOption> _itemOptions = const [];
 
   bool _allowsSalesAction(PermissionAction action) =>
@@ -183,21 +172,15 @@ class _SalesScreenState extends State<SalesScreen> {
         _receivedController,
       ];
 
-  int get _selectedInvoiceIndex {
-    final selectedId = _selectedInvoice?.id;
-    if (selectedId == null) return -1;
-    return _salesInvoices.indexWhere((invoice) => invoice.id == selectedId);
-  }
-
   int get _nextInvoiceNumber {
     return _repositoryNextInvoiceNumber;
   }
 
-  List<AppSearchRecord<String>> get _salesSearchRecords => [
+  List<AppSearchRecord<EntityId>> get _salesSearchRecords => [
         for (final invoice in _salesInvoices)
           AppSearchRecord(
-            value: invoice.id,
-            title: 'قائمة بيع رقم ${invoice.id}',
+            value: invoice.entityId,
+            title: 'قائمة بيع رقم ${invoice.documentNumber}',
             subtitle: invoice.customerName,
             details: invoice.searchDetails,
             searchTerms: invoice.searchTerms,
@@ -208,7 +191,7 @@ class _SalesScreenState extends State<SalesScreen> {
   @override
   void initState() {
     super.initState();
-    _baseline = _currentSnapshot();
+    _dirtyTracker = InvoiceEditorDirtyTracker(_currentSnapshot());
     for (final controller in _editableControllers) {
       controller.addListener(_refreshUnsavedState);
     }
@@ -227,8 +210,9 @@ class _SalesScreenState extends State<SalesScreen> {
       purchases: repositories.purchases,
       cashbox: repositories.cashbox,
     );
-    _coordinator = InvoiceEditorCoordinator<_DemoSalesInvoice>(
+    _coordinator = InvoiceEditorCoordinator<_SalesInvoiceViewData>(
       loadRecords: _loadRepositoryInvoices,
+      idOf: (invoice) => invoice.entityId,
     );
     unawaited(_loadData());
   }
@@ -271,12 +255,12 @@ class _SalesScreenState extends State<SalesScreen> {
     Navigator.of(context).pop();
   }
 
-  void _navigate(_SalesNavigation destination) {
+  void _navigate(InvoiceEditorNavigation destination) {
     unawaited(_navigateAfterConfirmation(destination));
   }
 
   Future<void> _navigateAfterConfirmation(
-    _SalesNavigation destination,
+    InvoiceEditorNavigation destination,
   ) async {
     if (!await _confirmDiscardChanges() || !mounted) return;
 
@@ -285,21 +269,9 @@ class _SalesScreenState extends State<SalesScreen> {
       return;
     }
 
-    final selectedIndex = _selectedInvoiceIndex;
-    final target = switch (destination) {
-      _SalesNavigation.first => _salesInvoices.first,
-      _SalesNavigation.previous => selectedIndex < 0
-          ? _salesInvoices.last
-          : _salesInvoices[selectedIndex <= 0 ? 0 : selectedIndex - 1],
-      _SalesNavigation.next => selectedIndex < 0
-          ? _salesInvoices.first
-          : selectedIndex >= _salesInvoices.length - 1
-              ? null
-              : _salesInvoices[selectedIndex + 1],
-      _SalesNavigation.last => selectedIndex == _salesInvoices.length - 1
-          ? null
-          : _salesInvoices.last,
-    };
+    final coordinator = _coordinator!;
+    coordinator.selection.select(_selectedInvoice?.entityId);
+    final target = coordinator.selection.navigate(destination);
 
     setState(() {
       if (target == null) {
@@ -316,12 +288,25 @@ class _SalesScreenState extends State<SalesScreen> {
       AppToast.showWarning(context, 'أدخل اسم الزبون أولاً');
       return false;
     }
-    if (_resolveCustomerId(customerName) == null) {
+    _selectedCustomerId ??= _uniqueCustomerIdForText(customerName);
+    if (_selectedCustomerId == null ||
+        !_customerOptions.any(
+          (party) => party.entityId == _selectedCustomerId,
+        )) {
       AppToast.showWarning(context, 'اختر زبوناً موجوداً من القائمة');
       return false;
     }
+    if (!_warehouseNamesById.containsKey(_warehouseId)) {
+      AppToast.showWarning(context, 'اختر مخزناً موجوداً');
+      return false;
+    }
 
-    final meaningfulItems = _activeItems.where((item) => !item.isEmpty).toList();
+    final meaningfulItems = _activeItems
+        .where(
+          (item) =>
+              !item.isEmptyForDefaultWarehouse(_defaultWarehouseId),
+        )
+        .toList();
     if (meaningfulItems.any((item) => !item.hasRequiredValues)) {
       AppToast.showWarning(
         context,
@@ -344,7 +329,9 @@ class _SalesScreenState extends State<SalesScreen> {
       return false;
     }
     if (meaningfulItems.any(
-      (item) => !_warehouseIdsByLabel.containsKey(item.warehouse),
+      (item) =>
+          item.warehouseId == null ||
+          !_warehouseNamesById.containsKey(item.warehouseId),
     )) {
       AppToast.showWarning(context, 'اختر مخزناً موجوداً لكل سطر');
       return false;
@@ -352,9 +339,22 @@ class _SalesScreenState extends State<SalesScreen> {
     return true;
   }
 
+  EntityId? _uniqueCustomerIdForText(String value) {
+    final normalized = normalizePartyName(value);
+    if (normalized.isEmpty) return null;
+    final matches = _customerOptions.where(
+      (party) => normalizePartyName(party.name) == normalized,
+    );
+    if (matches.length != 1) return null;
+    return matches.single.entityId;
+  }
+
   SalesInvoice _domainInvoiceFromForm({required EntityId entityId}) {
     final items = List<AppSalesInvoiceTableRowData>.unmodifiable(
-      _activeItems.where((item) => !item.isEmpty),
+      _activeItems.where(
+        (item) =>
+            !item.isEmptyForDefaultWarehouse(_defaultWarehouseId),
+      ),
     );
     final currency = AppCurrency.parse(_currency);
     final customerName = _customerNameController.text.trim();
@@ -373,7 +373,7 @@ class _SalesScreenState extends State<SalesScreen> {
             row.name,
             itemId: row.itemId,
           )!,
-          warehouseId: _warehouseIdsByLabel[row.warehouse]!,
+          warehouseId: EntityId(row.warehouseId!),
           quantity: WholeQuantity(row.quantityValue),
           unitPrice: Money.fromMajor(row.salePriceValue, currency),
           discountPerUnit: Money.fromMajor(row.discountValue, currency),
@@ -388,9 +388,9 @@ class _SalesScreenState extends State<SalesScreen> {
       documentNumber: int.parse(_invoiceNumberController.text),
       date: BusinessDate.fromDateTime(_invoiceDateTime),
       minuteOfDay: _invoiceDateTime.hour * 60 + _invoiceDateTime.minute,
-      customerId: _resolveCustomerId(customerName)!,
+      customerId: _selectedCustomerId!,
       customerNameSnapshot: customerName,
-      defaultWarehouseId: _warehouseIdsByLabel[_warehouse]!,
+      defaultWarehouseId: EntityId(_warehouseId),
       currency: currency,
       exchangeRate: ExchangeRate.parse(_exchangeRateController.text),
       settlementKind: switch (_saleType) {
@@ -408,14 +408,6 @@ class _SalesScreenState extends State<SalesScreen> {
     );
   }
 
-  EntityId? _resolveCustomerId(String name) {
-    final normalized = normalizePartyName(name);
-    for (final entry in _customerIdsByName.entries) {
-      if (normalizePartyName(entry.key) == normalized) return entry.value;
-    }
-    return null;
-  }
-
   EntityId? _resolveItemId(
     String code,
     String name, {
@@ -425,25 +417,16 @@ class _SalesScreenState extends State<SalesScreen> {
       final resolvedId = EntityId(itemId);
       return _knownItemIds.contains(resolvedId) ? resolvedId : null;
     }
-    final legacyId = _legacySalesItemId(code, name);
-    if (legacyId != null) return legacyId;
-    final codeId = _itemIdsByLabel[_normalizedLookup(code)];
-    final nameId = _itemIdsByLabel[_normalizedLookup(name)];
-    return codeId != null && codeId == nameId ? codeId : null;
+    final normalizedCode = _normalizedLookup(code);
+    final normalizedName = _normalizedLookup(name);
+    final matches = _itemOptions.where(
+      (option) =>
+          _normalizedLookup(option.code) == normalizedCode &&
+          _normalizedLookup(option.name) == normalizedName,
+    );
+    if (matches.length != 1) return null;
+    return EntityId(matches.single.id);
   }
-
-  EntityId? _legacySalesItemId(String code, String name) =>
-      switch ('${code.trim()}|${_normalizedLookup(name)}') {
-        '3001|ورق طباعة' => EntityId('item-003'),
-        '3002|حبر طابعة' => EntityId('item-002'),
-        '3003|دباسة' => EntityId('item-009'),
-        '2001|طابعة حرارية' => EntityId('item-007'),
-        '2002|ماسح باركود' => EntityId('item-008'),
-        '1001|دفتر ملاحظات' => EntityId('item-010'),
-        '1002|قلم أزرق' => EntityId('item-005'),
-        '1003|حاسبة مكتبية' => EntityId('item-004'),
-        _ => null,
-      };
 
   String _twoDigits(int value) => value.toString().padLeft(2, '0');
 
@@ -489,7 +472,7 @@ class _SalesScreenState extends State<SalesScreen> {
 
     late final SalesInvoice updated;
     try {
-      updated = _domainInvoiceFromForm(entityId: selected.source.id);
+      updated = _domainInvoiceFromForm(entityId: selected.entityId);
     } catch (_) {
       AppToast.showError(context, 'تحقق من قيم قائمة البيع المدخلة');
       return;
@@ -511,7 +494,7 @@ class _SalesScreenState extends State<SalesScreen> {
         _setNewForm();
       } else {
         final stored = _salesInvoices.firstWhere(
-          (invoice) => invoice.id == selected.id,
+          (invoice) => invoice.entityId == selected.entityId,
         );
         _loadInvoice(stored);
       }
@@ -530,7 +513,7 @@ class _SalesScreenState extends State<SalesScreen> {
     final confirmed = await AppDialogs.confirm(
       context: context,
       title: 'حذف قائمة البيع',
-      message: 'هل تريد حذف قائمة البيع رقم ${selected.id}؟',
+      message: 'هل تريد حذف قائمة البيع رقم ${selected.documentNumber}؟',
       confirmLabel: 'حذف',
       isDanger: true,
     );
@@ -539,7 +522,7 @@ class _SalesScreenState extends State<SalesScreen> {
     final deleted = await _runRepositoryMutation(
       () async {
         await _store!.repositories.sales
-            .deleteInvoicePermanently(selected.source.id);
+            .deleteInvoicePermanently(selected.entityId);
         return true;
       },
       failureMessage: 'تعذر حذف قائمة البيع',

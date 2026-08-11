@@ -4,8 +4,8 @@ import '../../../core/app_state/app_store.dart';
 import '../../../core/app_state/feature_action_permissions.dart';
 import '../../../core/design/app_design_system.dart';
 import '../../permissions/domain/permission_models.dart';
-import '../data/report_demo_catalog.dart';
 import '../data/repository_report_data_service.dart';
+import 'report_catalog.dart';
 import 'report_definition.dart';
 import 'widgets/report_section_view.dart';
 

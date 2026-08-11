@@ -70,12 +70,25 @@ class ReportHeaderBar extends StatelessWidget {
         ),
         if (definition.variants.length > 1) ...[
           const SizedBox(width: AppSpacing.md),
-          _ReportVariantTabs(
-            reportId: reportId,
-            variants: definition.variants,
+          AppSelectionTabs<ReportVariantDefinition>(
+            items: [
+              for (final variant in definition.variants)
+                (
+                  value: variant,
+                  label: variant.label,
+                  icon: variant.icon,
+                ),
+            ],
             selected: selectedVariant,
             accentColor: accentColor,
             onChanged: onVariantChanged,
+            keyPrefix: 'reportVariantTab_${reportId}_',
+            valueId: (variant) => variant.id,
+            isSelected: (variant, selected) => variant.id == selected.id,
+            wrap: false,
+            notifyWhenSelected: true,
+            minWidth: 154,
+            height: AppControlHeights.compact,
           ),
         ],
         const Spacer(),
@@ -148,55 +161,6 @@ class _ReportOutputButton extends StatelessWidget {
         minWidth: 112,
         height: AppRegularButton.defaultHeight,
         onPressed: enabled ? onPressed : null,
-      ),
-    );
-  }
-}
-
-class _ReportVariantTabs extends StatelessWidget {
-  const _ReportVariantTabs({
-    required this.reportId,
-    required this.variants,
-    required this.selected,
-    required this.accentColor,
-    required this.onChanged,
-  });
-
-  final String reportId;
-  final List<ReportVariantDefinition> variants;
-  final ReportVariantDefinition selected;
-  final Color accentColor;
-  final ValueChanged<ReportVariantDefinition> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (var index = 0; index < variants.length; index++) ...[
-            if (index > 0) const SizedBox(width: AppSpacing.sm),
-            AppButton(
-              key: Key(
-                'reportVariantTab_${reportId}_${variants[index].id}',
-              ),
-              label: variants[index].label,
-              icon: variants[index].icon,
-              variant: variants[index].id == selected.id
-                  ? AppButtonVariant.primary
-                  : AppButtonVariant.navigation,
-              backgroundColor:
-                  variants[index].id == selected.id ? accentColor : null,
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-              ),
-              minWidth: 154,
-              height: AppControlHeights.compact,
-              onPressed: () => onChanged(variants[index]),
-            ),
-          ],
-        ],
       ),
     );
   }

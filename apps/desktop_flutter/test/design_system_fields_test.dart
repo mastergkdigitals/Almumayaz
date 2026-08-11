@@ -242,6 +242,97 @@ void main() {
     expect(submissionCount, 1);
   });
 
+  testWidgets(
+      'autocomplete exposes validation and themed loading and empty states',
+      (tester) async {
+    final controller = TextEditingController();
+    addTearDown(controller.dispose);
+    var isLoading = true;
+    late StateSetter updateState;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) {
+              updateState = setState;
+              return Center(
+                child: SizedBox(
+                  width: 320,
+                  child: AppAutocompleteField<String>(
+                    controller: controller,
+                    fieldKey: const Key('autocompleteStateField'),
+                    label: 'المدينة',
+                    helperText: 'ابدأ بكتابة اسم المدينة',
+                    errorText: 'اختر مدينة مسجلة',
+                    validator: (value) => value == null || value.isEmpty
+                        ? 'هذا الحقل مطلوب'
+                        : null,
+                    accentColor: AppModuleColors.cashbox,
+                    options: const [],
+                    isLoading: isLoading,
+                    displayStringForOption: (city) => city,
+                    onSelected: (_) {},
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    final field = find.byKey(const Key('autocompleteStateField'));
+    final autocomplete = tester.widget<AppAutocompleteField<String>>(
+      find.ancestor(
+        of: field,
+        matching: find.byType(AppAutocompleteField<String>),
+      ),
+    );
+    expect(autocomplete.validator, isNotNull);
+    final decoration = tester.widget<InputDecorator>(
+      find.descendant(of: field, matching: find.byType(InputDecorator)),
+    );
+    expect(decoration.decoration.helperText, 'ابدأ بكتابة اسم المدينة');
+    expect(decoration.decoration.errorText, 'اختر مدينة مسجلة');
+
+    await tester.tap(field);
+    await tester.pump();
+
+    expect(
+      find.byKey(const Key('appAutocompleteLoadingState')),
+      findsOneWidget,
+    );
+    final progress = tester.widget<CircularProgressIndicator>(
+      find.descendant(
+        of: find.byKey(const Key('appAutocompleteLoadingState')),
+        matching: find.byType(CircularProgressIndicator),
+      ),
+    );
+    expect(progress.color, AppModuleColors.cashbox);
+
+    updateState(() => isLoading = false);
+    await tester.pump();
+    await tester.pump();
+
+    final emptyState =
+        find.byKey(const Key('appAutocompleteNoResultsState'));
+    expect(emptyState, findsOneWidget);
+    expect(find.text('لا توجد نتائج مطابقة'), findsOneWidget);
+    expect(
+      tester
+          .widget<Icon>(
+            find.descendant(
+              of: emptyState,
+              matching: find.byIcon(Icons.search_off_rounded),
+            ),
+          )
+          .color,
+      AppModuleColors.cashbox,
+    );
+  });
+
   testWidgets('integer and money fields support read-only values and precision',
       (tester) async {
     final integerController = TextEditingController(text: '12');
@@ -260,6 +351,8 @@ void main() {
                 controller: integerController,
                 label: 'الكمية',
                 readOnly: true,
+                showLabel: false,
+                borderRadius: AppRadii.sm,
               ),
               AppMoneyField(
                 fieldKey: const Key('readOnlyMoneyField'),
@@ -267,6 +360,8 @@ void main() {
                 label: 'المبلغ',
                 readOnly: true,
                 decimalPlaces: 2,
+                showLabel: false,
+                borderRadius: AppRadii.sm,
               ),
             ],
           ),
@@ -289,6 +384,20 @@ void main() {
     );
     expect(integerEditable.readOnly, isTrue);
     expect(moneyEditable.readOnly, isTrue);
+    for (final key in const ['readOnlyIntegerField', 'readOnlyMoneyField']) {
+      final decoration = tester.widget<InputDecorator>(
+        find.descendant(
+          of: find.byKey(Key(key)),
+          matching: find.byType(InputDecorator),
+        ),
+      );
+      expect(decoration.decoration.labelText, isNull);
+      expect(
+        (decoration.decoration.enabledBorder! as OutlineInputBorder)
+            .borderRadius,
+        BorderRadius.circular(AppRadii.sm),
+      );
+    }
 
     final formatter = moneyEditable.inputFormatters!
         .whereType<AppMoneyInputFormatter>()
@@ -318,6 +427,11 @@ void main() {
     final clear = find.byKey(const Key('designSearchClearButton'));
     expect(clear, findsOneWidget);
     expect(tester.widget<IconButton>(clear).onPressed, isNotNull);
+    final tooltip = tester.widget<Tooltip>(find.byTooltip('مسح البحث'));
+    expect(
+      (tooltip.decoration! as BoxDecoration).color,
+      AppTooltipColors.background,
+    );
 
     await tester.tap(clear);
     await tester.pump();

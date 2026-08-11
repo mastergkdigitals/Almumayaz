@@ -15,10 +15,16 @@ class AppAutocompleteField<T extends Object> extends StatefulWidget {
     this.fieldKey,
     this.icon = Icons.search_rounded,
     this.hint,
+    this.helperText,
+    this.errorText,
     this.focusNode,
+    this.validator,
     this.onSubmitted,
     this.onChanged,
     this.enabled = true,
+    this.isLoading = false,
+    this.loadingText = 'جارٍ تحميل النتائج',
+    this.noResultsText = 'لا توجد نتائج مطابقة',
     this.accentColor,
     this.searchTermsForOption,
     this.optionSubtitle,
@@ -38,10 +44,16 @@ class AppAutocompleteField<T extends Object> extends StatefulWidget {
   final Key? fieldKey;
   final IconData? icon;
   final String? hint;
+  final String? helperText;
+  final String? errorText;
   final FocusNode? focusNode;
+  final String? Function(String?)? validator;
   final ValueChanged<String>? onSubmitted;
   final ValueChanged<String>? onChanged;
   final bool enabled;
+  final bool isLoading;
+  final String loadingText;
+  final String noResultsText;
   final Color? accentColor;
   final Iterable<String> Function(T option)? searchTermsForOption;
   final String Function(T option)? optionSubtitle;
@@ -180,11 +192,6 @@ class _AppAutocompleteFieldState<T extends Object>
     }
 
     final options = _matchingOptions();
-    if (options.isEmpty) {
-      _closeOptions();
-      return;
-    }
-
     if (_highlightedIndex >= options.length) {
       _highlightedIndex = options.length - 1;
     }
@@ -217,6 +224,7 @@ class _AppAutocompleteFieldState<T extends Object>
   }
 
   void _moveHighlight(int offset) {
+    if (widget.isLoading) return;
     if (_optionsOverlay == null) {
       _showAllOptions = widget.controller.text.isEmpty;
       _updateOptions();
@@ -294,7 +302,7 @@ class _AppAutocompleteFieldState<T extends Object>
   }
 
   bool _selectHighlightedOption() {
-    if (_optionsOverlay == null) return false;
+    if (_optionsOverlay == null || widget.isLoading) return false;
     final options = _matchingOptions();
     if (options.isEmpty) return false;
     final index = _highlightedIndex < 0 ? 0 : _highlightedIndex;
@@ -331,9 +339,12 @@ class _AppAutocompleteFieldState<T extends Object>
               focusNode: _focusNode,
               label: widget.label,
               hint: widget.hint,
+              helperText: widget.helperText,
+              errorText: widget.errorText,
               icon: widget.icon,
               accentColor: accentColor,
               enabled: widget.enabled,
+              validator: widget.validator,
               textDirection: widget.textDirection,
               textAlign: widget.textAlign,
               textInputAction: TextInputAction.search,
@@ -386,93 +397,185 @@ class _AppAutocompleteFieldState<T extends Object>
           clipBehavior: Clip.antiAlias,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxHeight: 260),
-            child: ListView.builder(
-              controller: _optionsScrollController,
-              padding: const EdgeInsets.all(AppSpacing.xs),
-              shrinkWrap: true,
-              itemCount: options.length,
-              itemBuilder: (context, index) {
-                final option = options[index];
-                final highlighted = index == _highlightedIndex;
-                return Semantics(
-                  button: true,
-                  selected: highlighted,
-                  child: InkWell(
-                    onTap: () => _selectOption(option),
-                    onHover: (value) {
-                      if (!value || _highlightedIndex == index) return;
-                      _highlightedIndex = index;
-                      _optionsOverlay?.markNeedsBuild();
-                    },
-                    mouseCursor: SystemMouseCursors.click,
-                    borderRadius: BorderRadius.circular(AppRadii.sm),
-                    hoverColor: hoverColor,
-                    child: Container(
-                      height: widget.optionSubtitle == null
-                          ? AppControlHeights.standard
-                          : 58,
-                      alignment: AlignmentDirectional.centerStart,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.md,
-                      ),
-                      decoration: BoxDecoration(
-                        color: highlighted
-                            ? highlightedColor
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(AppRadii.sm),
-                      ),
-                      child: Directionality(
-                        textDirection:
-                            widget.textDirection ?? TextDirection.rtl,
-                        child: widget.optionSubtitle == null
-                            ? Text(
-                                widget.displayStringForOption(option),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.start,
-                                style: AppTypography.fieldText.copyWith(
-                                  color: highlighted
-                                      ? accentColor
-                                      : AppColors.textPrimary,
+            child: widget.isLoading
+                ? _AutocompleteOptionsState(
+                    key: const Key('appAutocompleteLoadingState'),
+                    message: widget.loadingText,
+                    accentColor: accentColor,
+                    isLoading: true,
+                  )
+                : options.isEmpty
+                    ? _AutocompleteOptionsState(
+                        key: const Key('appAutocompleteNoResultsState'),
+                        message: widget.noResultsText,
+                        accentColor: accentColor,
+                      )
+                    : ListView.builder(
+                        controller: _optionsScrollController,
+                        padding: const EdgeInsets.all(AppSpacing.xs),
+                        shrinkWrap: true,
+                        itemCount: options.length,
+                        itemBuilder: (context, index) {
+                          final option = options[index];
+                          final highlighted = index == _highlightedIndex;
+                          return Semantics(
+                            button: true,
+                            selected: highlighted,
+                            child: InkWell(
+                              onTap: () => _selectOption(option),
+                              onHover: (value) {
+                                if (!value ||
+                                    _highlightedIndex == index) {
+                                  return;
+                                }
+                                _highlightedIndex = index;
+                                _optionsOverlay?.markNeedsBuild();
+                              },
+                              mouseCursor: SystemMouseCursors.click,
+                              borderRadius:
+                                  BorderRadius.circular(AppRadii.sm),
+                              hoverColor: hoverColor,
+                              child: Container(
+                                height: widget.optionSubtitle == null
+                                    ? AppControlHeights.standard
+                                    : 58,
+                                alignment:
+                                    AlignmentDirectional.centerStart,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.md,
                                 ),
-                              )
-                            : Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.stretch,
-                                children: [
-                                  Text(
-                                    widget.displayStringForOption(option),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    textAlign: TextAlign.start,
-                                    style: AppTypography.fieldText.copyWith(
-                                      color: highlighted
-                                          ? accentColor
-                                          : AppColors.textPrimary,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    widget.optionSubtitle!(option),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    textAlign: TextAlign.start,
-                                    style: const TextStyle(
-                                      color: AppColors.textSecondary,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
+                                decoration: BoxDecoration(
+                                  color: highlighted
+                                      ? highlightedColor
+                                      : Colors.transparent,
+                                  borderRadius:
+                                      BorderRadius.circular(AppRadii.sm),
+                                ),
+                                child: Directionality(
+                                  textDirection: widget.textDirection ??
+                                      TextDirection.rtl,
+                                  child: widget.optionSubtitle == null
+                                      ? Text(
+                                          widget.displayStringForOption(
+                                            option,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          textAlign: TextAlign.start,
+                                          style: AppTypography.fieldText
+                                              .copyWith(
+                                            color: highlighted
+                                                ? accentColor
+                                                : AppColors.textPrimary,
+                                          ),
+                                        )
+                                      : Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.stretch,
+                                          children: [
+                                            Text(
+                                              widget
+                                                  .displayStringForOption(
+                                                option,
+                                              ),
+                                              maxLines: 1,
+                                              overflow:
+                                                  TextOverflow.ellipsis,
+                                              textAlign: TextAlign.start,
+                                              style: AppTypography.fieldText
+                                                  .copyWith(
+                                                color: highlighted
+                                                    ? accentColor
+                                                    : AppColors.textPrimary,
+                                                fontWeight:
+                                                    FontWeight.w700,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              widget.optionSubtitle!(
+                                                option,
+                                              ),
+                                              maxLines: 1,
+                                              overflow:
+                                                  TextOverflow.ellipsis,
+                                              textAlign: TextAlign.start,
+                                              style: const TextStyle(
+                                                color:
+                                                    AppColors.textSecondary,
+                                                fontSize: 13,
+                                                fontWeight:
+                                                    FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                ),
                               ),
+                            ),
+                          );
+                        },
                       ),
-                    ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AutocompleteOptionsState extends StatelessWidget {
+  const _AutocompleteOptionsState({
+    required this.message,
+    required this.accentColor,
+    this.isLoading = false,
+    super.key,
+  });
+
+  final String message;
+  final Color accentColor;
+  final bool isLoading;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      liveRegion: true,
+      label: message,
+      child: SizedBox(
+        height: AppControlHeights.standard,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (isLoading)
+                SizedBox.square(
+                  dimension: AppIconSizes.md,
+                  child: CircularProgressIndicator(
+                    color: accentColor,
+                    strokeWidth: 2.4,
                   ),
-                );
-              },
-            ),
+                )
+              else
+                Icon(
+                  Icons.search_off_rounded,
+                  color: accentColor,
+                  size: AppIconSizes.md,
+                ),
+              const SizedBox(width: AppSpacing.sm),
+              Flexible(
+                child: Text(
+                  message,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.fieldText.copyWith(
+                    color: accentColor,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

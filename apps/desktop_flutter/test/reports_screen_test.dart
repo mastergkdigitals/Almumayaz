@@ -6,7 +6,9 @@ import 'package:erp/features/reports/application/report_data_snapshot_service.da
 import 'package:erp/features/reports/application/report_output_service.dart';
 import 'package:erp/features/reports/application/report_rows_service.dart';
 import 'package:erp/features/reports/application/report_summary_calculator.dart';
+import 'package:erp/features/reports/data/demo_report_rows_service.dart';
 import 'package:erp/features/reports/data/report_demo_catalog.dart';
+import 'package:erp/features/reports/presentation/report_catalog.dart';
 import 'package:erp/features/reports/presentation/report_definition.dart';
 import 'package:erp/features/reports/presentation/widgets/report_section_view.dart';
 import 'package:erp/features/sales/domain/sales_invoice.dart';

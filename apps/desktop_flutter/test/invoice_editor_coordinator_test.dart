@@ -2,15 +2,18 @@ import 'dart:async';
 
 import 'package:erp/core/application/invoice_editor_coordinator.dart';
 import 'package:erp/core/data/app_repository.dart';
+import 'package:erp/core/domain/business_values.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('maps invoice loading to ready and empty states', () async {
     final ready = InvoiceEditorCoordinator<int>(
       loadRecords: () async => [101, 102, 103],
+      idOf: (value) => EntityId('invoice-$value'),
     );
     final empty = InvoiceEditorCoordinator<int>(
       loadRecords: () async => [],
+      idOf: (value) => EntityId('invoice-$value'),
     );
 
     expect((await ready.load()).status, AppDataStatus.ready);
@@ -23,9 +26,11 @@ void main() {
       loadRecords: () async => throw const InvoiceMissingReferenceException(
         'مرجع مفقود',
       ),
+      idOf: (value) => EntityId('invoice-$value'),
     );
     final failing = InvoiceEditorCoordinator<int>(
       loadRecords: () async => throw StateError('فشل'),
+      idOf: (value) => EntityId('invoice-$value'),
     );
 
     expect((await missing.load()).status, AppDataStatus.missingReference);
@@ -36,6 +41,7 @@ void main() {
   test('serializes invoice mutations and always clears busy state', () async {
     final coordinator = InvoiceEditorCoordinator<int>(
       loadRecords: () async => [],
+      idOf: (value) => EntityId('invoice-$value'),
     );
     final blocker = Completer<void>();
     final first = coordinator.mutate(() async {
@@ -60,6 +66,7 @@ void main() {
     var calls = 0;
     final coordinator = InvoiceEditorCoordinator<int>(
       loadRecords: () => calls++ == 0 ? first.future : second.future,
+      idOf: (value) => EntityId('invoice-$value'),
     );
 
     final olderLoad = coordinator.load();

@@ -2,7 +2,7 @@ part of 'sales_screen.dart';
 
 extension _SalesScreenOutputPart on _SalesScreenState {
   Future<void> _showSalesSearch() async {
-    final result = await AppRecordSearchDialog.show<String>(
+    final result = await AppRecordSearchDialog.show<EntityId>(
       context,
       title: 'بحث قوائم البيع',
       subtitle: 'ابحث عن قائمة بيع محفوظة ثم اخترها',
@@ -19,11 +19,14 @@ extension _SalesScreenOutputPart on _SalesScreenState {
 
     if (!mounted || result == null) return;
     final invoice = _salesInvoices.firstWhere(
-      (candidate) => candidate.id == result,
+      (candidate) => candidate.entityId == result,
     );
     if (!await _confirmDiscardChanges() || !mounted) return;
     _setSalesState(() => _loadInvoice(invoice));
-    AppToast.showInfo(context, 'تم اختيار قائمة البيع رقم $result');
+    AppToast.showInfo(
+      context,
+      'تم اختيار قائمة البيع رقم ${invoice.documentNumber}',
+    );
   }
 
   DocumentOutputRequest _salesDocumentRequest() {
@@ -42,7 +45,10 @@ extension _SalesScreenOutputPart on _SalesScreenState {
           label: 'الوقت',
           value: AppFormatters.time(TimeOfDay.fromDateTime(_invoiceDateTime)),
         ),
-        DocumentField(label: 'المخزن', value: _warehouse),
+        DocumentField(
+          label: 'المخزن',
+          value: _warehouseNamesById[_warehouseId] ?? _warehouseId,
+        ),
         DocumentField(label: 'نوع البيع', value: _saleType),
         DocumentField(label: 'العملة', value: currencyName),
         DocumentField(
@@ -77,7 +83,10 @@ extension _SalesScreenOutputPart on _SalesScreenState {
         DocumentColumn(label: 'المجموع', isPrice: true),
       ],
       rows: [
-        for (final item in _activeItems.where((item) => !item.isEmpty))
+        for (final item in _activeItems.where(
+          (item) =>
+              !item.isEmptyForDefaultWarehouse(_defaultWarehouseId),
+        ))
           [
             item.code,
             item.name,
@@ -124,13 +133,13 @@ extension _SalesScreenOutputPart on _SalesScreenState {
     final coordinator = _coordinator;
     if (selected == null || coordinator == null) return false;
 
-    final selectedEntityId = selected.source.id;
+    final selectedEntityId = selected.entityId;
     final state = await coordinator.load();
     if (!mounted) return false;
     final currentSelection = _selectedInvoice;
     if (!_isDocumentActionRunning ||
         currentSelection == null ||
-        currentSelection.source.id != selectedEntityId ||
+        currentSelection.entityId != selectedEntityId ||
         _hasUnsavedChanges ||
         _isRepositoryBusy) {
       return false;
@@ -139,7 +148,7 @@ extension _SalesScreenOutputPart on _SalesScreenState {
     final records = state.data;
     if (state.status != AppDataStatus.ready || records == null) {
       final failureState = state.status == AppDataStatus.empty
-          ? const AppDataState<List<_DemoSalesInvoice>>.missingReference(
+          ? const AppDataState<List<_SalesInvoiceViewData>>.missingReference(
               'قائمة البيع المحددة لم تعد موجودة.',
             )
           : state;
@@ -157,9 +166,9 @@ extension _SalesScreenOutputPart on _SalesScreenState {
       return false;
     }
 
-    _DemoSalesInvoice? refreshed;
+    _SalesInvoiceViewData? refreshed;
     for (final candidate in records) {
-      if (candidate.source.id == selectedEntityId) {
+      if (candidate.entityId == selectedEntityId) {
         refreshed = candidate;
         break;
       }
@@ -203,7 +212,7 @@ extension _SalesScreenOutputPart on _SalesScreenState {
     _setSalesState(() => _isDocumentActionRunning = true);
     try {
       if (!await _reloadSelectedSalesInvoiceForOutput() || !mounted) return;
-      final selectedEntityId = _selectedInvoice!.source.id;
+      final selectedEntityId = _selectedInvoice!.entityId;
       final request = _salesDocumentRequest();
       final result = switch (action) {
         DocumentOutputAction.print =>
@@ -225,7 +234,7 @@ extension _SalesScreenOutputPart on _SalesScreenState {
       if (!mounted ||
           !_isDocumentActionRunning ||
           _invoiceState.status != AppDataStatus.ready ||
-          _selectedInvoice?.source.id != selectedEntityId ||
+          _selectedInvoice?.entityId != selectedEntityId ||
           _hasUnsavedChanges ||
           _isRepositoryBusy) {
         return;

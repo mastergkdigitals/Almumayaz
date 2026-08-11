@@ -3,7 +3,7 @@ part of 'sales_screen.dart';
 extension _SalesScreenViewPart on _SalesScreenState {
   Widget _buildSalesScreen(BuildContext context) {
     final hasSelectedInvoice = _selectedInvoice != null;
-    final selectedInvoiceIndex = _selectedInvoiceIndex;
+    final selectedInvoiceIndex = _coordinator?.selection.selectedIndex ?? -1;
     final hasInvoices = _salesInvoices.isNotEmpty;
     final canMoveToFirstOrPrevious =
         hasInvoices && selectedInvoiceIndex != 0;
@@ -104,7 +104,7 @@ extension _SalesScreenViewPart on _SalesScreenState {
                     textDirection: TextDirection.rtl,
                     textAlign: TextAlign.right,
                     menuTextDirection: TextDirection.rtl,
-                    value: _warehouse,
+                    value: _warehouseId,
                     options: _warehouseOptions,
                     onChanged: (value) {
                       if (value == null) return;
@@ -159,15 +159,22 @@ extension _SalesScreenViewPart on _SalesScreenState {
               const SizedBox(height: AppSpacing.md),
               _SalesFieldRow(
                 children: [
-                  AppAutocompleteField<String>(
+                  AppAutocompleteField<Party>(
                     fieldKey: const Key('salesCustomerNameField'),
                     controller: _customerNameController,
                     label: 'اسم الزبون',
                     icon: Icons.person_rounded,
                     accentColor: AppModuleColors.sales,
                     options: _customerOptions,
-                    displayStringForOption: (value) => value,
-                    onSelected: (_) {},
+                    displayStringForOption: (party) => party.name,
+                    searchTermsForOption: (party) => [
+                      party.name,
+                      '${party.number}',
+                      party.phone,
+                    ],
+                    optionSubtitle: (party) => 'رقم ${party.number}',
+                    onSelected: _selectCustomer,
+                    onChanged: _changeCustomerText,
                     textDirection: TextDirection.rtl,
                     textAlign: TextAlign.right,
                   ),
@@ -194,6 +201,9 @@ extension _SalesScreenViewPart on _SalesScreenState {
                   summaryTotal: _summaryTotal,
                   currencyCode: _currency,
                   itemOptions: _itemOptions,
+                  warehouseOptions: _warehouseOptions,
+                  defaultWarehouse: _defaultWarehouseId,
+                  defaultWarehouseLabel: _defaultWarehouseName,
                   onRowsChanged: _changeItems,
                 ),
               ),
@@ -306,16 +316,16 @@ extension _SalesScreenViewPart on _SalesScreenState {
                 deleteButtonKey: const Key('salesDeleteButton'),
                 accentColor: AppModuleColors.sales,
                 onFirst: canMoveToFirstOrPrevious
-                    ? () => _navigate(_SalesNavigation.first)
+                    ? () => _navigate(InvoiceEditorNavigation.first)
                     : null,
                 onPrevious: canMoveToFirstOrPrevious
-                    ? () => _navigate(_SalesNavigation.previous)
+                    ? () => _navigate(InvoiceEditorNavigation.previous)
                     : null,
                 onNext: canMoveToNextOrLast
-                    ? () => _navigate(_SalesNavigation.next)
+                    ? () => _navigate(InvoiceEditorNavigation.next)
                     : null,
                 onLast: canMoveToNextOrLast
-                    ? () => _navigate(_SalesNavigation.last)
+                    ? () => _navigate(InvoiceEditorNavigation.last)
                     : null,
                 onSave: !canCreate ||
                         !isEditorReady ||
@@ -346,7 +356,7 @@ extension _SalesScreenViewPart on _SalesScreenState {
             if (_invoiceState.status != AppDataStatus.ready)
               ColoredBox(
                 color: tint,
-                child: AppDataStateView<List<_DemoSalesInvoice>>(
+                child: AppDataStateView<List<_SalesInvoiceViewData>>(
                   state: _invoiceState,
                   dataBuilder: (_, _) => const SizedBox.shrink(),
                   emptyTitle: 'لا توجد قوائم بيع',

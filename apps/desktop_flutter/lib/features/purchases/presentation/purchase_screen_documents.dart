@@ -16,7 +16,10 @@ extension _PurchaseDocumentState on _PurchaseScreenState {
           label: 'الوقت',
           value: AppFormatters.time(TimeOfDay.fromDateTime(_invoiceDateTime)),
         ),
-        DocumentField(label: 'المخزن', value: _warehouse),
+        DocumentField(
+          label: 'المخزن',
+          value: _warehouseNamesById[_warehouseId] ?? _warehouseId,
+        ),
         DocumentField(label: 'نوع الشراء', value: _purchaseType),
         DocumentField(label: 'نوع الدفع', value: _paymentType),
         DocumentField(
@@ -64,7 +67,10 @@ extension _PurchaseDocumentState on _PurchaseScreenState {
         DocumentColumn(label: 'سعر البيع', isPrice: true),
       ],
       rows: [
-        for (final item in _activeItems.where((item) => !item.isEmpty))
+        for (final item in _activeItems.where(
+          (item) =>
+              !item.isEmptyForDefaultWarehouse(_defaultWarehouseId),
+        ))
           [
             item.code,
             item.name,
@@ -115,13 +121,13 @@ extension _PurchaseDocumentState on _PurchaseScreenState {
     final coordinator = _coordinator;
     if (selected == null || coordinator == null) return false;
 
-    final selectedEntityId = selected.source.id;
+    final selectedEntityId = selected.entityId;
     final state = await coordinator.load();
     if (!mounted) return false;
     final currentSelection = _selectedInvoice;
     if (!_isDocumentActionRunning ||
         currentSelection == null ||
-        currentSelection.source.id != selectedEntityId ||
+        currentSelection.entityId != selectedEntityId ||
         _hasUnsavedChanges ||
         _isRepositoryBusy) {
       return false;
@@ -130,7 +136,7 @@ extension _PurchaseDocumentState on _PurchaseScreenState {
     final records = state.data;
     if (state.status != AppDataStatus.ready || records == null) {
       final failureState = state.status == AppDataStatus.empty
-          ? const AppDataState<List<_DemoPurchaseInvoice>>.missingReference(
+          ? const AppDataState<List<_PurchaseInvoiceViewData>>.missingReference(
               'قائمة الشراء المحددة لم تعد موجودة.',
             )
           : state;
@@ -148,9 +154,9 @@ extension _PurchaseDocumentState on _PurchaseScreenState {
       return false;
     }
 
-    _DemoPurchaseInvoice? refreshed;
+    _PurchaseInvoiceViewData? refreshed;
     for (final candidate in records) {
-      if (candidate.source.id == selectedEntityId) {
+      if (candidate.entityId == selectedEntityId) {
         refreshed = candidate;
         break;
       }
@@ -196,7 +202,7 @@ extension _PurchaseDocumentState on _PurchaseScreenState {
       if (!await _reloadSelectedPurchaseInvoiceForOutput() || !mounted) {
         return;
       }
-      final selectedEntityId = _selectedInvoice!.source.id;
+      final selectedEntityId = _selectedInvoice!.entityId;
       final request = _purchaseDocumentRequest();
       final result = switch (action) {
         DocumentOutputAction.print =>
@@ -218,7 +224,7 @@ extension _PurchaseDocumentState on _PurchaseScreenState {
       if (!mounted ||
           !_isDocumentActionRunning ||
           _invoiceState.status != AppDataStatus.ready ||
-          _selectedInvoice?.source.id != selectedEntityId ||
+          _selectedInvoice?.entityId != selectedEntityId ||
           _hasUnsavedChanges ||
           _isRepositoryBusy) {
         return;

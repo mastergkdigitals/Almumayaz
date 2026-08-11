@@ -190,11 +190,11 @@ class _BusinessPoliciesSettingsSectionState
       primary: false,
       padding: const EdgeInsets.all(AppSpacing.md),
       children: [
-        SettingsResponsiveGrid(
+        AppResponsiveGrid(
           preferredColumns: 2,
           minimumChildHeight: 330,
           children: [
-            SettingsTemplatePanel(
+            AppSectionPanel(
               key: const Key('settingsPricingInventoryPanel'),
               title: 'الأسعار والمخزون',
               icon: Icons.currency_exchange_rounded,
@@ -226,7 +226,7 @@ class _BusinessPoliciesSettingsSectionState
                 ],
               ),
             ),
-            SettingsTemplatePanel(
+            AppSectionPanel(
               key: const Key('settingsDebtInstallmentsPanel'),
               title: 'الديون والأقساط',
               icon: Icons.account_balance_wallet_outlined,
@@ -286,12 +286,12 @@ class _BusinessPoliciesSettingsSectionState
   }
 
   Widget _buildPrintingPanel() {
-    return SettingsTemplatePanel(
+    return AppSectionPanel(
       key: const Key('settingsPrintingPanel'),
       title: 'الطباعة',
       icon: Icons.print_rounded,
       accentColor: widget.accentColor,
-      child: SettingsResponsiveGrid(
+      child: AppResponsiveGrid(
         preferredColumns: 2,
         children: [
           AppDropdownField<String>(

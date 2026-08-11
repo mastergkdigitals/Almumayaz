@@ -203,11 +203,11 @@ class _OperationalDefaultsSettingsSectionState
       primary: false,
       padding: const EdgeInsets.all(AppSpacing.md),
       children: [
-        SettingsResponsiveGrid(
+        AppResponsiveGrid(
           preferredColumns: 3,
           minimumChildHeight: 480,
           children: [
-            SettingsTemplatePanel(
+            AppSectionPanel(
               key: const Key('settingsPurchaseDefaultsPanel'),
               title: 'المشتريات',
               icon: Icons.shopping_cart_checkout_rounded,
@@ -272,7 +272,7 @@ class _OperationalDefaultsSettingsSectionState
                 ],
               ),
             ),
-            SettingsTemplatePanel(
+            AppSectionPanel(
               key: const Key('settingsSalesDefaultsPanel'),
               title: 'المبيعات',
               icon: Icons.point_of_sale_rounded,
@@ -320,7 +320,7 @@ class _OperationalDefaultsSettingsSectionState
                 ],
               ),
             ),
-            SettingsTemplatePanel(
+            AppSectionPanel(
               key: const Key('settingsCashboxDefaultsPanel'),
               title: 'الصندوق',
               icon: Icons.account_balance_wallet_rounded,

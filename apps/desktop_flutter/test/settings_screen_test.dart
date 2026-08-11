@@ -180,7 +180,7 @@ void main() {
     );
     expect(
       tester
-          .widget<SettingsTemplatePanel>(
+          .widget<AppSectionPanel>(
             find.byKey(const Key('settingsPricingInventoryPanel')),
           )
           .accentColor,
@@ -336,7 +336,7 @@ void main() {
     const defaultsAccent = Color(0xFF4F46E5);
     expect(
       tester
-          .widget<SettingsTemplatePanel>(
+          .widget<AppSectionPanel>(
             find.byKey(const Key('settingsPurchaseDefaultsPanel')),
           )
           .accentColor,
