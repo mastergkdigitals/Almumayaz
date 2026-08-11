@@ -1,5 +1,6 @@
 import 'package:excel/excel.dart';
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -155,7 +156,7 @@ class PackageDocumentBinaryComposer implements DocumentBinaryComposer {
     required DocumentOutputSettings settings,
   }) async {
     final fonts = await (_fonts ??= _loadFonts());
-    final visibleColumns = _visibleColumnIndexes(
+    final visibleColumns = pdfTableVisualColumnIndexes(
       request,
       includePrices: includePrices,
     );
@@ -561,6 +562,22 @@ List<int> _visibleColumnIndexes(
     for (var index = 0; index < request.columns.length; index++)
       if (includePrices || !request.columns[index].isPrice) index,
   ];
+}
+
+/// Returns PDF table cells in their physical left-to-right layout order.
+///
+/// The report remains logically ordered in its request, preview, and Excel
+/// output. Only the PDF table containers are mirrored so the first logical
+/// Arabic column appears at the right edge without changing cell contents.
+@visibleForTesting
+List<int> pdfTableVisualColumnIndexes(
+  DocumentOutputRequest request, {
+  required bool includePrices,
+}) {
+  return _visibleColumnIndexes(
+    request,
+    includePrices: includePrices,
+  ).reversed.toList(growable: false);
 }
 
 String _buildContent(

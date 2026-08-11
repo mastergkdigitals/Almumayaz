@@ -24,6 +24,53 @@ void main() {
     ],
   );
 
+  const rtlTableRequest = DocumentOutputRequest(
+    title: 'تقرير عربي',
+    columns: [
+      DocumentColumn(label: 'ت'),
+      DocumentColumn(label: 'الزبون'),
+      DocumentColumn(label: 'التاريخ'),
+      DocumentColumn(label: 'الإجمالي', isPrice: true),
+    ],
+    rows: [
+      ['1', 'شركة ABC 42', '2026/08/11', '1,250.00 USD'],
+    ],
+  );
+
+  test('orders Arabic PDF columns RTL and keeps header cells aligned', () {
+    final indexes = pdfTableVisualColumnIndexes(
+      rtlTableRequest,
+      includePrices: true,
+    );
+
+    expect(indexes, [3, 2, 1, 0]);
+    expect(
+      indexes.map((index) => rtlTableRequest.columns[index].label),
+      ['الإجمالي', 'التاريخ', 'الزبون', 'ت'],
+    );
+    expect(
+      indexes.map((index) => rtlTableRequest.rows.single[index]),
+      ['1,250.00 USD', '2026/08/11', 'شركة ABC 42', '1'],
+    );
+  });
+
+  test('removes PDF price columns before applying the RTL order', () {
+    final indexes = pdfTableVisualColumnIndexes(
+      rtlTableRequest,
+      includePrices: false,
+    );
+
+    expect(indexes, [2, 1, 0]);
+    expect(
+      indexes.map((index) => rtlTableRequest.columns[index].label),
+      ['التاريخ', 'الزبون', 'ت'],
+    );
+    expect(
+      indexes.map((index) => rtlTableRequest.rows.single[index]),
+      ['2026/08/11', 'شركة ABC 42', '1'],
+    );
+  });
+
   test('package composer produces real PDF and XLSX containers', () async {
     final composer = PackageDocumentBinaryComposer();
 
