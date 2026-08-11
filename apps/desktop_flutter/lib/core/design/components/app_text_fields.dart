@@ -47,8 +47,11 @@ class AppFieldIconButton extends StatelessWidget {
         splashFactory: NoSplash.splashFactory,
       ),
     );
-    final labeledButton = message == null || message.isEmpty
+    final visualButton = message == null || message.isEmpty
         ? button
+        : AppTooltip(message: message, child: button);
+    final accessibleButton = message == null || message.isEmpty
+        ? visualButton
         : Semantics(
             container: true,
             excludeSemantics: true,
@@ -56,14 +59,10 @@ class AppFieldIconButton extends StatelessWidget {
             button: true,
             enabled: onPressed != null,
             onTap: onPressed,
-            child: button,
+            child: visualButton,
           );
 
-    return ExcludeFocus(
-      child: message == null || message.isEmpty
-          ? labeledButton
-          : AppTooltip(message: message, child: labeledButton),
-    );
+    return ExcludeFocus(child: accessibleButton);
   }
 }
 
