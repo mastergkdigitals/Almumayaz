@@ -34,7 +34,7 @@ class DemoWarehouseRepository extends InMemoryDemoRepository<Warehouse>
         _transactionRunner = transactionRunner ?? DemoTransactionRunner(),
         _inventory = {
           for (final balance in initialInventory ?? demoInventory())
-            balance.id: balance,
+            if (!balance.quantity.isZero) balance.id: balance,
         },
         _transfers = List.of(
           initialTransfers ?? demoInventoryTransfers(),
@@ -74,6 +74,10 @@ class DemoWarehouseRepository extends InMemoryDemoRepository<Warehouse>
       if (!allowNegative && finalQuantity < 0) {
         throw StateError('الكمية غير كافية في المخزن المصدر');
       }
+      if (finalQuantity == 0) {
+        if (current != null) staged.remove(current.id);
+        continue;
+      }
       if (current == null) {
         final id = EntityId(
           'inventory-${warehouseId.value}-${itemId.value}',
@@ -97,7 +101,9 @@ class DemoWarehouseRepository extends InMemoryDemoRepository<Warehouse>
   void commitInventorySnapshot(Map<EntityId, InventoryBalance> staged) {
     _inventory
       ..clear()
-      ..addAll(staged);
+      ..addEntries(
+        staged.entries.where((entry) => !entry.value.quantity.isZero),
+      );
   }
 
   @override

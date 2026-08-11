@@ -1,7 +1,11 @@
 import 'package:erp/core/app_state/app_repositories.dart';
+import 'package:erp/core/data/app_repository.dart';
 import 'package:erp/core/domain/business_values.dart';
+import 'package:erp/features/items/domain/item.dart';
 import 'package:erp/features/parties/domain/party.dart';
 import 'package:erp/features/purchases/domain/purchase_invoice.dart';
+import 'package:erp/features/warehouses/domain/warehouse.dart';
+import 'package:erp/features/warehouses/presentation/warehouses_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -277,6 +281,123 @@ void main() {
         _copyInvoice(invoice, id: EntityId('phase3-purchase-reuse')),
       ),
       throwsStateError,
+    );
+  });
+
+  test('purchase deletion removes zero stock before item deletion', () async {
+    final repositories = AppRepositories.demo();
+    final group = (await repositories.items.getGroups()).first;
+    final type = (await repositories.items.getTypes(groupId: group.entityId))
+        .first;
+    final item = Item.typed(
+      entityId: EntityId('phase1-zero-stock-item'),
+      code: 'PHASE1-ZERO-STOCK',
+      name: 'مادة اختبار الرصيد الصفري',
+      barcode: '9900000000011',
+      groupEntityId: group.entityId,
+      groupName: group.name,
+      typeEntityId: type.entityId,
+      typeName: type.name,
+      iqdSalePrice: Money.fromMajor(120, AppCurrency.iqd),
+      usdSalePrice: Money.fromMajor(1, AppCurrency.usd),
+      notes: '',
+    );
+    await repositories.items.save(item);
+
+    final warehouseId = EntityId('warehouse-001');
+    final invoice = _invoice(
+      id: 'phase1-zero-stock-item-purchase',
+      documentNumber: 104,
+      kind: PurchaseTransactionKind.local,
+      supplierId: EntityId('party-009'),
+      warehouseId: warehouseId,
+      currency: AppCurrency.iqd,
+      lines: [
+        _line(
+          id: 'phase1-zero-stock-item-purchase-line',
+          itemId: item.entityId,
+          warehouseId: warehouseId,
+          quantity: 2,
+          price: 100,
+          currency: AppCurrency.iqd,
+        ),
+      ],
+      paid: 0,
+    );
+
+    await repositories.purchases.createInvoice(invoice);
+    expect(await _stock(repositories, warehouseId, item.entityId), 2);
+
+    await repositories.purchases.delete(invoice.id);
+
+    expect(
+      (await repositories.warehouses.getInventory(warehouseId))
+          .where((balance) => balance.itemId == item.entityId),
+      isEmpty,
+    );
+    await repositories.items.delete(item.entityId);
+    expect(await repositories.items.getById(item.entityId), isNull);
+    expect(
+      (await repositories.warehouses.getInventory(warehouseId))
+          .where((balance) => balance.itemId == item.entityId),
+      isEmpty,
+    );
+
+    final controller = WarehousesController(
+      repository: repositories.warehouses,
+      itemRepository: repositories.items,
+    );
+    addTearDown(controller.dispose);
+    await controller.load();
+    expect(controller.state.dataState.status, AppDataStatus.ready);
+  });
+
+  test('purchase deletion removes zero stock before warehouse deletion',
+      () async {
+    final repositories = AppRepositories.demo();
+    final warehouse = Warehouse.typed(
+      entityId: EntityId('phase1-zero-stock-warehouse'),
+      number: 5,
+      name: 'مخزن اختبار الرصيد الصفري',
+      location: '',
+      notes: '',
+    );
+    await repositories.warehouses.save(warehouse);
+
+    final itemId = EntityId('item-001');
+    final invoice = _invoice(
+      id: 'phase1-zero-stock-warehouse-purchase',
+      documentNumber: 104,
+      kind: PurchaseTransactionKind.local,
+      supplierId: EntityId('party-009'),
+      warehouseId: warehouse.entityId,
+      currency: AppCurrency.iqd,
+      lines: [
+        _line(
+          id: 'phase1-zero-stock-warehouse-purchase-line',
+          itemId: itemId,
+          warehouseId: warehouse.entityId,
+          quantity: 3,
+          price: 100,
+          currency: AppCurrency.iqd,
+        ),
+      ],
+      paid: 0,
+    );
+
+    await repositories.purchases.createInvoice(invoice);
+    expect(await _stock(repositories, warehouse.entityId, itemId), 3);
+
+    await repositories.purchases.delete(invoice.id);
+
+    expect(
+      await repositories.warehouses.getInventory(warehouse.entityId),
+      isEmpty,
+    );
+    await repositories.warehouses.delete(warehouse.entityId);
+    expect(
+      await repositories.warehouses.getById(warehouse.entityId),
+      isNull,
     );
   });
 
