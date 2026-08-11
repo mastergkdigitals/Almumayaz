@@ -217,7 +217,6 @@ class _BusinessPoliciesSettingsSectionState
                     subtitle:
                         'يظهر تنبيه قبل إكمال البيع عندما تكون الكمية غير كافية',
                     icon: Icons.inventory_2_outlined,
-                    accentColor: widget.accentColor,
                     value: _allowInsufficientStockSale,
                     onChanged: (value) {
                       setState(() => _allowInsufficientStockSale = value);
@@ -256,7 +255,6 @@ class _BusinessPoliciesSettingsSectionState
                     title: 'تنبيه الديون أو الأقساط المتأخرة',
                     subtitle: 'إظهار تنبيه عند تجاوز تاريخ الاستحقاق',
                     icon: Icons.notifications_active_outlined,
-                    accentColor: widget.accentColor,
                     value: _overdueDebtAlerts,
                     onChanged: (value) {
                       setState(() => _overdueDebtAlerts = value);
@@ -341,7 +339,6 @@ class _BusinessPoliciesSettingsSectionState
             title: 'تشغيل معاينة الطباعة',
             subtitle: 'عرض القائمة قبل إرسالها إلى الطابعة',
             icon: Icons.preview_outlined,
-            accentColor: widget.accentColor,
             value: _previewEnabled,
             onChanged: (value) {
               setState(() => _previewEnabled = value);

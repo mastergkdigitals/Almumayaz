@@ -1,9 +1,14 @@
 import 'package:erp/app/app.dart';
 import 'package:erp/core/app_state/app_repositories.dart';
+import 'package:erp/core/app_state/app_store.dart';
 import 'package:erp/core/design/app_design_system.dart';
 import 'package:erp/core/domain/business_values.dart';
+import 'package:erp/features/authentication/domain/session_models.dart';
 import 'package:erp/features/cashbox/domain/cashbox_voucher.dart';
 import 'package:erp/features/cashbox/presentation/cashbox_controller.dart';
+import 'package:erp/features/permissions/domain/permission_models.dart';
+import 'package:erp/features/settings/domain/operational_master_data.dart';
+import 'package:erp/features/users/domain/user_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -525,19 +530,251 @@ void main() {
       isNull,
     );
   });
+
+  testWidgets('quick-creates a subaccount under the selected main account',
+      (tester) async {
+    final store = AppStore.demo();
+    addTearDown(store.dispose);
+    await _openCashbox(tester, store: store);
+
+    final defaults =
+        await store.repositories.businessSettings.loadOperationalDefaults();
+    final mainAccountId = defaults.cashbox.mainAccountId;
+    final mainAccount = await store.repositories.operationalMasterData.getById(
+      mainAccountId,
+    );
+    expect(mainAccount, isNotNull);
+
+    const subaccountName = 'حساب فرعي للمرحلة الثانية';
+    await tester.enterText(
+      find.byKey(const Key('cashboxSubaccountField')),
+      subaccountName,
+    );
+    await tester.pump();
+    await tester.tap(find.text('إضافة حساب فرعي جديد'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('cashboxQuickSubaccountDialog')),
+        findsOneWidget);
+    await tester.tap(find.byKey(const Key('cashboxQuickSubaccountConfirm')));
+    await tester.pumpAndSettle();
+
+    final stored = await store.repositories.operationalMasterData.getByKind(
+      OperationalMasterDataKind.cashboxSubaccount,
+      parentId: mainAccountId,
+    );
+    final created =
+        stored.singleWhere((record) => record.name == subaccountName);
+    expect(
+      _fieldText(tester, const Key('cashboxSubaccountField')),
+      '${created.number} - ${created.name}',
+    );
+    expect(created.parentId, mainAccountId);
+    expect(created.id.value, isNotEmpty);
+  });
+
+  testWidgets(
+      'blocks subaccount quick-create when displayed main text is stale',
+      (tester) async {
+    final store = AppStore.demo();
+    addTearDown(store.dispose);
+    await _openCashbox(tester, store: store);
+
+    final defaults =
+        await store.repositories.businessSettings.loadOperationalDefaults();
+    final mainAccountId = defaults.cashbox.mainAccountId;
+    final before = await store.repositories.operationalMasterData.getByKind(
+      OperationalMasterDataKind.cashboxSubaccount,
+      parentId: mainAccountId,
+    );
+
+    await tester.enterText(
+      find.byKey(const Key('cashboxMainAccountField')),
+      'حساب رئيسي معروض غير مطابق',
+    );
+    const rejectedName = 'حساب فرعي يجب ألا ينشأ';
+    await tester.enterText(
+      find.byKey(const Key('cashboxSubaccountField')),
+      rejectedName,
+    );
+    await tester.pump();
+    await tester.tap(find.text('إضافة حساب فرعي جديد'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.byKey(const Key('cashboxQuickSubaccountDialog')), findsNothing);
+    final toast = find.byKey(const Key('appToast'));
+    expect(toast, findsOneWidget);
+    expect(tester.widget<SnackBar>(toast).backgroundColor, AppColors.orange);
+    expect(
+      find.descendant(
+        of: toast,
+        matching: find.text('اختر الحساب الرئيسي من القائمة أولاً'),
+      ),
+      findsOneWidget,
+    );
+
+    final after = await store.repositories.operationalMasterData.getByKind(
+      OperationalMasterDataKind.cashboxSubaccount,
+      parentId: mainAccountId,
+    );
+    expect(after.map((record) => record.id).toSet(),
+        before.map((record) => record.id).toSet());
+    expect(after.any((record) => record.name == rejectedName), isFalse);
+  });
+
+  testWidgets('quick-creates a main account with its required first subaccount',
+      (tester) async {
+    final store = AppStore.demo();
+    addTearDown(store.dispose);
+    await _openCashbox(tester, store: store);
+
+    const mainName = 'صندوق المرحلة الثانية';
+    const subaccountName = 'الحساب الافتتاحي';
+    await tester.enterText(
+      find.byKey(const Key('cashboxMainAccountField')),
+      mainName,
+    );
+    await tester.pump();
+    await tester.tap(find.text('إضافة حساب رئيسي جديد'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('cashboxQuickMainAccountDialog')),
+        findsOneWidget);
+    expect(
+      _fieldText(tester, const Key('cashboxQuickMainAccountMainNameField')),
+      mainName,
+    );
+    await tester.enterText(
+      find.byKey(
+        const Key('cashboxQuickMainAccountSubaccountNameField'),
+      ),
+      subaccountName,
+    );
+    await tester.pump();
+    expect(
+      tester.widget<AppButton>(
+        find.byKey(const Key('cashboxQuickMainAccountConfirm')),
+      ).onPressed,
+      isNotNull,
+    );
+
+    await tester.tap(
+      find.byKey(const Key('cashboxQuickMainAccountConfirm')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      _fieldText(tester, const Key('cashboxMainAccountField')),
+      mainName,
+    );
+    final mainAccounts =
+        await store.repositories.operationalMasterData.getByKind(
+      OperationalMasterDataKind.cashboxMainAccount,
+    );
+    final main =
+        mainAccounts.singleWhere((record) => record.name == mainName);
+    final subaccounts =
+        await store.repositories.operationalMasterData.getByKind(
+      OperationalMasterDataKind.cashboxSubaccount,
+      parentId: main.id,
+    );
+    final subaccount = subaccounts.singleWhere(
+      (record) => record.name == subaccountName,
+    );
+    expect(
+      _fieldText(tester, const Key('cashboxSubaccountField')),
+      '${subaccount.number} - ${subaccount.name}',
+    );
+    expect(subaccount.parentId, main.id);
+    expect(main.id, isNot(subaccount.id));
+  });
+
+  testWidgets('hides cashbox master shortcuts without Settings manage',
+      (tester) async {
+    final store = AppStore.demo();
+    addTearDown(store.dispose);
+    await store.signIn(
+      SignInCredentials(username: 'admin', password: 'password'),
+    );
+    final role = await store.services.administration.saveRole(
+      RoleSaveRequest(
+        name: 'إضافة الصندوق دون إدارة الإعدادات',
+        permissions: {
+          PermissionCode(
+            module: 'cashbox',
+            action: PermissionAction.view,
+          ),
+          PermissionCode(
+            module: 'cashbox',
+            action: PermissionAction.create,
+          ),
+        },
+      ),
+    );
+    await store.services.administration.createUser(
+      UserCreateRequest(
+        fullName: 'مستخدم إضافة الصندوق',
+        username: 'cashbox.creator',
+        roleIds: {role.id},
+        initialPassword: 'cashbox-password',
+      ),
+    );
+    await store.signOut();
+
+    await _openCashbox(
+      tester,
+      store: store,
+      username: 'cashbox.creator',
+      password: 'cashbox-password',
+    );
+
+    final mainField = tester.widget<AppAutocompleteField<CashboxMainAccount>>(
+      find.ancestor(
+        of: find.byKey(const Key('cashboxMainAccountField')),
+        matching: find.byType(
+          AppAutocompleteField<CashboxMainAccount>,
+        ),
+      ),
+    );
+    final subaccountField =
+        tester.widget<AppAutocompleteField<CashboxSubaccount>>(
+      find.ancestor(
+        of: find.byKey(const Key('cashboxSubaccountField')),
+        matching: find.byType(
+          AppAutocompleteField<CashboxSubaccount>,
+        ),
+      ),
+    );
+    expect(mainField.onCreateRequested, isNull);
+    expect(subaccountField.onCreateRequested, isNull);
+
+    await tester.enterText(
+      find.byKey(const Key('cashboxMainAccountField')),
+      'صندوق غير موجود',
+    );
+    await tester.pump();
+    expect(find.text('إضافة حساب رئيسي جديد'), findsNothing);
+  });
 }
 
-Future<void> _openCashbox(WidgetTester tester) async {
+Future<void> _openCashbox(
+  WidgetTester tester, {
+  AppStore? store,
+  String username = 'admin',
+  String password = 'password',
+}) async {
   await tester.binding.setSurfaceSize(const Size(1440, 900));
   addTearDown(() => tester.binding.setSurfaceSize(null));
 
-  await tester.pumpWidget(const AlmumayazApp());
-  await tester.enterText(find.byKey(const Key('usernameField')), 'admin');
-  await tester.enterText(find.byKey(const Key('passwordField')), 'password');
+  await tester.pumpWidget(AlmumayazApp(store: store));
+  await tester.enterText(find.byKey(const Key('usernameField')), username);
+  await tester.enterText(find.byKey(const Key('passwordField')), password);
   await tester.tap(find.byKey(const Key('loginButton')));
   await tester.pumpAndSettle();
   await tester.tap(find.byKey(const Key('dashboardCard_cashbox')));
   await tester.pumpAndSettle();
+}
+
+String _fieldText(WidgetTester tester, Key key) {
+  return _editableText(tester, find.byKey(key)).controller.text;
 }
 
 bool _hasTextFocus(WidgetTester tester, Finder finder) {

@@ -193,6 +193,9 @@ extension _PurchaseViewState on _PurchaseScreenState {
                     optionSubtitle: (party) => 'رقم ${party.number}',
                     onSelected: _selectSupplier,
                     onChanged: _changeSupplierText,
+                    createActionLabel: 'إضافة مجهز جديد',
+                    onCreateRequested:
+                        _allowsPartyCreate() ? _createSupplier : null,
                     textDirection: TextDirection.rtl,
                     textAlign: TextAlign.right,
                   ),
@@ -225,6 +228,8 @@ extension _PurchaseViewState on _PurchaseScreenState {
                   defaultWarehouse: _defaultWarehouseId,
                   defaultWarehouseLabel: _defaultWarehouseName,
                   onRowsChanged: _changeItems,
+                  onCreateItemRequested:
+                      _allowsItemCreate() ? _createItem : null,
                 ),
               ),
               const SizedBox(height: AppSpacing.md),

@@ -54,6 +54,7 @@ class AppRepositories {
     final seededManualCashbox = demoCashboxVouchers();
 
     masterData = DemoOperationalMasterDataRepository(
+      transactionRunner: transactionRunner,
       isExternallyReferenced: (id) async {
         final record = await masterData.getById(id);
         if (record == null) return false;

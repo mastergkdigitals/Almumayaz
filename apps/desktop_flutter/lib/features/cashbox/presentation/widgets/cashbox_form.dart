@@ -108,6 +108,8 @@ class CashboxForm extends StatelessWidget {
     required this.onVoucherTypeChanged,
     required this.onMainAccountChanged,
     required this.onSubaccountChanged,
+    this.onCreateMainAccount,
+    this.onCreateSubaccount,
     super.key,
   });
 
@@ -120,6 +122,8 @@ class CashboxForm extends StatelessWidget {
   final ValueChanged<CashboxVoucherType> onVoucherTypeChanged;
   final ValueChanged<String> onMainAccountChanged;
   final ValueChanged<String> onSubaccountChanged;
+  final VoidCallback? onCreateMainAccount;
+  final VoidCallback? onCreateSubaccount;
 
   @override
   Widget build(BuildContext context) {
@@ -278,6 +282,8 @@ class CashboxForm extends StatelessWidget {
                   }
                 }
               },
+              createActionLabel: 'إضافة حساب رئيسي جديد',
+              onCreateRequested: onCreateMainAccount,
               textDirection: TextDirection.rtl,
               textAlign: TextAlign.right,
             ),
@@ -305,6 +311,8 @@ class CashboxForm extends StatelessWidget {
                   }
                 }
               },
+              createActionLabel: 'إضافة حساب فرعي جديد',
+              onCreateRequested: onCreateSubaccount,
               textDirection: TextDirection.rtl,
               textAlign: TextAlign.right,
             ),

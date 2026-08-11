@@ -1321,6 +1321,151 @@ void main() {
       AppColors.blue,
     );
   });
+
+  testWidgets('quick-creates and selects a missing Purchase supplier',
+      (tester) async {
+    final store = AppStore.demo();
+    addTearDown(store.dispose);
+    await _openPurchaseScreen(tester, store: store);
+
+    const supplierName = 'مجهز سريع للمشتريات';
+    final supplierField =
+        find.byKey(const Key('purchaseSupplierNameField'));
+    await tester.enterText(supplierField, supplierName);
+    await tester.pump();
+    expect(find.byKey(const Key('appAutocompleteNoResultsState')),
+        findsOneWidget);
+
+    await tester.tap(find.text('إضافة مجهز جديد'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('purchaseQuickSupplierDialog')),
+        findsOneWidget);
+    expect(
+      _fieldValue(tester, 'purchaseQuickSupplierNameField'),
+      supplierName,
+    );
+    await tester.enterText(
+      find.byKey(const Key('purchaseQuickSupplierAlternatePhoneField')),
+      '07800002002',
+    );
+    await tester.enterText(
+      find.byKey(const Key('purchaseQuickSupplierAddressField')),
+      'عنوان المجهز السريع',
+    );
+
+    await tester.tap(find.byKey(const Key('purchaseQuickSupplierConfirm')));
+    await tester.pumpAndSettle();
+    expect(_fieldValue(tester, 'purchaseSupplierNameField'), supplierName);
+
+    final stored = (await store.repositories.parties.getAll())
+        .singleWhere((party) => party.name == supplierName);
+    expect(stored.type, PartyType.supplier);
+    expect(stored.alternatePhone, '07800002002');
+    expect(stored.address, 'عنوان المجهز السريع');
+    expect(stored.entityId.value, isNotEmpty);
+  });
+
+  testWidgets('quick-creates and selects a missing Purchase invoice item',
+      (tester) async {
+    final store = AppStore.demo();
+    addTearDown(store.dispose);
+    await _openPurchaseScreen(tester, store: store);
+    await _openNewPurchaseForm(tester);
+
+    const itemCode = 'P-PHASE2-NEW';
+    const itemName = 'مادة مشتريات سريعة';
+    final codeField =
+        _invoiceFieldByPrefix('appPurchaseInvoiceTemplateCodeField-');
+    await tester.enterText(codeField, itemCode);
+    await tester.pump();
+    await tester.tap(find.text('إضافة مادة جديدة'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('purchaseQuickItemDialog')), findsOneWidget);
+    expect(_fieldValue(tester, 'purchaseQuickItemCodeField'), itemCode);
+    await tester.enterText(
+      find.byKey(const Key('purchaseQuickItemNameField')),
+      itemName,
+    );
+    await tester.pump();
+    expect(
+      tester.widget<AppButton>(
+        find.byKey(const Key('purchaseQuickItemConfirm')),
+      ).onPressed,
+      isNotNull,
+    );
+
+    await tester.tap(find.byKey(const Key('purchaseQuickItemConfirm')));
+    await tester.pumpAndSettle();
+    expect(
+      _invoiceFieldValueByPrefix(
+        tester,
+        'appPurchaseInvoiceTemplateCodeField-',
+      ),
+      itemCode,
+    );
+    expect(
+      _invoiceFieldValueByPrefix(
+        tester,
+        'appPurchaseInvoiceTemplateNameField-',
+      ),
+      itemName,
+    );
+
+    final item = (await store.repositories.items.getAll())
+        .singleWhere((candidate) => candidate.code == itemCode);
+    final type = await store.repositories.operationalMasterData.getById(
+      EntityId(item.typeId),
+    );
+    expect(item.entityId.value, isNotEmpty);
+    expect(type, isNotNull);
+    expect(type!.parentId, EntityId(item.groupId));
+  });
+
+  testWidgets('quick-creates a Purchase invoice item from the name field',
+      (tester) async {
+    final store = AppStore.demo();
+    addTearDown(store.dispose);
+    await _openPurchaseScreen(tester, store: store);
+    await _openNewPurchaseForm(tester);
+
+    const itemCode = 'P-PHASE2-BY-NAME';
+    const itemName = 'مادة مشتريات بالاسم';
+    await tester.enterText(
+      _invoiceFieldByPrefix('appPurchaseInvoiceTemplateNameField-'),
+      itemName,
+    );
+    await tester.pump();
+    await tester.tap(find.text('إضافة مادة جديدة'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('purchaseQuickItemDialog')), findsOneWidget);
+    expect(_fieldValue(tester, 'purchaseQuickItemNameField'), itemName);
+    await tester.enterText(
+      find.byKey(const Key('purchaseQuickItemCodeField')),
+      itemCode,
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('purchaseQuickItemConfirm')));
+    await tester.pumpAndSettle();
+
+    expect(
+      _invoiceFieldValueByPrefix(
+        tester,
+        'appPurchaseInvoiceTemplateCodeField-',
+      ),
+      itemCode,
+    );
+    expect(
+      _invoiceFieldValueByPrefix(
+        tester,
+        'appPurchaseInvoiceTemplateNameField-',
+      ),
+      itemName,
+    );
+    final created = (await store.repositories.items.getAll())
+        .singleWhere((item) => item.code == itemCode);
+    expect(created.name, itemName);
+    expect(created.entityId.value, isNotEmpty);
+  });
 }
 
 AppDropdownField<String> _dropdown(

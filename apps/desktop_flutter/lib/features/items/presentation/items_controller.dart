@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/data/app_repository.dart';
 import '../../../core/domain/business_values.dart';
+import '../../settings/domain/operational_master_data.dart';
+import '../../settings/domain/operational_master_data_repository.dart';
 import '../domain/item.dart';
 import '../domain/item_repository.dart';
 
@@ -48,17 +50,22 @@ const _unchanged = Object();
 class ItemsController extends ChangeNotifier {
   ItemsController({
     required ItemRepository repository,
+    OperationalMasterDataRepository? masterData,
     VoidCallback? onDataChanged,
   })  : _repository = repository,
+        _masterData = masterData,
         _onDataChanged = onDataChanged;
 
   final ItemRepository _repository;
+  final OperationalMasterDataRepository? _masterData;
   final VoidCallback? _onDataChanged;
   ItemsState _state = const ItemsState();
   bool _isDisposed = false;
   int _loadGeneration = 0;
 
   ItemsState get state => _state;
+
+  bool get canCreateMasterData => _masterData != null;
 
   List<Item> get visibleItems {
     final query = _state.query.trim().toLowerCase().replaceAll(',', '');
@@ -97,6 +104,73 @@ class ItemsController extends ChangeNotifier {
       if (type.id == typeId) return type;
     }
     return null;
+  }
+
+  Future<ItemGroup> createGroup(String name) async {
+    final repository = _masterData;
+    if (repository == null) {
+      throw StateError('إضافة مجموعات المواد غير متاحة');
+    }
+    final saved = await repository.createNamedRecord(
+      CreateOperationalMasterDataRequest(
+        kind: OperationalMasterDataKind.itemGroup,
+        name: name,
+      ),
+    );
+    final created = ItemGroup.typed(
+      entityId: saved.id,
+      number: saved.number,
+      name: saved.name,
+    );
+    if (_isDisposed) return created;
+    final allGroups = await _repository.getGroups();
+    final allTypes = await _repository.getTypes();
+    if (_isDisposed) return created;
+    _state = _state.copyWith(
+      groups: List.unmodifiable(allGroups),
+      types: List.unmodifiable(allTypes),
+    );
+    _notifyListenersIfActive();
+    _onDataChanged?.call();
+    return created;
+  }
+
+  Future<ItemType> createType({
+    required String name,
+    required EntityId groupId,
+  }) async {
+    final repository = _masterData;
+    if (repository == null) {
+      throw StateError('إضافة أنواع المواد غير متاحة');
+    }
+    final group = groupById(groupId.value);
+    if (group == null) {
+      throw StateError('اختر مجموعة موجودة من القائمة أولاً');
+    }
+    final saved = await repository.createNamedRecord(
+      CreateOperationalMasterDataRequest(
+        kind: OperationalMasterDataKind.itemType,
+        name: name,
+        parentId: groupId,
+      ),
+    );
+    final created = ItemType.typed(
+      entityId: saved.id,
+      groupEntityId: groupId,
+      number: saved.number,
+      name: saved.name,
+    );
+    if (_isDisposed) return created;
+    final allGroups = await _repository.getGroups();
+    final allTypes = await _repository.getTypes();
+    if (_isDisposed) return created;
+    _state = _state.copyWith(
+      groups: List.unmodifiable(allGroups),
+      types: List.unmodifiable(allTypes),
+    );
+    _notifyListenersIfActive();
+    _onDataChanged?.call();
+    return created;
   }
 
   Future<void> load() async {

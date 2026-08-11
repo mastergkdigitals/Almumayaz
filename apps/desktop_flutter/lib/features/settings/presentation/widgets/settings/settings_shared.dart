@@ -68,15 +68,3 @@ String _formatSettingsNumber(String value) {
   }
   return buffer.toString();
 }
-
-int _nextEntitySequence(
-  Iterable<EntityId> ids, {
-  required int fallback,
-}) {
-  var maximum = 0;
-  for (final id in ids) {
-    final sequence = int.tryParse(id.value.split('-').last);
-    if (sequence != null && sequence > maximum) maximum = sequence;
-  }
-  return maximum == 0 ? fallback : maximum + 1;
-}

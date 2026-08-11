@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../app_formatters.dart';
@@ -276,6 +278,7 @@ class AppSalesInvoiceTableTemplate extends StatefulWidget {
     this.defaultWarehouse = 'الرئيسي',
     this.defaultWarehouseLabel = '',
     this.onRowsChanged,
+    this.onCreateItemRequested,
   });
 
   final List<AppSalesInvoiceTableRowData> initialRows;
@@ -293,6 +296,7 @@ class AppSalesInvoiceTableTemplate extends StatefulWidget {
   /// Display label for [defaultWarehouse].
   final String defaultWarehouseLabel;
   final ValueChanged<List<AppSalesInvoiceTableRowData>>? onRowsChanged;
+  final AppInvoiceItemQuickCreate? onCreateItemRequested;
 
   @override
   State<AppSalesInvoiceTableTemplate> createState() =>
@@ -455,6 +459,17 @@ class _AppSalesInvoiceTableTemplateState
     });
   }
 
+  Future<void> _createItem(_SalesInvoiceTemplateRow row) async {
+    final create = widget.onCreateItemRequested;
+    if (create == null) return;
+    final option = await create(
+      code: row.codeController.text,
+      name: row.nameController.text,
+    );
+    if (!mounted || option == null || !_rows.contains(row)) return;
+    _selectItem(row, option);
+  }
+
   bool _canAddRow(_SalesInvoiceTemplateRow row) {
     return AppSalesInvoiceTableRowData(
       code: row.codeController.text,
@@ -586,6 +601,10 @@ class _AppSalesInvoiceTableTemplateState
         icon: null,
         textDirection: TextDirection.rtl,
         onChanged: (_) => _changeItemText(row),
+        createActionLabel: 'إضافة مادة جديدة',
+        onCreateRequested: widget.onCreateItemRequested == null
+            ? null
+            : () => unawaited(_createItem(row)),
         showLabel: false,
         borderRadius: AppRadii.sm,
       ),
@@ -605,6 +624,10 @@ class _AppSalesInvoiceTableTemplateState
         icon: null,
         textDirection: TextDirection.rtl,
         onChanged: (_) => _changeItemText(row),
+        createActionLabel: 'إضافة مادة جديدة',
+        onCreateRequested: widget.onCreateItemRequested == null
+            ? null
+            : () => unawaited(_createItem(row)),
         showLabel: false,
         borderRadius: AppRadii.sm,
       ),

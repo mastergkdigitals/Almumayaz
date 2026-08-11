@@ -11,8 +11,10 @@ import '../../../core/domain/business_values.dart';
 import '../../../core/printing/document_output_service.dart';
 import '../../../core/services/service_failure.dart';
 import '../../items/domain/item.dart';
+import '../../items/domain/item_repository.dart';
 import '../../parties/application/party_statement_service.dart';
 import '../../parties/domain/party.dart';
+import '../../parties/domain/party_repository.dart';
 import '../../permissions/domain/permission_models.dart';
 import '../../settings/domain/settings_models.dart';
 import '../../warehouses/domain/warehouse.dart';
@@ -161,6 +163,142 @@ class _SalesScreenState extends State<SalesScreen> {
 
   bool _allowsSalesAction(PermissionAction action) =>
       _store?.allowsFeatureAction('sales', action) ?? true;
+
+  bool _allowsPartyCreate() =>
+      _store?.allowsFeatureAction('parties', PermissionAction.create) ?? false;
+
+  bool _allowsItemCreate() =>
+      _store?.allowsFeatureAction('items', PermissionAction.create) ?? false;
+
+  Future<void> _createCustomer() async {
+    final store = _store;
+    if (store == null || !_allowsPartyCreate()) return;
+    final values = await AppQuickCreateDialog.showParty<PartyType>(
+      context: context,
+      title: 'إضافة زبون جديد',
+      prompt: 'هذا الزبون غير موجود، هل تود إضافته؟',
+      icon: Icons.person_add_alt_1_rounded,
+      accentColor: AppModuleColors.sales,
+      keyPrefix: 'salesQuickCustomer',
+      initialName: _customerNameController.text,
+      initialType: PartyType.customer,
+      typeOptions: const [
+        AppDropdownOption(value: PartyType.customer, label: 'زبون'),
+      ],
+    );
+    if (!mounted || values == null) return;
+    final repository = store.repositories.parties;
+    try {
+      final created = await repository.quickCreate(
+        PartyQuickCreateRequest(
+          name: values.name,
+          type: values.type,
+          phone: values.phone,
+          alternatePhone: values.alternatePhone,
+          city: values.city,
+          address: values.address,
+          notes: values.notes,
+        ),
+      );
+      final refreshed = await repository.getAll();
+      if (!mounted) return;
+      setState(() {
+        _customerOptions = List.unmodifiable(
+          refreshed.where(
+            (party) =>
+                party.type == PartyType.customer ||
+                party.type == PartyType.customerAndSupplier,
+          ),
+        );
+        _customerNameController.text = created.name;
+        _selectedCustomerId = created.entityId;
+      });
+      store.markDataChanged();
+      AppToast.showSuccess(context, 'تمت إضافة الزبون');
+    } on StateError catch (error) {
+      if (mounted) AppToast.showWarning(context, error.message);
+    }
+  }
+
+  Future<AppInvoiceItemOption?> _createItem({
+    required String code,
+    required String name,
+  }) async {
+    final store = _store;
+    if (store == null || !_allowsItemCreate()) return null;
+    final repository = store.repositories.items;
+    try {
+      final groups = await repository.getGroups();
+      final types = await repository.getTypes();
+      if (!mounted) return null;
+      if (groups.isEmpty || types.isEmpty) {
+        AppToast.showWarning(context, 'يجب تسجيل مجموعة ونوع للمادة أولاً');
+        return null;
+      }
+      final values = await AppQuickCreateDialog.showItem(
+        context: context,
+        title: 'إضافة مادة جديدة',
+        prompt: 'هذه المادة غير موجودة، هل تود إضافتها؟',
+        accentColor: AppModuleColors.sales,
+        keyPrefix: 'salesQuickItem',
+        initialCode: code,
+        initialName: name,
+        groups: [
+          for (final group in groups)
+            AppQuickCreateReferenceOption(
+              id: group.id,
+              name: group.name,
+              number: group.number,
+            ),
+        ],
+        types: [
+          for (final type in types)
+            AppQuickCreateReferenceOption(
+              id: type.id,
+              name: type.name,
+              number: type.number,
+              parentId: type.groupId,
+            ),
+        ],
+      );
+      if (!mounted || values == null) return null;
+      final created = await repository.quickCreate(
+        ItemQuickCreateRequest(
+          code: values.code,
+          name: values.name,
+          groupId: EntityId(values.groupId),
+          typeId: EntityId(values.typeId),
+        ),
+      );
+      final refreshed = await repository.getAll();
+      if (!mounted) return null;
+      final option = AppInvoiceItemOption(
+        id: created.id,
+        code: created.code,
+        name: created.name,
+      );
+      setState(() {
+        _knownItemIds
+          ..clear()
+          ..addAll(refreshed.map((item) => item.entityId));
+        _itemOptions = List.unmodifiable(
+          refreshed.map(
+            (item) => AppInvoiceItemOption(
+              id: item.id,
+              code: item.code,
+              name: item.name,
+            ),
+          ),
+        );
+      });
+      store.markDataChanged();
+      AppToast.showSuccess(context, 'تمت إضافة المادة');
+      return option;
+    } on StateError catch (error) {
+      if (mounted) AppToast.showWarning(context, error.message);
+      return null;
+    }
+  }
 
   Iterable<TextEditingController> get _editableControllers => [
         _exchangeRateController,

@@ -6,14 +6,19 @@ import 'package:erp/core/app_state/app_store.dart';
 import 'package:erp/core/data/app_repository.dart';
 import 'package:erp/core/design/app_design_system.dart';
 import 'package:erp/core/domain/business_values.dart';
+import 'package:erp/features/authentication/domain/session_models.dart';
 import 'package:erp/features/parties/application/party_statement_service.dart';
 import 'package:erp/features/parties/data/demo_party_repository.dart';
 import 'package:erp/features/parties/domain/party.dart';
 import 'package:erp/features/parties/domain/party_repository.dart';
 import 'package:erp/features/parties/presentation/parties_controller.dart';
 import 'package:erp/features/parties/presentation/parties_screen.dart';
+import 'package:erp/features/parties/presentation/widgets/party_form.dart';
+import 'package:erp/features/permissions/domain/permission_models.dart';
 import 'package:erp/features/settings/data/demo_operational_settings_repositories.dart';
 import 'package:erp/features/settings/domain/operational_master_data.dart';
+import 'package:erp/features/settings/domain/operational_master_data_repository.dart';
+import 'package:erp/features/users/domain/user_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -92,24 +97,24 @@ void main() {
     );
     addTearDown(first.dispose);
     await first.load();
-    await first.add(
-      Party(
-        id: 'party-persistence-test',
-        number: first.nextNumber,
-        createdAt: DateTime(2026, 8, 5),
-        name: 'طرف مستمر',
-        type: PartyType.customer,
-        workplace: '',
-        branch: '',
-        phone: '',
-        alternatePhone: '',
-        city: '',
-        address: '',
-        notes: '',
-        balanceIqd: 0,
-        balanceUsd: 0,
-      ),
+    final submitted = Party(
+      id: 'party-persistence-test',
+      number: first.nextNumber,
+      createdAt: DateTime(2026, 8, 5),
+      name: 'طرف مستمر',
+      type: PartyType.customer,
+      workplace: '',
+      branch: '',
+      phone: '',
+      alternatePhone: '',
+      city: '',
+      address: '',
+      notes: '',
+      balanceIqd: 0,
+      balanceUsd: 0,
     );
+    final added = await first.add(submitted);
+    expect(added.entityId, isNot(submitted.entityId));
 
     final reopened = PartiesController(
       repository: repositories.parties,
@@ -118,7 +123,9 @@ void main() {
     addTearDown(reopened.dispose);
     await reopened.load();
     expect(
-      reopened.state.parties.any((party) => party.id == 'party-persistence-test'),
+      reopened.state.parties.any(
+        (party) => party.entityId == added.entityId,
+      ),
       isTrue,
     );
 
@@ -722,10 +729,16 @@ void main() {
     await tester.pump();
     expect(find.text('تجارة الجملة'), findsNWidgets(wholesaleCount));
 
-    expect(find.text('أربيل'), findsNothing);
-    await tester.tap(find.byKey(const Key('partyBranchField')));
+    final mosulCount = find.text('الموصل').evaluate().length;
+    final erbilCount = find.text('أربيل').evaluate().length;
+    await tester.tap(find.text('الأجهزة المكتبية').last);
     await tester.pump();
-    expect(find.text('أربيل'), findsOneWidget);
+    expect(
+      _fieldText(tester, find.byKey(const Key('partyWorkplaceField'))),
+      'الأجهزة المكتبية',
+    );
+    expect(find.text('الموصل'), findsNWidgets(mosulCount + 1));
+    expect(find.text('أربيل'), findsNWidgets(erbilCount));
   });
 
   testWidgets('opens statement options and report from a party row',
@@ -876,6 +889,253 @@ void main() {
     await tester.pumpAndSettle();
     expect(_fieldText(tester, name), 'مجهز الكرادة');
   });
+
+  testWidgets('quick-creates a workplace and a constrained branch',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final store = AppStore.demo();
+    addTearDown(store.dispose);
+
+    await tester.pumpWidget(AlmumayazApp(store: store));
+    await _login(tester);
+    await tester.tap(find.byKey(const Key('dashboardCard_parties')));
+    await tester.pumpAndSettle();
+
+    const workplaceName = 'جهة عمل المرحلة الثانية';
+    await tester.enterText(
+      find.byKey(const Key('partyWorkplaceField')),
+      workplaceName,
+    );
+    await tester.pump();
+    await tester.tap(find.text('إضافة جهة عمل جديدة'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('partyQuickWorkplaceDialog')),
+        findsOneWidget);
+    expect(
+      _fieldText(
+        tester,
+        find.byKey(const Key('partyQuickWorkplaceNameField')),
+      ),
+      workplaceName,
+    );
+    await tester.tap(find.byKey(const Key('partyQuickWorkplaceConfirm')));
+    await tester.pumpAndSettle();
+    expect(
+      _fieldText(tester, find.byKey(const Key('partyWorkplaceField'))),
+      workplaceName,
+    );
+
+    final workplaces = await store.repositories.operationalMasterData
+        .getByKind(OperationalMasterDataKind.workplace);
+    final workplace =
+        workplaces.singleWhere((record) => record.name == workplaceName);
+
+    const branchName = 'فرع المرحلة الثانية';
+    await tester.enterText(
+      find.byKey(const Key('partyBranchField')),
+      branchName,
+    );
+    await tester.pump();
+    await tester.tap(find.text('إضافة فرع جديد'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('partyQuickBranchDialog')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('partyQuickBranchConfirm')));
+    await tester.pumpAndSettle();
+    expect(
+      _fieldText(tester, find.byKey(const Key('partyBranchField'))),
+      branchName,
+    );
+
+    final branches = await store.repositories.operationalMasterData.getByKind(
+      OperationalMasterDataKind.branch,
+      parentId: workplace.id,
+    );
+    final branch =
+        branches.singleWhere((record) => record.name == branchName);
+    expect(branch.parentId, workplace.id);
+    expect(branch.id.value, isNotEmpty);
+  });
+
+  testWidgets('normal party creation never reuses a deleted issued identity',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final store = AppStore.demo();
+    addTearDown(store.dispose);
+
+    await tester.pumpWidget(AlmumayazApp(store: store));
+    await _login(tester);
+    await tester.tap(find.byKey(const Key('dashboardCard_parties')));
+    await tester.pumpAndSettle();
+
+    const firstName = 'طرف إصدار عادي أول';
+    await tester.enterText(
+      find.byKey(const Key('partyNameField')),
+      firstName,
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('partiesSaveButton')));
+    await tester.pumpAndSettle();
+    final first = (await store.repositories.parties.getAll())
+        .singleWhere((party) => party.name == firstName);
+
+    await tester.tap(find.byKey(const Key('partiesDeleteButton')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('appConfirmDialog')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('appDialogConfirmButton')));
+    await tester.pumpAndSettle();
+    expect(await store.repositories.parties.getById(first.entityId), isNull);
+
+    const secondName = 'طرف إصدار عادي ثان';
+    await tester.enterText(
+      find.byKey(const Key('partyNameField')),
+      secondName,
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('partiesSaveButton')));
+    await tester.pumpAndSettle();
+    final second = (await store.repositories.parties.getAll())
+        .singleWhere((party) => party.name == secondName);
+
+    expect(second.number, greaterThan(first.number));
+    expect(second.entityId, isNot(first.entityId));
+    expect(_fieldText(tester, find.byKey(const Key('partyNumberField'))),
+        second.number.toString());
+  });
+
+  testWidgets('party form retains stable master IDs after master renames',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final store = AppStore.demo();
+    addTearDown(store.dispose);
+    final masterData = store.repositories.operationalMasterData;
+    final workplace = await masterData.createNamedRecord(
+      const CreateOperationalMasterDataRequest(
+        kind: OperationalMasterDataKind.workplace,
+        name: 'جهة شاشة قبل التعديل',
+      ),
+    );
+    final branch = await masterData.createNamedRecord(
+      CreateOperationalMasterDataRequest(
+        kind: OperationalMasterDataKind.branch,
+        name: 'فرع شاشة قبل التعديل',
+        parentId: workplace.id,
+      ),
+    );
+    final party = await store.repositories.parties.quickCreate(
+      PartyQuickCreateRequest(
+        name: 'طرف شاشة بمرجع ثابت',
+        type: PartyType.customer,
+        workplaceId: workplace.id,
+        branchId: branch.id,
+      ),
+    );
+    await masterData.save(
+      OperationalMasterDataRecord(
+        id: workplace.id,
+        kind: workplace.kind,
+        number: workplace.number,
+        name: 'جهة شاشة بعد التعديل',
+      ),
+    );
+    await masterData.save(
+      OperationalMasterDataRecord(
+        id: branch.id,
+        kind: branch.kind,
+        number: branch.number,
+        name: 'فرع شاشة بعد التعديل',
+        parentId: workplace.id,
+      ),
+    );
+
+    await tester.pumpWidget(AlmumayazApp(store: store));
+    await _login(tester);
+    await tester.tap(find.byKey(const Key('dashboardCard_parties')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('partiesSearchField')),
+      party.name,
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(Key('partyRow_${party.id}')));
+    await tester.pumpAndSettle();
+
+    final form = tester.widget<PartyForm>(find.byType(PartyForm));
+    expect(form.workplaceId, workplace.id);
+    expect(form.branchId, branch.id);
+    expect(
+      _fieldText(tester, find.byKey(const Key('partyWorkplaceField'))),
+      'جهة شاشة بعد التعديل',
+    );
+    expect(
+      _fieldText(tester, find.byKey(const Key('partyBranchField'))),
+      'فرع شاشة بعد التعديل',
+    );
+  });
+
+  testWidgets('hides master-data quick-create without Settings manage',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final store = AppStore.demo();
+    addTearDown(store.dispose);
+    await store.signIn(
+      SignInCredentials(username: 'admin', password: 'password'),
+    );
+    final role = await store.services.administration.saveRole(
+      RoleSaveRequest(
+        name: 'إضافة الأطراف فقط',
+        permissions: {
+          PermissionCode(
+            module: 'parties',
+            action: PermissionAction.view,
+          ),
+          PermissionCode(
+            module: 'parties',
+            action: PermissionAction.create,
+          ),
+        },
+      ),
+    );
+    await store.services.administration.createUser(
+      UserCreateRequest(
+        fullName: 'مستخدم إضافة الأطراف',
+        username: 'parties.creator',
+        roleIds: {role.id},
+        initialPassword: 'parties-password',
+      ),
+    );
+    await store.signOut();
+
+    await tester.pumpWidget(AlmumayazApp(store: store));
+    await _login(
+      tester,
+      username: 'parties.creator',
+      password: 'parties-password',
+    );
+    await tester.tap(find.byKey(const Key('dashboardCard_parties')));
+    await tester.pumpAndSettle();
+
+    final workplaceAutocomplete = tester.widget<
+        AppAutocompleteField<OperationalMasterDataRecord>>(
+      find.ancestor(
+        of: find.byKey(const Key('partyWorkplaceField')),
+        matching: find.byType(
+          AppAutocompleteField<OperationalMasterDataRecord>,
+        ),
+      ),
+    );
+    expect(workplaceAutocomplete.onCreateRequested, isNull);
+
+    await tester.enterText(
+      find.byKey(const Key('partyWorkplaceField')),
+      'جهة غير موجودة',
+    );
+    await tester.pump();
+    expect(find.text('إضافة جهة عمل جديدة'), findsNothing);
+  });
 }
 
 class _ControlledPartyStatementService implements PartyStatementService {
@@ -891,9 +1151,13 @@ class _ControlledPartyStatementService implements PartyStatementService {
   }
 }
 
-Future<void> _login(WidgetTester tester) async {
-  await tester.enterText(find.byKey(const Key('usernameField')), 'admin');
-  await tester.enterText(find.byKey(const Key('passwordField')), 'password');
+Future<void> _login(
+  WidgetTester tester, {
+  String username = 'admin',
+  String password = 'password',
+}) async {
+  await tester.enterText(find.byKey(const Key('usernameField')), username);
+  await tester.enterText(find.byKey(const Key('passwordField')), password);
   await tester.tap(find.byKey(const Key('loginButton')));
   await tester.pumpAndSettle();
 }

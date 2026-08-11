@@ -108,6 +108,15 @@ class _MasterDataSettingsSectionState
     await _load(showLoading: false);
   }
 
+  Future<OperationalMasterDataRecord> _createRecord(
+    CreateOperationalMasterDataRequest request,
+  ) async {
+    final saved = await _repository!.createNamedRecord(request);
+    _store!.markDataChanged();
+    await _load(showLoading: false);
+    return saved;
+  }
+
   Future<DeleteDecision> _canDelete(EntityId id) {
     return _repository!.canDelete(id);
   }
@@ -178,6 +187,7 @@ class _MasterDataSettingsSectionState
             _GroupsTypesTemplate(
               accentColor: widget.accentColor,
               records: records,
+              onCreate: _createRecord,
               onSave: _saveRecord,
               canDelete: _canDelete,
               onDelete: _deleteRecord,
@@ -185,6 +195,7 @@ class _MasterDataSettingsSectionState
             _WorkplacesBranchesTemplate(
               accentColor: widget.accentColor,
               records: records,
+              onCreate: _createRecord,
               onSave: _saveRecord,
               canDelete: _canDelete,
               onDelete: _deleteRecord,
@@ -192,6 +203,7 @@ class _MasterDataSettingsSectionState
             _CashboxAccountsTemplate(
               accentColor: widget.accentColor,
               records: records,
+              onCreate: _createRecord,
               onSave: _saveRecord,
               canDelete: _canDelete,
               onDelete: _deleteRecord,
@@ -206,6 +218,9 @@ class _MasterDataSettingsSectionState
 typedef _SaveMasterDataRecord = Future<void> Function(
   OperationalMasterDataRecord record,
 );
+typedef _CreateMasterDataRecord = Future<OperationalMasterDataRecord> Function(
+  CreateOperationalMasterDataRequest request,
+);
 typedef _CanDeleteMasterDataRecord = Future<DeleteDecision> Function(
   EntityId id,
 );
@@ -215,6 +230,7 @@ class _GroupsTypesTemplate extends StatelessWidget {
   const _GroupsTypesTemplate({
     required this.accentColor,
     required this.records,
+    required this.onCreate,
     required this.onSave,
     required this.canDelete,
     required this.onDelete,
@@ -222,6 +238,7 @@ class _GroupsTypesTemplate extends StatelessWidget {
 
   final Color accentColor;
   final List<OperationalMasterDataRecord> records;
+  final _CreateMasterDataRecord onCreate;
   final _SaveMasterDataRecord onSave;
   final _CanDeleteMasterDataRecord canDelete;
   final _DeleteMasterDataRecord onDelete;
@@ -249,8 +266,8 @@ class _GroupsTypesTemplate extends StatelessWidget {
           accentColor: accentColor,
           kind: OperationalMasterDataKind.itemGroup,
           entries: groups,
-          allKindEntries: groups,
           dependentEntries: types,
+          onCreate: onCreate,
           onSave: onSave,
           canDelete: canDelete,
           onDelete: onDelete,
@@ -264,8 +281,8 @@ class _GroupsTypesTemplate extends StatelessWidget {
           accentColor: accentColor,
           kind: OperationalMasterDataKind.itemType,
           entries: types,
-          allKindEntries: types,
           parentOptions: groups,
+          onCreate: onCreate,
           onSave: onSave,
           canDelete: canDelete,
           onDelete: onDelete,
@@ -279,6 +296,7 @@ class _WorkplacesBranchesTemplate extends StatelessWidget {
   const _WorkplacesBranchesTemplate({
     required this.accentColor,
     required this.records,
+    required this.onCreate,
     required this.onSave,
     required this.canDelete,
     required this.onDelete,
@@ -286,6 +304,7 @@ class _WorkplacesBranchesTemplate extends StatelessWidget {
 
   final Color accentColor;
   final List<OperationalMasterDataRecord> records;
+  final _CreateMasterDataRecord onCreate;
   final _SaveMasterDataRecord onSave;
   final _CanDeleteMasterDataRecord canDelete;
   final _DeleteMasterDataRecord onDelete;
@@ -313,8 +332,8 @@ class _WorkplacesBranchesTemplate extends StatelessWidget {
           accentColor: accentColor,
           kind: OperationalMasterDataKind.workplace,
           entries: workplaces,
-          allKindEntries: workplaces,
           dependentEntries: branches,
+          onCreate: onCreate,
           onSave: onSave,
           canDelete: canDelete,
           onDelete: onDelete,
@@ -328,8 +347,8 @@ class _WorkplacesBranchesTemplate extends StatelessWidget {
           accentColor: accentColor,
           kind: OperationalMasterDataKind.branch,
           entries: branches,
-          allKindEntries: branches,
           parentOptions: workplaces,
+          onCreate: onCreate,
           onSave: onSave,
           canDelete: canDelete,
           onDelete: onDelete,
@@ -343,6 +362,7 @@ class _CashboxAccountsTemplate extends StatelessWidget {
   const _CashboxAccountsTemplate({
     required this.accentColor,
     required this.records,
+    required this.onCreate,
     required this.onSave,
     required this.canDelete,
     required this.onDelete,
@@ -350,6 +370,7 @@ class _CashboxAccountsTemplate extends StatelessWidget {
 
   final Color accentColor;
   final List<OperationalMasterDataRecord> records;
+  final _CreateMasterDataRecord onCreate;
   final _SaveMasterDataRecord onSave;
   final _CanDeleteMasterDataRecord canDelete;
   final _DeleteMasterDataRecord onDelete;
@@ -377,8 +398,8 @@ class _CashboxAccountsTemplate extends StatelessWidget {
           accentColor: accentColor,
           kind: OperationalMasterDataKind.cashboxMainAccount,
           entries: mainAccounts,
-          allKindEntries: mainAccounts,
           dependentEntries: subaccounts,
+          onCreate: onCreate,
           onSave: onSave,
           canDelete: canDelete,
           onDelete: onDelete,
@@ -392,8 +413,8 @@ class _CashboxAccountsTemplate extends StatelessWidget {
           accentColor: accentColor,
           kind: OperationalMasterDataKind.cashboxSubaccount,
           entries: subaccounts,
-          allKindEntries: subaccounts,
           parentOptions: mainAccounts,
+          onCreate: onCreate,
           onSave: onSave,
           canDelete: canDelete,
           onDelete: onDelete,
@@ -412,7 +433,7 @@ class _SettingsManagementPanelAdapter extends StatelessWidget {
     required this.accentColor,
     required this.kind,
     required this.entries,
-    required this.allKindEntries,
+    required this.onCreate,
     required this.onSave,
     required this.canDelete,
     required this.onDelete,
@@ -428,8 +449,8 @@ class _SettingsManagementPanelAdapter extends StatelessWidget {
   final Color accentColor;
   final OperationalMasterDataKind kind;
   final List<OperationalMasterDataRecord> entries;
-  final List<OperationalMasterDataRecord> allKindEntries;
   final List<OperationalMasterDataRecord> dependentEntries;
+  final _CreateMasterDataRecord onCreate;
   final _SaveMasterDataRecord onSave;
   final _CanDeleteMasterDataRecord canDelete;
   final _DeleteMasterDataRecord onDelete;
@@ -467,22 +488,14 @@ class _SettingsManagementPanelAdapter extends StatelessWidget {
   Future<AppManagementEntry> _createEntry(
     AppManagementEntryDraft draft,
   ) async {
-    final nextId = EntityId.demo(
-      _masterDataEntityType(kind),
-      _nextEntitySequence(
-        allKindEntries.map((entry) => entry.id),
-        fallback: draft.number,
+    final record = await onCreate(
+      CreateOperationalMasterDataRequest(
+        kind: kind,
+        name: draft.name,
+        parentId:
+            draft.parentId == null ? null : EntityId(draft.parentId!),
       ),
     );
-    final record = OperationalMasterDataRecord(
-      id: nextId,
-      kind: kind,
-      number: draft.number,
-      name: draft.name,
-      parentId:
-          draft.parentId == null ? null : EntityId(draft.parentId!),
-    );
-    await onSave(record);
     return _toManagementEntry(record);
   }
 
@@ -569,14 +582,4 @@ OperationalMasterDataKind? _requiredMasterDataParent(
       OperationalMasterDataKind.cashboxSubaccount =>
         OperationalMasterDataKind.cashboxMainAccount,
       _ => null,
-    };
-
-String _masterDataEntityType(OperationalMasterDataKind kind) => switch (kind) {
-      OperationalMasterDataKind.itemGroup => 'item-group',
-      OperationalMasterDataKind.itemType => 'item-type',
-      OperationalMasterDataKind.workplace => 'workplace',
-      OperationalMasterDataKind.branch => 'branch',
-      OperationalMasterDataKind.cashboxMainAccount =>
-        'cashbox-main-account',
-      OperationalMasterDataKind.cashboxSubaccount => 'cashbox-subaccount',
     };

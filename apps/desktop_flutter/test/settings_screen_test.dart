@@ -1,5 +1,7 @@
 import 'package:erp/app/app.dart';
+import 'package:erp/core/app_state/app_store.dart';
 import 'package:erp/core/design/app_design_system.dart';
+import 'package:erp/features/settings/domain/operational_master_data.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -185,16 +187,15 @@ void main() {
           .accentColor,
       AppModulePalettes.settings.middle,
     );
-    expect(
-      tester
-          .widget<AppSwitchField>(
-            find.byKey(
-              const Key('settingsAllowInsufficientStockSale'),
-            ),
-          )
-          .accentColor,
-      AppModulePalettes.settings.middle,
-    );
+    for (final switchKey in const [
+      Key('settingsAllowInsufficientStockSale'),
+      Key('settingsOverdueDebtAlerts'),
+    ]) {
+      expect(
+        tester.widget<AppSwitchField>(find.byKey(switchKey)).accentColor,
+        isNull,
+      );
+    }
     expect(
       tester
           .getSize(
@@ -227,11 +228,7 @@ void main() {
         (switchSurface.decoration! as BoxDecoration).border! as Border;
     expect(
       switchBorder.top.color,
-      Color.lerp(
-        AppModulePalettes.settings.middle,
-        AppColors.surface,
-        0.62,
-      ),
+      AppColors.border,
     );
 
     final policiesList = tester.widget<ListView>(
@@ -303,6 +300,14 @@ void main() {
     expect(
       find.byKey(const Key('settingsPrintPreviewSwitch')),
       findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<AppSwitchField>(
+            find.byKey(const Key('settingsPrintPreviewSwitch')),
+          )
+          .accentColor,
+      isNull,
     );
 
     await _returnToSettingsHub(tester);
@@ -731,6 +736,14 @@ void main() {
       findsOneWidget,
     );
     expect(
+      tester
+          .widget<AppSwitchField>(
+            find.byKey(const Key('settingsAutomaticBackupSwitch')),
+          )
+          .accentColor,
+      isNull,
+    );
+    expect(
       find.byKey(const Key('settingsToggleDriveConnectionButton')),
       findsOneWidget,
     );
@@ -771,6 +784,114 @@ void main() {
           )
           .accentColor,
       AppModulePalettes.reports.middle,
+    );
+  });
+
+  testWidgets(
+      'normal Settings creation does not reuse a deleted issued identity',
+      (tester) async {
+    final store = AppStore.demo();
+    addTearDown(store.dispose);
+    await _openSettings(tester, store: store);
+    await _openSection(tester, 'masterData');
+
+    const firstName = 'مجموعة إصدار عادي أولى';
+    await tester.enterText(
+      find.byKey(const Key('settingsItemGroupsNameField')),
+      firstName,
+    );
+    await tester.pump();
+    await tester.tap(
+      find.byKey(const Key('settingsItemGroupsAddButton')),
+    );
+    await tester.pumpAndSettle();
+    final first = (await store.repositories.operationalMasterData.getByKind(
+      OperationalMasterDataKind.itemGroup,
+    ))
+        .singleWhere((record) => record.name == firstName);
+
+    tester
+        .widget<AppTableActionButton>(
+          find.byKey(
+            Key('settingsItemGroupsDelete_${first.id.value}'),
+          ),
+        )
+        .onPressed!();
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('appConfirmDialog')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('appDialogConfirmButton')));
+    await tester.pumpAndSettle();
+    expect(
+      await store.repositories.operationalMasterData.getById(first.id),
+      isNull,
+    );
+
+    const secondName = 'مجموعة إصدار عادي ثانية';
+    await tester.enterText(
+      find.byKey(const Key('settingsItemGroupsNameField')),
+      secondName,
+    );
+    await tester.pump();
+    await tester.tap(
+      find.byKey(const Key('settingsItemGroupsAddButton')),
+    );
+    await tester.pumpAndSettle();
+    final second = (await store.repositories.operationalMasterData.getByKind(
+      OperationalMasterDataKind.itemGroup,
+    ))
+        .singleWhere((record) => record.name == secondName);
+
+    expect(second.number, greaterThan(first.number));
+    expect(second.id, isNot(first.id));
+  });
+
+  testWidgets('stale Settings create adapters cannot overwrite each other',
+      (tester) async {
+    final store = AppStore.demo();
+    addTearDown(store.dispose);
+    await _openSettings(tester, store: store);
+    await _openSection(tester, 'masterData');
+
+    final groupPanel = tester.widget<AppManagementPanel>(
+      find.descendant(
+        of: find.byKey(const Key('settingsItemGroupsPanel')),
+        matching: find.byType(AppManagementPanel),
+      ),
+    );
+    final staleCreate = groupPanel.onCreate;
+    final provisionalNumber = groupPanel.entries.fold<int>(
+      1,
+      (next, entry) => entry.number >= next ? entry.number + 1 : next,
+    );
+    final created = await Future.wait([
+      staleCreate(
+        AppManagementEntryDraft(
+          number: provisionalNumber,
+          name: 'مجموعة من شاشة قديمة ألف',
+          parentId: null,
+        ),
+      ),
+      staleCreate(
+        AppManagementEntryDraft(
+          number: provisionalNumber,
+          name: 'مجموعة من شاشة قديمة باء',
+          parentId: null,
+        ),
+      ),
+    ]);
+    await tester.pumpAndSettle();
+
+    expect(created.map((entry) => entry.id).toSet(), hasLength(2));
+    expect(created.map((entry) => entry.number).toSet(), hasLength(2));
+    final stored = await store.repositories.operationalMasterData.getByKind(
+      OperationalMasterDataKind.itemGroup,
+    );
+    expect(
+      stored.map((record) => record.name),
+      containsAll({
+        'مجموعة من شاشة قديمة ألف',
+        'مجموعة من شاشة قديمة باء',
+      }),
     );
   });
 
@@ -829,6 +950,14 @@ void main() {
     expect(
       find.byKey(const Key('settingsIdleLockSwitch')),
       findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<AppSwitchField>(
+            find.byKey(const Key('settingsIdleLockSwitch')),
+          )
+          .accentColor,
+      isNull,
     );
 
     await tester.tap(find.byKey(const Key('usersSecurityTab_logs')));
@@ -1027,11 +1156,14 @@ void main() {
   });
 }
 
-Future<void> _openSettings(WidgetTester tester) async {
+Future<void> _openSettings(
+  WidgetTester tester, {
+  AppStore? store,
+}) async {
   await tester.binding.setSurfaceSize(const Size(1280, 720));
   addTearDown(() => tester.binding.setSurfaceSize(null));
 
-  await tester.pumpWidget(const AlmumayazApp());
+  await tester.pumpWidget(AlmumayazApp(store: store));
   await tester.enterText(
     find.byKey(const Key('usernameField')),
     'admin',

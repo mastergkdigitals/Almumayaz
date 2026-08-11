@@ -2,8 +2,11 @@ import 'package:erp/app/app.dart';
 import 'package:erp/core/app_state/app_store.dart';
 import 'package:erp/core/design/app_design_system.dart';
 import 'package:erp/core/domain/business_values.dart';
+import 'package:erp/features/authentication/domain/session_models.dart';
 import 'package:erp/features/parties/domain/party.dart';
+import 'package:erp/features/permissions/domain/permission_models.dart';
 import 'package:erp/features/settings/domain/settings_models.dart';
+import 'package:erp/features/users/domain/user_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -1361,6 +1364,252 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('quick-creates and selects a missing Sales customer',
+      (tester) async {
+    final store = AppStore.demo();
+    addTearDown(store.dispose);
+    await _openSalesScreen(tester, store: store);
+
+    const customerName = 'زبون سريع للمبيعات';
+    final customerField =
+        find.byKey(const Key('salesCustomerNameField'));
+    await tester.enterText(customerField, customerName);
+    await tester.pump();
+    expect(find.byKey(const Key('appAutocompleteNoResultsState')),
+        findsOneWidget);
+
+    await tester.tap(find.text('إضافة زبون جديد'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('salesQuickCustomerDialog')),
+        findsOneWidget);
+    expect(_fieldValue(tester, 'salesQuickCustomerNameField'), customerName);
+    await tester.enterText(
+      find.byKey(const Key('salesQuickCustomerPhoneField')),
+      '07700002002',
+    );
+    await tester.enterText(
+      find.byKey(const Key('salesQuickCustomerCityField')),
+      'بغداد',
+    );
+
+    await tester.tap(find.byKey(const Key('salesQuickCustomerConfirm')));
+    await tester.pumpAndSettle();
+    expect(_fieldValue(tester, 'salesCustomerNameField'), customerName);
+
+    final stored = (await store.repositories.parties.getAll())
+        .singleWhere((party) => party.name == customerName);
+    expect(stored.type, PartyType.customer);
+    expect(stored.phone, '07700002002');
+    expect(stored.city, 'بغداد');
+    expect(stored.entityId.value, isNotEmpty);
+  });
+
+  testWidgets('quick-creates and selects a missing Sales invoice item',
+      (tester) async {
+    final store = AppStore.demo();
+    addTearDown(store.dispose);
+    await _openSalesScreen(tester, store: store);
+    await _openNewSalesForm(tester);
+
+    const itemCode = 'S-PHASE2-NEW';
+    const itemName = 'مادة مبيعات سريعة';
+    final codeField =
+        _invoiceFieldByPrefix('appSalesInvoiceTemplateCodeField-');
+    await tester.enterText(codeField, itemCode);
+    await tester.pump();
+    await tester.tap(find.text('إضافة مادة جديدة'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('salesQuickItemDialog')), findsOneWidget);
+    expect(_fieldValue(tester, 'salesQuickItemCodeField'), itemCode);
+    await tester.enterText(
+      find.byKey(const Key('salesQuickItemNameField')),
+      itemName,
+    );
+    await tester.pump();
+    expect(
+      tester.widget<AppButton>(
+        find.byKey(const Key('salesQuickItemConfirm')),
+      ).onPressed,
+      isNotNull,
+    );
+
+    await tester.tap(find.byKey(const Key('salesQuickItemConfirm')));
+    await tester.pumpAndSettle();
+    expect(
+      _invoiceFieldValueByPrefix(
+        tester,
+        'appSalesInvoiceTemplateCodeField-',
+      ),
+      itemCode,
+    );
+    expect(
+      _invoiceFieldValueByPrefix(
+        tester,
+        'appSalesInvoiceTemplateNameField-',
+      ),
+      itemName,
+    );
+
+    final item = (await store.repositories.items.getAll())
+        .singleWhere((candidate) => candidate.code == itemCode);
+    final type = await store.repositories.operationalMasterData.getById(
+      EntityId(item.typeId),
+    );
+    expect(item.entityId.value, isNotEmpty);
+    expect(type, isNotNull);
+    expect(type!.parentId, EntityId(item.groupId));
+  });
+
+  testWidgets('quick-creates a Sales invoice item from the name field',
+      (tester) async {
+    final store = AppStore.demo();
+    addTearDown(store.dispose);
+    await _openSalesScreen(tester, store: store);
+    await _openNewSalesForm(tester);
+
+    const itemCode = 'S-PHASE2-BY-NAME';
+    const itemName = 'مادة مبيعات بالاسم';
+    await tester.enterText(
+      _invoiceFieldByPrefix('appSalesInvoiceTemplateNameField-'),
+      itemName,
+    );
+    await tester.pump();
+    await tester.tap(find.text('إضافة مادة جديدة'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('salesQuickItemDialog')), findsOneWidget);
+    expect(_fieldValue(tester, 'salesQuickItemNameField'), itemName);
+    await tester.enterText(
+      find.byKey(const Key('salesQuickItemCodeField')),
+      itemCode,
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('salesQuickItemConfirm')));
+    await tester.pumpAndSettle();
+
+    expect(
+      _invoiceFieldValueByPrefix(
+        tester,
+        'appSalesInvoiceTemplateCodeField-',
+      ),
+      itemCode,
+    );
+    expect(
+      _invoiceFieldValueByPrefix(
+        tester,
+        'appSalesInvoiceTemplateNameField-',
+      ),
+      itemName,
+    );
+    final created = (await store.repositories.items.getAll())
+        .singleWhere((item) => item.code == itemCode);
+    expect(created.name, itemName);
+    expect(created.entityId.value, isNotEmpty);
+  });
+
+  testWidgets('entity shortcuts need target create but not Settings manage',
+      (tester) async {
+    final store = AppStore.demo();
+    addTearDown(store.dispose);
+    await store.signIn(
+      SignInCredentials(username: 'admin', password: 'password'),
+    );
+    final role = await store.services.administration.saveRole(
+      RoleSaveRequest(
+        name: 'اختصارات كيانات المبيعات',
+        permissions: {
+          PermissionCode(
+            module: 'sales',
+            action: PermissionAction.view,
+          ),
+          PermissionCode(
+            module: 'parties',
+            action: PermissionAction.create,
+          ),
+          PermissionCode(
+            module: 'items',
+            action: PermissionAction.create,
+          ),
+        },
+      ),
+    );
+    await store.services.administration.createUser(
+      UserCreateRequest(
+        fullName: 'مستخدم اختصارات المبيعات',
+        username: 'sales.shortcuts',
+        roleIds: {role.id},
+        initialPassword: 'sales-password',
+      ),
+    );
+    await store.signOut();
+
+    await _openSalesScreen(
+      tester,
+      store: store,
+      username: 'sales.shortcuts',
+      password: 'sales-password',
+    );
+
+    final partyField = tester.widget<AppAutocompleteField<Party>>(
+      find.ancestor(
+        of: find.byKey(const Key('salesCustomerNameField')),
+        matching: find.byType(AppAutocompleteField<Party>),
+      ),
+    );
+    final itemsTable = tester.widget<AppSalesInvoiceTableTemplate>(
+      find.byType(AppSalesInvoiceTableTemplate),
+    );
+    expect(partyField.onCreateRequested, isNotNull);
+    expect(itemsTable.onCreateItemRequested, isNotNull);
+  });
+
+  testWidgets('hides entity shortcuts without target create permissions',
+      (tester) async {
+    final store = AppStore.demo();
+    addTearDown(store.dispose);
+    await store.signIn(
+      SignInCredentials(username: 'admin', password: 'password'),
+    );
+    final role = await store.services.administration.saveRole(
+      RoleSaveRequest(
+        name: 'عرض المبيعات فقط',
+        permissions: {
+          PermissionCode(
+            module: 'sales',
+            action: PermissionAction.view,
+          ),
+        },
+      ),
+    );
+    await store.services.administration.createUser(
+      UserCreateRequest(
+        fullName: 'مستخدم عرض المبيعات',
+        username: 'sales.viewer',
+        roleIds: {role.id},
+        initialPassword: 'sales-viewer-password',
+      ),
+    );
+    await store.signOut();
+
+    await _openSalesScreen(
+      tester,
+      store: store,
+      username: 'sales.viewer',
+      password: 'sales-viewer-password',
+    );
+
+    final partyField = tester.widget<AppAutocompleteField<Party>>(
+      find.ancestor(
+        of: find.byKey(const Key('salesCustomerNameField')),
+        matching: find.byType(AppAutocompleteField<Party>),
+      ),
+    );
+    final itemsTable = tester.widget<AppSalesInvoiceTableTemplate>(
+      find.byType(AppSalesInvoiceTableTemplate),
+    );
+    expect(partyField.onCreateRequested, isNull);
+    expect(itemsTable.onCreateItemRequested, isNull);
+  });
 }
 
 AppButton _actionButton(WidgetTester tester, String key) {
@@ -1506,13 +1755,15 @@ void _expectRightToLeftWrapOrder(
 Future<void> _openSalesScreen(
   WidgetTester tester, {
   AppStore? store,
+  String username = 'admin',
+  String password = 'password',
 }) async {
   await tester.binding.setSurfaceSize(const Size(1280, 720));
   addTearDown(() => tester.binding.setSurfaceSize(null));
 
   await tester.pumpWidget(AlmumayazApp(store: store));
-  await tester.enterText(find.byKey(const Key('usernameField')), 'admin');
-  await tester.enterText(find.byKey(const Key('passwordField')), 'password');
+  await tester.enterText(find.byKey(const Key('usernameField')), username);
+  await tester.enterText(find.byKey(const Key('passwordField')), password);
   await tester.tap(find.byKey(const Key('loginButton')));
   await tester.pumpAndSettle();
   await tester.tap(find.byKey(const Key('dashboardCard_sales')));

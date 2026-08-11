@@ -69,7 +69,6 @@ extension _BackupDataSettingsView on _BackupDataSettingsSectionState {
                       title: 'النسخ التلقائي',
                       subtitle: 'إنشاء النسخة حسب التكرار المحدد',
                       icon: Icons.autorenew_rounded,
-                      accentColor: widget.accentColor,
                       value: _automaticBackup,
                       onChanged: (value) {
                         _setBackupViewState(() {

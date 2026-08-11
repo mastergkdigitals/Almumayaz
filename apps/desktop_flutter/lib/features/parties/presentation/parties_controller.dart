@@ -62,8 +62,11 @@ class PartiesController extends ChangeNotifier {
   final VoidCallback? _onDataChanged;
 
   PartiesState _state = const PartiesState();
+  Map<EntityId, PartyMasterDataReferences> _masterDataReferencesByPartyId =
+      const {};
   bool _isDisposed = false;
   int _loadGeneration = 0;
+  int _nextPartyNumber = 1;
 
   PartiesState get state => _state;
 
@@ -79,6 +82,12 @@ class PartiesController extends ChangeNotifier {
         _state.workplaces.map((record) => record.name),
       );
 
+  List<OperationalMasterDataRecord> get workplaces =>
+      List.unmodifiable(_state.workplaces);
+
+  List<OperationalMasterDataRecord> get branches =>
+      List.unmodifiable(_state.branches);
+
   List<String> get branchSuggestions => List.unmodifiable(
         _state.branches.map((record) => record.name).toSet(),
       );
@@ -90,6 +99,24 @@ class PartiesController extends ChangeNotifier {
             .toSet(),
       );
 
+  OperationalMasterDataRecord? workplaceForName(String name) {
+    final normalized = name.trim().toLowerCase();
+    for (final workplace in _state.workplaces) {
+      if (workplace.name.trim().toLowerCase() == normalized) {
+        return workplace;
+      }
+    }
+    return null;
+  }
+
+  List<OperationalMasterDataRecord> branchesForWorkplace(
+    EntityId workplaceId,
+  ) {
+    return List.unmodifiable(
+      _state.branches.where((branch) => branch.parentId == workplaceId),
+    );
+  }
+
   Party? get selectedParty {
     final selectedId = _state.selectedPartyEntityId;
     if (selectedId == null) return null;
@@ -99,13 +126,10 @@ class PartiesController extends ChangeNotifier {
     return null;
   }
 
-  int get nextNumber {
-    if (_state.parties.isEmpty) return 1;
-    return _state.parties
-            .map((party) => party.number)
-            .reduce((first, second) => first > second ? first : second) +
-        1;
-  }
+  PartyMasterDataReferences? masterDataReferencesFor(EntityId partyId) =>
+      _masterDataReferencesByPartyId[partyId];
+
+  int get nextNumber => _nextPartyNumber;
 
   Future<void> load() async {
     if (_isDisposed) return;
@@ -122,6 +146,7 @@ class PartiesController extends ChangeNotifier {
       );
       if (_loadIsStale(generation)) return;
       final resolved = <Party>[];
+      final resolvedReferences = <EntityId, PartyMasterDataReferences>{};
       for (final party in parties) {
         final references = await _repository.getMasterDataReferences(
           party.entityId,
@@ -134,6 +159,7 @@ class PartiesController extends ChangeNotifier {
           );
           return;
         }
+        resolvedReferences[party.entityId] = references;
         if (references.workplaceId == null && references.branchId == null) {
           resolved.add(party.copyWith(workplace: '', branch: ''));
           continue;
@@ -158,6 +184,10 @@ class PartiesController extends ChangeNotifier {
           party.copyWith(workplace: workplace.name, branch: branch.name),
         );
       }
+      final nextPartyNumber = await _repository.nextPartyNumber();
+      if (_loadIsStale(generation)) return;
+      _masterDataReferencesByPartyId = Map.unmodifiable(resolvedReferences);
+      _nextPartyNumber = nextPartyNumber;
       _state = _state.copyWith(
         dataState: resolved.isEmpty
             ? const AppDataState.empty(message: 'لا توجد أطراف مسجلة حالياً.')
@@ -254,8 +284,26 @@ class PartiesController extends ChangeNotifier {
     );
   }
 
-  Future<Party> add(Party party) async {
-    final saved = await _saveWithResolvedReferences(party);
+  Future<Party> add(
+    Party party, {
+    PartyMasterDataReferences? references,
+  }) async {
+    final resolvedReferences =
+        references ?? _resolveReferencesFromVisibleFields(party);
+    final saved = await _repository.quickCreate(
+      PartyQuickCreateRequest(
+        name: party.name,
+        type: party.type,
+        createdTimestamp: party.createdTimestamp,
+        workplaceId: resolvedReferences.workplaceId,
+        branchId: resolvedReferences.branchId,
+        phone: party.phone,
+        alternatePhone: party.alternatePhone,
+        city: party.city,
+        address: party.address,
+        notes: party.notes,
+      ),
+    );
     if (_isDisposed) return saved;
     await load();
     if (_isDisposed) return saved;
@@ -264,14 +312,70 @@ class PartiesController extends ChangeNotifier {
     return selectedParty ?? saved;
   }
 
-  Future<Party> update(Party party) async {
-    final saved = await _saveWithResolvedReferences(party);
+  Future<Party> update(
+    Party party, {
+    PartyMasterDataReferences? references,
+  }) async {
+    final saved = await _repository.saveWithMasterData(
+      party,
+      references ?? _resolveReferencesFromVisibleFields(party),
+    );
     if (_isDisposed) return saved;
     await load();
     if (_isDisposed) return saved;
     select(saved.entityId.value);
     _onDataChanged?.call();
     return selectedParty ?? saved;
+  }
+
+  Future<OperationalMasterDataRecord> createWorkplace(String name) {
+    return _createMasterData(
+      kind: OperationalMasterDataKind.workplace,
+      name: name,
+    );
+  }
+
+  Future<OperationalMasterDataRecord> createBranch({
+    required String name,
+    required EntityId workplaceId,
+  }) async {
+    if (!_state.workplaces.any((record) => record.id == workplaceId)) {
+      throw StateError('اختر جهة عمل موجودة من القائمة أولاً');
+    }
+    return _createMasterData(
+      kind: OperationalMasterDataKind.branch,
+      name: name,
+      parentId: workplaceId,
+    );
+  }
+
+  Future<OperationalMasterDataRecord> _createMasterData({
+    required OperationalMasterDataKind kind,
+    required String name,
+    EntityId? parentId,
+  }) async {
+    final saved = await _masterData.createNamedRecord(
+      CreateOperationalMasterDataRequest(
+        kind: kind,
+        name: name,
+        parentId: parentId,
+      ),
+    );
+    if (_isDisposed) return saved;
+    final workplaces = await _masterData.getByKind(
+      OperationalMasterDataKind.workplace,
+    );
+    final branches = await _masterData.getByKind(
+      OperationalMasterDataKind.branch,
+    );
+    if (_isDisposed) return saved;
+    _state = _state.copyWith(
+      workplaces: List.unmodifiable(workplaces),
+      branches: List.unmodifiable(branches),
+    );
+    _notifyListenersIfActive();
+    _onDataChanged?.call();
+    return saved;
   }
 
   Future<DeleteDecision> canDeleteSelected() async {
@@ -295,14 +399,11 @@ class PartiesController extends ChangeNotifier {
     return selected;
   }
 
-  Future<Party> _saveWithResolvedReferences(Party party) async {
+  PartyMasterDataReferences _resolveReferencesFromVisibleFields(Party party) {
     final workplaceName = party.workplace.trim();
     final branchName = party.branch.trim();
     if (workplaceName.isEmpty && branchName.isEmpty) {
-      return _repository.saveWithMasterData(
-        party,
-        const PartyMasterDataReferences(),
-      );
+      return const PartyMasterDataReferences();
     }
     if (workplaceName.isEmpty || branchName.isEmpty) {
       throw StateError('اختر جهة العمل والفرع معاً');
@@ -321,12 +422,9 @@ class PartiesController extends ChangeNotifier {
     if (branches.length != 1) {
       throw StateError('اختر فرعاً تابعاً لجهة العمل من القائمة');
     }
-    return _repository.saveWithMasterData(
-      party,
-      PartyMasterDataReferences(
-        workplaceId: workplace.single.id,
-        branchId: branches.single.id,
-      ),
+    return PartyMasterDataReferences(
+      workplaceId: workplace.single.id,
+      branchId: branches.single.id,
     );
   }
 

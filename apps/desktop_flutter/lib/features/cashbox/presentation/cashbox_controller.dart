@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import '../../../core/data/app_repository.dart';
 import '../../../core/domain/business_values.dart';
 import '../../settings/domain/settings_models.dart';
+import '../../settings/domain/operational_master_data.dart';
+import '../../settings/domain/operational_master_data_repository.dart';
 import '../../settings/domain/settings_repository.dart';
 import '../domain/cashbox_repository.dart';
 import '../domain/cashbox_voucher.dart';
@@ -71,17 +73,30 @@ class CashboxState {
 
 const _unchanged = Object();
 
+class CashboxAccountPairCreationResult {
+  const CashboxAccountPairCreationResult({
+    required this.mainAccount,
+    required this.subaccount,
+  });
+
+  final CashboxMainAccount mainAccount;
+  final CashboxSubaccount subaccount;
+}
+
 class CashboxController extends ChangeNotifier {
   CashboxController({
     required CashboxRepository repository,
     required BusinessSettingsRepository settingsRepository,
+    OperationalMasterDataRepository? masterData,
     VoidCallback? onDataChanged,
   })  : _repository = repository,
         _settingsRepository = settingsRepository,
+        _masterData = masterData,
         _onDataChanged = onDataChanged;
 
   final CashboxRepository _repository;
   final BusinessSettingsRepository _settingsRepository;
+  final OperationalMasterDataRepository? _masterData;
   final VoidCallback? _onDataChanged;
   CashboxState _state = const CashboxState();
   bool _isDisposed = false;
@@ -89,6 +104,83 @@ class CashboxController extends ChangeNotifier {
   int _nextVoucherNumber = 1;
 
   CashboxState get state => _state;
+
+  bool get canCreateMasterData => _masterData != null;
+
+  Future<CashboxSubaccount> createSubaccount({
+    required String name,
+    required EntityId mainAccountId,
+  }) async {
+    final masterData = _masterData;
+    if (masterData == null) {
+      throw StateError('إضافة حسابات الصندوق غير متاحة');
+    }
+    if (!_state.accounts.any(
+      (account) => account.entityId == mainAccountId,
+    )) {
+      throw StateError('اختر حساباً رئيسياً موجوداً من القائمة أولاً');
+    }
+    final saved = await masterData.createNamedRecord(
+      CreateOperationalMasterDataRequest(
+        kind: OperationalMasterDataKind.cashboxSubaccount,
+        name: name,
+        parentId: mainAccountId,
+      ),
+    );
+    final accounts = await _repository.getMainAccounts();
+    CashboxSubaccount? created;
+    for (final account in accounts) {
+      for (final subaccount in account.subaccounts) {
+        if (subaccount.entityId == saved.id) created = subaccount;
+      }
+    }
+    if (created == null) {
+      throw StateError('تعذر تحميل الحساب الفرعي الجديد');
+    }
+    if (_isDisposed) return created;
+    _state = _state.copyWith(accounts: List.unmodifiable(accounts));
+    _notifyListenersIfActive();
+    _onDataChanged?.call();
+    return created;
+  }
+
+  Future<CashboxAccountPairCreationResult> createMainAccountPair({
+    required String mainName,
+    required String subaccountName,
+  }) async {
+    final masterData = _masterData;
+    if (masterData == null) {
+      throw StateError('إضافة حسابات الصندوق غير متاحة');
+    }
+    final saved = await masterData.createCashboxAccountPair(
+      CreateCashboxAccountPairRequest(
+        mainAccountName: mainName,
+        firstSubaccountName: subaccountName,
+      ),
+    );
+    final accounts = await _repository.getMainAccounts();
+    final mainAccount = accounts.where(
+      (account) => account.entityId == saved.mainAccount.id,
+    );
+    if (mainAccount.length != 1) {
+      throw StateError('تعذر تحميل حساب الصندوق الرئيسي الجديد');
+    }
+    final subaccount = mainAccount.single.subaccounts.where(
+      (account) => account.entityId == saved.subaccount.id,
+    );
+    if (subaccount.length != 1) {
+      throw StateError('تعذر تحميل حساب الصندوق الفرعي الجديد');
+    }
+    final result = CashboxAccountPairCreationResult(
+      mainAccount: mainAccount.single,
+      subaccount: subaccount.single,
+    );
+    if (_isDisposed) return result;
+    _state = _state.copyWith(accounts: List.unmodifiable(accounts));
+    _notifyListenersIfActive();
+    _onDataChanged?.call();
+    return result;
+  }
 
   List<CashboxVoucher> get visibleVouchers {
     final query = _state.query.trim().toLowerCase().replaceAll(',', '');

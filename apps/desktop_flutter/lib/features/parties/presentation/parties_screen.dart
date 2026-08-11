@@ -10,6 +10,7 @@ import '../../../core/domain/business_values.dart';
 import '../../permissions/domain/permission_models.dart';
 import '../application/party_statement_service.dart';
 import '../domain/party.dart';
+import '../domain/party_repository.dart';
 import 'parties_controller.dart';
 import 'widgets/parties_table.dart';
 import 'widgets/party_form.dart';
@@ -41,6 +42,8 @@ class _PartiesScreenState extends State<PartiesScreen> {
 
   PartyType _partyType = PartyType.customer;
   DateTime _createdAt = DateTime.now();
+  EntityId? _workplaceId;
+  EntityId? _branchId;
   late _PartyFormSnapshot _baseline;
   bool _isApplyingFormState = false;
   bool _hasUnsavedChanges = false;
@@ -51,6 +54,13 @@ class _PartiesScreenState extends State<PartiesScreen> {
         'parties',
         action,
       );
+
+  /// Workplaces and branches belong to shared Settings master data.
+  bool _allowsPartyMasterCreate() {
+    final store = AppStoreScope.of(context, listen: false);
+    return store.allowsFeatureAction('parties', PermissionAction.create) &&
+        store.allowsFeatureAction('settings', PermissionAction.manage);
+  }
 
   Iterable<TextEditingController> get _editableControllers => [
         _formControllers.name,
@@ -160,6 +170,8 @@ class _PartiesScreenState extends State<PartiesScreen> {
     _isApplyingFormState = true;
     _createdAt = DateTime.now();
     _partyType = PartyType.customer;
+    _workplaceId = null;
+    _branchId = null;
     _formControllers.setNew(
       numberValue:
           _controllerInitialized ? _partiesController.nextNumber : 1,
@@ -180,6 +192,10 @@ class _PartiesScreenState extends State<PartiesScreen> {
     _formControllers.load(party);
     _createdAt = party.createdAt;
     _partyType = party.type;
+    final references =
+        _partiesController.masterDataReferencesFor(party.entityId);
+    _workplaceId = references?.workplaceId;
+    _branchId = references?.branchId;
     _isApplyingFormState = false;
     _baseline = _currentSnapshot();
     setState(() => _hasUnsavedChanges = false);
@@ -215,7 +231,9 @@ class _PartiesScreenState extends State<PartiesScreen> {
         name: _formControllers.name.text,
         type: _partyType,
         workplace: _formControllers.workplace.text,
+        workplaceId: _workplaceId,
         branch: _formControllers.branch.text,
+        branchId: _branchId,
         phone: _formControllers.phone.text,
         alternatePhone: _formControllers.alternatePhone.text,
         city: _formControllers.city.text,
@@ -236,6 +254,131 @@ class _PartiesScreenState extends State<PartiesScreen> {
       _partyType = value;
       _hasUnsavedChanges = _currentSnapshot() != _baseline;
     });
+  }
+
+  OperationalMasterDataRecord? _workplaceForId(EntityId? id) {
+    if (id == null) return null;
+    for (final workplace in _partiesController.workplaces) {
+      if (workplace.id == id) return workplace;
+    }
+    return null;
+  }
+
+  OperationalMasterDataRecord? _branchForId(EntityId? id) {
+    if (id == null) return null;
+    for (final branch in _partiesController.branches) {
+      if (branch.id == id) return branch;
+    }
+    return null;
+  }
+
+  void _changeWorkplace(EntityId? workplaceId) {
+    final branch = _branchForId(_branchId);
+    final branchRemainsValid = workplaceId != null &&
+        branch != null &&
+        branch.parentId == workplaceId;
+    if (_workplaceId == workplaceId &&
+        (branchRemainsValid ||
+            (_branchId == null && _formControllers.branch.text.isEmpty))) {
+      return;
+    }
+    setState(() {
+      _isApplyingFormState = true;
+      try {
+        _workplaceId = workplaceId;
+        if (!branchRemainsValid) {
+          _branchId = null;
+          _formControllers.branch.clear();
+        }
+      } finally {
+        _isApplyingFormState = false;
+      }
+      _hasUnsavedChanges = _currentSnapshot() != _baseline;
+    });
+  }
+
+  void _changeBranch(EntityId? branchId) {
+    final branch = _branchForId(branchId);
+    final resolvedId = branch?.parentId == _workplaceId ? branchId : null;
+    if (_branchId == resolvedId) return;
+    setState(() {
+      _branchId = resolvedId;
+      _hasUnsavedChanges = _currentSnapshot() != _baseline;
+    });
+  }
+
+  Future<void> _createWorkplace(String initialName) async {
+    if (!_allowsPartyMasterCreate()) return;
+    final name = await AppQuickCreateDialog.showName(
+      context: context,
+      title: 'إضافة جهة عمل جديدة',
+      prompt: 'جهة العمل غير موجودة، هل تود إضافتها؟',
+      fieldLabel: 'اسم جهة العمل',
+      icon: Icons.business_center_rounded,
+      accentColor: AppModuleColors.parties,
+      keyPrefix: 'partyQuickWorkplace',
+      initialValue: initialName,
+    );
+    if (!mounted || name == null) return;
+    try {
+      final saved = await _partiesController.createWorkplace(name);
+      if (!mounted) return;
+      setState(() {
+        _isApplyingFormState = true;
+        try {
+          _workplaceId = saved.id;
+          _branchId = null;
+          _formControllers.workplace.text = saved.name;
+          _formControllers.branch.clear();
+        } finally {
+          _isApplyingFormState = false;
+        }
+        _hasUnsavedChanges = _currentSnapshot() != _baseline;
+      });
+      AppToast.showSuccess(context, 'تمت إضافة جهة العمل');
+    } on StateError catch (error) {
+      if (mounted) AppToast.showWarning(context, _stateErrorMessage(error));
+    }
+  }
+
+  Future<void> _createBranch(String initialName) async {
+    if (!_allowsPartyMasterCreate()) return;
+    final workplace = _workplaceForId(_workplaceId);
+    if (workplace == null) {
+      AppToast.showWarning(context, 'اختر جهة عمل موجودة من القائمة أولاً');
+      return;
+    }
+    final name = await AppQuickCreateDialog.showName(
+      context: context,
+      title: 'إضافة فرع لجهة عمل',
+      prompt: 'هذا الفرع غير موجود، هل تود إضافته؟',
+      fieldLabel: 'اسم الفرع',
+      icon: Icons.account_tree_rounded,
+      accentColor: AppModuleColors.parties,
+      keyPrefix: 'partyQuickBranch',
+      initialValue: initialName,
+    );
+    if (!mounted || name == null) return;
+    try {
+      final saved = await _partiesController.createBranch(
+        name: name,
+        workplaceId: workplace.id,
+      );
+      if (!mounted) return;
+      setState(() {
+        _isApplyingFormState = true;
+        try {
+          _branchId = saved.id;
+          _formControllers.branch.text = saved.name;
+        } finally {
+          _isApplyingFormState = false;
+        }
+        _hasUnsavedChanges = _currentSnapshot() != _baseline;
+      });
+      AppToast.showSuccess(context, 'تمت إضافة الفرع');
+    } on StateError catch (error) {
+      if (mounted) AppToast.showWarning(context, _stateErrorMessage(error));
+    }
   }
 
   Future<bool> _confirmDiscardChanges() async {
@@ -280,6 +423,37 @@ class _PartiesScreenState extends State<PartiesScreen> {
     AppToast.showWarning(context, 'أدخل اسم الطرف أولاً');
     return false;
   }
+
+  bool _validateMasterDataReferences() {
+    final workplaceText = _formControllers.workplace.text.trim();
+    final branchText = _formControllers.branch.text.trim();
+    if (workplaceText.isEmpty &&
+        branchText.isEmpty &&
+        _workplaceId == null &&
+        _branchId == null) {
+      return true;
+    }
+    final workplace = _workplaceForId(_workplaceId);
+    final branch = _branchForId(_branchId);
+    if (workplace == null ||
+        branch == null ||
+        branch.parentId != workplace.id ||
+        workplaceText != workplace.name ||
+        branchText != branch.name) {
+      AppToast.showWarning(
+        context,
+        'اختر جهة العمل والفرع من القائمة',
+      );
+      return false;
+    }
+    return true;
+  }
+
+  PartyMasterDataReferences get _masterDataReferences =>
+      PartyMasterDataReferences(
+        workplaceId: _workplaceId,
+        branchId: _branchId,
+      );
 
   bool _hasDuplicatePartyName({String? excludingPartyId}) {
     return _partiesController.nameExists(
@@ -329,6 +503,7 @@ class _PartiesScreenState extends State<PartiesScreen> {
   Future<void> _save() async {
     if (!_allowsPartyAction(PermissionAction.create)) return;
     if (!_validateName()) return;
+    if (!_validateMasterDataReferences()) return;
     if (_partiesController.selectedParty != null) {
       AppToast.showWarning(context, 'استخدم زر تحديث لتعديل الطرف المحدد');
       return;
@@ -339,7 +514,10 @@ class _PartiesScreenState extends State<PartiesScreen> {
     }
 
     try {
-      final party = await _partiesController.add(_newPartyFromForm());
+      final party = await _partiesController.add(
+        _newPartyFromForm(),
+        references: _masterDataReferences,
+      );
       if (!mounted) return;
       _loadParty(party);
       AppToast.showInfo(context, 'تم حفظ الطرف');
@@ -356,6 +534,7 @@ class _PartiesScreenState extends State<PartiesScreen> {
       return;
     }
     if (!_validateName()) return;
+    if (!_validateMasterDataReferences()) return;
     if (_hasDuplicatePartyName(excludingPartyId: selected.id)) {
       _showDuplicateNameMessage();
       return;
@@ -364,6 +543,7 @@ class _PartiesScreenState extends State<PartiesScreen> {
     try {
       final updated = await _partiesController.update(
         _updatedPartyFromForm(selected),
+        references: _masterDataReferences,
       );
       if (!mounted) return;
       _loadParty(updated);
@@ -559,9 +739,17 @@ class _PartiesScreenState extends State<PartiesScreen> {
                   controllers: _formControllers,
                   createdAt: _createdAt,
                   partyType: _partyType,
-                  workplaces: _partiesController.workplaceSuggestions,
-                  branches: _partiesController.branchSuggestions,
+                  workplaces: _partiesController.workplaces,
+                  branches: _partiesController.branches,
                   cities: _partiesController.citySuggestions,
+                  workplaceId: _workplaceId,
+                  branchId: _branchId,
+                  onWorkplaceChanged: _changeWorkplace,
+                  onBranchChanged: _changeBranch,
+                  onCreateWorkplace:
+                      _allowsPartyMasterCreate() ? _createWorkplace : null,
+                  onCreateBranch:
+                      _allowsPartyMasterCreate() ? _createBranch : null,
                   onPartyTypeChanged: (value) {
                     if (value == null) return;
                     _changePartyType(value);
@@ -655,7 +843,9 @@ typedef _PartyFormSnapshot = ({
   String name,
   PartyType type,
   String workplace,
+  EntityId? workplaceId,
   String branch,
+  EntityId? branchId,
   String phone,
   String alternatePhone,
   String city,

@@ -350,7 +350,6 @@ extension _UsersSecuritySettingsSectionViews
                 subtitle:
                     'يعيد المستخدم إلى شاشة الدخول بعد مدة دون استخدام',
                 icon: Icons.timer_outlined,
-                accentColor: widget.accentColor,
                 value: _idleLockEnabled,
                 onChanged: (value) {
                   _setSecurityViewState(() => _idleLockEnabled = value);

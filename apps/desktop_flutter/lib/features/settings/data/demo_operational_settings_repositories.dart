@@ -1,4 +1,5 @@
 import '../../../core/data/app_repository.dart';
+import '../../../core/data/demo_transaction_runner.dart';
 import '../../../core/domain/business_values.dart';
 import '../domain/operational_master_data.dart';
 import '../domain/operational_master_data_repository.dart';
@@ -84,14 +85,23 @@ class DemoOperationalMasterDataRepository
   DemoOperationalMasterDataRepository({
     Iterable<OperationalMasterDataRecord>? initialValues,
     SettingsReferenceExists? isExternallyReferenced,
+    DemoTransactionRunner? transactionRunner,
   })  : _isExternallyReferenced =
             isExternallyReferenced ?? _neverReferenced,
+        _transactionRunner = transactionRunner ?? DemoTransactionRunner(),
         super(
           initialValues: initialValues ?? demoOperationalMasterData(),
           idOf: (record) => record.id,
         );
 
   final SettingsReferenceExists _isExternallyReferenced;
+  final DemoTransactionRunner _transactionRunner;
+  final Map<(OperationalMasterDataKind, String?), int>
+      _highestIssuedNumbers = {};
+  final Map<(OperationalMasterDataKind, String?), Set<int>>
+      _issuedNumbers = {};
+  final Set<EntityId> _issuedIds = {};
+  int _nextGeneratedIdSequence = 1;
 
   @override
   Future<List<OperationalMasterDataRecord>> getByKind(
@@ -110,10 +120,40 @@ class DemoOperationalMasterDataRepository
   @override
   Future<OperationalMasterDataRecord> save(
     OperationalMasterDataRecord value,
+  ) {
+    return _transactionRunner.run(() async {
+      final staged = createDemoSnapshot();
+      _captureIssuedNumbers(staged.values);
+      await _stageSaveUnlocked(staged, value);
+      commitDemoSnapshot(staged);
+      _recordIssuedNumber(value);
+      return value;
+    });
+  }
+
+  Future<void> _stageSaveUnlocked(
+    Map<EntityId, OperationalMasterDataRecord> staged,
+    OperationalMasterDataRecord value,
   ) async {
-    final existing = await getById(value.id);
+    final existing = staged[value.id];
+    final key = (value.kind, value.parentId?.value);
+    if (existing == null && _issuedIds.contains(value.id)) {
+      throw StateError('معرف السجل مستخدم مسبقاً');
+    }
+    if (existing == null &&
+        (_issuedNumbers[key]?.contains(value.number) ?? false)) {
+      throw StateError('رقم السجل مستخدم مسبقاً');
+    }
+    if (existing != null && existing.number != value.number) {
+      throw StateError('لا يمكن تغيير رقم سجل صادر');
+    }
     if (existing != null && existing.kind != value.kind) {
       throw StateError('لا يمكن تغيير نوع السجل');
+    }
+    if (existing != null &&
+        existing.parentId != value.parentId &&
+        (_issuedNumbers[key]?.contains(value.number) ?? false)) {
+      throw StateError('رقم السجل مستخدم مسبقاً');
     }
     if (existing?.isProtected == true && !value.isProtected) {
       throw StateError('لا يمكن إزالة حماية سجل النظام');
@@ -130,31 +170,111 @@ class DemoOperationalMasterDataRepository
     }
     final parentId = value.parentId;
     if (parentId != null) {
-      final parent = await getById(parentId);
+      final parent = staged[parentId];
       if (parent == null) throw StateError('السجل الأب غير موجود');
       final requiredKind = _requiredParentKind(value.kind);
       if (requiredKind != null && parent.kind != requiredKind) {
         throw StateError('نوع السجل الأب غير صحيح');
       }
     }
-    final normalizedName = value.name.toLowerCase();
-    final duplicate = (await getAll()).any(
+    final normalizedName = normalizeOperationalMasterDataName(value.name);
+    final duplicate = staged.values.any(
       (record) =>
           record.id != value.id &&
           record.kind == value.kind &&
           record.parentId == value.parentId &&
           (record.number == value.number ||
-              record.name.toLowerCase() == normalizedName),
+              normalizeOperationalMasterDataName(record.name) ==
+                  normalizedName),
     );
     if (duplicate) {
       throw StateError('يوجد سجل آخر بالرقم أو الاسم نفسه');
     }
-    return super.save(value);
+    staged[value.id] = value;
   }
 
   @override
-  Future<DeleteDecision> canDelete(EntityId id) async {
-    final record = await getById(id);
+  Future<OperationalMasterDataRecord> createNamedRecord(
+    CreateOperationalMasterDataRequest request,
+  ) {
+    return _transactionRunner.run(() async {
+      final name = _requireName(request.name);
+      final staged = createDemoSnapshot();
+      _captureIssuedNumbers(staged.values);
+      final record = OperationalMasterDataRecord(
+        id: _issueId(staged, request.kind),
+        kind: request.kind,
+        number: _nextNumber(request.kind, request.parentId),
+        name: name,
+        parentId: request.parentId,
+      );
+      await _stageSaveUnlocked(staged, record);
+      commitDemoSnapshot(staged);
+      _recordIssuedNumber(record);
+      return record;
+    });
+  }
+
+  @override
+  Future<OperationalCashboxAccountPair> createCashboxAccountPair(
+    CreateCashboxAccountPairRequest request,
+  ) {
+    return _transactionRunner.run(() async {
+      final mainName = _requireName(request.mainAccountName);
+      final subaccountName = _requireName(request.firstSubaccountName);
+      final staged = createDemoSnapshot();
+      _captureIssuedNumbers(staged.values);
+
+      final mainAccount = OperationalMasterDataRecord(
+        id: _issueId(
+          staged,
+          OperationalMasterDataKind.cashboxMainAccount,
+        ),
+        kind: OperationalMasterDataKind.cashboxMainAccount,
+        number: _nextNumber(
+          OperationalMasterDataKind.cashboxMainAccount,
+          null,
+        ),
+        name: mainName,
+      );
+      await _stageSaveUnlocked(staged, mainAccount);
+
+      final subaccount = OperationalMasterDataRecord(
+        id: _issueId(
+          staged,
+          OperationalMasterDataKind.cashboxSubaccount,
+        ),
+        kind: OperationalMasterDataKind.cashboxSubaccount,
+        number: _nextNumber(
+          OperationalMasterDataKind.cashboxSubaccount,
+          mainAccount.id,
+        ),
+        name: subaccountName,
+        parentId: mainAccount.id,
+      );
+      await _stageSaveUnlocked(staged, subaccount);
+
+      // Both validated records become visible in one synchronous swap.
+      commitDemoSnapshot(staged);
+      _recordIssuedNumber(mainAccount);
+      _recordIssuedNumber(subaccount);
+      return OperationalCashboxAccountPair(
+        mainAccount: mainAccount,
+        subaccount: subaccount,
+      );
+    });
+  }
+
+  @override
+  Future<DeleteDecision> canDelete(EntityId id) {
+    return _canDeleteUnlocked(createDemoSnapshot(), id);
+  }
+
+  Future<DeleteDecision> _canDeleteUnlocked(
+    Map<EntityId, OperationalMasterDataRecord> values,
+    EntityId id,
+  ) async {
+    final record = values[id];
     if (record == null) {
       return const DeleteDecision.blocked('السجل غير موجود');
     }
@@ -162,13 +282,73 @@ class DemoOperationalMasterDataRepository
       return const DeleteDecision.blocked('لا يمكن حذف سجل نظام محمي');
     }
     if (record.relatedEntityId != null ||
-        (await getAll()).any((record) => record.parentId == id) ||
+        values.values.any((record) => record.parentId == id) ||
         await _isExternallyReferenced(id)) {
       return const DeleteDecision.blocked(
         'لا يمكن حذف هذا السجل لأنه مرتبط ببيانات أخرى',
       );
     }
     return const DeleteDecision.allowed();
+  }
+
+  @override
+  Future<void> delete(EntityId id) {
+    return _transactionRunner.run(() async {
+      final staged = createDemoSnapshot();
+      _captureIssuedNumbers(staged.values);
+      final decision = await _canDeleteUnlocked(staged, id);
+      if (!decision.isAllowed) {
+        throw StateError(decision.reason ?? 'لا يمكن حذف السجل');
+      }
+      staged.remove(id);
+      commitDemoSnapshot(staged);
+    });
+  }
+
+  int _nextNumber(
+    OperationalMasterDataKind kind,
+    EntityId? parentId,
+  ) {
+    return (_highestIssuedNumbers[(kind, parentId?.value)] ?? 0) + 1;
+  }
+
+  void _captureIssuedNumbers(
+    Iterable<OperationalMasterDataRecord> records,
+  ) {
+    for (final record in records) {
+      _recordIssuedNumber(record);
+    }
+  }
+
+  void _recordIssuedNumber(OperationalMasterDataRecord record) {
+    _issuedIds.add(record.id);
+    final key = (record.kind, record.parentId?.value);
+    (_issuedNumbers[key] ??= <int>{}).add(record.number);
+    final current = _highestIssuedNumbers[key] ?? 0;
+    if (record.number > current) {
+      _highestIssuedNumbers[key] = record.number;
+    }
+  }
+
+  EntityId _issueId(
+    Map<EntityId, OperationalMasterDataRecord> staged,
+    OperationalMasterDataKind kind,
+  ) {
+    while (true) {
+      final sequence = _nextGeneratedIdSequence++;
+      final candidate = EntityId(
+        'local-${kind.name}-${sequence.toString().padLeft(6, '0')}',
+      );
+      if (!staged.containsKey(candidate) && !_issuedIds.contains(candidate)) {
+        return candidate;
+      }
+    }
+  }
+
+  String _requireName(String value) {
+    final normalized = value.trim();
+    if (normalized.isEmpty) throw StateError('أدخل الاسم أولاً');
+    return normalized;
   }
 
   OperationalMasterDataKind? _requiredParentKind(

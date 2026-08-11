@@ -16,3 +16,8 @@ class AppInvoiceItemOption {
   final String code;
   final String name;
 }
+
+typedef AppInvoiceItemQuickCreate = Future<AppInvoiceItemOption?> Function({
+  required String code,
+  required String name,
+});

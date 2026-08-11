@@ -1,4 +1,5 @@
 import 'package:erp/core/design/app_design_system.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -240,6 +241,116 @@ void main() {
     await tester.pump();
     expect(selectionCount, 1);
     expect(submissionCount, 1);
+  });
+
+  testWidgets(
+      'autocomplete pointer selects an option from a transformed overlay',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1000, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final controller = TextEditingController();
+    addTearDown(controller.dispose);
+    String? selectedCity;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: Stack(
+            children: [
+              Positioned(
+                left: 410,
+                top: 190,
+                width: 320,
+                child: Transform.scale(
+                  scale: 0.85,
+                  alignment: Alignment.topLeft,
+                  child: AppAutocompleteField<String>(
+                    controller: controller,
+                    fieldKey: const Key('pointerAutocompleteField'),
+                    label: 'المدينة',
+                    options: const ['بغداد', 'البصرة', 'أربيل'],
+                    displayStringForOption: (city) => city,
+                    onSelected: (city) => selectedCity = city,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('pointerAutocompleteField')));
+    await tester.pump();
+
+    final option = find.text('البصرة');
+    expect(option, findsOneWidget);
+    expect(tester.getCenter(option).dx, greaterThan(410));
+    expect(tester.getCenter(option).dy, greaterThan(190));
+
+    await tester.tapAt(
+      tester.getCenter(option),
+      kind: PointerDeviceKind.mouse,
+    );
+    await tester.pump();
+
+    expect(selectedCity, 'البصرة');
+    expect(controller.text, 'البصرة');
+    expect(find.text('بغداد'), findsNothing);
+  });
+
+  testWidgets('autocomplete exposes a pointer-safe no-results create action',
+      (tester) async {
+    final controller = TextEditingController();
+    addTearDown(controller.dispose);
+    var createRequests = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 320,
+              child: AppAutocompleteField<String>(
+                controller: controller,
+                fieldKey: const Key('createAutocompleteField'),
+                label: 'جهة العمل',
+                options: const ['شركة النور'],
+                displayStringForOption: (value) => value,
+                onSelected: (_) {},
+                onCreateRequested: () => createRequests++,
+                createActionLabel: 'إضافة جهة عمل جديدة',
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final field = find.byKey(const Key('createAutocompleteField'));
+    await tester.tap(field);
+    await tester.enterText(field, 'شركة جديدة');
+    await tester.pump();
+
+    expect(
+      find.byKey(const Key('appAutocompleteNoResultsState')),
+      findsOneWidget,
+    );
+    final createAction =
+        find.byKey(const Key('appAutocompleteCreateAction'));
+    expect(createAction, findsOneWidget);
+
+    await tester.tap(
+      createAction,
+      kind: PointerDeviceKind.mouse,
+    );
+    await tester.pump();
+
+    expect(createRequests, 1);
+    expect(controller.text, 'شركة جديدة');
+    expect(createAction, findsNothing);
   });
 
   testWidgets(

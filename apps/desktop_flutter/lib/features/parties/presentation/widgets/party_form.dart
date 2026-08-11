@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../core/design/app_design_system.dart';
+import '../../../../core/domain/business_values.dart';
+import '../../../settings/domain/operational_master_data.dart';
 import '../../domain/party.dart';
 
 class PartyFormControllers {
@@ -75,17 +77,29 @@ class PartyForm extends StatefulWidget {
     required this.workplaces,
     required this.branches,
     required this.cities,
+    required this.workplaceId,
+    required this.branchId,
     required this.onPartyTypeChanged,
+    required this.onWorkplaceChanged,
+    required this.onBranchChanged,
+    this.onCreateWorkplace,
+    this.onCreateBranch,
     super.key,
   });
 
   final PartyFormControllers controllers;
   final DateTime createdAt;
   final PartyType partyType;
-  final List<String> workplaces;
-  final List<String> branches;
+  final List<OperationalMasterDataRecord> workplaces;
+  final List<OperationalMasterDataRecord> branches;
   final List<String> cities;
+  final EntityId? workplaceId;
+  final EntityId? branchId;
   final ValueChanged<PartyType?> onPartyTypeChanged;
+  final ValueChanged<EntityId?> onWorkplaceChanged;
+  final ValueChanged<EntityId?> onBranchChanged;
+  final Future<void> Function(String name)? onCreateWorkplace;
+  final Future<void> Function(String name)? onCreateBranch;
 
   @override
   State<PartyForm> createState() => _PartyFormState();
@@ -205,6 +219,24 @@ class _PartyFormState extends State<PartyForm> {
     );
   }
 
+  List<OperationalMasterDataRecord> get _branchOptions {
+    final workplaceId = widget.workplaceId;
+    if (workplaceId == null) return const [];
+    return widget.branches
+        .where((branch) => branch.parentId == workplaceId)
+        .toList(growable: false);
+  }
+
+  void _selectWorkplace(OperationalMasterDataRecord workplace) {
+    widget.onWorkplaceChanged(workplace.id);
+    _moveFrom(_workplaceFocusNode);
+  }
+
+  void _selectBranch(OperationalMasterDataRecord branch) {
+    widget.onBranchChanged(branch.id);
+    _moveFrom(_branchFocusNode);
+  }
+
   @override
   Widget build(BuildContext context) {
     const accentColor = AppColors.blue;
@@ -322,7 +354,8 @@ class _PartyFormState extends State<PartyForm> {
                         children: [
                           _TraversalField(
                             order: 3,
-                            child: AppSearchableDropdownField<String>(
+                            child: AppAutocompleteField<
+                                OperationalMasterDataRecord>(
                               fieldKey: const Key('partyWorkplaceField'),
                               controller: controllers.workplace,
                               label: 'جهة العمل',
@@ -330,26 +363,54 @@ class _PartyFormState extends State<PartyForm> {
                               accentColor: accentColor,
                               focusNode: _workplaceFocusNode,
                               options: widget.workplaces,
-                              displayStringForOption: (value) => value,
-                              onSelected: (_) =>
-                                  _moveFrom(_workplaceFocusNode),
+                              displayStringForOption: (value) => value.name,
+                              searchTermsForOption: (value) => [
+                                value.name,
+                                '${value.number}',
+                              ],
+                              optionSubtitle: (value) =>
+                                  'رقم ${value.number}',
+                              onSelected: _selectWorkplace,
+                              onChanged: (_) =>
+                                  widget.onWorkplaceChanged(null),
+                              createActionLabel: 'إضافة جهة عمل جديدة',
+                              onCreateRequested: widget.onCreateWorkplace ==
+                                      null
+                                  ? null
+                                  : () => widget.onCreateWorkplace!(
+                                        controllers.workplace.text,
+                                      ),
                               onSubmitted: (_) =>
                                   _moveFrom(_workplaceFocusNode),
                             ),
                           ),
                           _TraversalField(
                             order: 4,
-                            child: AppSearchableDropdownField<String>(
+                            child: AppAutocompleteField<
+                                OperationalMasterDataRecord>(
                               fieldKey: const Key('partyBranchField'),
                               controller: controllers.branch,
                               label: 'الفرع',
                               icon: Icons.account_tree_rounded,
                               accentColor: accentColor,
                               focusNode: _branchFocusNode,
-                              options: widget.branches,
-                              displayStringForOption: (value) => value,
-                              onSelected: (_) =>
-                                  _moveFrom(_branchFocusNode),
+                              options: _branchOptions,
+                              displayStringForOption: (value) => value.name,
+                              searchTermsForOption: (value) => [
+                                value.name,
+                                '${value.number}',
+                              ],
+                              optionSubtitle: (value) =>
+                                  'رقم ${value.number}',
+                              onSelected: _selectBranch,
+                              onChanged: (_) =>
+                                  widget.onBranchChanged(null),
+                              createActionLabel: 'إضافة فرع جديد',
+                              onCreateRequested: widget.onCreateBranch == null
+                                  ? null
+                                  : () => widget.onCreateBranch!(
+                                        controllers.branch.text,
+                                      ),
                               onSubmitted: (_) =>
                                   _moveFrom(_branchFocusNode),
                             ),
@@ -396,7 +457,7 @@ class _PartyFormState extends State<PartyForm> {
                         children: [
                           _TraversalField(
                             order: 7,
-                            child: AppSearchableDropdownField<String>(
+                            child: AppAutocompleteField<String>(
                               fieldKey: const Key('partyCityField'),
                               controller: controllers.city,
                               label: 'المدينة',

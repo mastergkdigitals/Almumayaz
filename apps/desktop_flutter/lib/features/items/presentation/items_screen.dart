@@ -44,6 +44,14 @@ class _ItemsScreenState extends State<ItemsScreen> {
         action,
       );
 
+  /// Item groups and types belong to shared Settings master data.
+  bool _allowsItemMasterCreate() {
+    final store = AppStoreScope.of(context, listen: false);
+    return store.allowsFeatureAction('items', PermissionAction.create) &&
+        store.allowsFeatureAction('settings', PermissionAction.manage) &&
+        _itemsController.canCreateMasterData;
+  }
+
   Iterable<TextEditingController> get _editableControllers => [
         _formControllers.code,
         _formControllers.name,
@@ -55,11 +63,11 @@ class _ItemsScreenState extends State<ItemsScreen> {
   List<ItemType> get _visibleTypes =>
       _itemsController.typesFor(_groupId);
 
-  ItemGroup get _selectedGroup =>
-      _itemsController.groupById(_groupId)!;
+  ItemGroup? get _selectedGroup =>
+      _itemsController.groupById(_groupId);
 
-  ItemType get _selectedType =>
-      _itemsController.typeById(_typeId)!;
+  ItemType? get _selectedType =>
+      _itemsController.typeById(_typeId);
 
   @override
   void initState() {
@@ -102,6 +110,7 @@ class _ItemsScreenState extends State<ItemsScreen> {
       final store = AppStoreScope.of(context, listen: false);
       _itemsController = ItemsController(
         repository: store.repositories.items,
+        masterData: store.repositories.operationalMasterData,
         onDataChanged: store.markDataChanged,
       );
       _ownsController = true;
@@ -188,21 +197,77 @@ class _ItemsScreenState extends State<ItemsScreen> {
   }
 
   void _changeGroup(String? value) {
-    if (value == null || value == _groupId) return;
+    if (value == _groupId) return;
     setState(() {
-      _groupId = value;
-      final types = _itemsController.typesFor(value);
+      _groupId = value ?? '';
+      final types = value == null
+          ? const <ItemType>[]
+          : _itemsController.typesFor(value);
       _typeId = types.isEmpty ? '' : types.first.id;
       _refreshSelectionState();
     });
   }
 
   void _changeType(String? value) {
-    if (value == null || value == _typeId) return;
+    if ((value ?? '') == _typeId) return;
     setState(() {
-      _typeId = value;
+      _typeId = value ?? '';
       _refreshSelectionState();
     });
+  }
+
+  Future<ItemGroup?> _createGroup(String initialName) async {
+    if (!_allowsItemMasterCreate()) return null;
+    final name = await AppQuickCreateDialog.showName(
+      context: context,
+      title: 'إضافة مجموعة مواد',
+      prompt: 'هذه المجموعة غير موجودة، هل تود إضافتها؟',
+      fieldLabel: 'اسم المجموعة',
+      icon: Icons.category_rounded,
+      accentColor: AppModuleColors.warehouses,
+      keyPrefix: 'itemQuickGroup',
+      initialValue: initialName,
+    );
+    if (!mounted || name == null) return null;
+    try {
+      final created = await _itemsController.createGroup(name);
+      if (mounted) AppToast.showSuccess(context, 'تمت إضافة المجموعة');
+      return created;
+    } on StateError catch (error) {
+      if (mounted) AppToast.showWarning(context, _stateErrorMessage(error));
+      return null;
+    }
+  }
+
+  Future<ItemType?> _createType(String initialName) async {
+    if (!_allowsItemMasterCreate()) return null;
+    final group = _selectedGroup;
+    if (group == null) {
+      AppToast.showWarning(context, 'اختر مجموعة موجودة من القائمة أولاً');
+      return null;
+    }
+    final name = await AppQuickCreateDialog.showName(
+      context: context,
+      title: 'إضافة نوع ضمن مجموعة',
+      prompt: 'هذا النوع غير موجود، هل تود إضافته؟',
+      fieldLabel: 'اسم النوع',
+      icon: Icons.account_tree_rounded,
+      accentColor: AppModuleColors.warehouses,
+      keyPrefix: 'itemQuickType',
+      initialValue: initialName,
+    );
+    if (!mounted || name == null) return null;
+    try {
+      final created = await _itemsController.createType(
+        name: name,
+        groupId: group.entityId,
+      );
+      if (mounted) AppToast.showSuccess(context, 'تمت إضافة النوع');
+      return created;
+    } on StateError catch (error) {
+      if (mounted) AppToast.showWarning(context, _stateErrorMessage(error));
+      return null;
+    }
   }
 
   _ItemFormSnapshot _currentSnapshot() => (
@@ -268,6 +333,12 @@ class _ItemsScreenState extends State<ItemsScreen> {
       AppToast.showWarning(context, 'أكمل رمز المادة واسمها أولاً');
       return false;
     }
+    final group = _selectedGroup;
+    final type = _selectedType;
+    if (group == null || type == null || type.groupId != group.id) {
+      AppToast.showWarning(context, 'اختر المجموعة والنوع من القائمة');
+      return false;
+    }
 
     final selectedId = _itemsController.selectedItem?.id;
     if (_itemsController.codeExists(
@@ -302,9 +373,9 @@ class _ItemsScreenState extends State<ItemsScreen> {
       name: _formControllers.name.text.trim(),
       barcode: _formControllers.barcode.text.trim(),
       groupId: _groupId,
-      groupName: _selectedGroup.name,
+      groupName: _selectedGroup!.name,
       typeId: _typeId,
-      typeName: _selectedType.name,
+      typeName: _selectedType!.name,
       salePriceIqd:
           AppFormatters.parseNumber(_formControllers.salePriceIqd.text) ??
               0,
@@ -321,9 +392,9 @@ class _ItemsScreenState extends State<ItemsScreen> {
       name: _formControllers.name.text.trim(),
       barcode: _formControllers.barcode.text.trim(),
       groupId: _groupId,
-      groupName: _selectedGroup.name,
+      groupName: _selectedGroup!.name,
       typeId: _typeId,
-      typeName: _selectedType.name,
+      typeName: _selectedType!.name,
       salePriceIqd:
           AppFormatters.parseNumber(_formControllers.salePriceIqd.text) ??
               0,
@@ -476,6 +547,10 @@ class _ItemsScreenState extends State<ItemsScreen> {
                   typeId: _typeId,
                   onGroupChanged: _changeGroup,
                   onTypeChanged: _changeType,
+                  onCreateGroup:
+                      _allowsItemMasterCreate() ? _createGroup : null,
+                  onCreateType:
+                      _allowsItemMasterCreate() ? _createType : null,
                 ),
                 const SizedBox(height: AppSpacing.md),
                 AppActionBar(

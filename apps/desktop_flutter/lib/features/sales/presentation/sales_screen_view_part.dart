@@ -175,6 +175,9 @@ extension _SalesScreenViewPart on _SalesScreenState {
                     optionSubtitle: (party) => 'رقم ${party.number}',
                     onSelected: _selectCustomer,
                     onChanged: _changeCustomerText,
+                    createActionLabel: 'إضافة زبون جديد',
+                    onCreateRequested:
+                        _allowsPartyCreate() ? _createCustomer : null,
                     textDirection: TextDirection.rtl,
                     textAlign: TextAlign.right,
                   ),
@@ -205,6 +208,8 @@ extension _SalesScreenViewPart on _SalesScreenState {
                   defaultWarehouse: _defaultWarehouseId,
                   defaultWarehouseLabel: _defaultWarehouseName,
                   onRowsChanged: _changeItems,
+                  onCreateItemRequested:
+                      _allowsItemCreate() ? _createItem : null,
                 ),
               ),
               const SizedBox(height: AppSpacing.md),

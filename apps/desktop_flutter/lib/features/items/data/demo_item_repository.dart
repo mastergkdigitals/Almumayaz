@@ -31,6 +31,8 @@ class DemoItemRepository extends InMemoryDemoRepository<Item>
   final ItemReferenceLookup _isReferenced;
   final Set<EntityId> _initiallyReferencedIds;
   final DemoTransactionRunner _transactionRunner;
+  final Set<EntityId> _issuedIds = {};
+  int _nextGeneratedIdSequence = 1;
 
   @override
   Future<List<Item>> search(String query) async {
@@ -84,17 +86,22 @@ class DemoItemRepository extends InMemoryDemoRepository<Item>
   }
 
   Future<Item> _saveUnlocked(Item value) async {
+    _captureIssuedIds(await getAll());
+    if (getDemoValue(value.entityId) == null &&
+        _issuedIds.contains(value.entityId)) {
+      throw StateError('معرف المادة مستخدم مسبقاً');
+    }
     final groups = await getGroups();
     final types = await getTypes(groupId: value.groupEntityId);
-    final groupExists = groups.any(
-      (group) => group.entityId == value.groupEntityId,
+    final group = groups.where(
+      (candidate) => candidate.entityId == value.groupEntityId,
     );
-    final typeExists = types.any(
-      (type) =>
-          type.entityId == value.typeEntityId &&
-          type.groupEntityId == value.groupEntityId,
+    final type = types.where(
+      (candidate) =>
+          candidate.entityId == value.typeEntityId &&
+          candidate.groupEntityId == value.groupEntityId,
     );
-    if (!groupExists || !typeExists) {
+    if (group.length != 1 || type.length != 1) {
       throw StateError('مجموعة المادة أو نوعها غير موجود');
     }
     final duplicateCode = (await getAll()).any(
@@ -103,12 +110,48 @@ class DemoItemRepository extends InMemoryDemoRepository<Item>
           item.code.trim().toLowerCase() == value.code.trim().toLowerCase(),
     );
     if (duplicateCode) throw StateError('رمز المادة مستخدم مسبقاً');
-    return super.save(value);
+    final saved = await super.save(
+      value.copyWithTyped(
+        groupName: group.single.name,
+        typeName: type.single.name,
+      ),
+    );
+    _issuedIds.add(saved.entityId);
+    return saved;
+  }
+
+  @override
+  Future<Item> quickCreate(ItemQuickCreateRequest request) {
+    return _transactionRunner.run(() async {
+      final code = request.code.trim();
+      final name = request.name.trim();
+      if (code.isEmpty) throw StateError('أدخل رمز المادة أولاً');
+      if (name.isEmpty) throw StateError('أدخل اسم المادة أولاً');
+      _captureIssuedIds(await getAll());
+      return _saveUnlocked(
+        Item.typed(
+          entityId: _issueItemId(),
+          code: code,
+          name: name,
+          barcode: request.barcode.trim(),
+          groupEntityId: request.groupId,
+          groupName: '',
+          typeEntityId: request.typeId,
+          typeName: '',
+          iqdSalePrice: request.iqdSalePrice,
+          usdSalePrice: request.usdSalePrice,
+          notes: request.notes.trim(),
+        ),
+      );
+    });
   }
 
   @override
   Future<void> delete(EntityId id) {
-    return _transactionRunner.run(() => super.delete(id));
+    return _transactionRunner.run(() async {
+      _captureIssuedIds(await getAll());
+      await super.delete(id);
+    });
   }
 
   @override
@@ -122,6 +165,20 @@ class DemoItemRepository extends InMemoryDemoRepository<Item>
       );
     }
     return const DeleteDecision.allowed();
+  }
+
+  void _captureIssuedIds(Iterable<Item> items) {
+    _issuedIds.addAll(items.map((item) => item.entityId));
+  }
+
+  EntityId _issueItemId() {
+    while (true) {
+      final sequence = _nextGeneratedIdSequence++;
+      final candidate = EntityId(
+        'local-item-${sequence.toString().padLeft(6, '0')}',
+      );
+      if (!_issuedIds.contains(candidate)) return candidate;
+    }
   }
 }
 

@@ -53,6 +53,15 @@ class _CashboxScreenState extends State<CashboxScreen> {
         action,
       );
 
+  /// Cashbox account structure is shared Settings master data. Creating it
+  /// therefore requires both the feature create grant and Settings manage.
+  bool _allowsCashboxMasterCreate() {
+    final store = AppStoreScope.of(context, listen: false);
+    return store.allowsFeatureAction('cashbox', PermissionAction.create) &&
+        store.allowsFeatureAction('settings', PermissionAction.manage) &&
+        _cashboxController.canCreateMasterData;
+  }
+
   Iterable<TextEditingController> get _editableControllers => [
         _formControllers.mainAccount,
         _formControllers.subaccount,
@@ -125,6 +134,7 @@ class _CashboxScreenState extends State<CashboxScreen> {
       _cashboxController = CashboxController(
         repository: store.repositories.cashbox,
         settingsRepository: store.repositories.businessSettings,
+        masterData: store.repositories.operationalMasterData,
         onDataChanged: store.markDataChanged,
       );
       _ownsController = true;
@@ -304,6 +314,83 @@ class _CashboxScreenState extends State<CashboxScreen> {
       }
       _refreshSelectionState();
     });
+  }
+
+  Future<void> _createSubaccount() async {
+    if (!_allowsCashboxMasterCreate()) return;
+    if (_formControllers.mainAccount.text.trim() !=
+        _selectedMainAccount.label) {
+      AppToast.showWarning(context, 'اختر الحساب الرئيسي من القائمة أولاً');
+      return;
+    }
+    final initialName = _formControllers.subaccount.text;
+    final name = await AppQuickCreateDialog.showName(
+      context: context,
+      title: 'إضافة حساب صندوق فرعي',
+      prompt: 'هذا الحساب الفرعي غير موجود، هل تود إضافته؟',
+      fieldLabel: 'اسم الحساب الفرعي',
+      icon: Icons.segment_rounded,
+      accentColor: AppModuleColors.cashbox,
+      keyPrefix: 'cashboxQuickSubaccount',
+      initialValue: initialName,
+    );
+    if (!mounted || name == null) return;
+    final controller = _cashboxController;
+    try {
+      final created = await controller.createSubaccount(
+        name: name,
+        mainAccountId: _selectedMainAccount.entityId,
+      );
+      if (!mounted || !identical(controller, _cashboxController)) return;
+      setState(() {
+        _isApplyingFormState = true;
+        try {
+          _subaccountId = created.id;
+          _syncAccountFields();
+        } finally {
+          _isApplyingFormState = false;
+        }
+        _refreshSelectionState();
+      });
+      AppToast.showSuccess(context, 'تمت إضافة الحساب الفرعي');
+    } on StateError catch (error) {
+      if (mounted) AppToast.showWarning(context, error.message);
+    }
+  }
+
+  Future<void> _createMainAccount() async {
+    if (!_allowsCashboxMasterCreate()) return;
+    final values = await AppQuickCreateDialog.showCashboxMain(
+      context: context,
+      title: 'إضافة حساب صندوق',
+      prompt: 'أضف الحساب الرئيسي مع أول حساب فرعي ليصبح قابلاً للاستخدام.',
+      accentColor: AppModuleColors.cashbox,
+      keyPrefix: 'cashboxQuickMainAccount',
+      initialMainAccountName: _formControllers.mainAccount.text,
+    );
+    if (!mounted || values == null) return;
+    final controller = _cashboxController;
+    try {
+      final created = await controller.createMainAccountPair(
+        mainName: values.mainAccountName,
+        subaccountName: values.subaccountName,
+      );
+      if (!mounted || !identical(controller, _cashboxController)) return;
+      setState(() {
+        _isApplyingFormState = true;
+        try {
+          _mainAccountId = created.mainAccount.id;
+          _subaccountId = created.subaccount.id;
+          _syncAccountFields();
+        } finally {
+          _isApplyingFormState = false;
+        }
+        _refreshSelectionState();
+      });
+      AppToast.showSuccess(context, 'تمت إضافة حساب الصندوق');
+    } on StateError catch (error) {
+      if (mounted) AppToast.showWarning(context, error.message);
+    }
   }
 
   void _syncAccountFields() {
@@ -729,6 +816,12 @@ class _CashboxScreenState extends State<CashboxScreen> {
                   onVoucherTypeChanged: _changeVoucherType,
                   onMainAccountChanged: _changeMainAccount,
                   onSubaccountChanged: _changeSubaccount,
+                  onCreateMainAccount: _allowsCashboxMasterCreate()
+                      ? () => unawaited(_createMainAccount())
+                      : null,
+                  onCreateSubaccount: _allowsCashboxMasterCreate()
+                      ? () => unawaited(_createSubaccount())
+                      : null,
                 ),
                 const SizedBox(height: AppSpacing.md),
                 AppActionBar(

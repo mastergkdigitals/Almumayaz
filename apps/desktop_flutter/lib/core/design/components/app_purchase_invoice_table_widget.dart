@@ -137,6 +137,7 @@ class AppPurchaseInvoiceTableTemplate extends StatefulWidget {
     this.defaultWarehouse = 'الرئيسي',
     this.defaultWarehouseLabel = '',
     this.onRowsChanged,
+    this.onCreateItemRequested,
   });
 
   final List<AppPurchaseInvoiceTableRowData> initialRows;
@@ -156,6 +157,7 @@ class AppPurchaseInvoiceTableTemplate extends StatefulWidget {
   /// Display label for [defaultWarehouse].
   final String defaultWarehouseLabel;
   final ValueChanged<List<AppPurchaseInvoiceTableRowData>>? onRowsChanged;
+  final AppInvoiceItemQuickCreate? onCreateItemRequested;
 
   @override
   State<AppPurchaseInvoiceTableTemplate> createState() =>
@@ -336,6 +338,17 @@ class _AppPurchaseInvoiceTableTemplateState
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) row.quantityFocusNode.requestFocus();
     });
+  }
+
+  Future<void> _createItem(_PurchaseInvoiceTemplateRow row) async {
+    final create = widget.onCreateItemRequested;
+    if (create == null) return;
+    final option = await create(
+      code: row.codeController.text,
+      name: row.nameController.text,
+    );
+    if (!mounted || option == null || !_rows.contains(row)) return;
+    _selectItem(row, option);
   }
 
   bool _canAddRow(_PurchaseInvoiceTemplateRow row) {
@@ -657,6 +670,10 @@ class _AppPurchaseInvoiceTableTemplateState
           showsCode ? (option) => option.name : (option) => option.code,
       onSelected: (option) => _selectItem(row, option),
       onChanged: (_) => _changeItemText(row),
+      createActionLabel: 'إضافة مادة جديدة',
+      onCreateRequested: widget.onCreateItemRequested == null
+          ? null
+          : () => unawaited(_createItem(row)),
       icon: null,
       accentColor: AppModuleColors.purchases,
       textDirection: TextDirection.rtl,

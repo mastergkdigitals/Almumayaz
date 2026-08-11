@@ -46,6 +46,10 @@ class DemoPartyRepository extends InMemoryDemoRepository<Party>
   final OperationalMasterDataRepository _masterData;
   final DemoTransactionRunner _transactionRunner;
   final Map<EntityId, PartyMasterDataReferences> _masterDataReferences;
+  final Set<EntityId> _issuedIds = {};
+  final Set<int> _issuedNumbers = {};
+  int _highestIssuedNumber = 0;
+  int _nextGeneratedIdSequence = 1;
 
   /// Builds a complete party snapshot with signed IQD/USD adjustments.
   Map<EntityId, Party> stageBalanceAdjustments(
@@ -105,16 +109,31 @@ class DemoPartyRepository extends InMemoryDemoRepository<Party>
     return _transactionRunner.run(() => _saveUnlocked(value));
   }
 
-  Future<Party> _saveUnlocked(Party value) async {
-    final duplicate = (await getAll()).any(
+  Party _saveUnlocked(Party value) {
+    final staged = createDemoSnapshot();
+    final currentValues = staged.values;
+    _captureIssuedIdentity(currentValues);
+    if (value.number < 1) throw StateError('رقم الطرف غير صالح');
+    final current = staged[value.entityId];
+    if (current == null && _issuedIds.contains(value.entityId)) {
+      throw StateError('معرف الطرف مستخدم مسبقاً');
+    }
+    if (current == null && _issuedNumbers.contains(value.number)) {
+      throw StateError('رقم الطرف مستخدم مسبقاً');
+    }
+    if (current != null && current.number != value.number) {
+      throw StateError('لا يمكن تغيير رقم طرف صادر');
+    }
+    final duplicate = currentValues.any(
       (party) =>
           party.entityId != value.entityId &&
-          normalizePartyName(party.name) == normalizePartyName(value.name),
+          (party.number == value.number ||
+              normalizePartyName(party.name) ==
+                  normalizePartyName(value.name)),
     );
     if (duplicate) {
-      throw StateError('يوجد طرف آخر بالاسم نفسه');
+      throw StateError('يوجد طرف آخر بالرقم أو الاسم نفسه');
     }
-    final current = getDemoValue(value.entityId);
     final normalized = current == null
         ? value
         : value.copyWithTyped(
@@ -124,7 +143,11 @@ class DemoPartyRepository extends InMemoryDemoRepository<Party>
             iqdBalance: current.iqdBalance,
             usdBalance: current.usdBalance,
           );
-    return super.save(normalized);
+    staged[normalized.entityId] = normalized;
+    commitDemoSnapshot(staged);
+    final saved = normalized;
+    _recordIssuedIdentity(saved);
+    return saved;
   }
 
   @override
@@ -141,30 +164,17 @@ class DemoPartyRepository extends InMemoryDemoRepository<Party>
     Party party,
     PartyMasterDataReferences references,
   ) async {
-    final workplaceId = references.workplaceId;
-    final branchId = references.branchId;
-    if ((workplaceId == null) != (branchId == null)) {
-      throw StateError('اختر جهة العمل والفرع معاً');
-    }
-    final workplace = workplaceId == null
-        ? null
-        : await _masterData.getById(workplaceId);
-    final branch =
-        branchId == null ? null : await _masterData.getById(branchId);
-    if (workplaceId != null &&
-        workplace?.kind != OperationalMasterDataKind.workplace) {
-      throw StateError('جهة العمل المحددة غير موجودة');
-    }
-    if (branchId != null && branch?.kind != OperationalMasterDataKind.branch) {
-      throw StateError('الفرع المحدد غير موجود');
-    }
-    if (workplaceId != null &&
-        branch != null &&
-        branch.parentId != workplaceId) {
-      throw StateError('الفرع لا يتبع جهة العمل المحددة');
-    }
-    final saved = await _saveUnlocked(party);
-    _masterDataReferences[party.entityId] = references;
+    final resolved = await _resolveMasterDataReferences(
+      workplaceId: references.workplaceId,
+      branchId: references.branchId,
+    );
+    final saved = _saveUnlocked(
+      party.copyWithTyped(
+        workplace: resolved.workplaceName,
+        branch: resolved.branchName,
+      ),
+    );
+    _masterDataReferences[saved.entityId] = resolved.references;
     return saved;
   }
 
@@ -185,6 +195,55 @@ class DemoPartyRepository extends InMemoryDemoRepository<Party>
   }
 
   @override
+  Future<int> nextPartyNumber() {
+    return _transactionRunner.run(() async {
+      _captureIssuedIdentity(await getAll());
+      return _highestIssuedNumber + 1;
+    });
+  }
+
+  @override
+  Future<Party> quickCreate(PartyQuickCreateRequest request) {
+    return _transactionRunner.run(() async {
+      final name = request.name.trim();
+      if (normalizePartyName(name).isEmpty) {
+        throw StateError('أدخل اسم الطرف أولاً');
+      }
+      final currentValues = await getAll();
+      _captureIssuedIdentity(currentValues);
+      if (currentValues.any(
+        (party) => normalizePartyName(party.name) == normalizePartyName(name),
+      )) {
+        throw StateError('يوجد طرف آخر بالاسم نفسه');
+      }
+      final party = Party.typed(
+        entityId: _issuePartyId(),
+        number: _highestIssuedNumber + 1,
+        createdTimestamp:
+            request.createdTimestamp ?? AuditTimestamp(DateTime.now()),
+        name: name,
+        type: request.type,
+        workplace: '',
+        branch: '',
+        phone: request.phone.trim(),
+        alternatePhone: request.alternatePhone.trim(),
+        city: request.city.trim(),
+        address: request.address.trim(),
+        notes: request.notes.trim(),
+        iqdBalance: Money.zero(AppCurrency.iqd),
+        usdBalance: Money.zero(AppCurrency.usd),
+      );
+      return _saveWithMasterDataUnlocked(
+        party,
+        PartyMasterDataReferences(
+          workplaceId: request.workplaceId,
+          branchId: request.branchId,
+        ),
+      );
+    });
+  }
+
+  @override
   Future<DeleteDecision> canDelete(EntityId id) async {
     if (await getById(id) == null) {
       return const DeleteDecision.blocked('السجل غير موجود');
@@ -200,10 +259,83 @@ class DemoPartyRepository extends InMemoryDemoRepository<Party>
   @override
   Future<void> delete(EntityId id) {
     return _transactionRunner.run(() async {
+      _captureIssuedIdentity(await getAll());
       await super.delete(id);
       _masterDataReferences.remove(id);
     });
   }
+
+  Future<_ResolvedPartyMasterData> _resolveMasterDataReferences({
+    required EntityId? workplaceId,
+    required EntityId? branchId,
+  }) async {
+    if ((workplaceId == null) != (branchId == null)) {
+      throw StateError('اختر جهة العمل والفرع معاً');
+    }
+    if (workplaceId == null || branchId == null) {
+      return const _ResolvedPartyMasterData(
+        references: PartyMasterDataReferences(),
+        workplaceName: '',
+        branchName: '',
+      );
+    }
+    final workplace = await _masterData.getById(workplaceId);
+    final branch = await _masterData.getById(branchId);
+    if (workplace == null ||
+        workplace.kind != OperationalMasterDataKind.workplace) {
+      throw StateError('جهة العمل المحددة غير موجودة');
+    }
+    if (branch == null || branch.kind != OperationalMasterDataKind.branch) {
+      throw StateError('الفرع المحدد غير موجود');
+    }
+    if (branch.parentId != workplaceId) {
+      throw StateError('الفرع لا يتبع جهة العمل المحددة');
+    }
+    return _ResolvedPartyMasterData(
+      references: PartyMasterDataReferences(
+        workplaceId: workplaceId,
+        branchId: branchId,
+      ),
+      workplaceName: workplace.name,
+      branchName: branch.name,
+    );
+  }
+
+  void _captureIssuedIdentity(Iterable<Party> parties) {
+    for (final party in parties) {
+      _recordIssuedIdentity(party);
+    }
+  }
+
+  void _recordIssuedIdentity(Party party) {
+    _issuedIds.add(party.entityId);
+    _issuedNumbers.add(party.number);
+    if (party.number > _highestIssuedNumber) {
+      _highestIssuedNumber = party.number;
+    }
+  }
+
+  EntityId _issuePartyId() {
+    while (true) {
+      final sequence = _nextGeneratedIdSequence++;
+      final candidate = EntityId(
+        'local-party-${sequence.toString().padLeft(6, '0')}',
+      );
+      if (!_issuedIds.contains(candidate)) return candidate;
+    }
+  }
+}
+
+class _ResolvedPartyMasterData {
+  const _ResolvedPartyMasterData({
+    required this.references,
+    required this.workplaceName,
+    required this.branchName,
+  });
+
+  final PartyMasterDataReferences references;
+  final String workplaceName;
+  final String branchName;
 }
 
 Future<bool> _neverReferenced(EntityId _) async => false;

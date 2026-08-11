@@ -49,6 +49,8 @@ class ItemForm extends StatefulWidget {
     required this.typeId,
     required this.onGroupChanged,
     required this.onTypeChanged,
+    this.onCreateGroup,
+    this.onCreateType,
     super.key,
   });
 
@@ -59,6 +61,8 @@ class ItemForm extends StatefulWidget {
   final String typeId;
   final ValueChanged<String?> onGroupChanged;
   final ValueChanged<String?> onTypeChanged;
+  final Future<ItemGroup?> Function(String name)? onCreateGroup;
+  final Future<ItemType?> Function(String name)? onCreateType;
 
   @override
   State<ItemForm> createState() => ItemFormState();
@@ -78,6 +82,8 @@ class ItemFormState extends State<ItemForm> {
   final _iqdFocusNode = FocusNode(debugLabel: 'itemSalePriceIqd');
   final _usdFocusNode = FocusNode(debugLabel: 'itemSalePriceUsd');
   final _notesFocusNode = FocusNode(debugLabel: 'itemNotes');
+  late final TextEditingController _groupController;
+  late final TextEditingController _typeController;
   String? _codeErrorText;
   String? _nameErrorText;
 
@@ -86,6 +92,12 @@ class ItemFormState extends State<ItemForm> {
   @override
   void initState() {
     super.initState();
+    _groupController = TextEditingController(
+      text: _groupForId(widget.groupId)?.name ?? '',
+    );
+    _typeController = TextEditingController(
+      text: _typeForId(widget.typeId)?.name ?? '',
+    );
     controllers.code.addListener(_handleCodeChanged);
     controllers.name.addListener(_handleNameChanged);
   }
@@ -93,6 +105,15 @@ class ItemFormState extends State<ItemForm> {
   @override
   void didUpdateWidget(covariant ItemForm oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.groupId.isNotEmpty &&
+        (oldWidget.groupId != widget.groupId ||
+            oldWidget.groups != widget.groups)) {
+      _groupController.text = _groupForId(widget.groupId)?.name ?? '';
+    }
+    if (widget.typeId.isNotEmpty &&
+        (oldWidget.typeId != widget.typeId || oldWidget.types != widget.types)) {
+      _typeController.text = _typeForId(widget.typeId)?.name ?? '';
+    }
     if (oldWidget.controllers == controllers) return;
     oldWidget.controllers.code.removeListener(_handleCodeChanged);
     oldWidget.controllers.name.removeListener(_handleNameChanged);
@@ -114,6 +135,8 @@ class ItemFormState extends State<ItemForm> {
     _iqdFocusNode.dispose();
     _usdFocusNode.dispose();
     _notesFocusNode.dispose();
+    _groupController.dispose();
+    _typeController.dispose();
     super.dispose();
   }
 
@@ -169,6 +192,51 @@ class ItemFormState extends State<ItemForm> {
       keys: _enterKeys,
       action: target.requestFocus,
     );
+  }
+
+  ItemGroup? _groupForId(String id) {
+    for (final group in widget.groups) {
+      if (group.id == id) return group;
+    }
+    return null;
+  }
+
+  ItemType? _typeForId(String id) {
+    for (final type in widget.types) {
+      if (type.id == id) return type;
+    }
+    return null;
+  }
+
+  void _changeGroupText(String text) {
+    final selected = _groupForId(widget.groupId);
+    if (selected != null && selected.name == text) return;
+    _typeController.clear();
+    widget.onGroupChanged(null);
+  }
+
+  void _changeTypeText(String text) {
+    final selected = _typeForId(widget.typeId);
+    if (selected != null && selected.name == text) return;
+    widget.onTypeChanged(null);
+  }
+
+  Future<void> _createGroup() async {
+    final create = widget.onCreateGroup;
+    if (create == null) return;
+    final created = await create(_groupController.text);
+    if (!mounted || created == null) return;
+    _groupController.text = created.name;
+    widget.onGroupChanged(created.id);
+  }
+
+  Future<void> _createType() async {
+    final create = widget.onCreateType;
+    if (create == null) return;
+    final created = await create(_typeController.text);
+    if (!mounted || created == null) return;
+    _typeController.text = created.name;
+    widget.onTypeChanged(created.id);
   }
 
   @override
@@ -228,48 +296,58 @@ class ItemFormState extends State<ItemForm> {
               children: [
                 FocusTraversalOrder(
                   order: const NumericFocusOrder(3),
-                  child: AppDropdownField<String>(
+                  child: AppAutocompleteField<ItemGroup>(
                     fieldKey: const Key('itemGroupField'),
+                    controller: _groupController,
                     label: 'المجموعة',
                     icon: Icons.category_outlined,
                     accentColor: accentColor,
                     focusNode: _groupFocusNode,
-                    keyHoldGuard: _keyHoldGuard,
-                    useIntrinsicHeight: true,
-                    value: widget.groupId,
-                    options: [
-                      for (final group in widget.groups)
-                        AppDropdownOption(
-                          value: group.id,
-                          label: group.label,
-                        ),
+                    options: widget.groups,
+                    displayStringForOption: (group) => group.name,
+                    searchTermsForOption: (group) => [
+                      group.name,
+                      '${group.number}',
                     ],
-                    onChanged: widget.onGroupChanged,
-                    onSubmitted: (_) =>
-                        _moveTo(_typeFocusNode, guardKeyHold: false),
+                    optionSubtitle: (group) => 'رقم ${group.number}',
+                    onSelected: (group) {
+                      widget.onGroupChanged(group.id);
+                      _moveTo(_typeFocusNode, guardKeyHold: false);
+                    },
+                    onChanged: _changeGroupText,
+                    createActionLabel: 'إضافة مجموعة جديدة',
+                    onCreateRequested: widget.onCreateGroup == null
+                        ? null
+                        : () => _createGroup(),
+                    onSubmitted: (_) => _moveTo(_typeFocusNode),
                   ),
                 ),
                 FocusTraversalOrder(
                   order: const NumericFocusOrder(4),
-                  child: AppDropdownField<String>(
+                  child: AppAutocompleteField<ItemType>(
                     fieldKey: const Key('itemTypeField'),
+                    controller: _typeController,
                     label: 'النوع',
                     icon: Icons.style_outlined,
                     accentColor: accentColor,
                     focusNode: _typeFocusNode,
-                    keyHoldGuard: _keyHoldGuard,
-                    useIntrinsicHeight: true,
-                    value: widget.typeId,
-                    options: [
-                      for (final type in widget.types)
-                        AppDropdownOption(
-                          value: type.id,
-                          label: type.label,
-                        ),
+                    options: widget.types,
+                    displayStringForOption: (type) => type.name,
+                    searchTermsForOption: (type) => [
+                      type.name,
+                      '${type.number}',
                     ],
-                    onChanged: widget.onTypeChanged,
-                    onSubmitted: (_) =>
-                        _moveTo(_iqdFocusNode, guardKeyHold: false),
+                    optionSubtitle: (type) => 'رقم ${type.number}',
+                    onSelected: (type) {
+                      widget.onTypeChanged(type.id);
+                      _moveTo(_iqdFocusNode, guardKeyHold: false);
+                    },
+                    onChanged: _changeTypeText,
+                    createActionLabel: 'إضافة نوع جديد',
+                    onCreateRequested: widget.onCreateType == null
+                        ? null
+                        : () => _createType(),
+                    onSubmitted: (_) => _moveTo(_iqdFocusNode),
                   ),
                 ),
                 FocusTraversalOrder(
