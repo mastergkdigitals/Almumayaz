@@ -733,6 +733,9 @@ void main() {
     final erbilCount = find.text('أربيل').evaluate().length;
     await tester.tap(find.text('الأجهزة المكتبية').last);
     await tester.pump();
+    // The workplace selection rebuilds the form first, then refreshes the
+    // newly focused branch overlay with the stable-ID-filtered options.
+    await tester.pump();
     expect(
       _fieldText(tester, find.byKey(const Key('partyWorkplaceField'))),
       'الأجهزة المكتبية',

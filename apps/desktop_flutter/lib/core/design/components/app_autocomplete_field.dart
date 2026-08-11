@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 import '../app_tokens.dart';
@@ -84,6 +85,7 @@ class _AppAutocompleteFieldState<T extends Object>
   var _isPointerSelecting = false;
   var _highlightedIndex = -1;
   var _optionsWidth = 320.0;
+  var _optionsUpdateScheduled = false;
 
   FocusNode get _focusNode => widget.focusNode ?? _internalFocusNode;
 
@@ -187,13 +189,23 @@ class _AppAutocompleteFieldState<T extends Object>
   }
 
   void _scheduleOptionsUpdate() {
+    if (_optionsUpdateScheduled) return;
+    _optionsUpdateScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _optionsUpdateScheduled = false;
       if (!mounted) return;
       _updateOptions();
     });
   }
 
   void _updateOptions() {
+    // External controllers can be synchronized from an ancestor's
+    // didUpdateWidget. Defer overlay mutations until that build is complete.
+    if (WidgetsBinding.instance.schedulerPhase ==
+        SchedulerPhase.persistentCallbacks) {
+      _scheduleOptionsUpdate();
+      return;
+    }
     if (!mounted || !_focusNode.hasFocus || !widget.enabled) {
       _closeOptions();
       return;

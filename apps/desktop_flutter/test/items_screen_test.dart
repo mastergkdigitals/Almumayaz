@@ -291,6 +291,7 @@ void main() {
     expect(find.byKey(const Key('itemQuickGroupDialog')), findsOneWidget);
     await tester.tap(find.byKey(const Key('itemQuickGroupConfirm')));
     await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
     expect(_fieldText(tester, const Key('itemGroupField')), groupName);
 
     final groups = await store.repositories.operationalMasterData.getByKind(
@@ -306,6 +307,7 @@ void main() {
     expect(find.byKey(const Key('itemQuickTypeDialog')), findsOneWidget);
     await tester.tap(find.byKey(const Key('itemQuickTypeConfirm')));
     await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
     expect(_fieldText(tester, const Key('itemTypeField')), typeName);
 
     final types = await store.repositories.operationalMasterData.getByKind(
