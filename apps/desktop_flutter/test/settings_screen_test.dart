@@ -1,6 +1,5 @@
 import 'package:erp/app/app.dart';
 import 'package:erp/core/design/app_design_system.dart';
-import 'package:erp/features/settings/presentation/widgets/settings_sections.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';

@@ -211,7 +211,7 @@ class AppSelectionTabs<T> extends StatelessWidget {
       backgroundColor: selectedItem ? accentColor : null,
       padding: padding,
       minWidth: minWidth,
-      height: height,
+      height: height ?? AppControlHeights.standard,
       onPressed: selectedItem && !notifyWhenSelected
           ? () {}
           : () => onChanged(item.value),

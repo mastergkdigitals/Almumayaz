@@ -549,7 +549,7 @@ class _BackupDataSettingsSectionState
   void _setBackupViewState(VoidCallback update) => setState(update);
 
   @override
-  Widget build(BuildContext context) => this._buildBackupContent(context);
+  Widget build(BuildContext context) => _buildBackupContent(context);
 
   void _replaceHistory(List<BackupRecord> records) {
     _history
