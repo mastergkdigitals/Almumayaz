@@ -66,7 +66,8 @@ class DesignGalleryQuickCreateSection extends StatelessWidget {
       keyName: 'designQuickCashboxMain',
       buttonLabel: 'حساب صندوق',
       title: 'إضافة حساب صندوق',
-      prompt: 'هذا الحساب غير موجود، هل تود إضافته؟',
+      prompt:
+          'أضف الحساب الرئيسي مع أول حساب فرعي ليصبح قابلاً للاستخدام.',
       icon: Icons.account_balance_wallet_rounded,
       accentColor: AppModuleColors.cashbox,
     ),
@@ -196,6 +197,10 @@ class _QuickCreateDialogState extends State<_QuickCreateDialog> {
       };
 
   bool get _canConfirm {
+    if (_spec.kind == _QuickCreateKind.cashboxMain) {
+      return _controller('cashboxMainName').text.trim().isNotEmpty &&
+          _controller('cashboxMainSubaccountName').text.trim().isNotEmpty;
+    }
     return _controllers[_requiredFieldName]?.text.trim().isNotEmpty ??
         false;
   }
@@ -488,9 +493,9 @@ class _QuickCreateDialogState extends State<_QuickCreateDialog> {
         const SizedBox(width: AppSpacing.md),
         Expanded(
           child: _field(
-            'cashboxMainCode',
-            'رمز الحساب',
-            Icons.numbers_rounded,
+            'cashboxMainSubaccountName',
+            'اسم أول حساب فرعي',
+            Icons.segment_rounded,
           ),
         ),
       ],
@@ -516,24 +521,10 @@ class _QuickCreateDialogState extends State<_QuickCreateDialog> {
           },
         ),
         const SizedBox(height: AppSpacing.md),
-        Row(
-          children: [
-            Expanded(
-              child: _field(
-                'cashboxSubName',
-                'اسم الحساب الفرعي',
-                Icons.segment_rounded,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: _field(
-                'cashboxSubNotes',
-                'الملاحظات',
-                Icons.notes_rounded,
-              ),
-            ),
-          ],
+        _field(
+          'cashboxSubName',
+          'اسم الحساب الفرعي',
+          Icons.segment_rounded,
         ),
       ],
     );

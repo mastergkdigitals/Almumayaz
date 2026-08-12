@@ -298,6 +298,80 @@ void main() {
     );
     await tester.pump();
 
+    final cashboxMainButton =
+        find.byKey(const Key('designQuickCashboxMainButton'));
+    await reveal(tester, cashboxMainButton);
+    await tester.tap(cashboxMainButton);
+    await tester.pump();
+
+    final cashboxMainDialog =
+        find.byKey(const Key('designQuickCashboxMainDialog'));
+    final cashboxMainConfirm =
+        find.byKey(const Key('designQuickCashboxMainConfirm'));
+    expect(cashboxMainDialog, findsOneWidget);
+    expect(
+      find.descendant(
+        of: cashboxMainDialog,
+        matching: find.text(
+          'أضف الحساب الرئيسي مع أول حساب فرعي ليصبح قابلاً للاستخدام.',
+        ),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(
+        const Key('designQuickCashboxMaincashboxMainName'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(
+        const Key(
+          'designQuickCashboxMaincashboxMainSubaccountName',
+        ),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(
+        const Key('designQuickCashboxMaincashboxMainCode'),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: cashboxMainDialog,
+        matching: find.text('رمز الحساب'),
+      ),
+      findsNothing,
+    );
+    expect(tester.widget<AppButton>(cashboxMainConfirm).onPressed, isNull);
+    await tester.enterText(
+      find.byKey(
+        const Key('designQuickCashboxMaincashboxMainName'),
+      ),
+      'صندوق تجريبي',
+    );
+    await tester.pump();
+    expect(tester.widget<AppButton>(cashboxMainConfirm).onPressed, isNull);
+    await tester.enterText(
+      find.byKey(
+        const Key(
+          'designQuickCashboxMaincashboxMainSubaccountName',
+        ),
+      ),
+      'الحساب الافتتاحي',
+    );
+    await tester.pump();
+    expect(
+      tester.widget<AppButton>(cashboxMainConfirm).onPressed,
+      isNotNull,
+    );
+    await tester.tap(
+      find.byKey(const Key('designQuickCashboxMainCancel')),
+    );
+    await tester.pump();
+
     final cashboxButton =
         find.byKey(const Key('designQuickCashboxSubButton'));
     await reveal(tester, cashboxButton);
@@ -313,6 +387,19 @@ void main() {
         const Key('designQuickCashboxSubcashboxSubName'),
       ),
       findsOneWidget,
+    );
+    expect(
+      find.byKey(
+        const Key('designQuickCashboxSubcashboxSubNotes'),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('designQuickCashboxSubDialog')),
+        matching: find.text('الملاحظات'),
+      ),
+      findsNothing,
     );
     expect(
       tester

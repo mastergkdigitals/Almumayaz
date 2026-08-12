@@ -553,8 +553,20 @@ void main() {
     await tester.pump();
     await tester.tap(find.text('إضافة حساب فرعي جديد'));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('cashboxQuickSubaccountDialog')),
-        findsOneWidget);
+    final subaccountDialog =
+        find.byKey(const Key('cashboxQuickSubaccountDialog'));
+    expect(subaccountDialog, findsOneWidget);
+    expect(
+      find.byKey(const Key('cashboxQuickSubaccountNameField')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: subaccountDialog,
+        matching: find.text('الملاحظات'),
+      ),
+      findsNothing,
+    );
     await tester.tap(find.byKey(const Key('cashboxQuickSubaccountConfirm')));
     await tester.pumpAndSettle();
 
@@ -637,11 +649,25 @@ void main() {
     await tester.pump();
     await tester.tap(find.text('إضافة حساب رئيسي جديد'));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('cashboxQuickMainAccountDialog')),
-        findsOneWidget);
+    final mainAccountDialog =
+        find.byKey(const Key('cashboxQuickMainAccountDialog'));
+    expect(mainAccountDialog, findsOneWidget);
     expect(
       _fieldText(tester, const Key('cashboxQuickMainAccountMainNameField')),
       mainName,
+    );
+    expect(
+      find.byKey(
+        const Key('cashboxQuickMainAccountSubaccountNameField'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: mainAccountDialog,
+        matching: find.text('رمز الحساب'),
+      ),
+      findsNothing,
     );
     await tester.enterText(
       find.byKey(
