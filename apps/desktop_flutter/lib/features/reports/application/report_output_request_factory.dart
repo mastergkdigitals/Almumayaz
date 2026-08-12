@@ -9,14 +9,33 @@ abstract final class ReportOutputRequestFactory {
     required Iterable<String> columnLabels,
     required Iterable<ReportRowDefinition> rows,
     required Iterable<ReportMetricValue> metrics,
+    Iterable<ReportSpreadsheetCellKind> columnSpreadsheetCellKinds = const [],
+    Iterable<int?> columnSpreadsheetDecimalPlaces = const [],
   }) {
+    final outputColumnLabels = columnLabels.toList(growable: false);
+    final outputMetrics = metrics.toList(growable: false);
     return ReportOutputRequest(
       reportTitle: reportTitle,
       variantLabel: variantLabel,
-      columnLabels: [for (final label in columnLabels) label],
+      columnLabels: outputColumnLabels,
       rowValues: [for (final row in rows) row.cells],
       metrics: {
-        for (final metric in metrics) metric.label: metric.value,
+        for (final metric in outputMetrics) metric.label: metric.value,
+      },
+      columnSpreadsheetCellKinds: [
+        for (final kind in columnSpreadsheetCellKinds) kind,
+      ],
+      columnSpreadsheetDecimalPlaces: [
+        for (final decimalPlaces in columnSpreadsheetDecimalPlaces)
+          decimalPlaces,
+      ],
+      metricSpreadsheetCellKinds: {
+        for (final metric in outputMetrics)
+          metric.label: metric.spreadsheetCellKind,
+      },
+      metricSpreadsheetDecimalPlaces: {
+        for (final metric in outputMetrics)
+          metric.label: metric.spreadsheetDecimalPlaces,
       },
     );
   }

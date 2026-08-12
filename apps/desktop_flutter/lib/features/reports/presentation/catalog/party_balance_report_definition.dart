@@ -87,25 +87,66 @@ const List<ReportFilterDefinition> _partyBalanceFilters = [
 ];
 
 const List<ReportMetricDefinition> _partyBalanceMetrics = [
-  ReportMetricDefinition(label: 'عدد الأطراف'),
-  ReportMetricDefinition(label: 'بدون رصيد'),
-  ReportMetricDefinition(label: 'ذمم لنا - دينار'),
-  ReportMetricDefinition(label: 'ذمم لنا - دولار'),
-  ReportMetricDefinition(label: 'ذمم علينا - دينار'),
-  ReportMetricDefinition(label: 'ذمم علينا - دولار'),
+  ReportMetricDefinition(
+    label: 'عدد الأطراف',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
+  ReportMetricDefinition(
+    label: 'بدون رصيد',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
+  ReportMetricDefinition(
+    label: 'ذمم لنا - دينار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+    spreadsheetDecimalPlaces: 0,
+  ),
+  ReportMetricDefinition(
+    label: 'ذمم لنا - دولار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+    spreadsheetDecimalPlaces: 2,
+  ),
+  ReportMetricDefinition(
+    label: 'ذمم علينا - دينار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+    spreadsheetDecimalPlaces: 0,
+  ),
+  ReportMetricDefinition(
+    label: 'ذمم علينا - دولار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+    spreadsheetDecimalPlaces: 2,
+  ),
 ];
 
 const List<ReportColumnDefinition> _partyBalanceColumns = [
-  ReportColumnDefinition(label: 'ت', numeric: true, flex: 0.5),
-  ReportColumnDefinition(label: 'رقم الطرف', numeric: true),
+  ReportColumnDefinition(
+    label: 'ت',
+    numeric: true,
+    flex: 0.5,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
+  ReportColumnDefinition(
+    label: 'رقم الطرف',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
   ReportColumnDefinition(label: 'اسم الطرف', flex: 1.5),
   ReportColumnDefinition(label: 'نوع الطرف'),
   ReportColumnDefinition(label: 'جهة العمل', flex: 1.3),
   ReportColumnDefinition(label: 'الفرع'),
   ReportColumnDefinition(label: 'الهاتف', numeric: true),
   ReportColumnDefinition(label: 'المدينة'),
-  ReportColumnDefinition(label: 'رصيد الدينار', numeric: true),
+  ReportColumnDefinition(
+    label: 'رصيد الدينار',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+    spreadsheetDecimalPlaces: 0,
+  ),
   ReportColumnDefinition(label: 'اتجاهه'),
-  ReportColumnDefinition(label: 'رصيد الدولار', numeric: true),
+  ReportColumnDefinition(
+    label: 'رصيد الدولار',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+    spreadsheetDecimalPlaces: 2,
+  ),
   ReportColumnDefinition(label: 'اتجاهه'),
 ];

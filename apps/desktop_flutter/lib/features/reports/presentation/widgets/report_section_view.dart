@@ -295,6 +295,12 @@ class _ReportSectionViewState extends State<ReportSectionView> {
         reportTitle: widget.definition.title,
         variantLabel: _variant.label,
         columnLabels: _variant.columns.map((column) => column.label),
+        columnSpreadsheetCellKinds: _variant.columns.map(
+          (column) => column.spreadsheetCellKind,
+        ),
+        columnSpreadsheetDecimalPlaces: _variant.columns.map(
+          (column) => column.spreadsheetDecimalPlaces,
+        ),
         rows: rows,
         metrics: _calculatedMetrics,
       );

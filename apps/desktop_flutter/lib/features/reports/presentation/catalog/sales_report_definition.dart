@@ -73,26 +73,85 @@ const List<ReportFilterDefinition> _salesFilters = [
 ];
 
 const List<ReportMetricDefinition> _salesMetrics = [
-  ReportMetricDefinition(label: 'عدد القوائم - دينار'),
-  ReportMetricDefinition(label: 'الإجمالي - دينار'),
-  ReportMetricDefinition(label: 'المقبوض - دينار'),
-  ReportMetricDefinition(label: 'المتبقي - دينار'),
-  ReportMetricDefinition(label: 'عدد القوائم - دولار'),
-  ReportMetricDefinition(label: 'الإجمالي - دولار'),
-  ReportMetricDefinition(label: 'المقبوض - دولار'),
-  ReportMetricDefinition(label: 'المتبقي - دولار'),
+  ReportMetricDefinition(
+    label: 'عدد القوائم - دينار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
+  ReportMetricDefinition(
+    label: 'الإجمالي - دينار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+    spreadsheetDecimalPlaces: 0,
+  ),
+  ReportMetricDefinition(
+    label: 'المقبوض - دينار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+    spreadsheetDecimalPlaces: 0,
+  ),
+  ReportMetricDefinition(
+    label: 'المتبقي - دينار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+    spreadsheetDecimalPlaces: 0,
+  ),
+  ReportMetricDefinition(
+    label: 'عدد القوائم - دولار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
+  ReportMetricDefinition(
+    label: 'الإجمالي - دولار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+    spreadsheetDecimalPlaces: 2,
+  ),
+  ReportMetricDefinition(
+    label: 'المقبوض - دولار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+    spreadsheetDecimalPlaces: 2,
+  ),
+  ReportMetricDefinition(
+    label: 'المتبقي - دولار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+    spreadsheetDecimalPlaces: 2,
+  ),
 ];
 
 const List<ReportColumnDefinition> _salesColumns = [
-  ReportColumnDefinition(label: 'ت', numeric: true, flex: 0.5),
-  ReportColumnDefinition(label: 'رقم القائمة', numeric: true),
-  ReportColumnDefinition(label: 'التاريخ', numeric: true),
+  ReportColumnDefinition(
+    label: 'ت',
+    numeric: true,
+    flex: 0.5,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
+  ReportColumnDefinition(
+    label: 'رقم القائمة',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
+  ReportColumnDefinition(
+    label: 'التاريخ',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.date,
+  ),
   ReportColumnDefinition(label: 'الزبون', flex: 1.4),
   ReportColumnDefinition(label: 'المخزن'),
   ReportColumnDefinition(label: 'نوع البيع'),
   ReportColumnDefinition(label: 'العملة'),
-  ReportColumnDefinition(label: 'الإجمالي', numeric: true),
-  ReportColumnDefinition(label: 'المقبوض', numeric: true),
-  ReportColumnDefinition(label: 'المتبقي', numeric: true),
-  ReportColumnDefinition(label: 'عدد المواد', numeric: true),
+  ReportColumnDefinition(
+    label: 'الإجمالي',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+  ),
+  ReportColumnDefinition(
+    label: 'المقبوض',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+  ),
+  ReportColumnDefinition(
+    label: 'المتبقي',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+  ),
+  ReportColumnDefinition(
+    label: 'عدد المواد',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
 ];

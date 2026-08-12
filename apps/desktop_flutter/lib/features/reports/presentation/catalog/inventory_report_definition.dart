@@ -91,20 +91,41 @@ const List<ReportFilterDefinition> _currentStockFilters = [
 ];
 
 const List<ReportMetricDefinition> _currentStockMetrics = [
-  ReportMetricDefinition(label: 'المواد المختلفة'),
-  ReportMetricDefinition(label: 'المخازن'),
-  ReportMetricDefinition(label: 'الأرصدة الموجبة'),
-  ReportMetricDefinition(label: 'مجموع الكميات'),
+  ReportMetricDefinition(
+    label: 'المواد المختلفة',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
+  ReportMetricDefinition(
+    label: 'المخازن',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
+  ReportMetricDefinition(
+    label: 'الأرصدة الموجبة',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
+  ReportMetricDefinition(
+    label: 'مجموع الكميات',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
 ];
 
 const List<ReportColumnDefinition> _currentStockColumns = [
-  ReportColumnDefinition(label: 'ت', numeric: true, flex: 0.5),
+  ReportColumnDefinition(
+    label: 'ت',
+    numeric: true,
+    flex: 0.5,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
   ReportColumnDefinition(label: 'رمز المادة', numeric: true),
   ReportColumnDefinition(label: 'اسم المادة', flex: 1.5),
   ReportColumnDefinition(label: 'المجموعة', flex: 1.3),
   ReportColumnDefinition(label: 'النوع'),
   ReportColumnDefinition(label: 'المخزن', flex: 1.3),
-  ReportColumnDefinition(label: 'الكمية', numeric: true),
+  ReportColumnDefinition(
+    label: 'الكمية',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
 ];
 
 const List<ReportFilterDefinition> _transferFilters = [
@@ -135,15 +156,37 @@ const List<ReportFilterDefinition> _transferFilters = [
 ];
 
 const List<ReportMetricDefinition> _transferMetrics = [
-  ReportMetricDefinition(label: 'عدد عمليات النقل'),
-  ReportMetricDefinition(label: 'عدد سطور المواد'),
-  ReportMetricDefinition(label: 'مجموع الكميات'),
+  ReportMetricDefinition(
+    label: 'عدد عمليات النقل',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
+  ReportMetricDefinition(
+    label: 'عدد سطور المواد',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
+  ReportMetricDefinition(
+    label: 'مجموع الكميات',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
 ];
 
 const List<ReportColumnDefinition> _transferColumns = [
-  ReportColumnDefinition(label: 'ت', numeric: true, flex: 0.5),
-  ReportColumnDefinition(label: 'رقم النقل', numeric: true),
-  ReportColumnDefinition(label: 'التاريخ', numeric: true),
+  ReportColumnDefinition(
+    label: 'ت',
+    numeric: true,
+    flex: 0.5,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
+  ReportColumnDefinition(
+    label: 'رقم النقل',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
+  ReportColumnDefinition(
+    label: 'التاريخ',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.date,
+  ),
   ReportColumnDefinition(label: 'من مخزن', flex: 1.3),
   ReportColumnDefinition(label: 'إلى مخزن', flex: 1.3),
   ReportColumnDefinition(label: 'المواد', flex: 3),

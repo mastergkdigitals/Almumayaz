@@ -79,30 +79,100 @@ const List<ReportFilterDefinition> _profitFilters = [
 ];
 
 const List<ReportMetricDefinition> _profitMetrics = [
-  ReportMetricDefinition(label: 'المبيعات المحتسبة - دينار'),
-  ReportMetricDefinition(label: 'التكلفة - دينار'),
-  ReportMetricDefinition(label: 'الربح - دينار'),
-  ReportMetricDefinition(label: 'هامش الربح - دينار'),
-  ReportMetricDefinition(label: 'المبيعات المحتسبة - دولار'),
-  ReportMetricDefinition(label: 'التكلفة - دولار'),
-  ReportMetricDefinition(label: 'الربح - دولار'),
-  ReportMetricDefinition(label: 'هامش الربح - دولار'),
+  ReportMetricDefinition(
+    label: 'المبيعات المحتسبة - دينار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+    spreadsheetDecimalPlaces: 0,
+  ),
+  ReportMetricDefinition(
+    label: 'التكلفة - دينار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+    spreadsheetDecimalPlaces: 0,
+  ),
+  ReportMetricDefinition(
+    label: 'الربح - دينار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+    spreadsheetDecimalPlaces: 0,
+  ),
+  ReportMetricDefinition(
+    label: 'هامش الربح - دينار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.percentage,
+    spreadsheetDecimalPlaces: 2,
+  ),
+  ReportMetricDefinition(
+    label: 'المبيعات المحتسبة - دولار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+    spreadsheetDecimalPlaces: 2,
+  ),
+  ReportMetricDefinition(
+    label: 'التكلفة - دولار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+    spreadsheetDecimalPlaces: 2,
+  ),
+  ReportMetricDefinition(
+    label: 'الربح - دولار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+    spreadsheetDecimalPlaces: 2,
+  ),
+  ReportMetricDefinition(
+    label: 'هامش الربح - دولار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.percentage,
+    spreadsheetDecimalPlaces: 2,
+  ),
 ];
 
 const List<ReportColumnDefinition> _profitColumns = [
-  ReportColumnDefinition(label: 'ت', numeric: true, flex: 0.5),
-  ReportColumnDefinition(label: 'رقم القائمة', numeric: true),
-  ReportColumnDefinition(label: 'التاريخ', numeric: true),
+  ReportColumnDefinition(
+    label: 'ت',
+    numeric: true,
+    flex: 0.5,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
+  ReportColumnDefinition(
+    label: 'رقم القائمة',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
+  ReportColumnDefinition(
+    label: 'التاريخ',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.date,
+  ),
   ReportColumnDefinition(label: 'الزبون', flex: 1.4),
   ReportColumnDefinition(label: 'المخزن'),
   ReportColumnDefinition(label: 'رمز المادة', numeric: true),
   ReportColumnDefinition(label: 'اسم المادة', flex: 1.4),
-  ReportColumnDefinition(label: 'الكمية', numeric: true),
-  ReportColumnDefinition(label: 'سعر البيع', numeric: true),
-  ReportColumnDefinition(label: 'إجمالي البيع', numeric: true),
-  ReportColumnDefinition(label: 'إجمالي التكلفة', numeric: true),
-  ReportColumnDefinition(label: 'الربح', numeric: true),
-  ReportColumnDefinition(label: 'نسبة الربح', numeric: true),
+  ReportColumnDefinition(
+    label: 'الكمية',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
+  ReportColumnDefinition(
+    label: 'سعر البيع',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+  ),
+  ReportColumnDefinition(
+    label: 'إجمالي البيع',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+  ),
+  ReportColumnDefinition(
+    label: 'إجمالي التكلفة',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+  ),
+  ReportColumnDefinition(
+    label: 'الربح',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+  ),
+  ReportColumnDefinition(
+    label: 'نسبة الربح',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.percentage,
+    spreadsheetDecimalPlaces: 2,
+  ),
   ReportColumnDefinition(label: 'حالة التكلفة'),
   ReportColumnDefinition(label: 'طريقة التكلفة'),
   ReportColumnDefinition(label: 'العملة'),

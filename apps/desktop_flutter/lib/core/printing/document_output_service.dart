@@ -41,26 +41,53 @@ class DocumentOutputSettings {
 typedef DocumentOutputSettingsLoader =
     Future<DocumentOutputSettings> Function();
 
+/// The value type that spreadsheet exports should preserve for a field or
+/// column.
+///
+/// Text is the safe default because identifiers, phone numbers, and codes can
+/// look numeric while their exact characters (including leading zeroes) are
+/// meaningful.
+enum DocumentSpreadsheetCellKind {
+  text,
+  integer,
+  decimal,
+  date,
+  time,
+  percentage,
+}
+
 class DocumentField {
   const DocumentField({
     required this.label,
     required this.value,
     this.isPrice = false,
+    this.spreadsheetCellKind = DocumentSpreadsheetCellKind.text,
+    this.spreadsheetDecimalPlaces,
   });
 
   final String label;
   final String value;
   final bool isPrice;
+  final DocumentSpreadsheetCellKind spreadsheetCellKind;
+
+  /// Optional decimal/percentage display precision.
+  final int? spreadsheetDecimalPlaces;
 }
 
 class DocumentColumn {
   const DocumentColumn({
     required this.label,
     this.isPrice = false,
+    this.spreadsheetCellKind = DocumentSpreadsheetCellKind.text,
+    this.spreadsheetDecimalPlaces,
   });
 
   final String label;
   final bool isPrice;
+  final DocumentSpreadsheetCellKind spreadsheetCellKind;
+
+  /// Optional decimal/percentage display precision.
+  final int? spreadsheetDecimalPlaces;
 }
 
 class DocumentOutputRequest {

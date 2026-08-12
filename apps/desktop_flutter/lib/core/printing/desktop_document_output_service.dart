@@ -147,6 +147,18 @@ class NativeDocumentPlatformGateway implements DocumentPlatformGateway {
 }
 
 class PackageDocumentBinaryComposer implements DocumentBinaryComposer {
+  static final RegExp _numberPattern = RegExp(
+    r'^[+-]?(?:(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d*)?|\.\d+)$',
+  );
+  static final RegExp _nonDigitPattern = RegExp(r'[^0-9]');
+  static final RegExp _leadingZeroPattern = RegExp(r'^0+');
+  static final RegExp _datePattern = RegExp(
+    r'^(\d{4})/(\d{2})/(\d{2})$',
+  );
+  static final RegExp _timePattern = RegExp(
+    r'^(\d{1,2}):(\d{2})(?:\s*([صم]))?$',
+  );
+
   Future<_PdfFonts>? _fonts;
 
   @override
@@ -322,9 +334,13 @@ class PackageDocumentBinaryComposer implements DocumentBinaryComposer {
     if (request.fields.isNotEmpty) {
       sheet.appendRow(const <CellValue?>[]);
       for (final field in request.fields) {
-        sheet.appendRow([
-          TextCellValue(field.label),
-          TextCellValue(field.value),
+        _appendExcelRow(sheet, [
+          _ExcelCell(TextCellValue(field.label)),
+          _excelCell(
+            field.value,
+            kind: field.spreadsheetCellKind,
+            decimalPlaces: field.spreadsheetDecimalPlaces,
+          ),
         ]);
       }
     }
@@ -333,7 +349,14 @@ class PackageDocumentBinaryComposer implements DocumentBinaryComposer {
       for (final column in request.columns) TextCellValue(column.label),
     ]);
     for (final row in request.rows) {
-      sheet.appendRow([for (final value in row) TextCellValue(value)]);
+      _appendExcelRow(sheet, [
+        for (var index = 0; index < row.length; index++)
+          _excelCell(
+            row[index],
+            kind: request.columns[index].spreadsheetCellKind,
+            decimalPlaces: request.columns[index].spreadsheetDecimalPlaces,
+          ),
+      ]);
     }
     for (var index = 0; index < request.columns.length; index++) {
       sheet.setColumnAutoFit(index);
@@ -348,6 +371,190 @@ class PackageDocumentBinaryComposer implements DocumentBinaryComposer {
       );
     }
     return Uint8List.fromList(bytes);
+  }
+
+  void _appendExcelRow(Sheet sheet, List<_ExcelCell> cells) {
+    final rowIndex = sheet.maxRows;
+    sheet.appendRow([for (final cell in cells) cell.value]);
+    for (var columnIndex = 0; columnIndex < cells.length; columnIndex++) {
+      final numberFormat = cells[columnIndex].numberFormat;
+      if (numberFormat == null) continue;
+      sheet
+          .cell(
+            CellIndex.indexByColumnRow(
+              columnIndex: columnIndex,
+              rowIndex: rowIndex,
+            ),
+          )
+          .cellStyle = CellStyle(numberFormat: numberFormat);
+    }
+  }
+
+  _ExcelCell _excelCell(
+    String rawValue, {
+    required DocumentSpreadsheetCellKind kind,
+    required int? decimalPlaces,
+  }) {
+    final textFallback = _ExcelCell(TextCellValue(rawValue));
+    final value = rawValue.trim();
+    if (value.isEmpty || value.startsWith('=')) return textFallback;
+
+    switch (kind) {
+      case DocumentSpreadsheetCellKind.text:
+        return textFallback;
+      case DocumentSpreadsheetCellKind.integer:
+        final normalized = _normalizedNumber(value);
+        if (normalized == null ||
+            _hasSignificantLeadingZero(normalized) ||
+            _exceedsExcelPrecision(normalized)) {
+          return textFallback;
+        }
+        final parsed = int.tryParse(normalized);
+        if (parsed == null) return textFallback;
+        return _ExcelCell(
+          IntCellValue(parsed),
+          numberFormat: _decimalNumberFormat(decimalPlaces ?? 0),
+        );
+      case DocumentSpreadsheetCellKind.decimal:
+        final normalized = _normalizedNumber(value);
+        if (normalized == null ||
+            _hasSignificantLeadingZero(normalized) ||
+            _exceedsExcelPrecision(normalized)) {
+          return textFallback;
+        }
+        final parsed = double.tryParse(normalized);
+        if (parsed == null || !parsed.isFinite) return textFallback;
+        return _ExcelCell(
+          DoubleCellValue(parsed),
+          numberFormat: _decimalNumberFormat(
+            decimalPlaces ?? _sourceDecimalPlaces(normalized),
+          ),
+        );
+      case DocumentSpreadsheetCellKind.date:
+        final parsed = _parseExcelDate(value);
+        if (parsed == null) return textFallback;
+        return _ExcelCell(
+          DateCellValue(
+            year: parsed.year,
+            month: parsed.month,
+            day: parsed.day,
+          ),
+          numberFormat: const CustomDateTimeNumFormat(
+            formatCode: 'yyyy/mm/dd',
+          ),
+        );
+      case DocumentSpreadsheetCellKind.time:
+        final parsed = _parseExcelTime(value);
+        if (parsed == null) return textFallback;
+        return _ExcelCell(
+          TimeCellValue(hour: parsed.$1, minute: parsed.$2),
+          numberFormat: const CustomTimeNumFormat(formatCode: 'hh:mm'),
+        );
+      case DocumentSpreadsheetCellKind.percentage:
+        final numericText = value.endsWith('%')
+            ? value.substring(0, value.length - 1).trim()
+            : value;
+        final normalized = _normalizedNumber(numericText);
+        if (normalized == null || _exceedsExcelPrecision(normalized)) {
+          return textFallback;
+        }
+        final parsed = double.tryParse(normalized);
+        if (parsed == null || !parsed.isFinite) return textFallback;
+        return _ExcelCell(
+          DoubleCellValue(parsed / 100),
+          numberFormat: _percentageNumberFormat(decimalPlaces ?? 2),
+        );
+    }
+  }
+
+  String? _normalizedNumber(String value) {
+    final trimmed = value.trim();
+    if (!_numberPattern.hasMatch(trimmed)) {
+      return null;
+    }
+    return trimmed.replaceAll(',', '');
+  }
+
+  bool _hasSignificantLeadingZero(String value) {
+    final unsigned = value.startsWith('+') || value.startsWith('-')
+        ? value.substring(1)
+        : value;
+    final whole = unsigned.split('.').first;
+    return whole.length > 1 && whole.startsWith('0');
+  }
+
+  bool _exceedsExcelPrecision(String value) {
+    final digits = value.replaceAll(_nonDigitPattern, '');
+    final significantDigits = digits.replaceFirst(_leadingZeroPattern, '');
+    return significantDigits.length > 15;
+  }
+
+  int _sourceDecimalPlaces(String value) {
+    final separator = value.indexOf('.');
+    if (separator < 0) return 0;
+    return value.length - separator - 1;
+  }
+
+  DateTime? _parseExcelDate(String value) {
+    final match = _datePattern.firstMatch(value);
+    if (match == null) return null;
+    final year = int.parse(match.group(1)!);
+    final month = int.parse(match.group(2)!);
+    final day = int.parse(match.group(3)!);
+    if (year < 1900 ||
+        year > 9999 ||
+        month < 1 ||
+        month > 12 ||
+        day < 1 ||
+        day > 31) {
+      return null;
+    }
+    final parsed = DateTime(year, month, day);
+    if (parsed.year != year || parsed.month != month || parsed.day != day) {
+      return null;
+    }
+    return parsed;
+  }
+
+  (int, int)? _parseExcelTime(String value) {
+    final match = _timePattern.firstMatch(value);
+    if (match == null) return null;
+    var hour = int.parse(match.group(1)!);
+    final minute = int.parse(match.group(2)!);
+    final period = match.group(3);
+    if (minute > 59) return null;
+    if (period == null) {
+      if (hour > 23) return null;
+    } else {
+      if (hour < 1 || hour > 12) return null;
+      if (hour == 12) hour = 0;
+      if (period == 'م') hour += 12;
+    }
+    return (hour, minute);
+  }
+
+  NumFormat _decimalNumberFormat(int decimalPlaces) {
+    final safePlaces = _safeDecimalPlaces(decimalPlaces);
+    if (safePlaces == 0) return NumFormat.standard_3;
+    if (safePlaces == 2) return NumFormat.standard_4;
+    return CustomNumericNumFormat(
+      formatCode: '#,##0.${'0' * safePlaces}',
+    );
+  }
+
+  NumFormat _percentageNumberFormat(int decimalPlaces) {
+    final safePlaces = _safeDecimalPlaces(decimalPlaces);
+    if (safePlaces == 0) return NumFormat.standard_9;
+    if (safePlaces == 2) return NumFormat.standard_10;
+    return CustomNumericNumFormat(
+      formatCode: '0.${'0' * safePlaces}%',
+    );
+  }
+
+  int _safeDecimalPlaces(int decimalPlaces) {
+    if (decimalPlaces < 0) return 0;
+    if (decimalPlaces > 12) return 12;
+    return decimalPlaces;
   }
 
   Future<_PdfFonts> _loadFonts() async {
@@ -528,6 +735,13 @@ class _PdfFonts {
 
   final pw.Font regular;
   final pw.Font bold;
+}
+
+class _ExcelCell {
+  const _ExcelCell(this.value, {this.numberFormat});
+
+  final CellValue value;
+  final NumFormat? numberFormat;
 }
 
 void _validate(DocumentOutputRequest request) {

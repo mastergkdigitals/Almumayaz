@@ -50,6 +50,8 @@ abstract final class ReportSummaryCalculator {
         ReportMetricValue(
           label: metric.label,
           value: values[metric.label] ?? _emptyValueFor(metric.label),
+          spreadsheetCellKind: metric.spreadsheetCellKind,
+          spreadsheetDecimalPlaces: metric.spreadsheetDecimalPlaces,
         ),
     ];
   }

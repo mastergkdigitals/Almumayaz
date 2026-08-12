@@ -57,29 +57,96 @@ const List<ReportFilterDefinition> _debtFilters = [
 ];
 
 const List<ReportMetricDefinition> _debtMetrics = [
-  ReportMetricDefinition(label: 'المتبقي - دينار'),
-  ReportMetricDefinition(label: 'المتأخر - دينار'),
-  ReportMetricDefinition(label: 'المستحق - دينار'),
-  ReportMetricDefinition(label: 'المدفوع - دينار'),
-  ReportMetricDefinition(label: 'المتبقي - دولار'),
-  ReportMetricDefinition(label: 'المتأخر - دولار'),
-  ReportMetricDefinition(label: 'المستحق - دولار'),
-  ReportMetricDefinition(label: 'المدفوع - دولار'),
-  ReportMetricDefinition(label: 'عدد المتأخر'),
-  ReportMetricDefinition(label: 'عدد المستحق'),
+  ReportMetricDefinition(
+    label: 'المتبقي - دينار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+    spreadsheetDecimalPlaces: 0,
+  ),
+  ReportMetricDefinition(
+    label: 'المتأخر - دينار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+    spreadsheetDecimalPlaces: 0,
+  ),
+  ReportMetricDefinition(
+    label: 'المستحق - دينار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+    spreadsheetDecimalPlaces: 0,
+  ),
+  ReportMetricDefinition(
+    label: 'المدفوع - دينار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+    spreadsheetDecimalPlaces: 0,
+  ),
+  ReportMetricDefinition(
+    label: 'المتبقي - دولار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+    spreadsheetDecimalPlaces: 2,
+  ),
+  ReportMetricDefinition(
+    label: 'المتأخر - دولار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+    spreadsheetDecimalPlaces: 2,
+  ),
+  ReportMetricDefinition(
+    label: 'المستحق - دولار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+    spreadsheetDecimalPlaces: 2,
+  ),
+  ReportMetricDefinition(
+    label: 'المدفوع - دولار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+    spreadsheetDecimalPlaces: 2,
+  ),
+  ReportMetricDefinition(
+    label: 'عدد المتأخر',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
+  ReportMetricDefinition(
+    label: 'عدد المستحق',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
 ];
 
 const List<ReportColumnDefinition> _debtColumns = [
-  ReportColumnDefinition(label: 'ت', numeric: true, flex: 0.5),
+  ReportColumnDefinition(
+    label: 'ت',
+    numeric: true,
+    flex: 0.5,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
   ReportColumnDefinition(label: 'نوع السجل'),
-  ReportColumnDefinition(label: 'رقم القائمة', numeric: true),
-  ReportColumnDefinition(label: 'رقم القسط', numeric: true),
+  ReportColumnDefinition(
+    label: 'رقم القائمة',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
+  ReportColumnDefinition(
+    label: 'رقم القسط',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
   ReportColumnDefinition(label: 'الزبون', flex: 1.5),
-  ReportColumnDefinition(label: 'تاريخ الاستحقاق', numeric: true),
+  ReportColumnDefinition(
+    label: 'تاريخ الاستحقاق',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.date,
+  ),
   ReportColumnDefinition(label: 'العملة'),
-  ReportColumnDefinition(label: 'المبلغ الأصلي', numeric: true),
-  ReportColumnDefinition(label: 'المدفوع', numeric: true),
-  ReportColumnDefinition(label: 'المتبقي', numeric: true),
+  ReportColumnDefinition(
+    label: 'المبلغ الأصلي',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+  ),
+  ReportColumnDefinition(
+    label: 'المدفوع',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+  ),
+  ReportColumnDefinition(
+    label: 'المتبقي',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+  ),
   ReportColumnDefinition(label: 'الحالة'),
   ReportColumnDefinition(label: 'الملاحظات', flex: 1.4),
 ];

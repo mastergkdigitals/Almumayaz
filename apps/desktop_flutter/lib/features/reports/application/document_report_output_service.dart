@@ -1,5 +1,6 @@
 import '../../../core/printing/document_output_service.dart';
 import '../../../core/services/service_failure.dart';
+import '../domain/report_models.dart';
 import 'report_output_service.dart';
 
 class DocumentBackedReportOutputService implements ReportOutputService {
@@ -50,11 +51,31 @@ class DocumentBackedReportOutputService implements ReportOutputService {
       fileNameBase: request.reportTitle,
       fields: [
         for (final metric in request.metrics.entries)
-          DocumentField(label: metric.key, value: metric.value),
+          DocumentField(
+            label: metric.key,
+            value: metric.value,
+            spreadsheetCellKind: _documentCellKind(
+              request.metricSpreadsheetCellKinds[metric.key] ??
+                  ReportSpreadsheetCellKind.text,
+            ),
+            spreadsheetDecimalPlaces:
+                request.metricSpreadsheetDecimalPlaces[metric.key],
+          ),
       ],
       columns: [
-        for (final label in request.columnLabels)
-          DocumentColumn(label: label),
+        for (var index = 0; index < request.columnLabels.length; index++)
+          DocumentColumn(
+            label: request.columnLabels[index],
+            spreadsheetCellKind: _documentCellKind(
+              request.columnSpreadsheetCellKinds.isEmpty
+                  ? ReportSpreadsheetCellKind.text
+                  : request.columnSpreadsheetCellKinds[index],
+            ),
+            spreadsheetDecimalPlaces:
+                request.columnSpreadsheetDecimalPlaces.isEmpty
+                    ? null
+                    : request.columnSpreadsheetDecimalPlaces[index],
+          ),
       ],
       rows: request.rowValues,
     );
@@ -82,5 +103,31 @@ class DocumentBackedReportOutputService implements ReportOutputService {
         'تعذر تجهيز التقرير بسبب عدم تطابق الأعمدة',
       );
     }
+    if (request.columnSpreadsheetCellKinds.isNotEmpty &&
+        request.columnSpreadsheetCellKinds.length !=
+            request.columnLabels.length) {
+      throw const ReportOutputException(
+        'تعذر تجهيز التقرير بسبب عدم تطابق أنواع الأعمدة',
+      );
+    }
+    if (request.columnSpreadsheetDecimalPlaces.isNotEmpty &&
+        request.columnSpreadsheetDecimalPlaces.length !=
+            request.columnLabels.length) {
+      throw const ReportOutputException(
+        'تعذر تجهيز التقرير بسبب عدم تطابق تنسيق الأعمدة',
+      );
+    }
   }
 }
+
+DocumentSpreadsheetCellKind _documentCellKind(
+  ReportSpreadsheetCellKind kind,
+) => switch (kind) {
+  ReportSpreadsheetCellKind.text => DocumentSpreadsheetCellKind.text,
+  ReportSpreadsheetCellKind.integer => DocumentSpreadsheetCellKind.integer,
+  ReportSpreadsheetCellKind.decimal => DocumentSpreadsheetCellKind.decimal,
+  ReportSpreadsheetCellKind.date => DocumentSpreadsheetCellKind.date,
+  ReportSpreadsheetCellKind.time => DocumentSpreadsheetCellKind.time,
+  ReportSpreadsheetCellKind.percentage =>
+    DocumentSpreadsheetCellKind.percentage,
+};

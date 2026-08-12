@@ -80,9 +80,13 @@ class ReportColumnDefinition {
     required this.label,
     this.numeric = false,
     this.flex = 1,
+    this.spreadsheetCellKind = ReportSpreadsheetCellKind.text,
+    this.spreadsheetDecimalPlaces,
   }) : assert(flex > 0);
 
   final String label;
   final bool numeric;
   final double flex;
+  final ReportSpreadsheetCellKind spreadsheetCellKind;
+  final int? spreadsheetDecimalPlaces;
 }

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:excel/excel.dart';
 import 'package:erp/core/printing/desktop_document_output_service.dart';
 import 'package:erp/core/printing/document_output_service.dart';
 import 'package:erp/core/services/service_failure.dart';
@@ -83,6 +84,150 @@ void main() {
 
     expect(ascii.decode(pdf.take(4).toList()), '%PDF');
     expect(excel.take(2), orderedEquals([0x50, 0x4B]));
+  });
+
+  test('Excel preserves RTL, native value types, and safe text fallbacks',
+      () async {
+    const typedRequest = DocumentOutputRequest(
+      title: 'تقرير الأنواع',
+      fields: [
+        DocumentField(
+          label: 'هامش الربح',
+          value: '28.57%',
+          spreadsheetCellKind: DocumentSpreadsheetCellKind.percentage,
+          spreadsheetDecimalPlaces: 2,
+        ),
+      ],
+      columns: [
+        DocumentColumn(label: 'الزبون'),
+        DocumentColumn(
+          label: 'الكمية',
+          spreadsheetCellKind: DocumentSpreadsheetCellKind.integer,
+        ),
+        DocumentColumn(
+          label: 'الإجمالي',
+          spreadsheetCellKind: DocumentSpreadsheetCellKind.decimal,
+        ),
+        DocumentColumn(
+          label: 'التاريخ',
+          spreadsheetCellKind: DocumentSpreadsheetCellKind.date,
+        ),
+        DocumentColumn(
+          label: 'الوقت',
+          spreadsheetCellKind: DocumentSpreadsheetCellKind.time,
+        ),
+        DocumentColumn(
+          label: 'النسبة',
+          spreadsheetCellKind: DocumentSpreadsheetCellKind.percentage,
+          spreadsheetDecimalPlaces: 2,
+        ),
+        DocumentColumn(
+          label: 'رمز بصفر',
+          spreadsheetCellKind: DocumentSpreadsheetCellKind.integer,
+        ),
+        DocumentColumn(
+          label: 'رقم طويل',
+          spreadsheetCellKind: DocumentSpreadsheetCellKind.integer,
+        ),
+        DocumentColumn(
+          label: 'صيغة محمية',
+          spreadsheetCellKind: DocumentSpreadsheetCellKind.decimal,
+        ),
+        DocumentColumn(
+          label: 'تاريخ غير صالح',
+          spreadsheetCellKind: DocumentSpreadsheetCellKind.date,
+        ),
+        DocumentColumn(
+          label: 'قيمة مفقودة',
+          spreadsheetCellKind: DocumentSpreadsheetCellKind.decimal,
+        ),
+      ],
+      rows: [
+        [
+          'شركة ABC 42',
+          '12',
+          '1,250.50',
+          '2026/08/11',
+          '02:35 م',
+          '28.57%',
+          '00123',
+          '1234567890123456',
+          '=2+2',
+          '2026/02/30',
+          '—',
+        ],
+      ],
+    );
+    final bytes = await PackageDocumentBinaryComposer().composeExcel(
+      typedRequest,
+    );
+    final workbook = Excel.decodeBytes(bytes);
+    final sheet = workbook.tables['التقرير']!;
+
+    expect(sheet.isRTL, isTrue);
+    final headerIndex = sheet.rows.indexWhere(
+      (row) => row.first?.value.toString() == 'الزبون',
+    );
+    expect(headerIndex, greaterThanOrEqualTo(0));
+    expect(
+      sheet.rows[headerIndex].map(_text),
+      [
+        'الزبون',
+        'الكمية',
+        'الإجمالي',
+        'التاريخ',
+        'الوقت',
+        'النسبة',
+        'رمز بصفر',
+        'رقم طويل',
+        'صيغة محمية',
+        'تاريخ غير صالح',
+        'قيمة مفقودة',
+      ],
+    );
+    final fieldRow = sheet.rows.singleWhere(
+      (row) => row.first?.value.toString() == 'هامش الربح',
+    );
+    final values = sheet.rows[headerIndex + 1];
+
+    expect(fieldRow[1]!.value, isA<DoubleCellValue>());
+    expect(
+      (fieldRow[1]!.value! as DoubleCellValue).value,
+      closeTo(0.2857, 1e-9),
+    );
+    expect(fieldRow[1]!.cellStyle!.numberFormat.formatCode, '0.00%');
+    expect(_text(values[0]), 'شركة ABC 42');
+    expect(values[0]!.value, isA<TextCellValue>());
+    expect((values[1]!.value! as IntCellValue).value, 12);
+    expect(values[1]!.cellStyle!.numberFormat.formatCode, '#,##0');
+    expect((values[2]!.value! as DoubleCellValue).value, 1250.5);
+    expect(values[2]!.cellStyle!.numberFormat.formatCode, '#,##0.00');
+    expect(values[3]!.value, isA<DateCellValue>());
+    final date = values[3]!.value! as DateCellValue;
+    expect(date.year, 2026);
+    expect(date.month, 8);
+    expect(date.day, 11);
+    expect(values[3]!.cellStyle!.numberFormat.formatCode, 'yyyy/mm/dd');
+    expect(values[4]!.value, isA<TimeCellValue>());
+    final time = values[4]!.value! as TimeCellValue;
+    expect(time.hour, 14);
+    expect(time.minute, 35);
+    expect(values[4]!.cellStyle!.numberFormat.formatCode, 'hh:mm');
+    expect(
+      (values[5]!.value! as DoubleCellValue).value,
+      closeTo(0.2857, 1e-9),
+    );
+    expect(values[5]!.cellStyle!.numberFormat.formatCode, '0.00%');
+    expect(_text(values[6]), '00123');
+    expect(values[6]!.value, isA<TextCellValue>());
+    expect(_text(values[7]), '1234567890123456');
+    expect(values[7]!.value, isA<TextCellValue>());
+    expect(_text(values[8]), '=2+2');
+    expect(values[8]!.value, isA<TextCellValue>());
+    expect(_text(values[9]), '2026/02/30');
+    expect(values[9]!.value, isA<TextCellValue>());
+    expect(_text(values[10]), '—');
+    expect(values[10]!.value, isA<TextCellValue>());
   });
 
   test('desktop adapter applies device settings to native printing', () async {
@@ -259,3 +404,5 @@ class _RecordingPlatform implements DocumentPlatformGateway {
     return savedPath;
   }
 }
+
+String? _text(Data? cell) => cell?.value?.toString();

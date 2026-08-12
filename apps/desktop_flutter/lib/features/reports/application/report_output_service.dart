@@ -1,3 +1,5 @@
+import '../domain/report_models.dart';
+
 enum ReportExportFormat { pdf, excel }
 
 class ReportOutputRequest {
@@ -7,6 +9,10 @@ class ReportOutputRequest {
     required this.columnLabels,
     required this.rowValues,
     required this.metrics,
+    this.columnSpreadsheetCellKinds = const [],
+    this.columnSpreadsheetDecimalPlaces = const [],
+    this.metricSpreadsheetCellKinds = const {},
+    this.metricSpreadsheetDecimalPlaces = const {},
   });
 
   final String reportTitle;
@@ -14,6 +20,10 @@ class ReportOutputRequest {
   final List<String> columnLabels;
   final List<List<String>> rowValues;
   final Map<String, String> metrics;
+  final List<ReportSpreadsheetCellKind> columnSpreadsheetCellKinds;
+  final List<int?> columnSpreadsheetDecimalPlaces;
+  final Map<String, ReportSpreadsheetCellKind> metricSpreadsheetCellKinds;
+  final Map<String, int?> metricSpreadsheetDecimalPlaces;
 }
 
 class ReportOutputResult {
