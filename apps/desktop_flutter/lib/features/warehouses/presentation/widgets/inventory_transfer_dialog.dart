@@ -702,11 +702,8 @@ class _InventoryTransferDialogState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        AppDialogSection(
+        KeyedSubtree(
           key: const Key('inventoryTransferDetails'),
-          title: 'تفاصيل النقل',
-          icon: Icons.warehouse_rounded,
-          accentColor: AppModuleColors.warehouses,
           child: Row(
             children: [
               Expanded(child: _buildSourceField()),
@@ -717,12 +714,8 @@ class _InventoryTransferDialogState
         ),
         const SizedBox(height: AppSpacing.md),
         Expanded(
-          child: AppDialogSection(
+          child: KeyedSubtree(
             key: const Key('inventoryTransferLinesSection'),
-            title: 'مواد النقل',
-            icon: Icons.inventory_2_rounded,
-            accentColor: AppModuleColors.warehouses,
-            expandChild: true,
             child: AppInvoiceFieldTable(
               surfaceKey: const Key('inventoryTransferLinesTable'),
               horizontalScrollKey:
