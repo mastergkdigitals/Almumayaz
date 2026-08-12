@@ -212,7 +212,7 @@ void main() {
     final time = values[4]!.value! as TimeCellValue;
     expect(time.hour, 14);
     expect(time.minute, 35);
-    expect(values[4]!.cellStyle!.numberFormat.formatCode, 'hh:mm');
+    expect(values[4]!.cellStyle!.numberFormat.formatCode, 'h:mm');
     expect(
       (values[5]!.value! as DoubleCellValue).value,
       closeTo(0.2857, 1e-9),

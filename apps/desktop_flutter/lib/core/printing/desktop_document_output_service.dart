@@ -450,7 +450,7 @@ class PackageDocumentBinaryComposer implements DocumentBinaryComposer {
         if (parsed == null) return textFallback;
         return _ExcelCell(
           TimeCellValue(hour: parsed.$1, minute: parsed.$2),
-          numberFormat: const CustomTimeNumFormat(formatCode: 'hh:mm'),
+          numberFormat: NumFormat.standard_20,
         );
       case DocumentSpreadsheetCellKind.percentage:
         final numericText = value.endsWith('%')
