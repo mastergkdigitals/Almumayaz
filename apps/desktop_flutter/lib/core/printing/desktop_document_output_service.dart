@@ -325,6 +325,8 @@ class PackageDocumentBinaryComposer implements DocumentBinaryComposer {
   Future<Uint8List> composeExcel(DocumentOutputRequest request) async {
     final workbook = Excel.createExcel();
     workbook.rename('Sheet1', 'التقرير');
+    // excel 4.0.6 must materialize a renamed sheet before persisting view flags.
+    workbook.encode();
     final sheet = workbook['التقرير']..isRTL = true;
 
     sheet.appendRow([TextCellValue(request.title)]);
