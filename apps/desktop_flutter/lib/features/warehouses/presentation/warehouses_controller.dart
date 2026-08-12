@@ -62,7 +62,6 @@ class WarehousesController extends ChangeNotifier {
   final ItemRepository _itemRepository;
   final VoidCallback? _onDataChanged;
   WarehousesState _state = const WarehousesState();
-  Map<String, EntityId> _itemIdsByProductCode = const {};
   bool _isDisposed = false;
   int _loadGeneration = 0;
 
@@ -163,6 +162,7 @@ class WarehousesController extends ChangeNotifier {
           resolvedBalances.add(
             WarehouseInventoryItem.typed(
               balanceId: balance.id,
+              itemEntityId: balance.itemId,
               productCode: item.code,
               productName: item.name,
               stockQuantity: balance.quantity,
@@ -197,6 +197,7 @@ class WarehousesController extends ChangeNotifier {
           }
           lines.add(
             WarehouseTransferLine.typed(
+              itemEntityId: line.itemId,
               productCode: item.code,
               productName: item.name,
               wholeQuantity: line.quantity,
@@ -218,9 +219,6 @@ class WarehousesController extends ChangeNotifier {
         );
       }
 
-      _itemIdsByProductCode = Map.unmodifiable({
-        for (final item in items) item.code: item.entityId,
-      });
       _state = _state.copyWith(
         dataState: warehouses.isEmpty
             ? const AppDataState.empty(
@@ -352,18 +350,17 @@ class WarehousesController extends ChangeNotifier {
   Future<bool> transferInventory({
     required String fromWarehouseId,
     required String toWarehouseId,
-    required Map<String, int> quantitiesByProductCode,
+    required Map<String, int> quantitiesByItemId,
     DateTime? createdAt,
   }) async {
-    if (_isDisposed || quantitiesByProductCode.isEmpty) return false;
+    if (_isDisposed || quantitiesByItemId.isEmpty) return false;
     try {
       final lines = <InventoryTransferLine>[];
-      for (final entry in quantitiesByProductCode.entries) {
-        final itemId = _itemIdsByProductCode[entry.key];
-        if (itemId == null || entry.value <= 0) return false;
+      for (final entry in quantitiesByItemId.entries) {
+        if (entry.value <= 0) return false;
         lines.add(
           InventoryTransferLine(
-            itemId: itemId,
+            itemId: EntityId(entry.key),
             quantity: WholeQuantity(entry.value),
           ),
         );

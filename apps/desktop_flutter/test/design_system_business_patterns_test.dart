@@ -1,4 +1,5 @@
 import 'package:erp/core/design/app_design_system.dart';
+import 'package:erp/features/warehouses/domain/warehouse.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -451,48 +452,52 @@ void main() {
     expect(find.text('إلى مخزن'), findsOneWidget);
     expect(find.text('تاريخ النقل'), findsNothing);
     expect(
+      find.byKey(const Key('inventoryTransferLinesSection')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('inventoryTransferLinesTable')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('inventoryTransferLinesHorizontalScroll')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('inventoryTransferLineItemField-0')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('inventoryTransferLineAvailableField-0')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('inventoryTransferLineQuantityField-0')),
+      findsOneWidget,
+    );
+    final transferLinesTable = tester.widget<AppInvoiceFieldTable>(
+      find.ancestor(
+        of: find.byKey(const Key('inventoryTransferLinesTable')),
+        matching: find.byType(AppInvoiceFieldTable),
+      ),
+    );
+    expect(
+      transferLinesTable.columns.map((column) => column.label),
+      ['ت', 'المادة', 'المتوفر', 'كمية النقل', ''],
+    );
+    expect(transferLinesTable.rowCount, 1);
+    expect(transferLinesTable.accentColor, AppModulePalettes.warehouses.middle);
+    expect(
+      transferLinesTable.lightAccentColor,
+      AppModulePalettes.warehouses.light,
+    );
+    expect(
       find.byKey(const Key('inventoryTransferSourceStock')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const Key('inventoryTransferDestinationStock')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const Key('inventoryTransferProductField')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const Key('inventoryTransferQuantityField')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(
-        of: transferDialog,
-        matching: find.byIcon(Icons.arrow_forward_rounded),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(
-        of: transferDialog,
-        matching: find.byIcon(Icons.arrow_back_rounded),
-      ),
       findsNothing,
     );
     expect(
-      tester
-          .getTopLeft(
-            find.byKey(const Key('inventoryTransferProductField')),
-          )
-          .dy,
-      lessThan(
-        tester
-            .getTopLeft(
-              find.byKey(const Key('inventoryTransferSourceStock')),
-            )
-            .dy,
-      ),
+      find.byKey(const Key('inventoryTransferDestinationStock')),
+      findsNothing,
     );
     expect(
       tester
@@ -517,20 +522,19 @@ void main() {
       ),
       findsNothing,
     );
-    final sourceStockTable = tester.widget<AppDataTable>(
-      find.byKey(const Key('inventoryTransferSourceStockTable')),
-    );
-    final destinationStockTable = tester.widget<AppDataTable>(
-      find.byKey(const Key('inventoryTransferDestinationStockTable')),
-    );
-    expect(
-      (sourceStockTable.rows.first.cells.last as Text).data,
-      '1,200',
+    final previewItemField = tester
+        .widget<AppAutocompleteField<WarehouseInventoryItem>>(
+      find.ancestor(
+        of: find.byKey(const Key('inventoryTransferLineItemField-0')),
+        matching:
+            find.byType(AppAutocompleteField<WarehouseInventoryItem>),
+      ),
     );
     expect(
-      (destinationStockTable.rows.first.cells.last as Text).data,
-      '80',
+      previewItemField.options.map((item) => item.itemId),
+      ['preview-item-p001', 'preview-item-p002'],
     );
+    expect(tester.takeException(), isNull);
 
     await tester.tap(
       find.byKey(const Key('inventoryTransferHistoryTab')),

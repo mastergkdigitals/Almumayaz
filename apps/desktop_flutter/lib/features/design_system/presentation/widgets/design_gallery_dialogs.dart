@@ -92,12 +92,14 @@ class DesignGalleryBusinessDialogsSection extends StatelessWidget {
     'main': [
       WarehouseInventoryItem(
         id: 'main-p001',
+        itemId: 'preview-item-p001',
         productCode: 'P-001',
         productName: 'دفتر ملاحظات',
         quantity: 1200,
       ),
       WarehouseInventoryItem(
         id: 'main-p002',
+        itemId: 'preview-item-p002',
         productCode: 'P-002',
         productName: 'قلم أزرق',
         quantity: 450,
@@ -106,12 +108,14 @@ class DesignGalleryBusinessDialogsSection extends StatelessWidget {
     'secondary': [
       WarehouseInventoryItem(
         id: 'secondary-p001',
+        itemId: 'preview-item-p001',
         productCode: 'P-001',
         productName: 'دفتر ملاحظات',
         quantity: 80,
       ),
       WarehouseInventoryItem(
         id: 'secondary-p002',
+        itemId: 'preview-item-p002',
         productCode: 'P-002',
         productName: 'قلم أزرق',
         quantity: 35,
@@ -161,10 +165,10 @@ class DesignGalleryBusinessDialogsSection extends StatelessWidget {
       onTransfer: ({
         required String fromWarehouseId,
         required String toWarehouseId,
-        required Map<String, int> quantitiesByProductCode,
+        required Map<String, int> quantitiesByItemId,
       }) {
         return fromWarehouseId != toWarehouseId &&
-            quantitiesByProductCode.isNotEmpty;
+            quantitiesByItemId.isNotEmpty;
       },
       initialFromWarehouseId: 'main',
     );

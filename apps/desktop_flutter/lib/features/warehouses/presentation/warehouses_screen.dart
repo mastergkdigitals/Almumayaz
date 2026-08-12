@@ -384,13 +384,13 @@ class _WarehousesScreenState extends State<WarehousesScreen> {
       onTransfer: ({
         required String fromWarehouseId,
         required String toWarehouseId,
-        required Map<String, int> quantitiesByProductCode,
+        required Map<String, int> quantitiesByItemId,
       }) async {
         if (!canCreateTransfer) return false;
         return controller.transferInventory(
           fromWarehouseId: fromWarehouseId,
           toWarehouseId: toWarehouseId,
-          quantitiesByProductCode: quantitiesByProductCode,
+          quantitiesByItemId: quantitiesByItemId,
         );
       },
     );

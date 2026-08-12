@@ -63,12 +63,14 @@ class Warehouse {
 class WarehouseInventoryItem {
   factory WarehouseInventoryItem({
     required String id,
+    required String itemId,
     required String productCode,
     required String productName,
     required int quantity,
   }) {
     return WarehouseInventoryItem.typed(
       balanceId: EntityId(id),
+      itemEntityId: EntityId(itemId),
       productCode: productCode,
       productName: productName,
       stockQuantity: StockQuantity(quantity),
@@ -77,17 +79,20 @@ class WarehouseInventoryItem {
 
   const WarehouseInventoryItem.typed({
     required this.balanceId,
+    required this.itemEntityId,
     required this.productCode,
     required this.productName,
     required this.stockQuantity,
   });
 
   final EntityId balanceId;
+  final EntityId itemEntityId;
   final String productCode;
   final String productName;
   final StockQuantity stockQuantity;
 
   String get id => balanceId.value;
+  String get itemId => itemEntityId.value;
   int get quantity => stockQuantity.value;
   String get searchText => '$productCode $productName $quantity'.toLowerCase();
 }
@@ -96,11 +101,13 @@ class WarehouseInventoryItem {
 @immutable
 class WarehouseTransferLine {
   factory WarehouseTransferLine({
+    required String itemId,
     required String productCode,
     required String productName,
     required int quantity,
   }) {
     return WarehouseTransferLine.typed(
+      itemEntityId: EntityId(itemId),
       productCode: productCode,
       productName: productName,
       wholeQuantity: WholeQuantity(quantity),
@@ -108,15 +115,18 @@ class WarehouseTransferLine {
   }
 
   const WarehouseTransferLine.typed({
+    required this.itemEntityId,
     required this.productCode,
     required this.productName,
     required this.wholeQuantity,
   });
 
+  final EntityId itemEntityId;
   final String productCode;
   final String productName;
   final WholeQuantity wholeQuantity;
 
+  String get itemId => itemEntityId.value;
   int get quantity => wholeQuantity.value;
   String get summary => '$productCode - $productName ($quantity)';
 }

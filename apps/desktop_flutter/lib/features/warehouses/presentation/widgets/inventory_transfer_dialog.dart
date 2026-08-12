@@ -11,7 +11,7 @@ typedef WarehouseInventoryReader =
 typedef WarehouseTransferHandler = FutureOr<bool> Function({
   required String fromWarehouseId,
   required String toWarehouseId,
-  required Map<String, int> quantitiesByProductCode,
+  required Map<String, int> quantitiesByItemId,
 });
 
 typedef WarehouseTransferHistoryReader =
@@ -22,6 +22,44 @@ typedef WarehouseTransferReverseHandler = FutureOr<bool> Function(
 );
 
 enum _InventoryTransferView { create, history }
+
+const _inventoryTransferColumns = <AppInvoiceFieldColumn>[
+  AppInvoiceFieldColumn('ت', 54),
+  AppInvoiceFieldColumn('المادة', 430, grow: 3),
+  AppInvoiceFieldColumn('المتوفر', 150, grow: 0.7),
+  AppInvoiceFieldColumn('كمية النقل', 180, grow: 1),
+  AppInvoiceFieldColumn('', 100, padding: EdgeInsets.zero),
+];
+
+class _InventoryTransferDraftRow {
+  _InventoryTransferDraftRow({required this.id})
+      : itemController = TextEditingController(),
+        availableController = TextEditingController(),
+        quantityController = TextEditingController();
+
+  final int id;
+  final TextEditingController itemController;
+  final TextEditingController availableController;
+  final TextEditingController quantityController;
+  final FocusNode itemFocusNode = FocusNode();
+  final FocusNode quantityFocusNode = FocusNode();
+  WarehouseInventoryItem? selectedItem;
+
+  bool get isEmpty =>
+      itemController.text.trim().isEmpty &&
+      quantityController.text.trim().isEmpty;
+
+  int? get quantity =>
+      AppFormatters.parseInteger(quantityController.text);
+
+  void dispose() {
+    itemController.dispose();
+    availableController.dispose();
+    quantityController.dispose();
+    itemFocusNode.dispose();
+    quantityFocusNode.dispose();
+  }
+}
 
 class InventoryTransferDialog extends StatefulWidget {
   const InventoryTransferDialog({
@@ -80,14 +118,15 @@ class InventoryTransferDialog extends StatefulWidget {
 class _InventoryTransferDialogState
     extends State<InventoryTransferDialog> {
   final _dialogMessengerKey = GlobalKey<ScaffoldMessengerState>();
-  final _quantityController = TextEditingController(text: '1');
   final _historySearchController = TextEditingController();
+  final _linesScrollController = ScrollController();
 
   late final List<WarehouseTransferRecord> _fallbackHistory;
+  late List<_InventoryTransferDraftRow> _rows;
   _InventoryTransferView _view = _InventoryTransferView.create;
+  var _nextRowId = 0;
   String? _fromWarehouseId;
   String? _toWarehouseId;
-  String? _selectedProductCode;
   String _historyQuery = '';
   String? _selectedHistoryId;
   bool _didTransfer = false;
@@ -109,41 +148,24 @@ class _InventoryTransferDialogState
     return items;
   }
 
-  List<WarehouseInventoryItem> get _destinationItems {
-    final destinationId = _toWarehouseId;
-    if (destinationId == null) return const [];
-    final items = widget.inventoryFor(destinationId).toList(growable: false);
-    items.sort(
-      (first, second) =>
-          first.productCode.compareTo(second.productCode),
-    );
-    return items;
-  }
-
-  WarehouseInventoryItem? get _selectedSourceItem {
-    final selectedCode = _selectedProductCode;
-    if (selectedCode == null) return null;
-    for (final item in _sourceItems) {
-      if (item.productCode == selectedCode) return item;
-    }
-    return null;
-  }
-
-  int? get _transferQuantity =>
-      AppFormatters.parseInteger(_quantityController.text);
-
   bool get _canExecute {
-    final sourceItem = _selectedSourceItem;
-    final quantity = _transferQuantity;
     return widget.allowTransfer &&
         _fromWarehouseId != null &&
         _toWarehouseId != null &&
         _fromWarehouseId != _toWarehouseId &&
-        sourceItem != null &&
-        quantity != null &&
-        quantity > 0 &&
-        quantity <= sourceItem.quantity;
+        !_isMutating;
   }
+
+  List<_InventoryTransferDraftRow> get _completeRows => _rows
+      .where(
+        (row) => row.selectedItem != null && (row.quantity ?? 0) > 0,
+      )
+      .toList(growable: false);
+
+  int get _totalDraftQuantity => _completeRows.fold<int>(
+        0,
+        (total, row) => total + row.quantity!,
+      );
 
   List<WarehouseTransferRecord> get _history =>
       widget.transferHistory?.call() ?? _fallbackHistory;
@@ -164,15 +186,16 @@ class _InventoryTransferDialogState
     }
     _fromWarehouseId = _resolveInitialSourceId();
     _toWarehouseId = _firstOtherWarehouseId(_fromWarehouseId);
-    _selectedProductCode = _firstSourceProductCode();
+    _rows = [_newRow()];
     _fallbackHistory = _seedHistory(_warehouses);
-    _quantityController.addListener(_handleQuantityChanged);
   }
 
   @override
   void dispose() {
-    _quantityController.removeListener(_handleQuantityChanged);
-    _quantityController.dispose();
+    for (final row in _rows) {
+      row.dispose();
+    }
+    _linesScrollController.dispose();
     _historySearchController.dispose();
     super.dispose();
   }
@@ -193,11 +216,6 @@ class _InventoryTransferDialogState
     return null;
   }
 
-  String? _firstSourceProductCode() {
-    final items = _sourceItems;
-    return items.isEmpty ? null : items.first.productCode;
-  }
-
   String _warehouseName(String? warehouseId) {
     for (final warehouse in _warehouses) {
       if (warehouse.id == warehouseId) return warehouse.name;
@@ -205,48 +223,177 @@ class _InventoryTransferDialogState
     return 'المخزن';
   }
 
-  void _handleQuantityChanged() {
-    if (mounted) setState(() {});
-  }
-
   void _changeSource(String? warehouseId) {
     if (warehouseId == null || warehouseId == _fromWarehouseId) return;
+    final oldRows = _rows;
     setState(() {
       _fromWarehouseId = warehouseId;
       if (_toWarehouseId == warehouseId) {
         _toWarehouseId = _firstOtherWarehouseId(warehouseId);
       }
-      _selectedProductCode = _firstSourceProductCode();
+      _rows = [_newRow()];
     });
+    _disposeRowsAfterFrame(oldRows);
   }
 
   void _changeDestination(String? warehouseId) {
     if (warehouseId == null || warehouseId == _toWarehouseId) return;
+    List<_InventoryTransferDraftRow>? oldRows;
     setState(() {
       if (_fromWarehouseId == warehouseId) {
         _fromWarehouseId = _firstOtherWarehouseId(warehouseId);
-        _selectedProductCode = _firstSourceProductCode();
+        oldRows = _rows;
+        _rows = [_newRow()];
       }
       _toWarehouseId = warehouseId;
     });
+    if (oldRows != null) _disposeRowsAfterFrame(oldRows!);
   }
 
-  void _selectProduct(String productCode) {
-    setState(() => _selectedProductCode = productCode);
+  _InventoryTransferDraftRow _newRow() {
+    return _InventoryTransferDraftRow(id: _nextRowId++);
+  }
+
+  void _disposeRowsAfterFrame(
+    Iterable<_InventoryTransferDraftRow> rows,
+  ) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      for (final row in rows) {
+        row.dispose();
+      }
+    });
+  }
+
+  WarehouseInventoryItem? _sourceItemById(String itemId) {
+    for (final item in _sourceItems) {
+      if (item.itemId == itemId) return item;
+    }
+    return null;
+  }
+
+  List<WarehouseInventoryItem> _optionsForRow(
+    _InventoryTransferDraftRow row,
+  ) {
+    final selectedElsewhere = {
+      for (final candidate in _rows)
+        if (!identical(candidate, row) && candidate.selectedItem != null)
+          candidate.selectedItem!.itemId,
+    };
+    return _sourceItems
+        .where((item) => !selectedElsewhere.contains(item.itemId))
+        .toList(growable: false);
+  }
+
+  String _itemDisplayText(WarehouseInventoryItem item) {
+    return '${item.productCode} — ${item.productName}';
+  }
+
+  void _selectItem(
+    _InventoryTransferDraftRow row,
+    WarehouseInventoryItem item,
+  ) {
+    setState(() {
+      row.selectedItem = item;
+      row.itemController.text = _itemDisplayText(item);
+      row.availableController.text =
+          AppFormatters.quantity(item.quantity);
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _rows.contains(row)) {
+        row.quantityFocusNode.requestFocus();
+      }
+    });
+  }
+
+  void _changeItemText(_InventoryTransferDraftRow row) {
+    final selected = row.selectedItem;
+    if (selected != null &&
+        row.itemController.text == _itemDisplayText(selected)) {
+      return;
+    }
+    setState(() {
+      row.selectedItem = null;
+      row.availableController.clear();
+    });
+  }
+
+  bool _canAddRow(_InventoryTransferDraftRow row) {
+    final item = row.selectedItem;
+    final quantity = row.quantity;
+    if (item == null ||
+        quantity == null ||
+        quantity <= 0 ||
+        quantity > item.quantity) {
+      return false;
+    }
+    return _sourceItems.any(
+      (candidate) => !_rows.any(
+        (existing) => existing.selectedItem?.itemId == candidate.itemId,
+      ),
+    );
+  }
+
+  void _addRow(_InventoryTransferDraftRow row) {
+    if (_isMutating ||
+        !identical(row, _rows.last) ||
+        !_canAddRow(row)) {
+      return;
+    }
+    late final _InventoryTransferDraftRow added;
+    setState(() {
+      added = _newRow();
+      _rows.add(added);
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_rows.contains(added)) return;
+      if (_linesScrollController.hasClients) {
+        _linesScrollController.animateTo(
+          _linesScrollController.position.maxScrollExtent,
+          duration: AppDurations.normal,
+          curve: Curves.easeOutCubic,
+        );
+      }
+      added.itemFocusNode.requestFocus();
+    });
+  }
+
+  void _removeRow(int index) {
+    if (_isMutating || index < 0 || index >= _rows.length) return;
+    late final _InventoryTransferDraftRow removed;
+    setState(() {
+      removed = _rows[index];
+      if (_rows.length == 1) {
+        _rows = [_newRow()];
+      } else {
+        _rows.removeAt(index);
+      }
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => removed.dispose());
+  }
+
+  void _handleQuantityChanged(String _) {
+    setState(() {});
+  }
+
+  void _handleQuantitySubmitted(
+    _InventoryTransferDraftRow row,
+    int index,
+  ) {
+    if (index == _rows.length - 1 && _canAddRow(row)) {
+      _addRow(row);
+      return;
+    }
+    FocusScope.of(context).nextFocus();
   }
 
   Future<void> _executeTransfer() async {
     if (_isMutating || !widget.allowTransfer) return;
     final sourceId = _fromWarehouseId;
     final destinationId = _toWarehouseId;
-    final sourceItem = _selectedSourceItem;
-    final quantity = _transferQuantity;
 
     if (sourceId == null ||
         destinationId == null ||
-        sourceItem == null ||
-        quantity == null ||
-        quantity <= 0) {
+        sourceId == destinationId) {
       AppToast.showWarning(
         context,
         'تحقق من بيانات النقل',
@@ -254,14 +401,73 @@ class _InventoryTransferDialogState
       );
       return;
     }
-    if (quantity > sourceItem.quantity) {
+
+    final meaningfulRows = _rows
+        .where((row) => !row.isEmpty)
+        .toList(growable: false);
+    if (meaningfulRows.isEmpty) {
       AppToast.showWarning(
         context,
-        'لا يمكن تنفيذ النقل لعدم كفاية الرصيد المخزني',
+        'أضف مادة واحدة مكتملة على الأقل',
         messenger: _dialogMessengerKey.currentState,
       );
       return;
     }
+    if (meaningfulRows.any((row) => row.selectedItem == null)) {
+      AppToast.showWarning(
+        context,
+        'اختر مادة موجودة لكل سطر نقل',
+        messenger: _dialogMessengerKey.currentState,
+      );
+      return;
+    }
+    if (meaningfulRows.any(
+      (row) => row.quantity == null || row.quantity! <= 0,
+    )) {
+      AppToast.showWarning(
+        context,
+        'أدخل كمية صحيحة لكل سطر نقل',
+        messenger: _dialogMessengerKey.currentState,
+      );
+      return;
+    }
+
+    final itemIds = <String>{};
+    final transferLines = <({WarehouseInventoryItem item, int quantity})>[];
+    for (final row in meaningfulRows) {
+      final selectedItem = row.selectedItem!;
+      if (!itemIds.add(selectedItem.itemId)) {
+        AppToast.showWarning(
+          context,
+          'لا يمكن تكرار المادة في النقل نفسه',
+          messenger: _dialogMessengerKey.currentState,
+        );
+        return;
+      }
+      final currentItem = _sourceItemById(selectedItem.itemId);
+      if (currentItem == null) {
+        AppToast.showWarning(
+          context,
+          'إحدى المواد المحددة لم تعد متوفرة في مخزن المصدر',
+          messenger: _dialogMessengerKey.currentState,
+        );
+        return;
+      }
+      final quantity = row.quantity!;
+      if (quantity > currentItem.quantity) {
+        AppToast.showWarning(
+          context,
+          'لا يمكن نقل ${currentItem.productName} لعدم كفاية الرصيد المخزني',
+          messenger: _dialogMessengerKey.currentState,
+        );
+        return;
+      }
+      transferLines.add((item: currentItem, quantity: quantity));
+    }
+
+    final quantitiesByItemId = <String, int>{
+      for (final line in transferLines) line.item.itemId: line.quantity,
+    };
 
     setState(() => _isMutating = true);
     late final bool transferred;
@@ -270,9 +476,7 @@ class _InventoryTransferDialogState
         widget.onTransfer(
           fromWarehouseId: sourceId,
           toWarehouseId: destinationId,
-          quantitiesByProductCode: {
-            sourceItem.productCode: quantity,
-          },
+          quantitiesByItemId: quantitiesByItemId,
         ),
       );
     } catch (_) {
@@ -307,24 +511,28 @@ class _InventoryTransferDialogState
           toWarehouseId: destinationId,
           toWarehouseName: _warehouseName(destinationId),
           lines: List.unmodifiable([
-            WarehouseTransferLine(
-              productCode: sourceItem.productCode,
-              productName: sourceItem.productName,
-              quantity: quantity,
-            ),
+            for (final line in transferLines)
+              WarehouseTransferLine(
+                itemId: line.item.itemId,
+                productCode: line.item.productCode,
+                productName: line.item.productName,
+                quantity: line.quantity,
+              ),
           ]),
         ),
       );
     }
     _didTransfer = true;
     _historySearchController.clear();
+    final oldRows = _rows;
     setState(() {
       _historyQuery = '';
       _view = _InventoryTransferView.history;
-      _selectedProductCode = _firstSourceProductCode();
+      _rows = [_newRow()];
       final history = _history;
       _selectedHistoryId = history.isEmpty ? null : history.first.id;
     });
+    _disposeRowsAfterFrame(oldRows);
     AppToast.showInfo(
       context,
       'تم تنفيذ النقل المخزني',
@@ -332,7 +540,10 @@ class _InventoryTransferDialogState
     );
   }
 
-  void _close() => Navigator.of(context).pop(_didTransfer);
+  void _close() {
+    if (_isMutating) return;
+    Navigator.of(context).pop(_didTransfer);
+  }
 
   Future<void> _reverseSelectedTransfer() async {
     if (_isMutating) return;
@@ -377,46 +588,49 @@ class _InventoryTransferDialogState
 
   @override
   Widget build(BuildContext context) {
-    return ScaffoldMessenger(
-      key: _dialogMessengerKey,
-      child: Scaffold(
-        key: const Key('inventoryTransferToastHost'),
-        backgroundColor: Colors.transparent,
-        body: AppModuleDialog(
-          key: const Key('inventoryTransferDialog'),
-          title: 'النقل المخزني',
-          subtitle: 'اختر المادة والكمية وانقلها بين مخزنين',
-          icon: _view == _InventoryTransferView.create
-              ? Icons.compare_arrows_rounded
-              : Icons.history_rounded,
-          accentColor: AppModuleColors.warehouses,
-          centerHeader: true,
-          showHeaderCloseButton: true,
-          width: AppDialogSizes.extraLarge,
-          bodyScrollable: false,
-          maxHeightFactor: 0.96,
-          onClose: _close,
-          actionsKey: const Key('inventoryTransferDialogActions'),
-          actions: _view == _InventoryTransferView.create
-              ? _createActions()
-              : _historyActions(),
-          child: SizedBox(
-            height: 540,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _ViewSelector(
-                  view: _view,
-                  allowCreate: widget.allowTransfer,
-                  onChanged: _selectView,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Expanded(
-                  child: _view == _InventoryTransferView.create
-                      ? _buildCreateView()
-                      : _buildHistoryView(),
-                ),
-              ],
+    return PopScope(
+      canPop: !_isMutating,
+      child: ScaffoldMessenger(
+        key: _dialogMessengerKey,
+        child: Scaffold(
+          key: const Key('inventoryTransferToastHost'),
+          backgroundColor: Colors.transparent,
+          body: AppModuleDialog(
+            key: const Key('inventoryTransferDialog'),
+            title: 'النقل المخزني',
+            subtitle: 'اختر المواد والكميات وانقلها بين مخزنين',
+            icon: _view == _InventoryTransferView.create
+                ? Icons.compare_arrows_rounded
+                : Icons.history_rounded,
+            accentColor: AppModuleColors.warehouses,
+            centerHeader: true,
+            showHeaderCloseButton: !_isMutating,
+            width: AppDialogSizes.extraLarge,
+            bodyScrollable: false,
+            maxHeightFactor: 0.96,
+            onClose: _close,
+            actionsKey: const Key('inventoryTransferDialogActions'),
+            actions: _view == _InventoryTransferView.create
+                ? _createActions()
+                : _historyActions(),
+            child: SizedBox(
+              height: 540,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _ViewSelector(
+                    view: _view,
+                    allowCreate: widget.allowTransfer,
+                    onChanged: _selectView,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Expanded(
+                    child: _view == _InventoryTransferView.create
+                        ? _buildCreateView()
+                        : _buildHistoryView(),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -485,8 +699,6 @@ class _InventoryTransferDialogState
   }
 
   Widget _buildCreateView() {
-    final sourceItem = _selectedSourceItem;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -495,108 +707,172 @@ class _InventoryTransferDialogState
           title: 'تفاصيل النقل',
           icon: Icons.warehouse_rounded,
           accentColor: AppModuleColors.warehouses,
-          child: Column(
+          child: Row(
             children: [
-              Row(
-                children: [
-                  Expanded(child: _buildSourceField()),
-                  const SizedBox(width: AppSpacing.lg),
-                  Expanded(child: _buildDestinationField()),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Row(
-                children: [
-                  Expanded(
-                    flex: 2,
-                    child: AppDropdownField<String>(
-                      key: const Key('inventoryTransferProductDropdown'),
-                      fieldKey:
-                          const Key('inventoryTransferProductField'),
-                      label: 'المادة',
-                      icon: Icons.inventory_2_rounded,
-                      accentColor: AppModuleColors.warehouses,
-                      useIntrinsicHeight: true,
-                      value: _selectedProductCode,
-                      options: [
-                        for (final item in _sourceItems)
-                          AppDropdownOption(
-                            value: item.productCode,
-                            label:
-                                '${item.productName} — ${AppFormatters.quantity(item.quantity)}',
-                          ),
-                      ],
-                      onChanged: (value) {
-                        if (value != null) _selectProduct(value);
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: AppIntegerField(
-                      fieldKey:
-                          const Key('inventoryTransferQuantityField'),
-                      controller: _quantityController,
-                      label: 'كمية النقل',
-                      icon: Icons.numbers_rounded,
-                      accentColor: AppModuleColors.warehouses,
-                      textDirection: TextDirection.rtl,
-                      textAlign: TextAlign.right,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: _AvailableQuantity(
-                      quantity: sourceItem?.quantity ?? 0,
-                    ),
-                  ),
-                ],
-              ),
+              Expanded(child: _buildSourceField()),
+              const SizedBox(width: AppSpacing.lg),
+              Expanded(child: _buildDestinationField()),
             ],
           ),
         ),
         const SizedBox(height: AppSpacing.md),
         Expanded(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: _WarehouseStockPanel(
-                  key: const Key('inventoryTransferSourceStock'),
-                  tableKey:
-                      const Key('inventoryTransferSourceStockTable'),
-                  title: _warehouseName(_fromWarehouseId),
-                  items: _sourceItems,
-                  selectedProductCode: _selectedProductCode,
-                  onSelected: _selectProduct,
+          child: AppDialogSection(
+            key: const Key('inventoryTransferLinesSection'),
+            title: 'مواد النقل',
+            icon: Icons.inventory_2_rounded,
+            accentColor: AppModuleColors.warehouses,
+            expandChild: true,
+            child: AppInvoiceFieldTable(
+              surfaceKey: const Key('inventoryTransferLinesTable'),
+              horizontalScrollKey:
+                  const Key('inventoryTransferLinesHorizontalScroll'),
+              rowsKey: const Key('inventoryTransferLinesRows'),
+              headerKey: const Key('inventoryTransferLinesHeader'),
+              summaryKey: const Key('inventoryTransferLinesSummary'),
+              columns: _inventoryTransferColumns,
+              rowCount: _rows.length,
+              verticalScrollController: _linesScrollController,
+              accentColor: AppModulePalettes.warehouses.middle,
+              lightAccentColor: AppModulePalettes.warehouses.light,
+              rowHeight: 80,
+              rowKeyBuilder: (index) =>
+                  Key('inventoryTransferLineRow-${_rows[index].id}'),
+              rowCellsBuilder: (context, index) =>
+                  _buildTransferRowCells(_rows[index], index),
+              summaryCells: [
+                const SizedBox.shrink(),
+                const Text('المجموع'),
+                Text('${_completeRows.length} مادة'),
+                Text(
+                  AppFormatters.quantity(_totalDraftQuantity),
+                  textDirection: TextDirection.ltr,
+                  textAlign: TextAlign.center,
                 ),
-              ),
-              const Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md,
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.arrow_forward_rounded,
-                    color: AppModuleColors.warehouses,
-                    size: AppIconSizes.xl,
-                  ),
-                ),
-              ),
-              Expanded(
-                child: _WarehouseStockPanel(
-                  key: const Key('inventoryTransferDestinationStock'),
-                  tableKey:
-                      const Key('inventoryTransferDestinationStockTable'),
-                  title: _warehouseName(_toWarehouseId),
-                  items: _destinationItems,
-                ),
-              ),
-            ],
+                const SizedBox.shrink(),
+              ],
+            ),
           ),
         ),
       ],
     );
+  }
+
+  List<Widget> _buildTransferRowCells(
+    _InventoryTransferDraftRow row,
+    int index,
+  ) {
+    final rowNumber = index + 1;
+    final isLastRow = index == _rows.length - 1;
+    return [
+      Text(
+        '$rowNumber',
+        textDirection: TextDirection.ltr,
+        textAlign: TextAlign.center,
+      ),
+      Semantics(
+        container: true,
+        label: 'المادة للسطر $rowNumber',
+        child: AppAutocompleteField<WarehouseInventoryItem>(
+          fieldKey: Key('inventoryTransferLineItemField-${row.id}'),
+          controller: row.itemController,
+          focusNode: row.itemFocusNode,
+          label: 'المادة',
+          options: _optionsForRow(row),
+          displayStringForOption: _itemDisplayText,
+          searchTermsForOption: (item) => [
+            item.productCode,
+            item.productName,
+          ],
+          optionSubtitle: (item) =>
+              'المتوفر: ${AppFormatters.quantity(item.quantity)}',
+          onSelected: (item) => _selectItem(row, item),
+          onChanged: (_) => _changeItemText(row),
+          enabled: !_isMutating,
+          icon: null,
+          accentColor: AppModuleColors.warehouses,
+          textDirection: TextDirection.rtl,
+          showLabel: false,
+          borderRadius: AppRadii.sm,
+        ),
+      ),
+      Semantics(
+        container: true,
+        label: 'المتوفر للسطر $rowNumber',
+        child: AppReadOnlyField(
+          fieldKey:
+              Key('inventoryTransferLineAvailableField-${row.id}'),
+          controller: row.availableController,
+          label: 'المتوفر',
+          accentColor: AppModuleColors.warehouses,
+          textDirection: TextDirection.ltr,
+          textAlign: TextAlign.center,
+          showLabel: false,
+          borderRadius: AppRadii.sm,
+        ),
+      ),
+      Semantics(
+        container: true,
+        label: 'كمية النقل للسطر $rowNumber',
+        child: AppIntegerField(
+          fieldKey:
+              Key('inventoryTransferLineQuantityField-${row.id}'),
+          controller: row.quantityController,
+          focusNode: row.quantityFocusNode,
+          label: 'كمية النقل',
+          icon: null,
+          accentColor: AppModuleColors.warehouses,
+          textDirection: TextDirection.ltr,
+          textAlign: TextAlign.center,
+          textInputAction:
+              isLastRow ? TextInputAction.done : TextInputAction.next,
+          onChanged: _handleQuantityChanged,
+          onSubmitted: (_) => _handleQuantitySubmitted(row, index),
+          enabled: !_isMutating,
+          showLabel: false,
+          borderRadius: AppRadii.sm,
+        ),
+      ),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (isLastRow)
+            AppTableActionButton(
+              key: const Key('inventoryTransferLineAddButton'),
+              tooltipKey:
+                  const Key('inventoryTransferLineAddButtonTooltip'),
+              icon: Icons.add_rounded,
+              tooltip: 'إضافة سطر نقل',
+              variant: AppButtonVariant.success,
+              backgroundColor: AppColors.green,
+              foregroundColor: Colors.white,
+              size: 36,
+              iconSize: AppIconSizes.md,
+              borderRadius: AppRadii.sm,
+              onPressed: _canAddRow(row) && !_isMutating
+                  ? () => _addRow(row)
+                  : null,
+            ),
+          if (isLastRow && (_rows.length > 1 || !row.isEmpty))
+            const SizedBox(width: AppSpacing.xs),
+          if (_rows.length > 1 || !row.isEmpty)
+            AppTableActionButton(
+              key: Key('inventoryTransferLineDeleteButton-${row.id}'),
+              tooltipKey:
+                  Key('inventoryTransferLineDeleteButtonTooltip-${row.id}'),
+              icon: Icons.close_rounded,
+              tooltip: 'حذف سطر النقل',
+              variant: AppButtonVariant.danger,
+              backgroundColor: AppColors.red,
+              foregroundColor: Colors.white,
+              size: 36,
+              iconSize: AppIconSizes.md,
+              borderRadius: AppRadii.sm,
+              onPressed: _isMutating ? null : () => _removeRow(index),
+            ),
+        ],
+      ),
+    ];
   }
 
   Widget _buildSourceField() {
@@ -607,6 +883,7 @@ class _InventoryTransferDialogState
       icon: Icons.warehouse_rounded,
       accentColor: AppModuleColors.warehouses,
       useIntrinsicHeight: true,
+      enabled: !_isMutating,
       value: _fromWarehouseId,
       options: [
         for (final warehouse in _warehouses)
@@ -627,6 +904,7 @@ class _InventoryTransferDialogState
       icon: Icons.warehouse_rounded,
       accentColor: AppModuleColors.warehouses,
       useIntrinsicHeight: true,
+      enabled: !_isMutating,
       value: _toWarehouseId,
       options: [
         for (final warehouse in _warehouses)
@@ -728,110 +1006,6 @@ class _ViewSelector extends StatelessWidget {
   }
 }
 
-class _WarehouseStockPanel extends StatelessWidget {
-  const _WarehouseStockPanel({
-    required this.tableKey,
-    required this.title,
-    required this.items,
-    super.key,
-    this.selectedProductCode,
-    this.onSelected,
-  });
-
-  final Key tableKey;
-  final String title;
-  final List<WarehouseInventoryItem> items;
-  final String? selectedProductCode;
-  final ValueChanged<String>? onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppDialogSection(
-      title: 'مواد $title',
-      icon: Icons.inventory_rounded,
-      accentColor: AppModuleColors.warehouses,
-      expandChild: true,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          return AppDataTable(
-            key: tableKey,
-            height: constraints.maxHeight,
-            headerHeight: 44,
-            rowHeight: 44,
-            minimumColumnWidth: 112,
-            accentColor: AppModuleColors.warehouses,
-            columns: const [
-              AppTableColumn(label: 'رمز المادة'),
-              AppTableColumn(label: 'اسم المادة', flex: 1.6),
-              AppTableColumn(label: 'الكمية', numeric: true),
-            ],
-            rows: [
-              for (final item in items)
-                AppTableRow(
-                  rowKey:
-                      Key('transferStock-$title-${item.productCode}'),
-                  selected: item.productCode == selectedProductCode,
-                  onTap: onSelected == null
-                      ? null
-                      : () => onSelected!(item.productCode),
-                  cells: [
-                    Text(item.productCode),
-                    Text(item.productName),
-                    Text(AppFormatters.quantity(item.quantity)),
-                  ],
-                ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _AvailableQuantity extends StatelessWidget {
-  const _AvailableQuantity({required this.quantity});
-
-  final int quantity;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      key: const Key('inventoryTransferAvailableQuantity'),
-      constraints: const BoxConstraints(
-        minHeight: AppControlHeights.large,
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.neutralSurface,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Text(
-            'المتوفر في مخزن المصدر',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            AppFormatters.quantity(quantity),
-            textAlign: TextAlign.center,
-            style: AppTypography.fieldText.copyWith(
-              color: AppModuleColors.warehouses,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _TransferHistoryTable extends StatefulWidget {
   const _TransferHistoryTable({
     required this.entries,
@@ -921,6 +1095,7 @@ List<WarehouseTransferRecord> _seedHistory(List<Warehouse> warehouses) {
       toWarehouseName: second.name,
       lines: [
         WarehouseTransferLine(
+          itemId: 'preview-item-1003',
           productCode: 'P-1003',
           productName: 'ورق تصوير A4',
           quantity: 20,
@@ -937,11 +1112,13 @@ List<WarehouseTransferRecord> _seedHistory(List<Warehouse> warehouses) {
       toWarehouseName: first.name,
       lines: [
         WarehouseTransferLine(
+          itemId: 'preview-item-1002',
           productCode: 'P-1002',
           productName: 'حبر طابعة أسود',
           quantity: 5,
         ),
         WarehouseTransferLine(
+          itemId: 'preview-item-1004',
           productCode: 'P-1004',
           productName: 'آلة حاسبة مكتبية',
           quantity: 2,

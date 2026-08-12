@@ -222,6 +222,67 @@ void main() {
     expect(await warehouses.getTransfers(), hasLength(historyBefore.length));
   });
 
+  test('a failing multi-line reversal leaves every balance and history intact',
+      () async {
+    final repositories = AppRepositories.demo();
+    final warehouses = repositories.warehouses;
+    final sourceId = EntityId('warehouse-001');
+    final destinationId = EntityId('warehouse-002');
+    final original = await warehouses.transfer(
+      InventoryTransferDraft(
+        fromWarehouseId: sourceId,
+        toWarehouseId: destinationId,
+        lines: [
+          InventoryTransferLine(
+            itemId: EntityId('item-001'),
+            quantity: WholeQuantity(2),
+          ),
+          InventoryTransferLine(
+            itemId: EntityId('item-002'),
+            quantity: WholeQuantity(3),
+          ),
+        ],
+      ),
+    );
+
+    await warehouses.transfer(
+      InventoryTransferDraft(
+        fromWarehouseId: destinationId,
+        toWarehouseId: EntityId('warehouse-003'),
+        lines: [
+          InventoryTransferLine(
+            itemId: EntityId('item-002'),
+            quantity: WholeQuantity(3),
+          ),
+        ],
+      ),
+    );
+
+    final sourceBefore = await warehouses.getInventory(sourceId);
+    final destinationBefore = await warehouses.getInventory(destinationId);
+    final historyBefore = await warehouses.getTransfers();
+
+    await expectLater(
+      warehouses.reverseTransfer(original.id),
+      throwsStateError,
+    );
+
+    expect(
+      _inventoryValues(await warehouses.getInventory(sourceId)),
+      _inventoryValues(sourceBefore),
+    );
+    expect(
+      _inventoryValues(await warehouses.getInventory(destinationId)),
+      _inventoryValues(destinationBefore),
+    );
+    final historyAfter = await warehouses.getTransfers();
+    expect(historyAfter, hasLength(historyBefore.length));
+    expect(
+      historyAfter.where((entry) => entry.reversalOfId == original.id),
+      isEmpty,
+    );
+  });
+
   test('queued item deletion cannot orphan a concurrently created invoice',
       () async {
     final repositories = AppRepositories.demo();

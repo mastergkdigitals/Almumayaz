@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:erp/app/app.dart';
 import 'package:erp/core/app_state/app_repositories.dart';
 import 'package:erp/core/design/app_design_system.dart';
 import 'package:erp/core/domain/business_values.dart';
 import 'package:erp/features/warehouses/domain/warehouse.dart';
 import 'package:erp/features/warehouses/presentation/warehouses_controller.dart';
+import 'package:erp/features/warehouses/presentation/widgets/inventory_transfer_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -25,6 +28,10 @@ void main() {
     expect(
       controller.inventoryFor('warehouse-001').first.stockQuantity,
       const StockQuantity(18),
+    );
+    expect(
+      controller.inventoryFor('warehouse-001').first.itemEntityId,
+      EntityId('item-001'),
     );
     expect(controller.materialCountFor('warehouse-001'), 4);
     expect(controller.totalQuantityFor('warehouse-001'), 227);
@@ -62,9 +69,9 @@ void main() {
     final transferred = await controller.transferInventory(
       fromWarehouseId: 'warehouse-001',
       toWarehouseId: 'warehouse-002',
-      quantitiesByProductCode: {
-        'P-1001': 3,
-        'P-1002': 4,
+      quantitiesByItemId: {
+        'item-001': 3,
+        'item-002': 4,
       },
     );
 
@@ -95,7 +102,15 @@ void main() {
       await controller.transferInventory(
         fromWarehouseId: 'warehouse-001',
         toWarehouseId: 'warehouse-002',
-        quantitiesByProductCode: {'P-1001': 999},
+        quantitiesByItemId: {'item-001': 999},
+      ),
+      isFalse,
+    );
+    expect(
+      await controller.transferInventory(
+        fromWarehouseId: 'warehouse-001',
+        toWarehouseId: 'warehouse-002',
+        quantitiesByItemId: {'P-1001': 1},
       ),
       isFalse,
     );
@@ -110,6 +125,11 @@ void main() {
     expect(
       controller.state.transferRecords.first.lines,
       hasLength(2),
+    );
+    expect(
+      controller.state.transferRecords.first.lines
+          .map((line) => line.itemId),
+      ['item-001', 'item-002'],
     );
 
     final originalId = controller.state.transferRecords.first.id;
@@ -298,7 +318,7 @@ void main() {
     );
   });
 
-  testWidgets('opens the Warehouse Transfer dialog with old structure',
+  testWidgets('creates one atomic multi-item transfer at 1280 by 720',
       (tester) async {
     await _openWarehouses(tester);
     await tester.binding.setSurfaceSize(const Size(1280, 720));
@@ -338,24 +358,45 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.byKey(const Key('inventoryTransferProductField')),
+      find.byKey(const Key('inventoryTransferLinesSection')),
       findsOneWidget,
     );
     expect(
-      find.byKey(const Key('inventoryTransferQuantityField')),
+      find.byKey(const Key('inventoryTransferLinesTable')),
       findsOneWidget,
     );
     expect(
-      find.byKey(const Key('inventoryTransferAvailableQuantity')),
+      find.byKey(const Key('inventoryTransferLinesHorizontalScroll')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('inventoryTransferLinesHeader')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('inventoryTransferLinesSummary')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('inventoryTransferLineRow-0')), findsOneWidget);
+    expect(
+      find.byKey(const Key('inventoryTransferLineItemField-0')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('inventoryTransferLineAvailableField-0')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('inventoryTransferLineQuantityField-0')),
       findsOneWidget,
     );
     expect(
       find.byKey(const Key('inventoryTransferSourceStockTable')),
-      findsOneWidget,
+      findsNothing,
     );
     expect(
       find.byKey(const Key('inventoryTransferDestinationStockTable')),
-      findsOneWidget,
+      findsNothing,
     );
     expect(
       find.byKey(const Key('inventoryTransferCreateTab')),
@@ -387,24 +428,141 @@ void main() {
     expect(destination.value, 'warehouse-002');
     expect(destination.options, hasLength(4));
 
-    final sourceStockTable = tester.widget<AppDataTable>(
-      find.byKey(const Key('inventoryTransferSourceStockTable')),
+    final linesTable = tester.widget<AppInvoiceFieldTable>(
+      find.ancestor(
+        of: find.byKey(const Key('inventoryTransferLinesTable')),
+        matching: find.byType(AppInvoiceFieldTable),
+      ),
     );
-    expect(sourceStockTable.accentColor, AppModuleColors.warehouses);
     expect(
-      sourceStockTable.columns.map((column) => column.label),
-      ['رمز المادة', 'اسم المادة', 'الكمية'],
+      linesTable.columns.map((column) => column.label),
+      ['ت', 'المادة', 'المتوفر', 'كمية النقل', ''],
     );
+    expect(linesTable.rowCount, 1);
+    expect(linesTable.rowHeight, 80);
     final executeButton = tester.widget<AppButton>(
       find.byKey(const Key('inventoryTransferExecuteButton')),
     );
     expect(executeButton.width, 200);
     expect(executeButton.onPressed, isNotNull);
+    expect(tester.takeException(), isNull);
 
     await tester.tap(
-      find.byKey(const Key('inventoryTransferHistoryTab')),
+      find.byKey(const Key('inventoryTransferExecuteButton')),
     );
     await tester.pump();
+    expect(find.text('أضف مادة واحدة مكتملة على الأقل'), findsOneWidget);
+
+    await _selectTransferItem(tester, rowId: 0, itemId: 'item-001');
+    await tester.enterText(
+      find.byKey(const Key('inventoryTransferLineQuantityField-0')),
+      '999',
+    );
+    await tester.pump();
+    expect(
+      _fieldText(
+        tester,
+        find.byKey(const Key('inventoryTransferLineAvailableField-0')),
+      ),
+      '18',
+    );
+    await tester.tap(
+      find.byKey(const Key('inventoryTransferExecuteButton')),
+    );
+    await tester.pump();
+    expect(
+      find.text(
+        'لا يمكن نقل طابعة ليزر لعدم كفاية الرصيد المخزني',
+      ),
+      findsOneWidget,
+    );
+    await tester.enterText(
+      find.byKey(const Key('inventoryTransferLineQuantityField-0')),
+      '3',
+    );
+    await tester.pump();
+
+    // Deleting the only meaningful row must clear it instead of doing nothing.
+    await tester.tap(
+      find.byKey(const Key('inventoryTransferLineDeleteButton-0')),
+    );
+    await tester.pump();
+    expect(find.byKey(const Key('inventoryTransferLineRow-0')), findsNothing);
+    expect(find.byKey(const Key('inventoryTransferLineRow-1')), findsOneWidget);
+
+    // A source change invalidates all drafted rows and starts from one blank row.
+    await _selectTransferItem(tester, rowId: 1, itemId: 'item-001');
+    await tester.enterText(
+      find.byKey(const Key('inventoryTransferLineQuantityField-1')),
+      '2',
+    );
+    tester
+        .widget<AppDropdownField<String>>(
+          find.byKey(const Key('inventoryTransferFromDropdown')),
+        )
+        .onChanged('warehouse-002');
+    await tester.pump();
+    expect(find.byKey(const Key('inventoryTransferLineRow-1')), findsNothing);
+    expect(find.byKey(const Key('inventoryTransferLineRow-2')), findsOneWidget);
+    expect(
+      _fieldText(
+        tester,
+        find.byKey(const Key('inventoryTransferLineItemField-2')),
+      ),
+      isEmpty,
+    );
+    tester
+        .widget<AppDropdownField<String>>(
+          find.byKey(const Key('inventoryTransferFromDropdown')),
+        )
+        .onChanged('warehouse-001');
+    await tester.pump();
+
+    await _selectTransferItem(tester, rowId: 3, itemId: 'item-001');
+    await tester.enterText(
+      find.byKey(const Key('inventoryTransferLineQuantityField-3')),
+      '3',
+    );
+    await tester.pump();
+    await tester.tap(
+      find.byKey(const Key('inventoryTransferLineAddButton')),
+    );
+    await tester.pump();
+    expect(find.byKey(const Key('inventoryTransferLineRow-4')), findsOneWidget);
+    expect(
+      _transferItemField(tester, 4).options.map((item) => item.itemId),
+      isNot(contains('item-001')),
+    );
+
+    await _selectTransferItem(tester, rowId: 4, itemId: 'item-002');
+    await tester.enterText(
+      find.byKey(const Key('inventoryTransferLineQuantityField-4')),
+      '4',
+    );
+    await tester.pump();
+    await tester.tap(
+      find.byKey(const Key('inventoryTransferLineDeleteButton-4')),
+    );
+    await tester.pump();
+    expect(find.byKey(const Key('inventoryTransferLineRow-4')), findsNothing);
+    await tester.tap(
+      find.byKey(const Key('inventoryTransferLineAddButton')),
+    );
+    await tester.pump();
+    await _selectTransferItem(tester, rowId: 5, itemId: 'item-002');
+    await tester.enterText(
+      find.byKey(const Key('inventoryTransferLineQuantityField-5')),
+      '4',
+    );
+    await tester.pump();
+    expect(find.text('2 مادة'), findsOneWidget);
+    expect(find.text('7'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(
+      find.byKey(const Key('inventoryTransferExecuteButton')),
+    );
+    await tester.pumpAndSettle();
 
     expect(
       find.byKey(const Key('inventoryTransferHistorySearchField')),
@@ -435,7 +593,7 @@ void main() {
     await tester.tap(
       find.byKey(const Key('inventoryTransferHistoryRefreshButton')),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(
       tester.widget<SnackBar>(
         find.byKey(const Key('appToast')),
@@ -470,16 +628,18 @@ void main() {
       ['رقم النقل', 'التاريخ', 'من مخزن', 'إلى مخزن', 'المواد'],
     );
 
-    await tester.tap(
-      find.byKey(const Key('inventoryTransferCreateTab')),
-    );
-    await tester.pump();
-    await tester.tap(
-      find.byKey(const Key('inventoryTransferExecuteButton')),
-    );
-    await tester.pumpAndSettle();
     expect(
       find.byKey(const Key('inventoryTransferHistory_105')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('inventoryTransferHistory_106')),
+      findsNothing,
+    );
+    expect(
+      find.text(
+        'P-1001 - طابعة ليزر (3)، P-1002 - حبر طابعة أسود (4)',
+      ),
       findsOneWidget,
     );
     final reverseButton = tester.widget<AppButton>(
@@ -509,6 +669,89 @@ void main() {
       find.byKey(const Key('inventoryTransferHistory_106')),
       findsOneWidget,
     );
+  });
+
+  testWidgets('cannot close the transfer dialog while a transfer is pending',
+      (tester) async {
+    final pendingTransfer = Completer<bool>();
+    Map<String, int>? submittedQuantities;
+    bool? dialogResult;
+    final warehouses = [
+      Warehouse(
+        id: 'source',
+        number: 1,
+        name: 'المخزن الرئيسي',
+        location: 'بغداد',
+        notes: '',
+      ),
+      Warehouse(
+        id: 'destination',
+        number: 2,
+        name: 'المخزن الفرعي',
+        location: 'بغداد',
+        notes: '',
+      ),
+    ];
+    final sourceItem = WarehouseInventoryItem(
+      id: 'balance-item-a',
+      itemId: 'item-a',
+      productCode: 'P-A',
+      productName: 'مادة الاختبار',
+      quantity: 10,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => TextButton(
+            key: const Key('openPendingTransferDialog'),
+            onPressed: () async {
+              dialogResult = await InventoryTransferDialog.show(
+                context,
+                warehouses: warehouses,
+                initialFromWarehouseId: 'source',
+                inventoryFor: (warehouseId) =>
+                    warehouseId == 'source' ? [sourceItem] : const [],
+                onTransfer: ({
+                  required String fromWarehouseId,
+                  required String toWarehouseId,
+                  required Map<String, int> quantitiesByItemId,
+                }) {
+                  submittedQuantities = Map.of(quantitiesByItemId);
+                  return pendingTransfer.future;
+                },
+              );
+            },
+            child: const Text('فتح النقل'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.byKey(const Key('openPendingTransferDialog')));
+    await tester.pumpAndSettle();
+    await _selectTransferItem(tester, rowId: 0, itemId: 'item-a');
+    await tester.enterText(
+      find.byKey(const Key('inventoryTransferLineQuantityField-0')),
+      '2',
+    );
+    await tester.tap(
+      find.byKey(const Key('inventoryTransferExecuteButton')),
+    );
+    await tester.pump();
+
+    expect(submittedQuantities, {'item-a': 2});
+    expect(find.byKey(const Key('appModuleDialogClose')), findsNothing);
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    expect(find.byKey(const Key('inventoryTransferDialog')), findsOneWidget);
+    expect(dialogResult, isNull);
+
+    pendingTransfer.complete(true);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('appModuleDialogClose')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('appModuleDialogClose')));
+    await tester.pumpAndSettle();
+    expect(dialogResult, isTrue);
   });
 
   testWidgets('guards unsaved warehouse data from system back',
@@ -560,4 +803,41 @@ InputDecoration _fieldDecoration(WidgetTester tester, Finder field) {
         find.descendant(of: field, matching: find.byType(InputDecorator)),
       )
       .decoration;
+}
+
+AppAutocompleteField<WarehouseInventoryItem> _transferItemField(
+  WidgetTester tester,
+  int rowId,
+) {
+  final field = find.byKey(Key('inventoryTransferLineItemField-$rowId'));
+  return tester.widget<AppAutocompleteField<WarehouseInventoryItem>>(
+    find.ancestor(
+      of: field,
+      matching: find.byType(
+        AppAutocompleteField<WarehouseInventoryItem>,
+      ),
+    ),
+  );
+}
+
+Future<void> _selectTransferItem(
+  WidgetTester tester, {
+  required int rowId,
+  required String itemId,
+}) async {
+  final field = _transferItemField(tester, rowId);
+  final item = field.options.singleWhere(
+    (candidate) => candidate.itemId == itemId,
+  );
+  field.onSelected(item);
+  await tester.pump();
+}
+
+String _fieldText(WidgetTester tester, Finder field) {
+  return tester
+      .widget<EditableText>(
+        find.descendant(of: field, matching: find.byType(EditableText)),
+      )
+      .controller
+      .text;
 }
