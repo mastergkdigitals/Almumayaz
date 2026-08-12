@@ -540,6 +540,10 @@ void main() {
       '4',
     );
     await tester.pump();
+    await tester.ensureVisible(
+      find.byKey(const Key('inventoryTransferLineDeleteButton-4')),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(
       find.byKey(const Key('inventoryTransferLineDeleteButton-4')),
     );
