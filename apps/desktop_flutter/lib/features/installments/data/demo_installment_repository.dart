@@ -9,14 +9,13 @@ class DemoInstallmentRepository
     extends InMemoryDemoRepository<InstallmentPlan>
     implements InstallmentRepository {
   DemoInstallmentRepository({
-    Iterable<InstallmentPlan> initialValues = const [],
+    super.initialValues = const [],
     required DemoInstallmentMutationEffects mutationEffects,
     required Future<SalesInvoice?> Function(EntityId salesInvoiceId)
         salesInvoiceLoader,
   })  : _mutationEffects = mutationEffects,
         _salesInvoiceLoader = salesInvoiceLoader,
         super(
-          initialValues: initialValues,
           idOf: (plan) => plan.id,
         ) {
     _validateOnePlanPerInvoice(createDemoSnapshot().values);
