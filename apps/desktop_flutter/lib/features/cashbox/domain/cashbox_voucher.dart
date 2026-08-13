@@ -10,6 +10,7 @@ enum CashboxVoucherType {
 enum CashboxVoucherSourceKind {
   salesInvoice,
   purchaseInvoice,
+  installmentPayment,
 }
 
 /// Immutable identity of a system-generated cashbox posting.

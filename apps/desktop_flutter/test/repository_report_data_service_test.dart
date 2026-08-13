@@ -14,7 +14,10 @@ void main() {
 
   setUp(() {
     repositories = AppRepositories.demo();
-    service = RepositoryReportDataService(repositories);
+    service = RepositoryReportDataService(
+      repositories,
+      clock: () => DateTime(2026, 8, 13),
+    );
   });
 
   test('all repository projections preserve their report column shapes',
@@ -161,15 +164,17 @@ void main() {
     );
     expect(debt.cells[8], '0');
     expect(debt.cells[9], '200');
-    expect(debt.cells[10], 'قائم');
+    expect(debt.cells[10], 'مستحق');
 
     final profits = await _snapshot(service, 'profits');
     final profit = profits.rows.firstWhere(
       (row) => row.id == 'phase4-report-sale:phase4-report-sale-line',
     );
     expect(profit.cells[9], '200');
-    expect(profit.cells[10], '-');
-    expect(profit.cells[13], 'غير متوفرة');
+    expect(profit.cells[10], '400,000');
+    expect(profit.cells[11], '-399,800');
+    expect(profit.cells[13], 'متوفرة');
+    expect(profit.cells[14], 'متوسط متحرك');
   });
 
   test('purchase mutations refresh purchase rows and current stock', () async {

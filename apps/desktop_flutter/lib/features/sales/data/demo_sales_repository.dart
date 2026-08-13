@@ -7,6 +7,16 @@ import 'demo_sales_mutation_effects.dart';
 typedef SalesReferenceExists = Future<bool> Function(EntityId id);
 typedef SalesReferenceLabel = Future<String?> Function(EntityId id);
 
+class DemoSalesStagedInstallmentReceipt {
+  const DemoSalesStagedInstallmentReceipt({
+    required this.values,
+    required this.invoice,
+  });
+
+  final Map<EntityId, SalesInvoice> values;
+  final SalesInvoice invoice;
+}
+
 class DemoSalesRepository extends InMemoryDemoRepository<SalesInvoice>
     implements SalesRepository {
   factory DemoSalesRepository({
@@ -194,6 +204,46 @@ class DemoSalesRepository extends InMemoryDemoRepository<SalesInvoice>
   @override
   Future<int> nextDocumentNumber() async {
     return _highestIssuedDocumentNumber + 1;
+  }
+
+  /// Stages the Sales projection of one installment receipt. The caller must
+  /// own the shared demo transaction and commit the returned snapshot only
+  /// after the Party and Cashbox projections have also staged successfully.
+  DemoSalesStagedInstallmentReceipt stageInstallmentReceipt({
+    required EntityId salesInvoiceId,
+    required Money amount,
+    required AuditTimestamp paidAt,
+    required Money balanceAfterPayment,
+  }) {
+    final invoice = getDemoValue(salesInvoiceId);
+    if (invoice == null) throw StateError('فاتورة البيع غير موجودة');
+    if (invoice.settlementKind != SalesSettlementKind.installments) {
+      throw StateError('فاتورة البيع المحددة ليست بنظام الأقساط');
+    }
+    if (!amount.isPositive || amount.currency != invoice.currency) {
+      throw StateError('مبلغ القسط أو عملته غير صحيح');
+    }
+    if (paidAt.localDate.compareTo(invoice.date) < 0) {
+      throw StateError('لا يمكن أن يسبق تاريخ التسديد تاريخ قائمة البيع');
+    }
+    if (balanceAfterPayment.currency != invoice.currency) {
+      throw StateError('عملة رصيد الزبون بعد التسديد غير صحيحة');
+    }
+    final updated = invoice.copyWith(
+      received: invoice.received + amount,
+      receivedAtSale: invoice.receivedAtSale,
+      installmentReceived: invoice.installmentReceived + amount,
+      balanceAfterInvoice: balanceAfterPayment,
+    );
+    final staged = createDemoSnapshot()..[updated.id] = updated;
+    return DemoSalesStagedInstallmentReceipt(
+      values: staged,
+      invoice: updated,
+    );
+  }
+
+  void commitSalesMutation(DemoSalesStagedInstallmentReceipt staged) {
+    commitDemoSnapshot(staged.values);
   }
 }
 

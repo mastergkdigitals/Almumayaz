@@ -81,10 +81,17 @@ ReportRowDefinition _profitRow(
   required Map<EntityId, Party> partyById,
   required Map<EntityId, Item> itemById,
   required Map<EntityId, Warehouse> warehouseById,
+  required SalesLineCostRecord? cost,
 }) {
   final party = partyById[invoice.customerId];
   final item = itemById[line.itemId];
   final warehouse = warehouseById[line.warehouseId];
+  final revenue = cost?.allocatedRevenue ?? line.total;
+  final totalCost = cost?.totalCost;
+  final profit = cost?.profit;
+  final margin = profit == null || revenue.isZero
+      ? null
+      : profit.minorUnits * 100 / revenue.minorUnits;
   return ReportRowDefinition(
     id: '${invoice.id.value}:${line.id.value}',
     date: invoice.date.value,
@@ -105,12 +112,13 @@ ReportRowDefinition _profitRow(
       _availableLabel(item?.name, line.itemNameSnapshot),
       '${line.quantity.value}',
       _money(line.netUnitPrice),
-      _money(line.total),
-      '-',
-      '-',
-      '-',
-      'غير متوفرة',
-      '-',
+      _money(revenue),
+      totalCost == null ? '-' : _money(totalCost),
+      profit == null ? '-' : _money(profit),
+      margin == null ? '-' : '${margin.toStringAsFixed(2)}%',
+      (cost?.availability ?? InventoryCostAvailability.unavailable)
+          .arabicLabel,
+      (cost?.method ?? InventoryCostMethod.unavailable).arabicLabel,
       invoice.currency.arabicName,
     ],
   );
@@ -257,11 +265,14 @@ ReportRowDefinition _debtRow(
   SalesInvoice invoice, {
   required int index,
   required Map<EntityId, Party> partyById,
+  required BusinessDate dueDate,
+  required BusinessDate today,
 }) {
   final remaining = invoice.total - invoice.received;
+  final status = dueDate.compareTo(today) < 0 ? 'متأخر' : 'مستحق';
   return ReportRowDefinition(
     id: 'debt:${invoice.id.value}',
-    date: invoice.date.value,
+    date: dueDate.value,
     filterValues: {
       'customer': invoice.customerId.value,
       'recordType': 'debt',
@@ -277,13 +288,61 @@ ReportRowDefinition _debtRow(
         partyById[invoice.customerId]?.name,
         invoice.customerNameSnapshot,
       ),
-      _date(invoice.date.value),
+      _date(dueDate.value),
       invoice.currency.arabicName,
       _money(invoice.total),
       _money(invoice.received),
       _money(remaining),
-      'قائم',
+      status,
       'رصيد قائم من قائمة مبيعات',
+    ],
+  );
+}
+
+ReportRowDefinition _installmentDebtRow(
+  SalesInvoice invoice,
+  InstallmentPlan plan,
+  InstallmentEntry entry, {
+  required int index,
+  required Map<EntityId, Party> partyById,
+  required BusinessDate today,
+}) {
+  final status = entry.isPaid
+      ? 'مدفوع'
+      : entry.dueDate.compareTo(today) < 0
+          ? 'متأخر'
+          : 'مستحق';
+  final paid = entry.isPaid
+      ? entry.amount
+      : Money.zero(plan.currency);
+  final remaining = entry.isPaid
+      ? Money.zero(plan.currency)
+      : entry.amount;
+  return ReportRowDefinition(
+    id: 'installment:${entry.id.value}',
+    date: entry.dueDate.value,
+    filterValues: {
+      'customer': plan.customerId.value,
+      'recordType': 'installment',
+      'currency': plan.currency.code,
+    },
+    searchTerms: [invoice.notes, entry.notes, invoice.searchDetailsSnapshot],
+    cells: [
+      '${index + 1}',
+      'قسط',
+      '${invoice.documentNumber}',
+      '${entry.number}',
+      _availableLabel(
+        partyById[plan.customerId]?.name,
+        invoice.customerNameSnapshot,
+      ),
+      _date(entry.dueDate.value),
+      plan.currency.arabicName,
+      _money(entry.amount),
+      _money(paid),
+      _money(remaining),
+      status,
+      entry.notes.isEmpty ? 'قسط قائمة مبيعات' : entry.notes,
     ],
   );
 }

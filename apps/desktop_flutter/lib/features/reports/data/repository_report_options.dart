@@ -55,6 +55,7 @@ const List<ReportFilterOption> _directionOptions = [
 const List<ReportFilterOption> _debtTypeOptions = [
   ReportFilterOption('all', 'الكل'),
   ReportFilterOption('debt', 'دين'),
+  ReportFilterOption('installment', 'قسط'),
 ];
 
 List<ReportFilterOption> _entityOptions<T>(

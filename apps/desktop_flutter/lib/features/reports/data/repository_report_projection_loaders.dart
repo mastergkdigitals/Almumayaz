@@ -93,15 +93,20 @@ extension _RepositoryReportProjectionLoaders
       _repositories.parties.getAll(),
       _repositories.items.getAll(),
       _repositories.warehouses.getAll(),
+      _repositories.inventoryCosts.getSalesLineCosts(),
     ]);
     final invoices = values[0] as List<SalesInvoice>;
     final parties = values[1] as List<Party>;
     final items = values[2] as List<Item>;
     final warehouses = values[3] as List<Warehouse>;
+    final lineCosts = values[4] as List<SalesLineCostRecord>;
     final partyById = {for (final party in parties) party.entityId: party};
     final itemById = {for (final item in items) item.entityId: item};
     final warehouseById = {
       for (final warehouse in warehouses) warehouse.entityId: warehouse,
+    };
+    final costByLineId = {
+      for (final cost in lineCosts) cost.salesLineId: cost,
     };
     final sorted = [...invoices]..sort(_compareSalesNewestFirst);
     final rows = <ReportRowDefinition>[];
@@ -115,6 +120,7 @@ extension _RepositoryReportProjectionLoaders
             partyById: partyById,
             itemById: itemById,
             warehouseById: warehouseById,
+            cost: costByLineId[line.id],
           ),
         );
       }
@@ -373,24 +379,77 @@ extension _RepositoryReportProjectionLoaders
     final values = await Future.wait([
       _repositories.sales.getAll(),
       _repositories.parties.getAll(),
+      _repositories.installments.getAll(),
+      _repositories.businessSettings.loadBusinessPolicies(),
     ]);
     final invoices = values[0] as List<SalesInvoice>;
     final parties = values[1] as List<Party>;
+    final plans = values[2] as List<InstallmentPlan>;
+    final policies = values[3] as BusinessPolicySettings;
     final partyById = {for (final party in parties) party.entityId: party};
-    final outstanding = invoices
-        .where((invoice) => invoice.total.compareTo(invoice.received) > 0)
+    final invoiceById = {for (final invoice in invoices) invoice.id: invoice};
+    final planInvoiceIds = {for (final plan in plans) plan.salesInvoiceId};
+    if (plans.any((plan) => invoiceById[plan.salesInvoiceId] == null) ||
+        invoices.any(
+          (invoice) =>
+              invoice.settlementKind == SalesSettlementKind.installments &&
+              !planInvoiceIds.contains(invoice.id),
+        )) {
+      throw StateError('توجد خطة أقساط أو قائمة بيع مرتبطة بسجل مفقود');
+    }
+    final today = BusinessDate.fromDateTime(_clock());
+    final creditInvoices = invoices
+        .where(
+          (invoice) =>
+              invoice.settlementKind == SalesSettlementKind.credit &&
+              invoice.total.compareTo(invoice.received) > 0,
+        )
         .toList()
       ..sort(_compareSalesNewestFirst);
+    final sortedPlans = [...plans]
+      ..sort((first, second) {
+        final firstInvoice = invoiceById[first.salesInvoiceId];
+        final secondInvoice = invoiceById[second.salesInvoiceId];
+        if (firstInvoice == null || secondInvoice == null) {
+          return first.id.value.compareTo(second.id.value);
+        }
+        return _compareSalesNewestFirst(firstInvoice, secondInvoice);
+      });
+    final rows = <ReportRowDefinition>[];
+    for (final invoice in creditInvoices) {
+      rows.add(
+        _debtRow(
+          invoice,
+          index: rows.length,
+          partyById: partyById,
+          dueDate: BusinessDate.fromDateTime(
+            invoice.date.value.add(
+              Duration(days: policies.defaultDebtDueDays),
+            ),
+          ),
+          today: today,
+        ),
+      );
+    }
+    for (final plan in sortedPlans) {
+      final invoice = invoiceById[plan.salesInvoiceId];
+      if (invoice == null) continue;
+      for (final entry in plan.entries) {
+        rows.add(
+          _installmentDebtRow(
+            invoice,
+            plan,
+            entry,
+            index: rows.length,
+            partyById: partyById,
+            today: today,
+          ),
+        );
+      }
+    }
 
     return ReportDataSnapshot(
-      rows: [
-        for (var index = 0; index < outstanding.length; index++)
-          _debtRow(
-            outstanding[index],
-            index: index,
-            partyById: partyById,
-          ),
-      ],
+      rows: rows,
       filterOptions: {
         'customer': _entityOptions(
           parties.where(_canBuy),

@@ -7,8 +7,8 @@ import '../../settings/domain/operational_master_data_repository.dart';
 import '../domain/cashbox_repository.dart';
 import '../domain/cashbox_voucher.dart';
 
-class DemoInvoiceCashboxPosting {
-  const DemoInvoiceCashboxPosting({
+class DemoSystemCashboxPosting {
+  const DemoSystemCashboxPosting({
     required this.source,
     required this.createdTimestamp,
     required this.type,
@@ -24,6 +24,9 @@ class DemoInvoiceCashboxPosting {
   final Money amount;
   final String notes;
 }
+
+/// Backwards-compatible name retained for invoice coordinators.
+typedef DemoInvoiceCashboxPosting = DemoSystemCashboxPosting;
 
 /// Fully validated Cashbox projection waiting for a synchronous commit.
 class DemoCashboxStagedMutation {
@@ -254,6 +257,14 @@ class DemoCashboxRepository extends InMemoryDemoRepository<CashboxVoucher>
   /// shared transaction runner and must commit with [commitCashboxMutation].
   Future<DemoCashboxStagedMutation> stageInvoicePosting(
     DemoInvoiceCashboxPosting posting,
+  ) =>
+      stageSystemPosting(posting);
+
+  /// Stages the single read-only Cashbox voucher owned by [posting.source].
+  /// Invoice receipts, purchase payments and installment settlements share
+  /// this path so source identity and issued-number retention stay uniform.
+  Future<DemoCashboxStagedMutation> stageSystemPosting(
+    DemoSystemCashboxPosting posting,
   ) async {
     final existing = _sourceVoucher(posting.source);
     if (posting.amount.isZero) {
@@ -262,7 +273,7 @@ class DemoCashboxRepository extends InMemoryDemoRepository<CashboxVoucher>
           : _stageRemove(existing.entityId);
     }
     if (posting.amount.isNegative) {
-      throw StateError('مبلغ قيد الفاتورة لا يمكن أن يكون سالباً');
+      throw StateError('مبلغ قيد الصندوق الآلي لا يمكن أن يكون سالباً');
     }
     final accounts = await _loadPostingAccount();
     final number = existing?.number ?? _highestIssuedNumber + 1;
@@ -304,11 +315,40 @@ class DemoCashboxRepository extends InMemoryDemoRepository<CashboxVoucher>
   /// numbers remain reserved after the posting is removed.
   DemoCashboxStagedMutation stageRemoveInvoicePosting(
     CashboxVoucherSource source,
+  ) =>
+      stageRemoveSystemPosting(source);
+
+  DemoCashboxStagedMutation stageRemoveSystemPosting(
+    CashboxVoucherSource source,
   ) {
     final existing = _sourceVoucher(source);
     return existing == null
         ? DemoCashboxStagedMutation._(values: createDemoSnapshot())
         : _stageRemove(existing.entityId);
+  }
+
+  /// Removes several source-owned vouchers and normalizes balances once.
+  /// Issued voucher numbers remain reserved by design.
+  DemoCashboxStagedMutation stageRemoveSystemPostings(
+    Iterable<CashboxVoucherSource> sources,
+  ) {
+    final sourceKeys = {
+      for (final source in sources) _sourceKey(source),
+    };
+    if (sourceKeys.isEmpty) {
+      return DemoCashboxStagedMutation._(values: createDemoSnapshot());
+    }
+    final staged = createDemoSnapshot();
+    staged.removeWhere((_, voucher) {
+      final source = voucher.source;
+      return source != null && sourceKeys.contains(_sourceKey(source));
+    });
+    return DemoCashboxStagedMutation._(
+      values: {
+        for (final voucher in _normalizeBalances(staged.values.toList()))
+          voucher.entityId: voucher,
+      },
+    );
   }
 
   /// Synchronous/no-fail final commit used by the invoice coordinator.
@@ -466,6 +506,9 @@ class DemoCashboxRepository extends InMemoryDemoRepository<CashboxVoucher>
       'cashbox-system-${source.kind.name}-${source.sourceId.value}',
     );
   }
+
+  String _sourceKey(CashboxVoucherSource source) =>
+      '${source.kind.name}\u001f${source.sourceId.value}';
 
   DemoCashboxStagedMutation _stageUpsert(
     CashboxVoucher value, {

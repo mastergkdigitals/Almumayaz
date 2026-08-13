@@ -61,12 +61,18 @@ class SalesInvoice {
     required Iterable<SalesInvoiceLine> lines,
     required this.invoiceDiscount,
     required this.received,
+    Money? receivedAtSale,
+    Money? installmentReceived,
     this.customerNameSnapshot = '',
     this.searchDetailsSnapshot = '',
     this.balanceAfterInvoice,
     this.driverName = '',
     this.notes = '',
-  }) : lines = List.unmodifiable(lines) {
+  })  : receivedAtSale = receivedAtSale ??
+            received - (installmentReceived ?? Money.zero(currency)),
+        installmentReceived =
+            installmentReceived ?? Money.zero(currency),
+        lines = List.unmodifiable(lines) {
     if (documentNumber < 1) {
       throw ArgumentError.value(documentNumber, 'documentNumber');
     }
@@ -88,9 +94,22 @@ class SalesInvoice {
       throw ArgumentError.value(invoiceDiscount, 'invoiceDiscount');
     }
     if (received.currency != currency ||
+        this.receivedAtSale.currency != currency ||
+        this.installmentReceived.currency != currency ||
         received.isNegative ||
+        this.receivedAtSale.isNegative ||
+        this.installmentReceived.isNegative ||
+        received != this.receivedAtSale + this.installmentReceived ||
         received.compareTo(total) > 0) {
       throw ArgumentError.value(received, 'received', 'Invalid received value');
+    }
+    if (settlementKind != SalesSettlementKind.installments &&
+        !this.installmentReceived.isZero) {
+      throw ArgumentError.value(
+        this.installmentReceived,
+        'installmentReceived',
+        'Only installment Sales can contain installment receipts',
+      );
     }
     if (settlementKind == SalesSettlementKind.cash && received != total) {
       throw ArgumentError.value(
@@ -122,7 +141,19 @@ class SalesInvoice {
   final SalesSettlementKind settlementKind;
   final List<SalesInvoiceLine> lines;
   final Money invoiceDiscount;
+
+  /// Aggregate amount received for the invoice, including later installment
+  /// settlements. Existing adapters can continue reading this field.
   final Money received;
+
+  /// Amount entered when the Sales invoice itself was saved. Only this amount
+  /// owns the invoice-level Cashbox source posting.
+  final Money receivedAtSale;
+
+  /// Sum of persisted installment settlements. Each entry owns a separate
+  /// Cashbox source posting, preventing the invoice posting from double-counting
+  /// later receipts.
+  final Money installmentReceived;
   final String customerNameSnapshot;
   final String searchDetailsSnapshot;
   final Money? balanceAfterInvoice;
@@ -142,6 +173,64 @@ class SalesInvoice {
         (invoiceDiscount.minorUnits * 10000 / subtotal.minorUnits).round();
     return Percentage.fromBasisPoints(
       basisPoints > 10000 ? 10000 : basisPoints,
+    );
+  }
+
+  SalesInvoice copyWith({
+    int? documentNumber,
+    BusinessDate? date,
+    int? minuteOfDay,
+    EntityId? customerId,
+    EntityId? defaultWarehouseId,
+    AppCurrency? currency,
+    ExchangeRate? exchangeRate,
+    SalesSettlementKind? settlementKind,
+    Iterable<SalesInvoiceLine>? lines,
+    Money? invoiceDiscount,
+    Money? received,
+    Money? receivedAtSale,
+    Money? installmentReceived,
+    String? customerNameSnapshot,
+    String? searchDetailsSnapshot,
+    Money? balanceAfterInvoice,
+    String? driverName,
+    String? notes,
+  }) {
+    final resolvedCurrency = currency ?? this.currency;
+    final changingCurrency = resolvedCurrency != this.currency;
+    final resolvedInstallmentReceived = installmentReceived ??
+        (changingCurrency
+            ? Money.zero(resolvedCurrency)
+            : this.installmentReceived);
+    final resolvedReceivedAtSale = receivedAtSale ??
+        (changingCurrency ? Money.zero(resolvedCurrency) : this.receivedAtSale);
+    final resolvedReceived = received ??
+        (resolvedReceivedAtSale.currency == resolvedCurrency &&
+                resolvedInstallmentReceived.currency == resolvedCurrency
+            ? resolvedReceivedAtSale + resolvedInstallmentReceived
+            : this.received);
+    return SalesInvoice(
+      id: id,
+      documentNumber: documentNumber ?? this.documentNumber,
+      date: date ?? this.date,
+      minuteOfDay: minuteOfDay ?? this.minuteOfDay,
+      customerId: customerId ?? this.customerId,
+      defaultWarehouseId: defaultWarehouseId ?? this.defaultWarehouseId,
+      currency: resolvedCurrency,
+      exchangeRate: exchangeRate ?? this.exchangeRate,
+      settlementKind: settlementKind ?? this.settlementKind,
+      lines: lines ?? this.lines,
+      invoiceDiscount: invoiceDiscount ?? this.invoiceDiscount,
+      received: resolvedReceived,
+      receivedAtSale: resolvedReceivedAtSale,
+      installmentReceived: resolvedInstallmentReceived,
+      customerNameSnapshot:
+          customerNameSnapshot ?? this.customerNameSnapshot,
+      searchDetailsSnapshot:
+          searchDetailsSnapshot ?? this.searchDetailsSnapshot,
+      balanceAfterInvoice: balanceAfterInvoice ?? this.balanceAfterInvoice,
+      driverName: driverName ?? this.driverName,
+      notes: notes ?? this.notes,
     );
   }
 }

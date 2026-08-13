@@ -123,7 +123,9 @@ class RepositoryPartyStatementService implements PartyStatementService {
             invoice.currency == query.currency)
           _purchaseMovement(invoice),
       for (final voucher in vouchers)
-        if (!voucher.isSystemGenerated)
+        if (!voucher.isSystemGenerated ||
+            voucher.source?.kind ==
+                CashboxVoucherSourceKind.installmentPayment)
           ..._cashboxMovements(voucher, query.currency),
     ];
     var recordedNet = Money.zero(query.currency);
@@ -206,7 +208,7 @@ class RepositoryPartyStatementService implements PartyStatementService {
         minute: invoice.minuteOfDay % Duration.minutesPerHour,
       ),
       debit: invoice.total,
-      credit: invoice.received,
+      credit: invoice.receivedAtSale,
       type: PartyStatementEntryType.sale,
       quantity: invoice.lines.fold<int>(
         0,

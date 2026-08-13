@@ -179,41 +179,20 @@ AppPurchaseInvoiceRowsCalculation calculatePurchaseInvoiceRows({
   // Prefer net value, then gross value, then quantity. The final equal
   // fallback keeps zero-value rows deterministic while excluding a trailing
   // empty row whenever any meaningful row exists.
-  late List<int> weights;
-  if (lineBaseTotal > 0) {
-    weights = lineTotals;
-  } else {
-    final grossTotal = grossTotals.fold<int>(
-      0,
-      (sum, value) => sum + (value < 0 ? 0 : value),
-    );
-    if (grossTotal > 0) {
-      weights = [for (final value in grossTotals) value < 0 ? 0 : value];
-    } else {
-      final totalQuantity = rows.fold<int>(
-        0,
-        (sum, row) =>
-            sum + (row.quantityValue < 0 ? 0 : row.quantityValue),
-      );
-      if (totalQuantity > 0) {
-        weights = [
-          for (final row in rows)
-            row.quantityValue < 0 ? 0 : row.quantityValue,
-        ];
-      } else {
-        weights = [
-          for (final row in rows)
-            row.isEmptyForDefaultWarehouse(defaultWarehouse) ? 0 : 1,
-        ];
-        if (weights.isNotEmpty &&
-            weights.every((weight) => weight == 0)) {
-          weights[0] = 1;
-        }
-      }
-    }
+  final included = [
+    for (final row in rows)
+      !row.isEmptyForDefaultWarehouse(defaultWarehouse),
+  ];
+  if (included.isNotEmpty && included.every((value) => !value)) {
+    included[0] = true;
   }
-
-  final allocatedTotals = _allocateMinorUnits(targetTotal, weights);
+  final allocatedTotals = allocateInvoiceTotalMinorUnits(
+    totalMinorUnits: targetTotal,
+    netLineMinorUnits: lineTotals,
+    grossLineMinorUnits: grossTotals,
+    quantities: [for (final row in rows) row.quantityValue],
+    includedLines: included,
+  );
   final calculatedRows = <AppPurchaseInvoiceTableRowData>[];
   for (var index = 0; index < rows.length; index++) {
     final row = rows[index];
@@ -259,42 +238,6 @@ AppPurchaseInvoiceRowsCalculation calculatePurchaseInvoiceRows({
     rows: List.unmodifiable(calculatedRows),
     totalCost: _formatMinorUnits(allocatedTotal, currencyCode),
   );
-}
-
-List<int> _allocateMinorUnits(int total, List<int> weights) {
-  final allocations = List<int>.filled(weights.length, 0);
-  if (total <= 0 || weights.isEmpty) return allocations;
-
-  final weightTotal = weights.fold<int>(
-    0,
-    (sum, weight) => sum + (weight < 0 ? 0 : weight),
-  );
-  if (weightTotal <= 0) return allocations;
-
-  final remainders = List<int>.filled(weights.length, 0);
-  var allocated = 0;
-  for (var index = 0; index < weights.length; index++) {
-    final weight = weights[index] < 0 ? 0 : weights[index];
-    final weightedTotal = total * weight;
-    allocations[index] = weightedTotal ~/ weightTotal;
-    remainders[index] = weightedTotal % weightTotal;
-    allocated += allocations[index];
-  }
-
-  final order = List<int>.generate(weights.length, (index) => index)
-    ..sort((left, right) {
-      final remainderOrder =
-          remainders[right].compareTo(remainders[left]);
-      return remainderOrder != 0 ? remainderOrder : left.compareTo(right);
-    });
-  // Largest-remainder distribution preserves every final minor unit. Stable
-  // row order resolves ties, so recalculation never moves the residual at
-  // random between otherwise equal rows.
-  final residual = total - allocated;
-  for (var offset = 0; offset < residual; offset++) {
-    allocations[order[offset]]++;
-  }
-  return allocations;
 }
 
 bool _isZeroOrBlank(String value) {

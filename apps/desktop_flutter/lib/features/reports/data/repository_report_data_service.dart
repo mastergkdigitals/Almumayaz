@@ -4,12 +4,15 @@ import '../../../core/domain/business_values.dart';
 import '../../cashbox/domain/cashbox_repository.dart';
 import '../../cashbox/domain/cashbox_voucher.dart';
 import '../../items/domain/item.dart';
+import '../../installments/domain/installment_plan.dart';
 import '../../parties/domain/party.dart';
 import '../../parties/domain/party_repository.dart';
 import '../../purchases/domain/purchase_invoice.dart';
 import '../../sales/domain/sales_invoice.dart';
 import '../../settings/domain/operational_master_data.dart';
+import '../../settings/domain/settings_models.dart';
 import '../../warehouses/domain/inventory_records.dart';
+import '../../warehouses/domain/inventory_cost.dart';
 import '../../warehouses/domain/warehouse.dart';
 import '../application/report_data_snapshot_service.dart';
 import '../application/report_rows_service.dart';
@@ -25,9 +28,13 @@ part 'repository_report_row_mappers.dart';
 /// shared repository state, including invoice effects and warehouse transfers.
 class RepositoryReportDataService
     implements ReportDataSnapshotService, ReportRowsService {
-  const RepositoryReportDataService(this._repositories);
+  RepositoryReportDataService(
+    this._repositories, {
+    DateTime Function()? clock,
+  }) : _clock = clock ?? DateTime.now;
 
   final AppRepositories _repositories;
+  final DateTime Function() _clock;
 
   @override
   Future<List<ReportRowDefinition>> load(ReportRowsRequest request) async {

@@ -312,40 +312,71 @@ extension _SalesScreenOutputPart on _SalesScreenState {
         );
         return;
       }
-      final remaining =
-          AppFormatters.parseNumber(_remainingIqdController.text) ?? 0;
-      if (remaining <= 0) {
-        AppToast.showInfo(
+      final selectedInvoice = _selectedInvoice;
+      if (selectedInvoice == null) return;
+      final plan = await _store!.repositories.installments
+          .getBySalesInvoiceId(selectedInvoice.entityId);
+      if (!mounted) return;
+      if (plan == null) {
+        AppToast.showError(
           context,
-          'لا يوجد مبلغ متبقٍ لإنشاء جدول أقساط',
+          'خطة الأقساط المرتبطة بقائمة البيع غير موجودة',
         );
         return;
       }
-
-      final schedule = InstallmentScheduleBuilder.build(
-        remaining: remaining,
-        currencyCode: _currency,
-        invoiceDate: _invoiceDateTime,
-      );
+      if (plan.remaining.isZero) {
+        AppToast.showInfo(
+          context,
+          'تم تسديد جميع أقساط هذه القائمة',
+        );
+      }
       final entries = <AppInstallmentScheduleEntry>[
-        for (final installment in schedule)
+        for (final installment in plan.entries)
           AppInstallmentScheduleEntry(
+            entryId: installment.id.value,
             number: installment.number,
-            dueDate: installment.dueDate,
-            amount: installment.amount,
-            status: 'غير مسدد',
+            dueDate: installment.dueDate.value,
+            amount: installment.amount.majorUnits,
+            status: installment.isPaid ? 'مدفوع' : 'غير مسدد',
+            isPaid: installment.isPaid,
           ),
       ];
       final customerName = _customerNameController.text.trim();
-      await AppInstallmentScheduleDialog.show(
+      final settlement = await AppInstallmentScheduleDialog.show(
         context,
         invoiceNumber: _invoiceNumberController.text,
         customerName:
             customerName.isEmpty ? 'زبون غير محدد' : customerName,
         currencyCode: _currency,
         entries: entries,
+        allowSettlement: _allowsSalesAction(PermissionAction.update),
         accentColor: AppModuleColors.sales,
       );
+      if (!mounted || settlement == null) return;
+      final confirmed = await AppDialogs.confirm(
+        context: context,
+        title: 'تسديد القسط',
+        message: 'هل تريد تسجيل تسديد القسط المحدد بالكامل؟',
+        confirmLabel: 'تسديد',
+      );
+      if (!mounted || !confirmed) return;
+      await _store!.repositories.installments.settleEntry(
+        entryId: EntityId(settlement.entryId),
+        paidAt: AuditTimestamp(_installmentPaymentClock()),
+        notes: settlement.notes,
+      );
+      _store!.markDataChanged();
+      await _loadData(
+        showLoading: false,
+        selectEntityId: selectedInvoice.entityId,
+      );
+      if (mounted) AppToast.showSuccess(context, 'تم تسديد القسط');
+    } on StateError catch (error) {
+      if (mounted) AppToast.showError(context, error.message);
+    } catch (_) {
+      if (mounted) {
+        AppToast.showError(context, 'تعذر تسديد القسط. حاول مرة أخرى.');
+      }
     } finally {
       if (mounted) {
         _setSalesState(() => _isDocumentActionRunning = false);

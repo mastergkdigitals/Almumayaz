@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../app_formatters.dart';
 import '../app_tokens.dart';
+import '../../domain/invoice_value_allocator.dart';
 import 'app_button.dart';
 import 'app_autocomplete_field.dart';
 import 'app_dropdown_field.dart';

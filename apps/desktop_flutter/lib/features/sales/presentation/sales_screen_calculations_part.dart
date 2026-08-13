@@ -13,6 +13,7 @@ extension _SalesScreenCalculationsPart on _SalesScreenState {
   }
 
   void _changeDate(DateTime value) {
+    if (_hasSettledInstallments) return;
     _setSalesState(() {
       _invoiceDateTime = DateTime(
         value.year,
@@ -34,6 +35,7 @@ extension _SalesScreenCalculationsPart on _SalesScreenState {
   }
 
   void _changeCustomerText(String _) {
+    if (_hasSettledInstallments) return;
     if (_selectedCustomerId == null) return;
     _setSalesState(() {
       _selectedCustomerId = null;
@@ -42,6 +44,7 @@ extension _SalesScreenCalculationsPart on _SalesScreenState {
   }
 
   void _selectCustomer(Party party) {
+    if (_hasSettledInstallments) return;
     _setSalesState(() {
       _selectedCustomerId = party.entityId;
       _refreshSelectionState();
@@ -49,6 +52,7 @@ extension _SalesScreenCalculationsPart on _SalesScreenState {
   }
 
   void _changeSaleType(String value) {
+    if (_hasSettledInstallments) return;
     if (_saleType == value) return;
     _setSalesState(() {
       if (_saleType != 'نقدي' && value == 'نقدي') {
@@ -61,6 +65,7 @@ extension _SalesScreenCalculationsPart on _SalesScreenState {
   }
 
   void _changeCurrency(String value) {
+    if (_hasSettledInstallments) return;
     if (_currency == value) return;
     _setSalesState(() {
       final wasApplyingFormState = _isApplyingFormState;
@@ -93,6 +98,7 @@ extension _SalesScreenCalculationsPart on _SalesScreenState {
   }
 
   void _changeItems(List<AppSalesInvoiceTableRowData> items) {
+    if (_hasSettledInstallments) return;
     _setSalesState(() {
       _activeItems = List<AppSalesInvoiceTableRowData>.unmodifiable(
         items.map(
@@ -105,6 +111,7 @@ extension _SalesScreenCalculationsPart on _SalesScreenState {
   }
 
   void _changeInvoiceDiscount(String _) {
+    if (_hasSettledInstallments) return;
     _setSalesState(() {
       _discountInputSource = _InvoiceDiscountInputSource.amount;
       _syncCalculatedFields();
@@ -113,6 +120,7 @@ extension _SalesScreenCalculationsPart on _SalesScreenState {
   }
 
   void _changeDiscountPercentage(String _) {
+    if (_hasSettledInstallments) return;
     _setSalesState(() {
       _discountInputSource = _InvoiceDiscountInputSource.percentage;
       _syncCalculatedFields();
@@ -121,7 +129,7 @@ extension _SalesScreenCalculationsPart on _SalesScreenState {
   }
 
   void _changeReceived(String value) {
-    if (_saleType == 'نقدي') return;
+    if (_saleType == 'نقدي' || _hasSettledInstallments) return;
     _setSalesState(() {
       _nonCashReceivedText = value;
       _syncCalculatedFields();
@@ -205,16 +213,22 @@ extension _SalesScreenCalculationsPart on _SalesScreenState {
           AppFormatters.moneyByCurrency(received, _currency),
         );
       } else {
-        final parsedReceived = AppFormatters.parseNumber(
-          _nonCashReceivedText,
-        );
+        final settledInvoice = _hasSettledInstallments
+            ? _selectedInvoice!.source
+            : null;
+        final parsedReceived = settledInvoice?.received.majorUnits ??
+            AppFormatters.parseNumber(_nonCashReceivedText);
         final requestedReceived = parsedReceived ?? 0;
-        received = requestedReceived < 0
-            ? 0
-            : requestedReceived > total
-                ? total
-                : requestedReceived;
-        if (parsedReceived == null || received != requestedReceived) {
+        received = settledInvoice != null
+            ? requestedReceived
+            : requestedReceived < 0
+                ? 0
+                : requestedReceived > total
+                    ? total
+                    : requestedReceived;
+        if (settledInvoice != null ||
+            parsedReceived == null ||
+            received != requestedReceived) {
           _nonCashReceivedText = AppFormatters.moneyByCurrency(
             received,
             _currency,

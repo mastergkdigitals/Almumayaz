@@ -98,14 +98,13 @@ abstract final class ReportSummaryCalculator {
       final costedRows = currencyRows
           .where((row) => _numberAt(row, 10) != null)
           .toList(growable: false);
-      final sales = _sumColumn(currencyRows, 9);
       final costedSales = _sumColumn(costedRows, 9);
       final cost = _sumColumn(costedRows, 10);
       final profit = _sumColumn(costedRows, 11);
       final suffix = currency == 'IQD' ? 'دينار' : 'دولار';
       final decimals = currency == 'IQD' ? 0 : 2;
       values['المبيعات المحتسبة - $suffix'] =
-          _format(sales, decimals: decimals);
+          _format(costedSales, decimals: decimals);
       if (currencyRows.isNotEmpty && costedRows.isEmpty) {
         values['التكلفة - $suffix'] = 'غير متوفرة';
         values['الربح - $suffix'] = 'غير متوفر';

@@ -1,4 +1,6 @@
-import 'dart:math' as math;
+import '../../../core/domain/business_values.dart';
+import '../../installments/application/installment_schedule_builder.dart'
+    as typed;
 
 class InstallmentScheduleItem {
   const InstallmentScheduleItem({
@@ -20,56 +22,33 @@ abstract final class InstallmentScheduleBuilder {
     int installmentCount = 4,
   }) {
     if (remaining <= 0 || installmentCount <= 0) return const [];
-
-    final minorUnitFactor =
-        currencyCode.toUpperCase() == 'USD' ? 100 : 1;
-    final totalMinorUnits = (remaining * minorUnitFactor).round();
-    if (totalMinorUnits <= 0) return const [];
-
-    final effectiveInstallmentCount = installmentCount < totalMinorUnits
-        ? installmentCount
-        : totalMinorUnits;
-    final regularMinorUnits =
-        totalMinorUnits ~/ effectiveInstallmentCount;
-    return List<InstallmentScheduleItem>.unmodifiable([
-      for (var index = 0; index < effectiveInstallmentCount; index++)
+    final currency = AppCurrency.parse(currencyCode);
+    final typedRemaining = Money.fromMajor(remaining, currency);
+    if (typedRemaining.isZero) return const [];
+    final plan = typed.InstallmentScheduleBuilder.build(
+      planId: EntityId('compatibility-installment-plan'),
+      salesInvoiceId: EntityId('compatibility-sales-invoice'),
+      customerId: EntityId('compatibility-customer'),
+      remaining: typedRemaining,
+      invoiceDate: BusinessDate.fromDateTime(invoiceDate),
+      installmentCount: installmentCount,
+    );
+    return List.unmodifiable([
+      for (final entry in plan.entries)
         InstallmentScheduleItem(
-          number: index + 1,
-          dueDate: _addClampedMonths(invoiceDate, index + 1),
-          amount: _fromMinorUnits(
-            index == effectiveInstallmentCount - 1
-                ? totalMinorUnits -
-                    regularMinorUnits * (effectiveInstallmentCount - 1)
-                : regularMinorUnits,
-            minorUnitFactor,
-          ),
+          number: entry.number,
+          dueDate: entry.dueDate.atTime(
+            hour: invoiceDate.hour,
+            minute: invoiceDate.minute,
+            second: invoiceDate.second,
+          ).add(
+                Duration(
+                  milliseconds: invoiceDate.millisecond,
+                  microseconds: invoiceDate.microsecond,
+                ),
+              ),
+          amount: entry.amount.majorUnits,
         ),
     ]);
-  }
-
-  static num _fromMinorUnits(int value, int factor) {
-    return factor == 1 ? value : value / factor;
-  }
-
-  static DateTime _addClampedMonths(DateTime date, int months) {
-    final zeroBasedTargetMonth =
-        date.year * 12 + date.month - 1 + months;
-    final targetYear = zeroBasedTargetMonth ~/ 12;
-    final targetMonth = zeroBasedTargetMonth % 12 + 1;
-    final lastDayOfTargetMonth = DateTime(
-      targetYear,
-      targetMonth + 1,
-      0,
-    ).day;
-    return DateTime(
-      targetYear,
-      targetMonth,
-      math.min(date.day, lastDayOfTargetMonth),
-      date.hour,
-      date.minute,
-      date.second,
-      date.millisecond,
-      date.microsecond,
-    );
   }
 }

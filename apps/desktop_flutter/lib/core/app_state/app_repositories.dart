@@ -3,6 +3,10 @@ import '../../features/cashbox/domain/cashbox_repository.dart';
 import '../../features/cashbox/domain/cashbox_voucher.dart';
 import '../../features/items/data/demo_item_repository.dart';
 import '../../features/items/domain/item_repository.dart';
+import '../../features/installments/application/installment_schedule_builder.dart';
+import '../../features/installments/data/demo_installment_repository.dart';
+import '../../features/installments/domain/installment_plan.dart';
+import '../../features/installments/domain/installment_repository.dart';
 import '../../features/parties/data/demo_party_repository.dart';
 import '../../features/parties/domain/party_repository.dart';
 import '../../features/purchases/data/demo_purchase_repository.dart';
@@ -16,6 +20,8 @@ import '../../features/settings/domain/operational_master_data.dart';
 import '../../features/settings/domain/operational_master_data_repository.dart';
 import '../../features/settings/domain/settings_repository.dart';
 import '../../features/warehouses/data/demo_warehouse_repository.dart';
+import '../../features/warehouses/data/demo_inventory_cost_repository.dart';
+import '../../features/warehouses/domain/inventory_cost_repository.dart';
 import '../../features/warehouses/domain/warehouse_repository.dart';
 import '../data/demo_transaction_runner.dart';
 import '../domain/business_values.dart';
@@ -31,9 +37,11 @@ class AppRepositories {
     required this.parties,
     required this.items,
     required this.warehouses,
+    required this.inventoryCosts,
     required this.cashbox,
     required this.sales,
     required this.purchases,
+    required this.installments,
     required this.businessSettings,
     required this.deviceSettings,
     required this.operationalMasterData,
@@ -45,12 +53,15 @@ class AppRepositories {
     late DemoPartyRepository parties;
     late DemoItemRepository items;
     late DemoWarehouseRepository warehouses;
+    late DemoInventoryCostRepository inventoryCosts;
     late DemoCashboxRepository cashbox;
     late DemoSalesRepository sales;
     late DemoPurchaseRepository purchases;
+    late DemoInstallmentRepository installments;
     late DemoBusinessSettingsRepository businessSettings;
     final seededSales = demoSalesInvoices();
     final seededPurchases = demoPurchaseInvoices();
+    final seededTransfers = demoInventoryTransfers();
     final seededManualCashbox = demoCashboxVouchers();
 
     masterData = DemoOperationalMasterDataRepository(
@@ -120,8 +131,15 @@ class AppRepositories {
       },
     );
 
+    inventoryCosts = DemoInventoryCostRepository(
+      purchases: seededPurchases,
+      sales: seededSales,
+      transfers: seededTransfers,
+    );
     warehouses = DemoWarehouseRepository(
+      initialTransfers: seededTransfers,
       transactionRunner: transactionRunner,
+      inventoryCostEffects: inventoryCosts,
       itemExists: (itemId) async => await items.getById(itemId) != null,
       isExternallyReferenced: (warehouseId) async {
         return (await sales.getAll()).any(
@@ -182,6 +200,9 @@ class AppRepositories {
       warehouses: warehouses,
       cashbox: cashbox,
       businessSettings: businessSettings,
+      inventoryCosts: inventoryCosts,
+      sales: () => sales,
+      installments: () => installments,
     );
 
     sales = DemoSalesRepository(
@@ -202,14 +223,21 @@ class AppRepositories {
       partyLabelOf: (id) async => (await parties.getById(id))?.name,
       itemLabelOf: (id) async => (await items.getById(id))?.name,
     );
+    installments = DemoInstallmentRepository(
+      initialValues: _demoInstallmentPlans(seededSales),
+      mutationEffects: invoiceEffects,
+      salesInvoiceLoader: sales.getById,
+    );
 
     return AppRepositories(
       parties: parties,
       items: items,
       warehouses: warehouses,
+      inventoryCosts: inventoryCosts,
       cashbox: cashbox,
       sales: sales,
       purchases: purchases,
+      installments: installments,
       businessSettings: businessSettings,
       deviceSettings: DemoDeviceSettingsRepository(),
       operationalMasterData: masterData,
@@ -219,12 +247,30 @@ class AppRepositories {
   final PartyRepository parties;
   final ItemRepository items;
   final WarehouseRepository warehouses;
+  final InventoryCostRepository inventoryCosts;
   final CashboxRepository cashbox;
   final SalesRepository sales;
   final PurchaseRepository purchases;
+  final InstallmentRepository installments;
   final BusinessSettingsRepository businessSettings;
   final DeviceSettingsRepository deviceSettings;
   final OperationalMasterDataRepository operationalMasterData;
+}
+
+List<InstallmentPlan> _demoInstallmentPlans(
+  Iterable<SalesInvoice> invoices,
+) {
+  return List.unmodifiable([
+    for (final invoice in invoices)
+      if (invoice.settlementKind == SalesSettlementKind.installments)
+        InstallmentScheduleBuilder.build(
+          planId: EntityId('installment-plan-${invoice.id.value}'),
+          salesInvoiceId: invoice.id,
+          customerId: invoice.customerId,
+          remaining: invoice.total - invoice.receivedAtSale,
+          invoiceDate: invoice.date,
+        ),
+  ]);
 }
 
 List<CashboxVoucher> _demoInvoiceCashboxPostings({
@@ -235,7 +281,7 @@ List<CashboxVoucher> _demoInvoiceCashboxPostings({
 }) {
   final postings = <_SeededInvoicePosting>[
     for (final invoice in sales)
-      if (!invoice.received.isZero)
+      if (!invoice.receivedAtSale.isZero)
         _SeededInvoicePosting(
           source: CashboxVoucherSource(
             kind: CashboxVoucherSourceKind.salesInvoice,
@@ -248,7 +294,7 @@ List<CashboxVoucher> _demoInvoiceCashboxPostings({
           ),
           type: CashboxVoucherType.receipt,
           exchangeRate: invoice.exchangeRate,
-          amount: invoice.received,
+          amount: invoice.receivedAtSale,
           notes: 'قيد آلي لفاتورة بيع رقم ${invoice.documentNumber}',
         ),
     for (final invoice in purchases)

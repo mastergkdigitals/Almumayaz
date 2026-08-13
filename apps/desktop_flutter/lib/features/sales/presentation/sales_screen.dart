@@ -18,7 +18,6 @@ import '../../parties/domain/party_repository.dart';
 import '../../permissions/domain/permission_models.dart';
 import '../../settings/domain/settings_models.dart';
 import '../../warehouses/domain/warehouse.dart';
-import '../application/installment_schedule_builder.dart';
 import '../domain/sales_invoice.dart';
 
 part 'sales_screen_calculations_part.dart';
@@ -143,6 +142,7 @@ class _SalesScreenState extends State<SalesScreen> {
   Future<bool>? _pendingDiscardConfirmation;
   AppStore? _store;
   late PartyStatementService _statementService;
+  final DateTime Function() _installmentPaymentClock = DateTime.now;
   InvoiceEditorCoordinator<_SalesInvoiceViewData>? _coordinator;
   AppDataState<List<_SalesInvoiceViewData>> _invoiceState =
       const AppDataState.loading();
@@ -169,6 +169,9 @@ class _SalesScreenState extends State<SalesScreen> {
 
   bool _allowsItemCreate() =>
       _store?.allowsFeatureAction('items', PermissionAction.create) ?? false;
+
+  bool get _hasSettledInstallments =>
+      _selectedInvoice?.source.installmentReceived.isPositive ?? false;
 
   Future<void> _createCustomer() async {
     final store = _store;
@@ -521,6 +524,26 @@ class _SalesScreenState extends State<SalesScreen> {
         ),
       );
     }
+    final selectedSource = _selectedInvoice?.entityId == entityId
+        ? _selectedInvoice!.source
+        : null;
+    final installmentReceived =
+        selectedSource?.installmentReceived ?? Money.zero(currency);
+    final aggregateReceived = Money.parse(
+      _receivedController.text,
+      currency,
+    );
+    if (selectedSource != null && installmentReceived.isPositive) {
+      if (currency != selectedSource.currency ||
+          aggregateReceived != selectedSource.received) {
+        throw StateError(
+          'لا يمكن تغيير المقبوض بعد تسديد قسط من القائمة',
+        );
+      }
+    }
+    final receivedAtSale = installmentReceived.isPositive
+        ? selectedSource!.receivedAtSale
+        : aggregateReceived - installmentReceived;
     return SalesInvoice(
       id: entityId,
       documentNumber: int.parse(_invoiceNumberController.text),
@@ -538,7 +561,9 @@ class _SalesScreenState extends State<SalesScreen> {
       },
       lines: lines,
       invoiceDiscount: Money.parse(_invoiceDiscountController.text, currency),
-      received: Money.parse(_receivedController.text, currency),
+      received: aggregateReceived,
+      receivedAtSale: receivedAtSale,
+      installmentReceived: installmentReceived,
       balanceAfterInvoice:
           Money.parse(_currentBalanceIqdController.text, currency),
       driverName: _driverNameController.text.trim(),

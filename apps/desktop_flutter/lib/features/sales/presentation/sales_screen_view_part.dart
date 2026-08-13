@@ -87,6 +87,7 @@ extension _SalesScreenViewPart on _SalesScreenState {
                     value: _invoiceDateTime,
                     accentColor: AppModuleColors.sales,
                     textDirection: TextDirection.rtl,
+                    enabled: !_hasSettledInstallments,
                     onChanged: _changeDate,
                   ),
                   AppTimeField(
@@ -121,6 +122,7 @@ extension _SalesScreenViewPart on _SalesScreenState {
                     textAlign: TextAlign.right,
                     menuTextDirection: TextDirection.rtl,
                     value: _saleType,
+                    enabled: !_hasSettledInstallments,
                     options: _salesTypeOptions,
                     onChanged: (value) {
                       if (value == null) return;
@@ -137,6 +139,7 @@ extension _SalesScreenViewPart on _SalesScreenState {
                     textAlign: TextAlign.right,
                     menuTextDirection: TextDirection.rtl,
                     value: _currency,
+                    enabled: !_hasSettledInstallments,
                     options: _salesCurrencyOptions,
                     onChanged: (value) {
                       if (value == null) return;
@@ -152,6 +155,8 @@ extension _SalesScreenViewPart on _SalesScreenState {
                     textDirection: TextDirection.rtl,
                     textAlign: TextAlign.right,
                     decimalPlaces: 4,
+                    enabled: !_hasSettledInstallments,
+                    readOnly: _hasSettledInstallments,
                     textInputAction: TextInputAction.next,
                   ),
                 ],
@@ -175,9 +180,12 @@ extension _SalesScreenViewPart on _SalesScreenState {
                     optionSubtitle: (party) => 'رقم ${party.number}',
                     onSelected: _selectCustomer,
                     onChanged: _changeCustomerText,
+                    enabled: !_hasSettledInstallments,
                     createActionLabel: 'إضافة زبون جديد',
                     onCreateRequested:
-                        _allowsPartyCreate() ? _createCustomer : null,
+                        _allowsPartyCreate() && !_hasSettledInstallments
+                            ? _createCustomer
+                            : null,
                     textDirection: TextDirection.rtl,
                     textAlign: TextAlign.right,
                   ),
@@ -207,9 +215,12 @@ extension _SalesScreenViewPart on _SalesScreenState {
                   warehouseOptions: _warehouseOptions,
                   defaultWarehouse: _defaultWarehouseId,
                   defaultWarehouseLabel: _defaultWarehouseName,
+                  enabled: !_hasSettledInstallments,
                   onRowsChanged: _changeItems,
                   onCreateItemRequested:
-                      _allowsItemCreate() ? _createItem : null,
+                      _allowsItemCreate() && !_hasSettledInstallments
+                          ? _createItem
+                          : null,
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
@@ -231,6 +242,7 @@ extension _SalesScreenViewPart on _SalesScreenState {
                     label: 'خصم القائمة',
                     icon: Icons.discount_rounded,
                     decimalPlaces: _currency == 'USD' ? 2 : 0,
+                    enabled: !_hasSettledInstallments,
                     onChanged: _changeInvoiceDiscount,
                   ),
                   _SalesMoneyField(
@@ -239,6 +251,7 @@ extension _SalesScreenViewPart on _SalesScreenState {
                     label: 'نسبة الخصم',
                     icon: Icons.percent_rounded,
                     decimalPlaces: 2,
+                    enabled: !_hasSettledInstallments,
                     onChanged: _changeDiscountPercentage,
                   ),
                   _SalesMoneyField(
@@ -247,7 +260,8 @@ extension _SalesScreenViewPart on _SalesScreenState {
                     label: 'المقبوض',
                     icon: Icons.payments_rounded,
                     decimalPlaces: _currency == 'USD' ? 2 : 0,
-                    enabled: _saleType != 'نقدي',
+                    enabled:
+                        _saleType != 'نقدي' && !_hasSettledInstallments,
                     onChanged: _changeReceived,
                   ),
                   AppReadOnlyField(

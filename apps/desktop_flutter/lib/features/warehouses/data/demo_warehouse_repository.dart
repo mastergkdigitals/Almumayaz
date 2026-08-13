@@ -1,6 +1,7 @@
 import '../../../core/data/app_repository.dart';
 import '../../../core/data/demo_transaction_runner.dart';
 import '../../../core/domain/business_values.dart';
+import 'demo_inventory_cost_repository.dart';
 import '../domain/inventory_records.dart';
 import '../domain/warehouse.dart';
 import '../domain/warehouse_repository.dart';
@@ -28,10 +29,12 @@ class DemoWarehouseRepository extends InMemoryDemoRepository<Warehouse>
     required WarehouseReferenceExists itemExists,
     WarehouseReferenceExists? isExternallyReferenced,
     DemoTransactionRunner? transactionRunner,
+    DemoInventoryCostTransferEffects? inventoryCostEffects,
   })  : _itemExists = itemExists,
         _isExternallyReferenced =
             isExternallyReferenced ?? _neverReferenced,
         _transactionRunner = transactionRunner ?? DemoTransactionRunner(),
+        _inventoryCostEffects = inventoryCostEffects,
         _inventory = {
           for (final balance in initialInventory ?? demoInventory())
             if (!balance.quantity.isZero) balance.id: balance,
@@ -47,6 +50,7 @@ class DemoWarehouseRepository extends InMemoryDemoRepository<Warehouse>
   final WarehouseReferenceExists _itemExists;
   final WarehouseReferenceExists _isExternallyReferenced;
   final DemoTransactionRunner _transactionRunner;
+  final DemoInventoryCostTransferEffects? _inventoryCostEffects;
   final Map<EntityId, InventoryBalance> _inventory;
   final List<InventoryTransfer> _transfers;
 
@@ -184,13 +188,17 @@ class DemoWarehouseRepository extends InMemoryDemoRepository<Warehouse>
         )) {
       throw StateError('لا يمكن عكس هذا النقل مرة أخرى');
     }
+    final reversalTimestamp = createdAt ?? AuditTimestamp(DateTime.now());
+    if (!reversalTimestamp.value.isAfter(originalTransfer.createdAt.value)) {
+      throw StateError('يجب أن يكون وقت العكس بعد وقت النقل الأصلي');
+    }
     return _performTransferUnlocked(
       InventoryTransferDraft(
         fromWarehouseId: originalTransfer.toWarehouseId,
         toWarehouseId: originalTransfer.fromWarehouseId,
         lines: originalTransfer.lines,
       ),
-      createdAt: createdAt ?? AuditTimestamp(DateTime.now()),
+      createdAt: reversalTimestamp,
       reversalOfId: originalTransfer.id,
     );
   }
@@ -248,8 +256,12 @@ class DemoWarehouseRepository extends InMemoryDemoRepository<Warehouse>
       lines: draft.lines,
       reversalOfId: reversalOfId,
     );
+    final stagedCost = _inventoryCostEffects?.stageTransferCost(transfer);
     commitInventorySnapshot(stagedInventory);
     _transfers.add(transfer);
+    if (stagedCost != null) {
+      _inventoryCostEffects!.commitCostSnapshot(stagedCost);
+    }
     return transfer;
   }
 

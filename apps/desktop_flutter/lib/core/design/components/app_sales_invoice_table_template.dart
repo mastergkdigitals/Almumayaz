@@ -277,6 +277,7 @@ class AppSalesInvoiceTableTemplate extends StatefulWidget {
     this.warehouseOptions = _salesInvoiceDefaultWarehouseOptions,
     this.defaultWarehouse = 'الرئيسي',
     this.defaultWarehouseLabel = '',
+    this.enabled = true,
     this.onRowsChanged,
     this.onCreateItemRequested,
   });
@@ -295,6 +296,7 @@ class AppSalesInvoiceTableTemplate extends StatefulWidget {
 
   /// Display label for [defaultWarehouse].
   final String defaultWarehouseLabel;
+  final bool enabled;
   final ValueChanged<List<AppSalesInvoiceTableRowData>>? onRowsChanged;
   final AppInvoiceItemQuickCreate? onCreateItemRequested;
 
@@ -596,15 +598,17 @@ class _AppSalesInvoiceTableTemplateState
         searchTermsForOption: (option) => [option.code, option.name],
         optionSubtitle: (option) => option.name,
         onSelected: (option) => _selectItem(row, option),
+        enabled: widget.enabled,
         accentColor: AppModuleColors.sales,
         focusNode: row.codeFocusNode,
         icon: null,
         textDirection: TextDirection.rtl,
         onChanged: (_) => _changeItemText(row),
         createActionLabel: 'إضافة مادة جديدة',
-        onCreateRequested: widget.onCreateItemRequested == null
-            ? null
-            : () => unawaited(_createItem(row)),
+        onCreateRequested:
+            widget.onCreateItemRequested == null || !widget.enabled
+                ? null
+                : () => unawaited(_createItem(row)),
         showLabel: false,
         borderRadius: AppRadii.sm,
       ),
@@ -619,15 +623,17 @@ class _AppSalesInvoiceTableTemplateState
         searchTermsForOption: (option) => [option.code, option.name],
         optionSubtitle: (option) => option.code,
         onSelected: (option) => _selectItem(row, option),
+        enabled: widget.enabled,
         accentColor: AppModuleColors.sales,
         focusNode: row.nameFocusNode,
         icon: null,
         textDirection: TextDirection.rtl,
         onChanged: (_) => _changeItemText(row),
         createActionLabel: 'إضافة مادة جديدة',
-        onCreateRequested: widget.onCreateItemRequested == null
-            ? null
-            : () => unawaited(_createItem(row)),
+        onCreateRequested:
+            widget.onCreateItemRequested == null || !widget.enabled
+                ? null
+                : () => unawaited(_createItem(row)),
         showLabel: false,
         borderRadius: AppRadii.sm,
       ),
@@ -647,6 +653,7 @@ class _AppSalesInvoiceTableTemplateState
           currentWarehouseLabel: row.warehouse,
         ),
         onChanged: (value) => _changeWarehouse(row, value),
+        enabled: widget.enabled,
         useIntrinsicHeight: true,
         minimumHeight: AppControlHeights.invoiceField,
         showLabel: false,
@@ -664,6 +671,7 @@ class _AppSalesInvoiceTableTemplateState
         textDirection: TextDirection.ltr,
         textInputAction: TextInputAction.next,
         onChanged: (_) => _changeCalculatedValue(row),
+        enabled: widget.enabled,
         showLabel: false,
         borderRadius: AppRadii.sm,
       ),
@@ -680,6 +688,7 @@ class _AppSalesInvoiceTableTemplateState
         decimalPlaces: widget.currencyCode == 'USD' ? 2 : 0,
         textInputAction: TextInputAction.next,
         onChanged: (_) => _changeCalculatedValue(row),
+        enabled: widget.enabled,
         showLabel: false,
         borderRadius: AppRadii.sm,
       ),
@@ -696,6 +705,7 @@ class _AppSalesInvoiceTableTemplateState
         decimalPlaces: widget.currencyCode == 'USD' ? 2 : 0,
         textInputAction: TextInputAction.next,
         onChanged: (_) => _changeCalculatedValue(row),
+        enabled: widget.enabled,
         showLabel: false,
         borderRadius: AppRadii.sm,
       ),
@@ -745,11 +755,13 @@ class _AppSalesInvoiceTableTemplateState
           size: 40,
           iconSize: AppIconSizes.md,
           borderRadius: AppRadii.sm,
-          onPressed: isLastRow
-              ? _canAddRow(row)
-                  ? _addRow
-                  : null
-              : () => _removeRow(index),
+          onPressed: !widget.enabled
+              ? null
+              : isLastRow
+                  ? _canAddRow(row)
+                      ? _addRow
+                      : null
+                  : () => _removeRow(index),
         ),
       ),
     ];

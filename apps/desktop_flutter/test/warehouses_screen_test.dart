@@ -73,6 +73,7 @@ void main() {
         'item-001': 3,
         'item-002': 4,
       },
+      createdAt: DateTime(2026, 7, 27),
     );
 
     expect(transferred, isTrue);
