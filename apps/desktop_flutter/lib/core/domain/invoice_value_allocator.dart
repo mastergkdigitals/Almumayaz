@@ -11,15 +11,19 @@ List<int> allocateIntegerByWeights(int total, List<int> weights) {
   if (total == 0 || weights.isEmpty) return allocations;
 
   final normalized = [for (final weight in weights) weight < 0 ? 0 : weight];
-  final weightTotal = normalized.fold<int>(0, (sum, value) => sum + value);
-  if (weightTotal == 0) return allocations;
+  final exactWeightTotal = normalized.fold<BigInt>(
+    BigInt.zero,
+    (sum, value) => sum + BigInt.from(value),
+  );
+  if (exactWeightTotal == BigInt.zero) return allocations;
 
-  final remainders = List<int>.filled(weights.length, 0);
+  final remainders = List<BigInt>.filled(weights.length, BigInt.zero);
+  final exactTotal = BigInt.from(total);
   var allocated = 0;
   for (var index = 0; index < normalized.length; index++) {
-    final weightedTotal = total * normalized[index];
-    allocations[index] = weightedTotal ~/ weightTotal;
-    remainders[index] = weightedTotal % weightTotal;
+    final weightedTotal = exactTotal * BigInt.from(normalized[index]);
+    allocations[index] = (weightedTotal ~/ exactWeightTotal).toInt();
+    remainders[index] = weightedTotal % exactWeightTotal;
     allocated += allocations[index];
   }
 

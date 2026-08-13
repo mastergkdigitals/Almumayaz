@@ -631,7 +631,7 @@ List<InventoryCostBalance> demoInventoryCostOpeningBalances() => [
       _openingCost('warehouse-001', 'item-010', 4, 25000),
       _openingCost('warehouse-002', 'item-001', 7, 200000),
       _openingCost('warehouse-002', 'item-003', 25, 7000),
-      _openingCost('warehouse-002', 'item-004', 12, 100000),
+      _openingCost('warehouse-002', 'item-004', 1, 100000),
       _openingCost('warehouse-003', 'item-002', 27, 30000),
       _openingCost('warehouse-003', 'item-003', 10, 8000),
       _openingCost('warehouse-003', 'item-004', 13, 100000),

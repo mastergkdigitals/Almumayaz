@@ -20,6 +20,20 @@ void main() {
     expect(allocateIntegerByWeights(3, [-1, 1]), [0, 3]);
     expect(allocateIntegerByWeights(9, [0, 0]), [0, 0]);
     expect(
+      allocateIntegerByWeights(
+        85000039999,
+        [85000000000, 40000],
+      ),
+      [84999999999, 40000],
+    );
+    expect(
+      allocateIntegerByWeights(
+        3,
+        [9223372036854775807, 9223372036854775807],
+      ),
+      [2, 1],
+    );
+    expect(
       allocateInvoiceTotalMinorUnits(
         totalMinorUnits: 5,
         netLineMinorUnits: [0, 0, 0],
