@@ -40,58 +40,67 @@ class ReportHeaderBar extends StatelessWidget {
     return Row(
       key: Key('reportHeaderBar_$reportId'),
       children: [
-        SizedBox(
-          width: 360,
-          child: AppDropdownField<String>(
-            fieldKey: Key('reportSelector_$reportId'),
-            label: 'التقرير',
-            icon: definition.icon,
-            value: reportId,
-            options: [
-              for (final candidate in definitions)
-                AppDropdownOption<String>(
-                  value: candidate.id,
-                  label: candidate.title,
+        Expanded(
+          child: Row(
+            children: [
+              Flexible(
+                child: SizedBox(
+                  width: 360,
+                  child: AppDropdownField<String>(
+                    fieldKey: Key('reportSelector_$reportId'),
+                    label: 'التقرير',
+                    icon: definition.icon,
+                    value: reportId,
+                    options: [
+                      for (final candidate in definitions)
+                        AppDropdownOption<String>(
+                          value: candidate.id,
+                          label: candidate.title,
+                        ),
+                    ],
+                    accentColor: accentColor,
+                    textDirection: TextDirection.rtl,
+                    textAlign: TextAlign.right,
+                    menuTextDirection: TextDirection.rtl,
+                    onChanged: (value) {
+                      if (value == null || value == reportId) return;
+                      onDefinitionChanged(
+                        definitions.firstWhere(
+                          (candidate) => candidate.id == value,
+                        ),
+                      );
+                    },
+                  ),
                 ),
+              ),
+              if (definition.variants.length > 1) ...[
+                const SizedBox(width: AppSpacing.md),
+                AppSelectionTabs<ReportVariantDefinition>(
+                  items: [
+                    for (final variant in definition.variants)
+                      (
+                        value: variant,
+                        label: variant.label,
+                        icon: variant.icon,
+                      ),
+                  ],
+                  selected: selectedVariant,
+                  accentColor: accentColor,
+                  onChanged: onVariantChanged,
+                  keyPrefix: 'reportVariantTab_${reportId}_',
+                  valueId: (variant) => variant.id,
+                  isSelected: (variant, selected) =>
+                      variant.id == selected.id,
+                  wrap: false,
+                  notifyWhenSelected: true,
+                  minWidth: 154,
+                  height: AppControlHeights.compact,
+                ),
+              ],
             ],
-            accentColor: accentColor,
-            textDirection: TextDirection.rtl,
-            textAlign: TextAlign.right,
-            menuTextDirection: TextDirection.rtl,
-            onChanged: (value) {
-              if (value == null || value == reportId) return;
-              onDefinitionChanged(
-                definitions.firstWhere(
-                  (candidate) => candidate.id == value,
-                ),
-              );
-            },
           ),
         ),
-        if (definition.variants.length > 1) ...[
-          const SizedBox(width: AppSpacing.md),
-          AppSelectionTabs<ReportVariantDefinition>(
-            items: [
-              for (final variant in definition.variants)
-                (
-                  value: variant,
-                  label: variant.label,
-                  icon: variant.icon,
-                ),
-            ],
-            selected: selectedVariant,
-            accentColor: accentColor,
-            onChanged: onVariantChanged,
-            keyPrefix: 'reportVariantTab_${reportId}_',
-            valueId: (variant) => variant.id,
-            isSelected: (variant, selected) => variant.id == selected.id,
-            wrap: false,
-            notifyWhenSelected: true,
-            minWidth: 140,
-            height: AppControlHeights.compact,
-          ),
-        ],
-        const Spacer(),
+        const SizedBox(width: AppSpacing.md),
         _ReportOutputButton(
           buttonKey: Key('reportPrintButton_$reportId'),
           semanticsLabel: 'طباعة التقرير، الاختصار Control P',

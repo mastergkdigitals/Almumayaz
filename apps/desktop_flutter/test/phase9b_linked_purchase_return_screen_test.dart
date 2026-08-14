@@ -30,7 +30,10 @@ void main() {
         const Key('purchaseReturnQuantity-purchase-line-1013'),
       ),
       80,
-      scrollable: find.byKey(const Key('purchaseReturnLinesRows')),
+      scrollable: find.descendant(
+        of: find.byKey(const Key('purchaseReturnLinesRows')),
+        matching: find.byType(Scrollable),
+      ).first,
     );
     expect(
       _fieldValue(

@@ -10,6 +10,7 @@ import 'package:erp/features/reports/data/demo_report_rows_service.dart';
 import 'package:erp/features/reports/data/report_demo_catalog.dart';
 import 'package:erp/features/reports/presentation/report_catalog.dart';
 import 'package:erp/features/reports/presentation/report_definition.dart';
+import 'package:erp/features/reports/presentation/widgets/report_header_bar.dart';
 import 'package:erp/features/reports/presentation/widgets/report_section_view.dart';
 import 'package:erp/features/sales/domain/sales_invoice.dart';
 import 'package:flutter/material.dart';
@@ -185,6 +186,65 @@ void main() {
     expect(transferValue('عدد عمليات النقل'), '1');
     expect(transferValue('عدد سطور المواد'), '2');
     expect(transferValue('مجموع الكميات'), '7');
+  });
+
+  testWidgets('fits every sales report header control at 1280 width',
+      (tester) async {
+    final definition = reportDefinitions.first;
+    await tester.binding.setSurfaceSize(const Size(1280, 720));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Directionality(
+            textDirection: TextDirection.rtl,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: ReportHeaderBar(
+                definition: definition,
+                definitions: reportDefinitions,
+                selectedVariant: definition.variants.first,
+                accentColor: definition.palette.middle,
+                outputBusy: false,
+                allowPrint: true,
+                allowExport: true,
+                onDefinitionChanged: (_) {},
+                onVariantChanged: (_) {},
+                onPrint: () {},
+                onPdf: () {},
+                onExcel: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+    final header = tester.getRect(
+      find.byKey(const Key('reportHeaderBar_salesInvoices')),
+    );
+    const controlKeys = [
+      'reportSelector_salesInvoices',
+      'reportVariantTab_salesInvoices_main',
+      'reportVariantTab_salesInvoices_returns',
+      'reportPrintButton_salesInvoices',
+      'reportPdfButton_salesInvoices',
+      'reportExcelButton_salesInvoices',
+    ];
+    for (final key in controlKeys) {
+      final control = find.byKey(Key(key));
+      expect(control, findsOneWidget, reason: key);
+      final bounds = tester.getRect(control);
+      expect(bounds.left >= header.left, isTrue, reason: '$key left edge');
+      expect(bounds.right <= header.right, isTrue, reason: '$key right edge');
+    }
+    expect(
+      tester.getSize(
+        find.byKey(const Key('reportSelector_salesInvoices')),
+      ).width,
+      lessThan(360),
+    );
   });
 
   testWidgets('opens the seven-section Reports hub', (tester) async {
