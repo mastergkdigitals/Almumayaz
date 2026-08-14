@@ -278,6 +278,7 @@ extension _UsersSecuritySettingsSectionViews
   }
 
   Widget _buildSecurityTemplate() {
+    final currentSession = _effectiveSession(listen: true);
     return AppResponsiveGrid(
       key: const Key('settingsPasswordLockTemplate'),
       preferredColumns: 2,
@@ -387,10 +388,10 @@ extension _UsersSecuritySettingsSectionViews
               const SizedBox(height: AppSpacing.md),
               AppInfoBanner(
                 key: const Key('settingsCurrentSessionState'),
-                message: _currentSession == null
+                message: currentSession == null
                     ? 'لا توجد جلسة تجريبية حالية.'
-                    : 'الجلسة ${_sessionStateLabel(_currentSession!.state)} — '
-                        'آخر نشاط ${_formatAuditTimestamp(_currentSession!.lastActivityAt)}',
+                    : 'الجلسة ${_sessionStateLabel(currentSession.state)} — '
+                        'آخر نشاط ${_formatAuditTimestamp(currentSession.lastActivityAt)}',
                 icon: Icons.devices_outlined,
                 foregroundColor: widget.accentColor,
                 backgroundColor: Color.alphaBlend(
@@ -416,7 +417,7 @@ extension _UsersSecuritySettingsSectionViews
                   key: const Key('settingsToggleDemoSessionLockButton'),
                   label: 'قفل الجلسة الآن',
                   icon: Icons.lock_clock_outlined,
-                  onPressed: _currentSession?.state == SessionState.active
+                  onPressed: currentSession?.state == SessionState.active
                       ? _toggleCurrentSessionLock
                       : null,
                 ),
@@ -453,6 +454,33 @@ extension _UsersSecuritySettingsSectionViews
   }
 
   Widget _buildLogsTemplate() {
+    String actorLabel(_SettingsAuditActorSnapshot actor) {
+      final liveUser = _users.where((user) => user.id == actor.id).firstOrNull;
+      if (liveUser != null) {
+        return '${liveUser.fullName} (${liveUser.username})';
+      }
+      final name = actor.fullName ?? actor.username;
+      return '$name (${actor.username}) — محذوف';
+    }
+
+    final actors = _auditActors.values.toList()
+      ..sort((a, b) => actorLabel(a).compareTo(actorLabel(b)));
+    final resultStart = _auditTotalCount == 0 ? 0 : _auditOffset + 1;
+    final requestedEnd = _auditOffset + _auditEntries.length;
+    final resultEnd = requestedEnd > _auditTotalCount
+        ? _auditTotalCount
+        : requestedEnd;
+    final pageCount = _auditTotalCount == 0
+        ? 1
+        : ((_auditTotalCount - 1) ~/ _auditPageSize) + 1;
+    final currentPage = (_auditOffset ~/ _auditPageSize) + 1;
+    final lastPageOffset = _auditTotalCount == 0
+        ? 0
+        : ((_auditTotalCount - 1) ~/ _auditPageSize) * _auditPageSize;
+    final countText = 'عدد النتائج: $_auditTotalCount';
+    final pageText = 'عرض $resultStart–$resultEnd من $_auditTotalCount — '
+        'الصفحة $currentPage من $pageCount';
+
     return AppSectionPanel(
       key: const Key('settingsSecurityLogsPanel'),
       title: 'سجل الدخول والنشاط والتعديلات',
@@ -471,7 +499,10 @@ extension _UsersSecuritySettingsSectionViews
                 hint: 'المستخدم أو العملية أو التفاصيل',
                 accentColor: widget.accentColor,
                 focusNode: _logSearchFocusNode,
-                onChanged: (_) => _refreshAudit(),
+                onChanged: (_) => _refreshAudit(
+                  resetPage: true,
+                  showLoading: true,
+                ),
               ),
               AppDropdownField<String>(
                 fieldKey: const Key('settingsSecurityLogTypeField'),
@@ -485,7 +516,6 @@ extension _UsersSecuritySettingsSectionViews
                   AppDropdownOption(value: 'تسجيل الخروج', label: 'تسجيل الخروج'),
                   AppDropdownOption(value: 'قفل الجلسة', label: 'قفل الجلسة'),
                   AppDropdownOption(value: 'فتح الجلسة', label: 'فتح الجلسة'),
-                  AppDropdownOption(value: 'نشاط الجلسة', label: 'نشاط الجلسة'),
                   AppDropdownOption(value: 'إضافة', label: 'إضافة'),
                   AppDropdownOption(value: 'تعديل', label: 'تعديل'),
                   AppDropdownOption(value: 'حذف', label: 'حذف'),
@@ -505,7 +535,7 @@ extension _UsersSecuritySettingsSectionViews
                 onChanged: (value) {
                   if (value == null) return;
                   _setSecurityViewState(() => _logType = value);
-                  _refreshAudit();
+                  _refreshAudit(resetPage: true, showLoading: true);
                 },
               ),
               AppDropdownField<String>(
@@ -527,7 +557,7 @@ extension _UsersSecuritySettingsSectionViews
                 onChanged: (value) {
                   if (value == null) return;
                   _setSecurityViewState(() => _logOutcome = value);
-                  _refreshAudit();
+                  _refreshAudit(resetPage: true, showLoading: true);
                 },
               ),
               AppDropdownField<String>(
@@ -538,10 +568,10 @@ extension _UsersSecuritySettingsSectionViews
                 value: _logUserId?.value ?? 'all',
                 options: [
                   const AppDropdownOption(value: 'all', label: 'الكل'),
-                  for (final user in _users)
+                  for (final actor in actors)
                     AppDropdownOption(
-                      value: user.id.value,
-                      label: '${user.fullName} (${user.username})',
+                      value: actor.id.value,
+                      label: actorLabel(actor),
                     ),
                 ],
                 useIntrinsicHeight: true,
@@ -553,7 +583,33 @@ extension _UsersSecuritySettingsSectionViews
                   _setSecurityViewState(() {
                     _logUserId = value == 'all' ? null : EntityId(value);
                   });
-                  _refreshAudit();
+                  _refreshAudit(resetPage: true, showLoading: true);
+                },
+              ),
+              AppDropdownField<String>(
+                fieldKey: const Key('settingsSecurityLogEntityTypeField'),
+                label: 'نوع السجل المرتبط',
+                icon: Icons.category_outlined,
+                accentColor: widget.accentColor,
+                value: _logEntityType ?? 'all',
+                options: [
+                  const AppDropdownOption(value: 'all', label: 'الكل'),
+                  for (final entityType in _settingsAuditEntityTypes)
+                    AppDropdownOption(
+                      value: entityType.id,
+                      label: entityType.label,
+                    ),
+                ],
+                useIntrinsicHeight: true,
+                textDirection: TextDirection.rtl,
+                textAlign: TextAlign.right,
+                menuTextDirection: TextDirection.rtl,
+                onChanged: (value) {
+                  if (value == null) return;
+                  _setSecurityViewState(() {
+                    _logEntityType = value == 'all' ? null : value;
+                  });
+                  _refreshAudit(resetPage: true, showLoading: true);
                 },
               ),
               AppDateRangeField(
@@ -563,36 +619,73 @@ extension _UsersSecuritySettingsSectionViews
                 accentColor: widget.accentColor,
                 onChanged: (value) {
                   _setSecurityViewState(() => _logDateRange = value);
-                  _refreshAudit();
+                  _refreshAudit(resetPage: true, showLoading: true);
                 },
               ),
               Align(
                 alignment: Alignment.centerRight,
-                child: AppRegularButton(
-                  key: const Key('settingsSecurityLogResetFiltersButton'),
-                  label: 'إعادة ضبط المرشحات',
-                  icon: Icons.filter_alt_off_outlined,
-                  onPressed: () {
-                    _logSearchController.clear();
-                    _setSecurityViewState(() {
-                      _logType = 'الكل';
-                      _logOutcome = 'الكل';
-                      _logUserId = null;
-                      _logDateRange = null;
-                    });
-                    _refreshAudit();
-                  },
+                child: Wrap(
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.sm,
+                  children: [
+                    AppRegularButton(
+                      key: const Key('settingsSecurityLogRefreshButton'),
+                      label: 'تحديث السجل',
+                      icon: Icons.refresh_rounded,
+                      onPressed: _isAuditLoading
+                          ? null
+                          : () => _refreshAudit(showLoading: true),
+                    ),
+                    AppRegularButton(
+                      key: const Key(
+                        'settingsSecurityLogResetFiltersButton',
+                      ),
+                      label: 'إعادة ضبط المرشحات',
+                      icon: Icons.filter_alt_off_outlined,
+                      onPressed: () {
+                        _logSearchController.clear();
+                        _setSecurityViewState(() {
+                          _logType = 'الكل';
+                          _logOutcome = 'الكل';
+                          _logUserId = null;
+                          _logEntityType = null;
+                          _logDateRange = null;
+                        });
+                        _refreshAudit(
+                          resetPage: true,
+                          showLoading: true,
+                        );
+                      },
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          Text(
-            'عدد النتائج: $_auditTotalCount',
-            key: const Key('settingsSecurityLogResultCount'),
-            style: const TextStyle(color: AppColors.textSecondary),
+          Semantics(
+            liveRegion: true,
+            label: countText,
+            child: ExcludeSemantics(
+              child: Text(
+                countText,
+                key: const Key('settingsSecurityLogResultCount'),
+                style: const TextStyle(color: AppColors.textSecondary),
+              ),
+            ),
           ),
           const SizedBox(height: AppSpacing.sm),
+          if (_auditError != null && _auditEntries.isNotEmpty) ...[
+            AppStatePanel(
+              key: const Key('settingsSecurityLogRefreshError'),
+              type: AppStateType.error,
+              title: 'تعذر تحديث سجل التدقيق',
+              message: _auditError!,
+              actionLabel: 'إعادة المحاولة',
+              onAction: _retryAudit,
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
           AppDataTable(
             key: const Key('settingsSecurityLogsTable'),
             height: 430,
@@ -600,11 +693,22 @@ extension _UsersSecuritySettingsSectionViews
             minimumColumnWidth: 155,
             accentColor: widget.accentColor,
             showShadow: false,
-            emptyState: const AppStatePanel(
-              type: AppStateType.empty,
-              title: 'لا توجد نتائج',
-              message: 'غيّر عبارة البحث أو نوع العملية.',
-            ),
+            isLoading: _isAuditLoading,
+            semanticLabel: 'سجل التدقيق',
+            emptyState: _auditError == null
+                ? const AppStatePanel(
+                    type: AppStateType.empty,
+                    title: 'لا توجد نتائج',
+                    message: 'غيّر مرشحات البحث أو الفترة الزمنية.',
+                  )
+                : AppStatePanel(
+                    key: const Key('settingsSecurityLogRefreshError'),
+                    type: AppStateType.error,
+                    title: 'تعذر تحديث سجل التدقيق',
+                    message: _auditError!,
+                    actionLabel: 'إعادة المحاولة',
+                    onAction: _retryAudit,
+                  ),
             columns: const [
               AppTableColumn(
                 label: 'التاريخ والوقت',
@@ -623,11 +727,12 @@ extension _UsersSecuritySettingsSectionViews
                     'settingsAuditRow_${_entityKeySuffix(entry.id)}',
                   ),
                   onTap: () => _showAuditDetails(entry.record),
+                  semanticLabel: _auditRowSemanticLabel(entry),
                   cells: [
                     Text(entry.createdAt),
                     Text(
                       entry.username,
-                      textDirection: TextDirection.ltr,
+                      textDirection: _auditTextDirection(entry.username),
                     ),
                     Text(entry.type),
                     Text(entry.details, overflow: TextOverflow.ellipsis),
@@ -644,6 +749,39 @@ extension _UsersSecuritySettingsSectionViews
                   ],
                 ),
             ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            pageText,
+            key: const Key('settingsSecurityLogPageStatus'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Center(
+            child: AppRecordNavigation(
+              firstButtonKey:
+                  const Key('settingsSecurityLogFirstPageButton'),
+              previousButtonKey:
+                  const Key('settingsSecurityLogPreviousPageButton'),
+              nextButtonKey:
+                  const Key('settingsSecurityLogNextPageButton'),
+              lastButtonKey:
+                  const Key('settingsSecurityLogLastPageButton'),
+              onFirst: !_isAuditLoading && _auditOffset > 0
+                  ? () => _openAuditPage(0)
+                  : null,
+              onPrevious: !_isAuditLoading && _auditOffset > 0
+                  ? () => _openAuditPage(_auditOffset - _auditPageSize)
+                  : null,
+              onNext: !_isAuditLoading &&
+                      _auditOffset + _auditPageSize < _auditTotalCount
+                  ? () => _openAuditPage(_auditOffset + _auditPageSize)
+                  : null,
+              onLast: !_isAuditLoading && _auditOffset < lastPageOffset
+                  ? () => _openAuditPage(lastPageOffset)
+                  : null,
+            ),
           ),
         ],
       ),

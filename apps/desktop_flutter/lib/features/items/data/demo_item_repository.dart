@@ -1,6 +1,9 @@
 import '../../../core/data/app_repository.dart';
 import '../../../core/data/demo_transaction_runner.dart';
 import '../../../core/domain/business_values.dart';
+import '../../audit_log/data/demo_business_audit.dart';
+import '../../audit_log/domain/audit_models.dart';
+import '../../permissions/domain/permission_models.dart';
 import '../../settings/domain/operational_master_data.dart';
 import '../../settings/domain/operational_master_data_repository.dart';
 import '../domain/item.dart';
@@ -16,9 +19,11 @@ class DemoItemRepository extends InMemoryDemoRepository<Item>
     Set<EntityId>? initiallyReferencedIds,
     ItemReferenceLookup? isReferenced,
     DemoTransactionRunner? transactionRunner,
+    DemoBusinessAudit? businessAudit,
   })  : _masterData = masterData,
         _isReferenced = isReferenced ?? _neverReferenced,
         _transactionRunner = transactionRunner ?? DemoTransactionRunner(),
+        _businessAudit = businessAudit,
         _initiallyReferencedIds = Set.unmodifiable(
           initiallyReferencedIds ?? const <EntityId>{},
         ),
@@ -31,6 +36,7 @@ class DemoItemRepository extends InMemoryDemoRepository<Item>
   final ItemReferenceLookup _isReferenced;
   final Set<EntityId> _initiallyReferencedIds;
   final DemoTransactionRunner _transactionRunner;
+  final DemoBusinessAudit? _businessAudit;
   final Set<EntityId> _issuedIds = {};
   int _nextGeneratedIdSequence = 1;
 
@@ -86,6 +92,7 @@ class DemoItemRepository extends InMemoryDemoRepository<Item>
   }
 
   Future<Item> _saveUnlocked(Item value) async {
+    final before = getDemoValue(value.entityId);
     _captureIssuedIds(await getAll());
     if (getDemoValue(value.entityId) == null &&
         _issuedIds.contains(value.entityId)) {
@@ -110,13 +117,34 @@ class DemoItemRepository extends InMemoryDemoRepository<Item>
           item.code.trim().toLowerCase() == value.code.trim().toLowerCase(),
     );
     if (duplicateCode) throw StateError('رمز المادة مستخدم مسبقاً');
-    final saved = await super.save(
-      value.copyWithTyped(
-        groupName: group.single.name,
-        typeName: type.single.name,
+    final saved = value.copyWithTyped(
+      groupName: group.single.name,
+      typeName: type.single.name,
+    );
+    final isCreate = before == null;
+    final audit = _businessAudit?.prepare(
+      event: AuditEvent(
+        action: isCreate ? AuditAction.create : AuditAction.update,
+        outcome: AuditOutcome.success,
+        summary: isCreate
+            ? 'إضافة المادة ${saved.name}'
+            : 'تحديث المادة ${saved.name}',
+        before: before == null
+            ? const <String, Object?>{}
+            : itemAuditSnapshot(before),
+        after: itemAuditSnapshot(saved),
+        entityType: 'item',
+        entityId: saved.entityId,
+      ),
+      permission: PermissionCode(
+        module: 'items',
+        action: isCreate ? PermissionAction.create : PermissionAction.update,
       ),
     );
+    final staged = createDemoSnapshot()..[saved.entityId] = saved;
+    commitDemoSnapshot(staged);
     _issuedIds.add(saved.entityId);
+    if (audit != null) _businessAudit!.appendPrepared(audit);
     return saved;
   }
 
@@ -150,7 +178,30 @@ class DemoItemRepository extends InMemoryDemoRepository<Item>
   Future<void> delete(EntityId id) {
     return _transactionRunner.run(() async {
       _captureIssuedIds(await getAll());
-      await super.delete(id);
+      final decision = await canDelete(id);
+      if (!decision.isAllowed) {
+        throw StateError(decision.reason ?? 'لا يمكن حذف المادة');
+      }
+      final staged = createDemoSnapshot();
+      final existing = staged[id]!;
+      final audit = _businessAudit?.prepare(
+        event: AuditEvent(
+          action: AuditAction.delete,
+          outcome: AuditOutcome.success,
+          summary: 'حذف المادة ${existing.name}',
+          before: itemAuditSnapshot(existing),
+          details: const {'permanent': true},
+          entityType: 'item',
+          entityId: existing.entityId,
+        ),
+        permission: PermissionCode(
+          module: 'items',
+          action: PermissionAction.delete,
+        ),
+      );
+      staged.remove(id);
+      commitDemoSnapshot(staged);
+      if (audit != null) _businessAudit!.appendPrepared(audit);
     });
   }
 

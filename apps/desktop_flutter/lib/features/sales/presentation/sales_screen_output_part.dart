@@ -36,6 +36,12 @@ extension _SalesScreenOutputPart on _SalesScreenState {
       title: 'قائمة بيع رقم ${_invoiceNumberController.text}',
       subtitle: customerName.isEmpty ? 'زبون غير محدد' : customerName,
       fileNameBase: 'قائمة بيع ${_invoiceNumberController.text}',
+      auditTarget: _selectedInvoice == null
+          ? null
+          : DocumentOutputAuditTarget(
+              entityType: 'sales_invoice',
+              entityId: _selectedInvoice!.entityId,
+            ),
       fields: [
         DocumentField(
           label: 'التاريخ',
@@ -425,6 +431,10 @@ extension _SalesScreenOutputPart on _SalesScreenState {
         exportService: widget.exportService,
         allowPrint: _allowsSalesAction(PermissionAction.print),
         allowExport: _allowsSalesAction(PermissionAction.export),
+        auditTarget: DocumentOutputAuditTarget(
+          entityType: 'party',
+          entityId: customerId,
+        ),
       );
     } on ServiceFailure catch (failure) {
       if (mounted) AppToast.showError(context, failure.message);

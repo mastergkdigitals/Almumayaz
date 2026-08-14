@@ -2,9 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 
+import '../../features/audit_log/application/audit_write_support.dart';
+import '../../features/audit_log/domain/audit_models.dart';
 import '../../features/authentication/domain/session_models.dart';
 import '../../features/permissions/domain/permission_models.dart';
 import '../domain/business_values.dart';
+import '../services/app_operation_gate.dart';
 import '../services/service_failure.dart';
 import 'app_data_composition.dart';
 import 'app_data_profile.dart';
@@ -58,19 +61,25 @@ class AppStore extends ChangeNotifier {
   AppSession? _session;
   AutoLockPolicy? _autoLockPolicy;
   Timer? _idleTimer;
+  Timer? _idleRefreshCooldownTimer;
   Timer? _activitySyncCooldownTimer;
   bool _isRecordingActivity = false;
+  bool _idleRefreshCoolingDown = false;
+  bool _idleRefreshPending = false;
   bool _activitySyncCoolingDown = false;
   bool _idleMonitoringEnabled = true;
   bool _hasAuthenticated = false;
   bool _initialHydrationAvailable = true;
   bool _isSystemUserSession = false;
   bool _isReplacingData = false;
+  Completer<void>? _dataReplacementSettled;
   bool _isDisposed = false;
   int _sessionGeneration = 0;
   int _activitySyncGeneration = 0;
   int _revision = 0;
   int _dataGeneration = 0;
+
+  static const _activityThrottleDuration = Duration(seconds: 1);
 
   AppRepositories get repositories => _repositories;
   AppServices get services => _services;
@@ -255,9 +264,9 @@ class AppStore extends ChangeNotifier {
         _isDisposed) {
       return;
     }
-    // Reset the local deadline before any network/service await. If telemetry
-    // hangs, the newly scheduled timer still enforces the lock policy.
-    _scheduleIdleLock();
+    // Refresh the local deadline independently of network telemetry, while
+    // coalescing high-frequency hover events to avoid desktop Timer churn.
+    _recordLocalActivity();
     if (_isRecordingActivity || _activitySyncCoolingDown) return;
     _isRecordingActivity = true;
     final generation = _sessionGeneration;
@@ -305,7 +314,7 @@ class AppStore extends ChangeNotifier {
           _activitySyncCoolingDown = true;
           _activitySyncCooldownTimer?.cancel();
           _activitySyncCooldownTimer = Timer(
-            const Duration(seconds: 1),
+            _activityThrottleDuration,
             () => _activitySyncCoolingDown = false,
           );
         }
@@ -410,6 +419,62 @@ class AppStore extends ChangeNotifier {
     unawaited(_lockAfterIdleTimeout());
   }
 
+  void _recordLocalActivity() {
+    if (_idleRefreshCoolingDown) {
+      _idleRefreshPending = true;
+      return;
+    }
+    _scheduleIdleLock();
+    final cooldown = _localActivityThrottleDuration();
+    if (cooldown == Duration.zero) return;
+    _idleRefreshCoolingDown = true;
+    _idleRefreshCooldownTimer?.cancel();
+    _idleRefreshCooldownTimer = Timer(
+      cooldown,
+      _completeIdleRefreshCooldown,
+    );
+  }
+
+  void _completeIdleRefreshCooldown() {
+    if (_isDisposed || _session?.state != SessionState.active) {
+      _idleRefreshCoolingDown = false;
+      _idleRefreshPending = false;
+      _idleRefreshCooldownTimer = null;
+      return;
+    }
+    if (_idleRefreshPending) {
+      _idleRefreshPending = false;
+      _scheduleIdleLock();
+      final cooldown = _localActivityThrottleDuration();
+      if (cooldown == Duration.zero) {
+        _idleRefreshCoolingDown = false;
+        _idleRefreshCooldownTimer = null;
+        return;
+      }
+      _idleRefreshCooldownTimer = Timer(
+        cooldown,
+        _completeIdleRefreshCooldown,
+      );
+      return;
+    }
+    _idleRefreshCoolingDown = false;
+    _idleRefreshCooldownTimer = null;
+  }
+
+  Duration _localActivityThrottleDuration() {
+    final timeout = _autoLockPolicy?.idleTimeout;
+    if (timeout == null || timeout.inMicroseconds <= 2) {
+      return Duration.zero;
+    }
+    final halfTimeoutMicroseconds = timeout.inMicroseconds ~/ 2;
+    final maximumMicroseconds = _activityThrottleDuration.inMicroseconds;
+    return Duration(
+      microseconds: halfTimeoutMicroseconds < maximumMicroseconds
+          ? halfTimeoutMicroseconds
+          : maximumMicroseconds,
+    );
+  }
+
   Future<void> _lockAfterIdleTimeout() async {
     try {
       await lock(SessionLockReason.idleTimeout);
@@ -425,6 +490,10 @@ class AppStore extends ChangeNotifier {
     _activitySyncCooldownTimer?.cancel();
     _activitySyncCooldownTimer = null;
     _activitySyncCoolingDown = false;
+    _idleRefreshCooldownTimer?.cancel();
+    _idleRefreshCooldownTimer = null;
+    _idleRefreshCoolingDown = false;
+    _idleRefreshPending = false;
   }
 
   Future<void> clearAllData() => replaceData(AppDataProfile.cleared);
@@ -438,15 +507,30 @@ class AppStore extends ChangeNotifier {
   /// changes. A construction or authorization failure therefore leaves the
   /// old composition, session, revision, and generation untouched.
   Future<void> replaceData(AppDataProfile profile) async {
-    if (_isReplacingData) {
-      throw const ServiceFailure(
+    final requestedBy = captureAuditActor(_services.auditWriter);
+    final activeReplacementSettled = _dataReplacementSettled;
+    if (activeReplacementSettled != null) {
+      final conflict = const ServiceFailure(
         kind: ServiceFailureKind.conflict,
         code: 'data_replacement_in_progress',
         message: 'توجد عملية مسح أو استعادة بيانات قيد التنفيذ',
       );
+      // The current graph may be retiring and unable to accept an audit write.
+      // Wait for the active attempt to settle, then record the conflict in the
+      // graph that actually remains live.
+      await activeReplacementSettled.future;
+      await _writeDataReplacementFailureAudit(
+        profile: profile,
+        actor: requestedBy,
+        error: conflict,
+      );
+      throw conflict;
     }
+    final replacementSettled = Completer<void>();
+    _dataReplacementSettled = replacementSettled;
     _isReplacingData = true;
     var committed = false;
+    AppOperationRetirement? operationRetirement;
     try {
       if (!_internalToolsEnabled) {
         throw const ServiceFailure(
@@ -477,6 +561,9 @@ class AppStore extends ChangeNotifier {
           message: 'تتطلب هذه العملية صلاحية إدارة الإعدادات',
         );
       }
+      operationRetirement =
+          _services.beginOperationRetirementForDataReplacement();
+      await operationRetirement.drained;
       final authoritativeSession =
           await services.authentication.currentSession();
       final authorizedUser = await services.users.getById(
@@ -507,7 +594,7 @@ class AppStore extends ChangeNotifier {
           message: 'انتهت الجلسة؛ سجل الدخول ثم أعد المحاولة',
         );
       }
-      if (authorizedUser?.isSystemUser != true) {
+      if (authorizedUser == null || !authorizedUser.isSystemUser) {
         throw const ServiceFailure(
           kind: ServiceFailureKind.permissionDenied,
           code: 'system_user_required',
@@ -518,35 +605,173 @@ class AppStore extends ChangeNotifier {
       // This callback is deliberately synchronous: it prepares a completely
       // independent graph before the no-fail assignment block below.
       final replacement = _compositionBuilder(profile);
-      // This synchronous compare-and-revoke is the final authorization gate.
-      // With no await between it and the assignments, an external lock,
-      // sign-out, or session replacement cannot race the destructive commit.
-      if (!_services.revokeSessionForDataReplacement(activeSession)) {
-        throw const ServiceFailure(
-          kind: ServiceFailureKind.authenticationRequired,
-          code: 'authoritative_session_required',
-          message: 'انتهت الجلسة؛ سجل الدخول ثم أعد المحاولة',
+      await _services.retireTransactionsForDataReplacement(() async {
+        // Every transaction accepted before retirement is now complete. Repeat
+        // the authoritative checks against that final settled identity state.
+        final finalAuthoritativeSession =
+            await _services.authentication.currentSession();
+        final finalAuthorizedUser = await _services.users.getById(
+          activeSession.userId,
         );
-      }
+        if (finalAuthoritativeSession == null ||
+            finalAuthoritativeSession.id != activeSession.id ||
+            finalAuthoritativeSession.userId != activeSession.userId ||
+            finalAuthoritativeSession.state != SessionState.active ||
+            !finalAuthoritativeSession.allows(
+              PermissionCode(
+                module: 'settings',
+                action: PermissionAction.manage,
+              ),
+            )) {
+          throw const ServiceFailure(
+            kind: ServiceFailureKind.authenticationRequired,
+            code: 'authoritative_session_required',
+            message: 'انتهت الجلسة؛ سجل الدخول ثم أعد المحاولة',
+          );
+        }
+        if (finalAuthorizedUser == null || !finalAuthorizedUser.isSystemUser) {
+          throw const ServiceFailure(
+            kind: ServiceFailureKind.permissionDenied,
+            code: 'system_user_required',
+            message: 'تتطلب هذه العملية مستخدم النظام المحمي',
+          );
+        }
 
-      _idleTimer?.cancel();
-      _resetActivitySyncThrottle();
-      _sessionGeneration++;
-      _repositories = replacement.repositories;
-      _services = replacement.services;
-      _session = null;
-      _isSystemUserSession = false;
-      _autoLockPolicy = null;
-      _hasAuthenticated = false;
-      _initialHydrationAvailable = false;
-      _revision++;
-      _dataGeneration++;
-      _isReplacingData = false;
-      committed = true;
-      notifyListeners();
+        // Audit history is permanent application history, not resettable demo
+        // profile data. Replace the new profile's seed journal, then append the
+        // transition so IDs and request IDs continue monotonically.
+        replacement.services.installAuditHistoryForDataReplacement(
+          _services.auditHistoryForDataReplacement(),
+        );
+        await replacement.services.auditWriter.write(
+          _dataReplacementEvent(
+            profile: profile,
+            actor: AuditActor(
+              userId: finalAuthorizedUser.id,
+              username: finalAuthorizedUser.username,
+            ),
+            outcome: AuditOutcome.success,
+          ),
+        );
+
+        // These synchronous checks and assignments are the final authorization
+        // gate. No local sign-out, external lock, or stale mutation can race
+        // between successful revocation and the graph swap.
+        if (!_isCurrentSessionOperation(authorizationGeneration) ||
+            _session?.id != activeSession.id ||
+            _session?.state != SessionState.active ||
+            !_isSystemUserSession) {
+          throw const ServiceFailure(
+            kind: ServiceFailureKind.authenticationRequired,
+            code: 'active_session_required',
+            message: 'انتهت الجلسة؛ سجل الدخول ثم أعد المحاولة',
+          );
+        }
+        if (!_services.revokeSessionForDataReplacement(activeSession)) {
+          throw const ServiceFailure(
+            kind: ServiceFailureKind.authenticationRequired,
+            code: 'authoritative_session_required',
+            message: 'انتهت الجلسة؛ سجل الدخول ثم أعد المحاولة',
+          );
+        }
+
+        operationRetirement!.commit();
+        _repositories = replacement.repositories;
+        _services = replacement.services;
+        _idleTimer?.cancel();
+        _resetActivitySyncThrottle();
+        _sessionGeneration++;
+        _session = null;
+        _isSystemUserSession = false;
+        _autoLockPolicy = null;
+        _hasAuthenticated = false;
+        _initialHydrationAvailable = false;
+        _revision++;
+        _dataGeneration++;
+        _isReplacingData = false;
+        committed = true;
+        notifyListeners();
+      });
+    } on Object catch (error) {
+      final retirement = operationRetirement;
+      if (retirement != null && !retirement.isResolved) {
+        retirement.rollback();
+      }
+      await _writeDataReplacementFailureAudit(
+        profile: profile,
+        actor: requestedBy,
+        error: error,
+      );
+      rethrow;
     } finally {
       if (!committed) _isReplacingData = false;
+      if (identical(_dataReplacementSettled, replacementSettled)) {
+        _dataReplacementSettled = null;
+      }
+      if (!replacementSettled.isCompleted) replacementSettled.complete();
     }
+  }
+
+  AuditEvent _dataReplacementEvent({
+    required AppDataProfile profile,
+    required AuditActor actor,
+    required AuditOutcome outcome,
+    Map<String, Object?> failureDetails = const {},
+  }) {
+    final isClear = profile == AppDataProfile.cleared;
+    return AuditEvent(
+      action: isClear ? AuditAction.delete : AuditAction.restore,
+      outcome: outcome,
+      summary: switch ((isClear, outcome)) {
+        (true, AuditOutcome.success) =>
+          'اكتمل مسح بيانات التطبيق التجريبية',
+        (false, AuditOutcome.success) =>
+          'اكتملت استعادة بيانات التطبيق التجريبية',
+        (true, _) => 'تعذر مسح بيانات التطبيق التجريبية',
+        (false, _) => 'تعذرت استعادة بيانات التطبيق التجريبية',
+      },
+      actor: actor,
+      details: {
+        'workflow': 'internalDataReplacement',
+        'targetProfile': profile.name,
+        'demoOnly': true,
+        if (isClear)
+          'deletionScope': const [
+            'businessData',
+            'operationalSettings',
+            'backupHistory',
+            'archiveDocuments',
+            'nonBootstrapIdentity',
+          ],
+        ...failureDetails,
+      },
+      before: {'dataGeneration': _dataGeneration},
+      after: outcome == AuditOutcome.success
+          ? {
+              'dataGeneration': _dataGeneration + 1,
+              'profile': profile.name,
+            }
+          : const {},
+      entityType: 'applicationData',
+      entityId: EntityId('application-data'),
+    );
+  }
+
+  Future<void> _writeDataReplacementFailureAudit({
+    required AppDataProfile profile,
+    required AuditActor? actor,
+    required Object error,
+  }) {
+    return writeAuditBestEffort(
+      _services.auditWriter,
+      _dataReplacementEvent(
+        profile: profile,
+        actor: actor ??
+            const AuditActor(userId: null, username: 'system'),
+        outcome: auditFailureOutcome(error),
+        failureDetails: safeAuditFailureDetails(error),
+      ),
+    );
   }
 
   /// Feature controllers call this after a repository mutation when they are
@@ -562,6 +787,7 @@ class AppStore extends ChangeNotifier {
     _isDisposed = true;
     _sessionGeneration++;
     _idleTimer?.cancel();
+    _idleRefreshCooldownTimer?.cancel();
     _activitySyncCooldownTimer?.cancel();
     super.dispose();
   }

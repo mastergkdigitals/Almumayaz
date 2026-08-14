@@ -1,6 +1,9 @@
 import '../../../core/data/app_repository.dart';
 import '../../../core/data/demo_transaction_runner.dart';
 import '../../../core/domain/business_values.dart';
+import '../../audit_log/data/demo_business_audit.dart';
+import '../../audit_log/domain/audit_models.dart';
+import '../../permissions/domain/permission_models.dart';
 import '../domain/operational_master_data.dart';
 import '../domain/operational_master_data_repository.dart';
 import '../domain/settings_models.dart';
@@ -14,13 +17,19 @@ class DemoBusinessSettingsRepository implements BusinessSettingsRepository {
     OperationalDefaults? operationalDefaults,
     required SettingsReferenceExists warehouseExists,
     required SettingsReferenceExists cashboxMainAccountExists,
+    DemoTransactionRunner? transactionRunner,
+    DemoBusinessAudit? businessAudit,
   })  : _businessPolicies = businessPolicies ?? demoBusinessPolicies(),
         _operationalDefaults = operationalDefaults ?? demoOperationalDefaults(),
         _warehouseExists = warehouseExists,
-        _cashboxMainAccountExists = cashboxMainAccountExists;
+        _cashboxMainAccountExists = cashboxMainAccountExists,
+        _transactionRunner = transactionRunner ?? DemoTransactionRunner(),
+        _businessAudit = businessAudit;
 
   final SettingsReferenceExists _warehouseExists;
   final SettingsReferenceExists _cashboxMainAccountExists;
+  final DemoTransactionRunner _transactionRunner;
+  final DemoBusinessAudit? _businessAudit;
   BusinessPolicySettings _businessPolicies;
   OperationalDefaults _operationalDefaults;
 
@@ -30,8 +39,27 @@ class DemoBusinessSettingsRepository implements BusinessSettingsRepository {
   }
 
   @override
-  Future<void> saveBusinessPolicies(BusinessPolicySettings settings) async {
-    _businessPolicies = settings;
+  Future<void> saveBusinessPolicies(BusinessPolicySettings settings) {
+    return _transactionRunner.run(() {
+      final before = _businessPolicies;
+      final audit = _businessAudit?.prepare(
+        event: AuditEvent(
+          action: AuditAction.update,
+          outcome: AuditOutcome.success,
+          summary: 'تحديث سياسات العمل',
+          before: businessPoliciesAuditSnapshot(before),
+          after: businessPoliciesAuditSnapshot(settings),
+          entityType: 'business_policy_settings',
+          entityId: EntityId('business-policy-settings'),
+        ),
+        permission: PermissionCode(
+          module: 'settings',
+          action: PermissionAction.manage,
+        ),
+      );
+      _businessPolicies = settings;
+      if (audit != null) _businessAudit!.appendPrepared(audit);
+    });
   }
 
   @override
@@ -40,26 +68,52 @@ class DemoBusinessSettingsRepository implements BusinessSettingsRepository {
   }
 
   @override
-  Future<void> saveOperationalDefaults(OperationalDefaults settings) async {
-    if (!await _warehouseExists(settings.purchases.warehouseId) ||
-        !await _warehouseExists(settings.sales.warehouseId)) {
-      throw StateError('أحد المخازن الافتراضية غير موجود');
-    }
-    if (!await _cashboxMainAccountExists(settings.cashbox.mainAccountId)) {
-      throw StateError('حساب الصندوق الافتراضي غير موجود');
-    }
-    _operationalDefaults = settings;
+  Future<void> saveOperationalDefaults(OperationalDefaults settings) {
+    return _transactionRunner.run(() async {
+      if (!await _warehouseExists(settings.purchases.warehouseId) ||
+          !await _warehouseExists(settings.sales.warehouseId)) {
+        throw StateError('أحد المخازن الافتراضية غير موجود');
+      }
+      if (!await _cashboxMainAccountExists(settings.cashbox.mainAccountId)) {
+        throw StateError('حساب الصندوق الافتراضي غير موجود');
+      }
+      final before = _operationalDefaults;
+      final audit = _businessAudit?.prepare(
+        event: AuditEvent(
+          action: AuditAction.update,
+          outcome: AuditOutcome.success,
+          summary: 'تحديث الإعدادات التشغيلية الافتراضية',
+          before: operationalDefaultsAuditSnapshot(before),
+          after: operationalDefaultsAuditSnapshot(settings),
+          entityType: 'operational_defaults',
+          entityId: EntityId('operational-defaults'),
+        ),
+        permission: PermissionCode(
+          module: 'settings',
+          action: PermissionAction.manage,
+        ),
+      );
+      _operationalDefaults = settings;
+      if (audit != null) _businessAudit!.appendPrepared(audit);
+    });
   }
 }
 
 class DemoDeviceSettingsRepository implements DeviceSettingsRepository {
-  DemoDeviceSettingsRepository({Iterable<DeviceSettings>? initialValues})
-      : _settings = {
+  DemoDeviceSettingsRepository({
+    Iterable<DeviceSettings>? initialValues,
+    DemoTransactionRunner? transactionRunner,
+    DemoBusinessAudit? businessAudit,
+  })  : _transactionRunner = transactionRunner ?? DemoTransactionRunner(),
+        _businessAudit = businessAudit,
+        _settings = {
           for (final settings in initialValues ?? [demoDeviceSettings()])
             settings.deviceId: settings,
         };
 
   final Map<String, DeviceSettings> _settings;
+  final DemoTransactionRunner _transactionRunner;
+  final DemoBusinessAudit? _businessAudit;
 
   @override
   Future<DeviceSettings> loadDeviceSettings(String deviceId) async {
@@ -74,8 +128,34 @@ class DemoDeviceSettingsRepository implements DeviceSettingsRepository {
   }
 
   @override
-  Future<void> saveDeviceSettings(DeviceSettings settings) async {
-    _settings[settings.deviceId] = settings;
+  Future<void> saveDeviceSettings(DeviceSettings settings) {
+    return _transactionRunner.run(() {
+      final before = _settings[settings.deviceId] ??
+          DeviceSettings(
+            deviceId: settings.deviceId,
+            defaultPrinterName: null,
+            paperSize: PrintPaperSize.a4,
+            printCopies: 1,
+            printPreviewEnabled: true,
+          );
+      final audit = _businessAudit?.prepare(
+        event: AuditEvent(
+          action: AuditAction.update,
+          outcome: AuditOutcome.success,
+          summary: 'تحديث إعدادات جهاز Windows',
+          before: deviceSettingsAuditSnapshot(before),
+          after: deviceSettingsAuditSnapshot(settings),
+          entityType: 'device_settings',
+          entityId: EntityId('device-settings-${settings.deviceId}'),
+        ),
+        permission: PermissionCode(
+          module: 'settings',
+          action: PermissionAction.manage,
+        ),
+      );
+      _settings[settings.deviceId] = settings;
+      if (audit != null) _businessAudit!.appendPrepared(audit);
+    });
   }
 }
 
@@ -86,9 +166,11 @@ class DemoOperationalMasterDataRepository
     Iterable<OperationalMasterDataRecord>? initialValues,
     SettingsReferenceExists? isExternallyReferenced,
     DemoTransactionRunner? transactionRunner,
+    DemoBusinessAudit? businessAudit,
   })  : _isExternallyReferenced =
             isExternallyReferenced ?? _neverReferenced,
         _transactionRunner = transactionRunner ?? DemoTransactionRunner(),
+        _businessAudit = businessAudit,
         super(
           initialValues: initialValues ?? demoOperationalMasterData(),
           idOf: (record) => record.id,
@@ -96,6 +178,7 @@ class DemoOperationalMasterDataRepository
 
   final SettingsReferenceExists _isExternallyReferenced;
   final DemoTransactionRunner _transactionRunner;
+  final DemoBusinessAudit? _businessAudit;
   final Map<(OperationalMasterDataKind, String?), int>
       _highestIssuedNumbers = {};
   final Map<(OperationalMasterDataKind, String?), Set<int>>
@@ -123,10 +206,13 @@ class DemoOperationalMasterDataRepository
   ) {
     return _transactionRunner.run(() async {
       final staged = createDemoSnapshot();
+      final existing = staged[value.id];
       _captureIssuedNumbers(staged.values);
       await _stageSaveUnlocked(staged, value);
+      final audit = _prepareRecordSaveAudit(before: existing, after: value);
       commitDemoSnapshot(staged);
       _recordIssuedNumber(value);
+      if (audit != null) _businessAudit!.appendPrepared(audit);
       return value;
     });
   }
@@ -209,8 +295,10 @@ class DemoOperationalMasterDataRepository
         parentId: request.parentId,
       );
       await _stageSaveUnlocked(staged, record);
+      final audit = _prepareRecordSaveAudit(before: null, after: record);
       commitDemoSnapshot(staged);
       _recordIssuedNumber(record);
+      if (audit != null) _businessAudit!.appendPrepared(audit);
       return record;
     });
   }
@@ -253,11 +341,34 @@ class DemoOperationalMasterDataRepository
         parentId: mainAccount.id,
       );
       await _stageSaveUnlocked(staged, subaccount);
+      final audit = _businessAudit?.prepare(
+        event: AuditEvent(
+          action: AuditAction.create,
+          outcome: AuditOutcome.success,
+          summary: 'إضافة حساب صندوق رئيسي وفرعي',
+          after: {
+            ...operationalMasterDataAuditSnapshot(mainAccount),
+            'subaccountId': subaccount.id.value,
+            'subaccountKind': subaccount.kind.name,
+            'subaccountNumber': subaccount.number,
+            'subaccountName': subaccount.name,
+            'subaccountParentId': subaccount.parentId?.value,
+          },
+          details: {'subaccountId': subaccount.id.value},
+          entityType: 'operational_master_data',
+          entityId: mainAccount.id,
+        ),
+        permission: PermissionCode(
+          module: 'settings',
+          action: PermissionAction.manage,
+        ),
+      );
 
       // Both validated records become visible in one synchronous swap.
       commitDemoSnapshot(staged);
       _recordIssuedNumber(mainAccount);
       _recordIssuedNumber(subaccount);
+      if (audit != null) _businessAudit!.appendPrepared(audit);
       return OperationalCashboxAccountPair(
         mainAccount: mainAccount,
         subaccount: subaccount,
@@ -300,9 +411,52 @@ class DemoOperationalMasterDataRepository
       if (!decision.isAllowed) {
         throw StateError(decision.reason ?? 'لا يمكن حذف السجل');
       }
+      final existing = staged[id]!;
+      final audit = _businessAudit?.prepare(
+        event: AuditEvent(
+          action: AuditAction.delete,
+          outcome: AuditOutcome.success,
+          summary: 'حذف البيانات الأساسية ${existing.name}',
+          before: operationalMasterDataAuditSnapshot(existing),
+          details: const {'permanent': true},
+          entityType: 'operational_master_data',
+          entityId: existing.id,
+        ),
+        permission: PermissionCode(
+          module: 'settings',
+          action: PermissionAction.manage,
+        ),
+      );
       staged.remove(id);
       commitDemoSnapshot(staged);
+      if (audit != null) _businessAudit!.appendPrepared(audit);
     });
+  }
+
+  DemoPreparedBusinessAudit? _prepareRecordSaveAudit({
+    required OperationalMasterDataRecord? before,
+    required OperationalMasterDataRecord after,
+  }) {
+    final isCreate = before == null;
+    return _businessAudit?.prepare(
+      event: AuditEvent(
+        action: isCreate ? AuditAction.create : AuditAction.update,
+        outcome: AuditOutcome.success,
+        summary: isCreate
+            ? 'إضافة البيانات الأساسية ${after.name}'
+            : 'تحديث البيانات الأساسية ${after.name}',
+        before: before == null
+            ? const <String, Object?>{}
+            : operationalMasterDataAuditSnapshot(before),
+        after: operationalMasterDataAuditSnapshot(after),
+        entityType: 'operational_master_data',
+        entityId: after.id,
+      ),
+      permission: PermissionCode(
+        module: 'settings',
+        action: PermissionAction.manage,
+      ),
+    );
   }
 
   int _nextNumber(

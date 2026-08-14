@@ -31,8 +31,8 @@ class AuditMetadata {
     Map<String, Object?> after = const <String, Object?>{},
   })  : deviceId = deviceId.trim(),
         requestId = requestId.trim(),
-        before = Map<String, Object?>.unmodifiable(before),
-        after = Map<String, Object?>.unmodifiable(after) {
+        before = _freezeAuditMap(before),
+        after = _freezeAuditMap(after) {
     if (this.deviceId.isEmpty) {
       throw ArgumentError.value(deviceId, 'deviceId', 'Must not be empty');
     }
@@ -72,7 +72,7 @@ class AuditRecord {
     this.entityId,
   })  : summary = summary.trim(),
         actorUsername = actorUsername.trim(),
-        details = Map.unmodifiable(details) {
+        details = _freezeAuditMap(details) {
     if (this.summary.isEmpty) {
       throw ArgumentError.value(summary, 'summary', 'Must not be empty');
     }
@@ -178,9 +178,9 @@ class AuditEvent {
     this.entityType,
     this.entityId,
   })  : summary = summary.trim(),
-        details = Map<String, Object?>.unmodifiable(details),
-        before = Map<String, Object?>.unmodifiable(before),
-        after = Map<String, Object?>.unmodifiable(after) {
+        details = _freezeAuditMap(details),
+        before = _freezeAuditMap(before),
+        after = _freezeAuditMap(after) {
     if (this.summary.isEmpty) {
       throw ArgumentError.value(summary, 'summary', 'Must not be empty');
     }
@@ -200,4 +200,27 @@ class AuditEvent {
   final Map<String, Object?> after;
   final String? entityType;
   final EntityId? entityId;
+}
+
+Map<String, Object?> _freezeAuditMap(Map<String, Object?> source) {
+  return Map<String, Object?>.unmodifiable({
+    for (final entry in source.entries)
+      entry.key: _freezeAuditValue(entry.value),
+  });
+}
+
+Object? _freezeAuditValue(Object? value) {
+  if (value is Map<Object?, Object?>) {
+    return Map<Object?, Object?>.unmodifiable({
+      for (final entry in value.entries)
+        _freezeAuditValue(entry.key): _freezeAuditValue(entry.value),
+    });
+  }
+  if (value is List<Object?>) {
+    return List<Object?>.unmodifiable(value.map(_freezeAuditValue));
+  }
+  if (value is Set<Object?>) {
+    return Set<Object?>.unmodifiable(value.map(_freezeAuditValue));
+  }
+  return value;
 }

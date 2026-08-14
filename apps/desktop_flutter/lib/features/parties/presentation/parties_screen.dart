@@ -7,6 +7,7 @@ import '../../../core/app_state/feature_action_permissions.dart';
 import '../../../core/data/app_repository.dart';
 import '../../../core/design/app_design_system.dart';
 import '../../../core/domain/business_values.dart';
+import '../../../core/printing/document_output_service.dart';
 import '../../permissions/domain/permission_models.dart';
 import '../../settings/domain/operational_master_data.dart';
 import '../application/party_statement_service.dart';
@@ -660,6 +661,10 @@ class _PartiesScreenState extends State<PartiesScreen> {
       accentColor: AppModuleColors.parties,
       allowPrint: _allowsPartyAction(PermissionAction.print),
       allowExport: _allowsPartyAction(PermissionAction.export),
+      auditTarget: DocumentOutputAuditTarget(
+        entityType: 'party',
+        entityId: party.entityId,
+      ),
     );
   }
 

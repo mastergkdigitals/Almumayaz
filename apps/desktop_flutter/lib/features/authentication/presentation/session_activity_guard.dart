@@ -145,7 +145,12 @@ class _SessionUnlockViewState extends State<_SessionUnlockView> {
       }
       return;
     }
-    if (_isUnlocking || _passwordController.text.isEmpty) return;
+    if (_isUnlocking) return;
+    if (_passwordController.text.isEmpty) {
+      setState(() => _error = 'أدخل كلمة المرور للمتابعة');
+      _passwordFocusNode.requestFocus();
+      return;
+    }
     setState(() {
       _isUnlocking = true;
       _error = null;
@@ -172,100 +177,111 @@ class _SessionUnlockViewState extends State<_SessionUnlockView> {
   @override
   Widget build(BuildContext context) {
     final canUnlock = widget.sessionState == SessionState.locked;
-    return FocusScope(
-      autofocus: true,
-      canRequestFocus: true,
-      child: Material(
-        key: const Key('sessionLockOverlay'),
-        color: AppColors.background,
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 460),
-            child: Card(
-              elevation: 8,
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.xl),
-                child: Directionality(
-                  textDirection: TextDirection.rtl,
-                  child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                    const Icon(
-                      Icons.lock_clock_rounded,
-                      size: 52,
-                      color: AppModuleColors.settings,
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    Text(
-                      canUnlock ? 'الجلسة مقفلة' : 'الجلسة غير نشطة',
-                      textAlign: TextAlign.center,
-                      style: AppTypography.sectionTitle,
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      canUnlock
-                          ? 'أدخل كلمة مرور المستخدم الحالي للمتابعة'
-                          : 'انتهت الجلسة. ارجع إلى شاشة تسجيل الدخول للمتابعة.',
-                      textAlign: TextAlign.center,
-                      style: AppTypography.fieldText,
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    if (canUnlock)
-                      AppTextField(
-                        fieldKey:
-                            const Key('sessionUnlockPasswordField'),
-                        controller: _passwordController,
-                        focusNode: _passwordFocusNode,
-                        label: 'كلمة المرور',
-                        icon: Icons.password_rounded,
-                        obscureText: true,
-                        autofocus: true,
-                        enabled: !_isUnlocking,
-                        onChanged: (_) {
-                          if (_error != null) setState(() => _error = null);
-                        },
-                        onSubmitted: (_) => _unlock(),
-                      ),
-                    if (_error != null) ...[
-                      const SizedBox(height: AppSpacing.md),
-                      AppInfoBanner(
-                        key: const Key('sessionUnlockError'),
-                        message: _error!,
-                        icon: Icons.error_outline_rounded,
-                        foregroundColor: AppColors.dangerForeground,
-                        backgroundColor: AppColors.dangerSurface,
-                        announce: true,
-                      ),
-                    ],
-                    const SizedBox(height: AppSpacing.lg),
-                      Focus(
-                        autofocus: !canUnlock,
-                        onKeyEvent: (_, event) {
-                          if (event is KeyDownEvent &&
-                              (event.logicalKey ==
-                                      LogicalKeyboardKey.enter ||
-                                  event.logicalKey ==
-                                      LogicalKeyboardKey.space)) {
-                            unawaited(_unlock());
-                            return KeyEventResult.handled;
-                          }
-                          return KeyEventResult.ignored;
-                        },
-                        child: AppButton(
-                          key: const Key('sessionUnlockButton'),
-                          label: canUnlock
-                              ? 'فتح الجلسة'
-                              : 'العودة إلى تسجيل الدخول',
-                          icon: canUnlock
-                              ? Icons.lock_open_rounded
-                              : Icons.login_rounded,
-                          width: double.infinity,
-                          isLoading: _isUnlocking,
-                          onPressed: _isUnlocking ? null : _unlock,
+    final routeLabel = canUnlock ? 'الجلسة مقفلة' : 'الجلسة غير نشطة';
+    return Semantics(
+      container: true,
+      explicitChildNodes: true,
+      scopesRoute: true,
+      namesRoute: true,
+      liveRegion: true,
+      label: routeLabel,
+      child: FocusScope(
+        autofocus: true,
+        canRequestFocus: true,
+        child: Material(
+          key: const Key('sessionLockOverlay'),
+          color: AppColors.background,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 460),
+              child: Card(
+                elevation: 8,
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.xl),
+                  child: Directionality(
+                    textDirection: TextDirection.rtl,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Icon(
+                          Icons.lock_clock_rounded,
+                          size: 52,
+                          color: AppModuleColors.settings,
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: AppSpacing.md),
+                        Text(
+                          canUnlock ? 'الجلسة مقفلة' : 'الجلسة غير نشطة',
+                          textAlign: TextAlign.center,
+                          style: AppTypography.sectionTitle,
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        Text(
+                          canUnlock
+                              ? 'أدخل كلمة مرور المستخدم الحالي للمتابعة'
+                              : 'انتهت الجلسة. ارجع إلى شاشة تسجيل الدخول للمتابعة.',
+                          textAlign: TextAlign.center,
+                          style: AppTypography.fieldText,
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+                        if (canUnlock)
+                          AppTextField(
+                            fieldKey:
+                                const Key('sessionUnlockPasswordField'),
+                            controller: _passwordController,
+                            focusNode: _passwordFocusNode,
+                            label: 'كلمة المرور',
+                            icon: Icons.password_rounded,
+                            obscureText: true,
+                            autofocus: true,
+                            enabled: !_isUnlocking,
+                            onChanged: (_) {
+                              if (_error != null) {
+                                setState(() => _error = null);
+                              }
+                            },
+                            onSubmitted: (_) => _unlock(),
+                          ),
+                        if (_error != null) ...[
+                          const SizedBox(height: AppSpacing.md),
+                          AppInfoBanner(
+                            key: const Key('sessionUnlockError'),
+                            message: _error!,
+                            icon: Icons.error_outline_rounded,
+                            foregroundColor: AppColors.dangerForeground,
+                            backgroundColor: AppColors.dangerSurface,
+                            announce: true,
+                          ),
+                        ],
+                        const SizedBox(height: AppSpacing.lg),
+                        Focus(
+                          autofocus: !canUnlock,
+                          onKeyEvent: (_, event) {
+                            if (event is KeyDownEvent &&
+                                (event.logicalKey ==
+                                        LogicalKeyboardKey.enter ||
+                                    event.logicalKey ==
+                                        LogicalKeyboardKey.space)) {
+                              unawaited(_unlock());
+                              return KeyEventResult.handled;
+                            }
+                            return KeyEventResult.ignored;
+                          },
+                          child: AppButton(
+                            key: const Key('sessionUnlockButton'),
+                            label: canUnlock
+                                ? 'فتح الجلسة'
+                                : 'العودة إلى تسجيل الدخول',
+                            icon: canUnlock
+                                ? Icons.lock_open_rounded
+                                : Icons.login_rounded,
+                            width: double.infinity,
+                            isLoading: _isUnlocking,
+                            onPressed: _isUnlocking ? null : _unlock,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

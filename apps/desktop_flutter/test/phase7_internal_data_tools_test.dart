@@ -10,6 +10,8 @@ import 'package:erp/core/design/app_design_system.dart';
 import 'package:erp/core/domain/business_values.dart';
 import 'package:erp/core/services/service_failure.dart';
 import 'package:erp/features/audit_log/domain/audit_models.dart';
+import 'package:erp/features/audit_log/domain/audit_repository.dart';
+import 'package:erp/features/authentication/data/demo_authentication_service.dart';
 import 'package:erp/features/authentication/domain/session_models.dart';
 import 'package:erp/features/backup_restore/domain/backup_models.dart';
 import 'package:erp/features/cashbox/domain/cashbox_repository.dart';
@@ -38,6 +40,12 @@ void main() {
       addTearDown(store.dispose);
       await _signInAdmin(store);
       await store.services.googleDriveBackups.connect();
+      final auditBeforeClear = await store.services.audit.search(
+        AuditQuery(limit: 1000),
+      );
+      final auditIdsBeforeClear = {
+        for (final record in auditBeforeClear.records) record.id,
+      };
 
       final oldRepositories = store.repositories;
       final oldServices = store.services;
@@ -59,7 +67,11 @@ void main() {
       expect(store.revision, revisionBeforeClear + 1);
       expect(store.dataGeneration, generationBeforeClear + 1);
       expect(clearNotifications, 1);
-      await _expectClearedComposition(store.repositories, store.services);
+      await _expectClearedComposition(
+        store.repositories,
+        store.services,
+        retainedAuditIds: auditIdsBeforeClear,
+      );
 
       expect(await store.repositories.parties.nextPartyNumber(), 1);
       expect(await store.repositories.sales.nextDocumentNumber(), 1);
@@ -76,9 +88,18 @@ void main() {
       final bootstrapAudit = await store.services.audit.search(
         AuditQuery(limit: 1000),
       );
-      expect(bootstrapAudit.totalCount, 1);
-      expect(bootstrapAudit.records.single.id, EntityId.demo('audit', 1));
-      expect(bootstrapAudit.records.single.action, AuditAction.signIn);
+      expect(bootstrapAudit.totalCount, auditBeforeClear.totalCount + 2);
+      final bootstrapSignIn = bootstrapAudit.records.singleWhere(
+        (record) =>
+            record.action == AuditAction.signIn &&
+            !auditIdsBeforeClear.contains(record.id),
+      );
+      expect(bootstrapSignIn.actorUsername, 'admin');
+      final clearAudit = bootstrapAudit.records.singleWhere(
+        (record) => record.entityType == 'applicationData',
+      );
+      expect(clearAudit.action, AuditAction.delete);
+      expect(clearAudit.outcome, AuditOutcome.success);
 
       final firstRole = await store.services.administration.saveRole(
         RoleSaveRequest(
@@ -140,6 +161,15 @@ void main() {
 
       final clearedRepositories = store.repositories;
       final clearedServices = store.services;
+      final auditBeforeRestore = await store.services.audit.search(
+        AuditQuery(limit: 1000),
+      );
+      final auditIdsBeforeRestore = {
+        for (final record in auditBeforeRestore.records) record.id,
+      };
+      final latestAuditBeforeRestore = auditBeforeRestore.records
+          .map((record) => record.occurredAt)
+          .reduce((a, b) => a.compareTo(b) >= 0 ? a : b);
       final revisionBeforeRestore = store.revision;
       final generationBeforeRestore = store.dataGeneration;
       var restoreNotifications = 0;
@@ -155,9 +185,58 @@ void main() {
       expect(store.revision, revisionBeforeRestore + 1);
       expect(store.dataGeneration, generationBeforeRestore + 1);
       expect(restoreNotifications, 1);
+      final restoredSignature =
+          await _compositionSignature(store.repositories, store.services);
+      expect(restoredSignature['audit'], isNot(canonicalSignature['audit']));
       expect(
-        await _compositionSignature(store.repositories, store.services),
-        canonicalSignature,
+        Map<String, Object?>.of(restoredSignature)..remove('audit'),
+        Map<String, Object?>.of(canonicalSignature)..remove('audit'),
+      );
+      final restoredAudit = await store.services.audit.search(
+        AuditQuery(limit: 1000),
+      );
+      expect(restoredAudit.totalCount, auditBeforeRestore.totalCount + 1);
+      expect(
+        restoredAudit.records.map((record) => record.id),
+        containsAll(auditIdsBeforeRestore),
+      );
+      expect(
+        restoredAudit.records.map((record) => record.id).toSet(),
+        hasLength(restoredAudit.records.length),
+      );
+      expect(
+        restoredAudit.records
+            .map((record) => record.metadata.requestId)
+            .toSet(),
+        hasLength(restoredAudit.records.length),
+      );
+      expect(
+        restoredAudit.records,
+        contains(
+          isA<AuditRecord>()
+              .having(
+                (record) => record.entityType,
+                'entity type',
+                'applicationData',
+              )
+              .having(
+                (record) => record.action,
+                'action',
+                AuditAction.restore,
+              )
+              .having(
+                (record) => record.outcome,
+                'outcome',
+                AuditOutcome.success,
+              ),
+        ),
+      );
+      final restoreAudit = restoredAudit.records.singleWhere(
+        (record) => !auditIdsBeforeRestore.contains(record.id),
+      );
+      expect(
+        restoreAudit.occurredAt.compareTo(latestAuditBeforeRestore),
+        greaterThan(0),
       );
     });
 
@@ -259,6 +338,96 @@ void main() {
       expect(store.dataGeneration, generationBefore);
       expect(store.isReplacingData, isFalse);
       expect(notifications, 0);
+      expect(servicesBefore.operationGate!.acceptsNewOperations, isTrue);
+      final oldConfiguration =
+          await servicesBefore.backupConfiguration.load(
+        almumayazWindowsDeviceId,
+      );
+      expect(oldConfiguration.deviceId, almumayazWindowsDeviceId);
+    });
+
+    test('local sign-out during transition audit prevents the final swap',
+        () async {
+      late _BlockingAuditWriter replacementWriter;
+      AppDataComposition builder(AppDataProfile profile) {
+        final composition = AppDataComposition.demo(profile);
+        if (profile != AppDataProfile.cleared) return composition;
+        replacementWriter = _BlockingAuditWriter(
+          composition.services.auditWriter,
+        );
+        return AppDataComposition(
+          repositories: composition.repositories,
+          services: _copyServicesWithAuditWriter(
+            composition.services,
+            replacementWriter,
+          ),
+        );
+      }
+
+      final store = AppStore.demo(compositionBuilder: builder);
+      addTearDown(store.dispose);
+      await _signInAdmin(store);
+      final repositoriesBefore = store.repositories;
+      final servicesBefore = store.services;
+
+      final clear = store.clearAllData();
+      await replacementWriter.started.future;
+      await store.signOut();
+      replacementWriter.release.complete();
+
+      await _expectFailureCode(clear, 'active_session_required');
+      expect(store.repositories, same(repositoriesBefore));
+      expect(store.services, same(servicesBefore));
+      expect(store.session, isNull);
+      expect(store.dataGeneration, 0);
+      expect(store.isReplacingData, isFalse);
+    });
+
+    test('replacement transition audit failure aborts and reopens old graph',
+        () async {
+      AppDataComposition builder(AppDataProfile profile) {
+        final composition = AppDataComposition.demo(profile);
+        if (profile != AppDataProfile.cleared) return composition;
+        return AppDataComposition(
+          repositories: composition.repositories,
+          services: _copyServicesWithAuditWriter(
+            composition.services,
+            _ThrowingAuditWriter(),
+          ),
+        );
+      }
+
+      final store = AppStore.demo(compositionBuilder: builder);
+      addTearDown(store.dispose);
+      await _signInAdmin(store);
+      final repositoriesBefore = store.repositories;
+      final servicesBefore = store.services;
+      final sessionBefore = store.session;
+
+      await expectLater(store.clearAllData(), throwsStateError);
+
+      expect(store.repositories, same(repositoriesBefore));
+      expect(store.services, same(servicesBefore));
+      expect(store.session, same(sessionBefore));
+      expect(store.dataGeneration, 0);
+      expect(store.isReplacingData, isFalse);
+      expect(servicesBefore.operationGate!.acceptsNewOperations, isTrue);
+      expect(servicesBefore.operationGate!.isRetired, isFalse);
+      final oldIdentity =
+          servicesBefore.authentication as DemoAuthenticationService;
+      expect(
+        await oldIdentity.identityState.mutate(() => 42),
+        42,
+      );
+      final audit = await store.services.audit.search(AuditQuery(limit: 1000));
+      expect(
+        audit.records.where(
+          (record) =>
+              record.entityType == 'applicationData' &&
+              record.outcome == AuditOutcome.failure,
+        ),
+        hasLength(1),
+      );
     });
 
     test('composition failure rolls back identities, session, and counters',
@@ -301,6 +470,12 @@ void main() {
       expect(store.dataGeneration, generationBefore);
       expect(store.isReplacingData, isFalse);
       expect(notifications, 0);
+      expect(servicesBefore.operationGate!.acceptsNewOperations, isTrue);
+      final configurationAfterFailure =
+          await servicesBefore.backupConfiguration.load(
+        almumayazWindowsDeviceId,
+      );
+      expect(configurationAfterFailure.deviceId, almumayazWindowsDeviceId);
     });
 
     test('a concurrent replacement is rejected while the first completes',
@@ -320,6 +495,14 @@ void main() {
       expect(store.isReplacingData, isFalse);
       expect(store.dataGeneration, 1);
       expect(await store.repositories.sales.getAll(), isEmpty);
+      final audit = await store.services.audit.search(AuditQuery(limit: 1000));
+      final conflictEvents = audit.records.where(
+        (record) =>
+            record.entityType == 'applicationData' &&
+            record.details['failureCode'] == 'data_replacement_in_progress',
+      );
+      expect(conflictEvents, hasLength(1));
+      expect(conflictEvents.single.actorUsername, 'admin');
     });
   });
 
@@ -567,8 +750,9 @@ Future<void> _expectFailureCode(Future<void> operation, String code) {
 
 Future<void> _expectClearedComposition(
   AppRepositories repositories,
-  AppServices services,
-) async {
+  AppServices services, {
+  required Set<EntityId> retainedAuditIds,
+}) async {
   expect(await repositories.parties.getAll(), isEmpty);
   expect(await repositories.items.getAll(), isEmpty);
   expect(await repositories.warehouses.getAll(), isEmpty);
@@ -634,7 +818,17 @@ Future<void> _expectClearedComposition(
   expect(roles.single.id, EntityId.demo('role', 1));
   expect(roles.single.isSystemRole, isTrue);
   final audit = await services.audit.search(AuditQuery(limit: 1000));
-  expect(audit.totalCount, 0);
+  expect(audit.totalCount, retainedAuditIds.length + 1);
+  expect(
+    audit.records.map((record) => record.id),
+    containsAll(retainedAuditIds),
+  );
+  final clearAudit = audit.records.singleWhere(
+    (record) => !retainedAuditIds.contains(record.id),
+  );
+  expect(clearAudit.entityType, 'applicationData');
+  expect(clearAudit.action, AuditAction.delete);
+  expect(clearAudit.outcome, AuditOutcome.success);
 
   final backupConfiguration = await services.backupConfiguration.load(
     almumayazWindowsDeviceId,
@@ -873,6 +1067,54 @@ Future<Map<String, Object?>> _compositionSignature(
 Future<void> _setDesktopSurface(WidgetTester tester) async {
   await tester.binding.setSurfaceSize(const Size(1440, 1000));
   addTearDown(() => tester.binding.setSurfaceSize(null));
+}
+
+AppServices _copyServicesWithAuditWriter(
+  AppServices source,
+  AuditEventWriter auditWriter,
+) {
+  return AppServices(
+    authentication: source.authentication,
+    sessionPolicies: source.sessionPolicies,
+    administration: source.administration,
+    auditWriter: auditWriter,
+    backupConfiguration: source.backupConfiguration,
+    backups: source.backups,
+    backupFileSelection: source.backupFileSelection,
+    googleDriveBackups: source.googleDriveBackups,
+    archiveSecurity: source.archiveSecurity,
+    archive: source.archive,
+    archiveFileSelection: source.archiveFileSelection,
+    archiveValidationPolicy: source.archiveValidationPolicy,
+    users: source.users,
+    roles: source.roles,
+    audit: source.audit,
+    operationGate: source.operationGate,
+    documentOutput: source.documentOutput,
+    reportOutput: source.reportOutput,
+  );
+}
+
+class _BlockingAuditWriter implements AuditEventWriter {
+  _BlockingAuditWriter(this.delegate);
+
+  final AuditEventWriter delegate;
+  final Completer<void> started = Completer<void>();
+  final Completer<void> release = Completer<void>();
+
+  @override
+  Future<AuditRecord> write(AuditEvent event) async {
+    if (!started.isCompleted) started.complete();
+    await release.future;
+    return delegate.write(event);
+  }
+}
+
+class _ThrowingAuditWriter implements AuditEventWriter {
+  @override
+  Future<AuditRecord> write(AuditEvent event) {
+    throw StateError('injected replacement audit failure');
+  }
 }
 
 Future<void> _login(

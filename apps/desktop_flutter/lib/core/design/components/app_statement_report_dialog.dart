@@ -47,6 +47,7 @@ abstract final class AppStatementReportDialog {
     DocumentExportService? exportService,
     bool allowPrint = true,
     bool allowExport = true,
+    DocumentOutputAuditTarget? auditTarget,
   }) {
     final outputScope = DocumentOutputScope.maybeOf(context);
     return showDialog<void>(
@@ -68,6 +69,7 @@ abstract final class AppStatementReportDialog {
               const DemoDocumentOutputService(),
           allowPrint: allowPrint,
           allowExport: allowExport,
+          auditTarget: auditTarget,
         ),
       ),
     );
@@ -85,6 +87,7 @@ class _StatementReportBody extends StatefulWidget {
     required this.exportService,
     required this.allowPrint,
     required this.allowExport,
+    required this.auditTarget,
   });
 
   final String partyName;
@@ -96,6 +99,7 @@ class _StatementReportBody extends StatefulWidget {
   final DocumentExportService exportService;
   final bool allowPrint;
   final bool allowExport;
+  final DocumentOutputAuditTarget? auditTarget;
 
   @override
   State<_StatementReportBody> createState() =>
@@ -115,6 +119,7 @@ class _StatementReportBodyState extends State<_StatementReportBody> {
       title: 'كشف حساب',
       subtitle: widget.partyName,
       fileNameBase: 'كشف حساب ${widget.partyName}',
+      auditTarget: widget.auditTarget,
       fields: [
         DocumentField(label: 'الفترة', value: period),
         DocumentField(

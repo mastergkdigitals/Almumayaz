@@ -628,6 +628,12 @@ class _CashboxScreenState extends State<CashboxScreen> {
       title: 'سند ${_voucherType.label} رقم $voucherNumber',
       subtitle: _formControllers.subaccount.text,
       fileNameBase: 'سند صندوق $voucherNumber',
+      auditTarget: _cashboxController.selectedVoucher == null
+          ? null
+          : DocumentOutputAuditTarget(
+              entityType: 'cashbox_voucher',
+              entityId: _cashboxController.selectedVoucher!.entityId,
+            ),
       fields: [
         DocumentField(
           label: 'التاريخ',

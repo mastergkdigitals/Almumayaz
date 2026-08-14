@@ -1,6 +1,9 @@
 import '../../../core/data/app_repository.dart';
 import '../../../core/data/demo_transaction_runner.dart';
 import '../../../core/domain/business_values.dart';
+import '../../audit_log/data/demo_business_audit.dart';
+import '../../audit_log/domain/audit_models.dart';
+import '../../permissions/domain/permission_models.dart';
 import '../../settings/domain/operational_master_data.dart';
 import '../../settings/domain/operational_master_data_repository.dart';
 import '../domain/party.dart';
@@ -27,9 +30,11 @@ class DemoPartyRepository extends InMemoryDemoRepository<Party>
     Set<EntityId>? initiallyReferencedIds,
     PartyReferenceLookup? isReferenced,
     DemoTransactionRunner? transactionRunner,
+    DemoBusinessAudit? businessAudit,
   })  : _masterData = masterData,
         _isReferenced = isReferenced ?? _neverReferenced,
         _transactionRunner = transactionRunner ?? DemoTransactionRunner(),
+        _businessAudit = businessAudit,
         _initiallyReferencedIds = Set.unmodifiable(
           initiallyReferencedIds ?? const <EntityId>{},
         ),
@@ -45,6 +50,7 @@ class DemoPartyRepository extends InMemoryDemoRepository<Party>
   final Set<EntityId> _initiallyReferencedIds;
   final OperationalMasterDataRepository _masterData;
   final DemoTransactionRunner _transactionRunner;
+  final DemoBusinessAudit? _businessAudit;
   final Map<EntityId, PartyMasterDataReferences> _masterDataReferences;
   final Set<EntityId> _issuedIds = {};
   final Set<int> _issuedNumbers = {};
@@ -106,11 +112,25 @@ class DemoPartyRepository extends InMemoryDemoRepository<Party>
 
   @override
   Future<Party> save(Party value) {
-    return _transactionRunner.run(() => _saveUnlocked(value));
+    return _transactionRunner.run(() {
+      final staged = createDemoSnapshot();
+      final before = staged[value.entityId];
+      final beforeReferences = _masterDataReferences[value.entityId];
+      final saved = _stageSaveUnlocked(staged, value);
+      final audit = _prepareSaveAudit(
+        before: before,
+        beforeReferences: beforeReferences,
+        after: saved,
+        afterReferences: _masterDataReferences[saved.entityId],
+      );
+      commitDemoSnapshot(staged);
+      _recordIssuedIdentity(saved);
+      if (audit != null) _businessAudit!.appendPrepared(audit);
+      return saved;
+    });
   }
 
-  Party _saveUnlocked(Party value) {
-    final staged = createDemoSnapshot();
+  Party _stageSaveUnlocked(Map<EntityId, Party> staged, Party value) {
     final currentValues = staged.values;
     _captureIssuedIdentity(currentValues);
     if (value.number < 1) throw StateError('رقم الطرف غير صالح');
@@ -144,10 +164,7 @@ class DemoPartyRepository extends InMemoryDemoRepository<Party>
             usdBalance: current.usdBalance,
           );
     staged[normalized.entityId] = normalized;
-    commitDemoSnapshot(staged);
-    final saved = normalized;
-    _recordIssuedIdentity(saved);
-    return saved;
+    return normalized;
   }
 
   @override
@@ -168,13 +185,26 @@ class DemoPartyRepository extends InMemoryDemoRepository<Party>
       workplaceId: references.workplaceId,
       branchId: references.branchId,
     );
-    final saved = _saveUnlocked(
+    final staged = createDemoSnapshot();
+    final before = staged[party.entityId];
+    final beforeReferences = _masterDataReferences[party.entityId];
+    final saved = _stageSaveUnlocked(
+      staged,
       party.copyWithTyped(
         workplace: resolved.workplaceName,
         branch: resolved.branchName,
       ),
     );
+    final audit = _prepareSaveAudit(
+      before: before,
+      beforeReferences: beforeReferences,
+      after: saved,
+      afterReferences: resolved.references,
+    );
+    commitDemoSnapshot(staged);
+    _recordIssuedIdentity(saved);
     _masterDataReferences[saved.entityId] = resolved.references;
+    if (audit != null) _businessAudit!.appendPrepared(audit);
     return saved;
   }
 
@@ -260,9 +290,64 @@ class DemoPartyRepository extends InMemoryDemoRepository<Party>
   Future<void> delete(EntityId id) {
     return _transactionRunner.run(() async {
       _captureIssuedIdentity(await getAll());
-      await super.delete(id);
+      final decision = await canDelete(id);
+      if (!decision.isAllowed) {
+        throw StateError(decision.reason ?? 'لا يمكن حذف الطرف');
+      }
+      final staged = createDemoSnapshot();
+      final existing = staged[id]!;
+      final references = _masterDataReferences[id];
+      final audit = _businessAudit?.prepare(
+        event: AuditEvent(
+          action: AuditAction.delete,
+          outcome: AuditOutcome.success,
+          summary: 'حذف الطرف ${existing.name}',
+          before: partyAuditSnapshot(
+            existing,
+            references: references,
+          ),
+          details: const {'permanent': true},
+          entityType: 'party',
+          entityId: existing.entityId,
+        ),
+        permission: PermissionCode(
+          module: 'parties',
+          action: PermissionAction.delete,
+        ),
+      );
+      staged.remove(id);
+      commitDemoSnapshot(staged);
       _masterDataReferences.remove(id);
+      if (audit != null) _businessAudit!.appendPrepared(audit);
     });
+  }
+
+  DemoPreparedBusinessAudit? _prepareSaveAudit({
+    required Party? before,
+    required PartyMasterDataReferences? beforeReferences,
+    required Party after,
+    required PartyMasterDataReferences? afterReferences,
+  }) {
+    final isCreate = before == null;
+    return _businessAudit?.prepare(
+      event: AuditEvent(
+        action: isCreate ? AuditAction.create : AuditAction.update,
+        outcome: AuditOutcome.success,
+        summary: isCreate
+            ? 'إضافة الطرف ${after.name}'
+            : 'تحديث الطرف ${after.name}',
+        before: before == null
+            ? const <String, Object?>{}
+            : partyAuditSnapshot(before, references: beforeReferences),
+        after: partyAuditSnapshot(after, references: afterReferences),
+        entityType: 'party',
+        entityId: after.entityId,
+      ),
+      permission: PermissionCode(
+        module: 'parties',
+        action: isCreate ? PermissionAction.create : PermissionAction.update,
+      ),
+    );
   }
 
   Future<_ResolvedPartyMasterData> _resolveMasterDataReferences({

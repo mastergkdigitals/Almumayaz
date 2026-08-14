@@ -398,11 +398,12 @@ class DemoArchiveRepository implements ArchiveRepository {
 
   @override
   Future<void> delete(EntityId id) async {
-    final decision = await canDelete(id);
-    if (!decision.isAllowed) {
-      throw ServiceFailure(
+    // Keep the existence check and removal in one synchronous turn so two
+    // concurrent callers cannot both report a successful permanent delete.
+    if (!_documents.containsKey(id)) {
+      throw const ServiceFailure(
         kind: ServiceFailureKind.notFound,
-        message: decision.reason ?? 'المستند غير موجود',
+        message: 'المستند غير موجود',
       );
     }
     _documents.remove(id);

@@ -1,11 +1,14 @@
 import '../../features/cashbox/data/demo_cashbox_repository.dart';
 import '../../features/cashbox/domain/cashbox_voucher.dart';
+import '../../features/audit_log/data/demo_business_audit.dart';
+import '../../features/audit_log/domain/audit_models.dart';
 import '../../features/installments/application/installment_schedule_builder.dart';
 import '../../features/installments/data/demo_installment_mutation_effects.dart';
 import '../../features/installments/data/demo_installment_repository.dart';
 import '../../features/installments/domain/installment_plan.dart';
 import '../../features/parties/data/demo_party_repository.dart';
 import '../../features/parties/domain/party.dart';
+import '../../features/permissions/domain/permission_models.dart';
 import '../../features/purchases/data/demo_purchase_mutation_effects.dart';
 import '../../features/purchases/domain/purchase_invoice.dart';
 import '../../features/sales/data/demo_sales_mutation_effects.dart';
@@ -36,6 +39,7 @@ class DemoInvoiceEffectsCoordinator
     required DemoInventoryCostRepository inventoryCosts,
     required DemoSalesRepository Function() sales,
     required DemoInstallmentRepository Function() installments,
+    DemoBusinessAudit? businessAudit,
   })  : _transactionRunner = transactionRunner,
         _parties = parties,
         _warehouses = warehouses,
@@ -43,7 +47,8 @@ class DemoInvoiceEffectsCoordinator
         _businessSettings = businessSettings,
         _inventoryCosts = inventoryCosts,
         _sales = sales,
-        _installments = installments;
+        _installments = installments,
+        _businessAudit = businessAudit;
 
   final DemoTransactionRunner _transactionRunner;
   final DemoPartyRepository _parties;
@@ -53,6 +58,7 @@ class DemoInvoiceEffectsCoordinator
   final DemoInventoryCostRepository _inventoryCosts;
   final DemoSalesRepository Function() _sales;
   final DemoInstallmentRepository Function() _installments;
+  final DemoBusinessAudit? _businessAudit;
 
   @override
   Future<SalesInvoice> applySale({
@@ -101,6 +107,36 @@ class DemoInvoiceEffectsCoordinator
       final finalParty = stagedParties[candidate.customerId]!;
       final finalBalance = _partyBalance(finalParty, candidate.currency);
       final normalized = _salesWithBalance(candidate, finalBalance);
+      final isCreate = previous == null;
+      final installmentPlan = stagedInstallments.values
+          .where((plan) => plan.salesInvoiceId == normalized.id)
+          .firstOrNull;
+      final audit = _businessAudit?.prepare(
+        event: AuditEvent(
+          action: isCreate ? AuditAction.create : AuditAction.update,
+          outcome: AuditOutcome.success,
+          summary: isCreate
+              ? 'إضافة قائمة البيع رقم ${normalized.documentNumber}'
+              : 'تحديث قائمة البيع رقم ${normalized.documentNumber}',
+          before: previous == null
+              ? const <String, Object?>{}
+              : salesInvoiceAuditSnapshot(previous),
+          after: salesInvoiceAuditSnapshot(normalized),
+          details: {
+            'inventoryLineCount': normalized.lines.length,
+            'partyId': normalized.customerId.value,
+            'cashboxSourceId': normalized.id.value,
+            'installmentPlanId': installmentPlan?.id.value,
+          },
+          entityType: 'sales_invoice',
+          entityId: normalized.id,
+        ),
+        permission: PermissionCode(
+          module: 'sales',
+          action:
+              isCreate ? PermissionAction.create : PermissionAction.update,
+        ),
+      );
 
       commit(normalized);
       _warehouses.commitInventorySnapshot(stagedInventory);
@@ -108,6 +144,7 @@ class DemoInvoiceEffectsCoordinator
       _parties.commitPartySnapshot(stagedParties);
       installmentRepository.commitInstallmentSnapshot(stagedInstallments);
       _inventoryCosts.commitSnapshot(stagedCosts);
+      if (audit != null) _businessAudit!.appendPrepared(audit);
       return normalized;
     });
   }
@@ -150,6 +187,30 @@ class DemoInvoiceEffectsCoordinator
       );
       final stagedInstallments =
           installmentRepository.stageRemoveForSalesInvoice(previous.id);
+      final audit = _businessAudit?.prepare(
+        event: AuditEvent(
+          action: AuditAction.delete,
+          outcome: AuditOutcome.success,
+          summary: 'حذف قائمة البيع رقم ${previous.documentNumber}',
+          before: salesInvoiceAuditSnapshot(previous),
+          details: {
+            'permanent': true,
+            'inventoryLineCount': previous.lines.length,
+            'partyId': previous.customerId.value,
+            'cashboxSourceId': previous.id.value,
+            'installmentPlanId': previousPlan?.id.value,
+            'installmentPostingCount': previousPlan == null
+                ? 0
+                : previousPlan.entries.where((entry) => entry.isPaid).length,
+          },
+          entityType: 'sales_invoice',
+          entityId: previous.id,
+        ),
+        permission: PermissionCode(
+          module: 'sales',
+          action: PermissionAction.delete,
+        ),
+      );
 
       commit();
       _warehouses.commitInventorySnapshot(stagedInventory);
@@ -157,6 +218,7 @@ class DemoInvoiceEffectsCoordinator
       _parties.commitPartySnapshot(stagedParties);
       installmentRepository.commitInstallmentSnapshot(stagedInstallments);
       _inventoryCosts.commitSnapshot(stagedCosts);
+      if (audit != null) _businessAudit!.appendPrepared(audit);
     });
   }
 
@@ -207,11 +269,35 @@ class DemoInvoiceEffectsCoordinator
               : notes,
         ),
       );
+      final beforeEntry = settlement.previous.entryById(entryId)!;
+      final audit = _businessAudit?.prepare(
+        event: AuditEvent(
+          action: AuditAction.update,
+          outcome: AuditOutcome.success,
+          summary: 'تسديد القسط رقم ${entry.number} من قائمة البيع رقم '
+              '${invoice.documentNumber}',
+          before: installmentEntryAuditSnapshot(beforeEntry),
+          after: installmentEntryAuditSnapshot(entry),
+          details: {
+            'planId': plan.id.value,
+            'salesInvoiceId': invoice.id.value,
+            'customerId': plan.customerId.value,
+            'cashboxSourceId': entry.id.value,
+          },
+          entityType: 'installment_entry',
+          entityId: entry.id,
+        ),
+        permission: PermissionCode(
+          module: 'sales',
+          action: PermissionAction.update,
+        ),
+      );
 
       commit(settlement.updated);
       _sales().commitSalesMutation(stagedSales);
       _cashbox.commitCashboxMutation(stagedCashbox);
       _parties.commitPartySnapshot(stagedParties);
+      if (audit != null) _businessAudit!.appendPrepared(audit);
       return settlement.updated;
     });
   }
@@ -258,12 +344,39 @@ class DemoInvoiceEffectsCoordinator
         candidate,
         signedBalance.absolute,
       );
+      final isCreate = previous == null;
+      final audit = _businessAudit?.prepare(
+        event: AuditEvent(
+          action: isCreate ? AuditAction.create : AuditAction.update,
+          outcome: AuditOutcome.success,
+          summary: isCreate
+              ? 'إضافة قائمة الشراء رقم ${normalized.documentNumber}'
+              : 'تحديث قائمة الشراء رقم ${normalized.documentNumber}',
+          before: previous == null
+              ? const <String, Object?>{}
+              : purchaseInvoiceAuditSnapshot(previous),
+          after: purchaseInvoiceAuditSnapshot(normalized),
+          details: {
+            'inventoryLineCount': normalized.lines.length,
+            'partyId': normalized.supplierId.value,
+            'cashboxSourceId': normalized.id.value,
+          },
+          entityType: 'purchase_invoice',
+          entityId: normalized.id,
+        ),
+        permission: PermissionCode(
+          module: 'purchases',
+          action:
+              isCreate ? PermissionAction.create : PermissionAction.update,
+        ),
+      );
 
       commit(normalized);
       _warehouses.commitInventorySnapshot(stagedInventory);
       _cashbox.commitCashboxMutation(stagedCashbox);
       _parties.commitPartySnapshot(stagedParties);
       _inventoryCosts.commitSnapshot(stagedCosts);
+      if (audit != null) _businessAudit!.appendPrepared(audit);
       return normalized;
     });
   }
@@ -291,12 +404,33 @@ class DemoInvoiceEffectsCoordinator
       final stagedCashbox = _cashbox.stageRemoveInvoicePosting(
         _purchaseSource(previous),
       );
+      final audit = _businessAudit?.prepare(
+        event: AuditEvent(
+          action: AuditAction.delete,
+          outcome: AuditOutcome.success,
+          summary: 'حذف قائمة الشراء رقم ${previous.documentNumber}',
+          before: purchaseInvoiceAuditSnapshot(previous),
+          details: {
+            'permanent': true,
+            'inventoryLineCount': previous.lines.length,
+            'partyId': previous.supplierId.value,
+            'cashboxSourceId': previous.id.value,
+          },
+          entityType: 'purchase_invoice',
+          entityId: previous.id,
+        ),
+        permission: PermissionCode(
+          module: 'purchases',
+          action: PermissionAction.delete,
+        ),
+      );
 
       commit();
       _warehouses.commitInventorySnapshot(stagedInventory);
       _cashbox.commitCashboxMutation(stagedCashbox);
       _parties.commitPartySnapshot(stagedParties);
       _inventoryCosts.commitSnapshot(stagedCosts);
+      if (audit != null) _businessAudit!.appendPrepared(audit);
     });
   }
 

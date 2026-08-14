@@ -1,6 +1,9 @@
 import '../../../core/data/app_repository.dart';
 import '../../../core/data/demo_transaction_runner.dart';
 import '../../../core/domain/business_values.dart';
+import '../../audit_log/data/demo_business_audit.dart';
+import '../../audit_log/domain/audit_models.dart';
+import '../../permissions/domain/permission_models.dart';
 import 'demo_inventory_cost_repository.dart';
 import '../domain/inventory_records.dart';
 import '../domain/warehouse.dart';
@@ -30,11 +33,13 @@ class DemoWarehouseRepository extends InMemoryDemoRepository<Warehouse>
     WarehouseReferenceExists? isExternallyReferenced,
     DemoTransactionRunner? transactionRunner,
     DemoInventoryCostTransferEffects? inventoryCostEffects,
+    DemoBusinessAudit? businessAudit,
   })  : _itemExists = itemExists,
         _isExternallyReferenced =
             isExternallyReferenced ?? _neverReferenced,
         _transactionRunner = transactionRunner ?? DemoTransactionRunner(),
         _inventoryCostEffects = inventoryCostEffects,
+        _businessAudit = businessAudit,
         _inventory = {
           for (final balance in initialInventory ?? demoInventory())
             if (!balance.quantity.isZero) balance.id: balance,
@@ -51,6 +56,7 @@ class DemoWarehouseRepository extends InMemoryDemoRepository<Warehouse>
   final WarehouseReferenceExists _isExternallyReferenced;
   final DemoTransactionRunner _transactionRunner;
   final DemoInventoryCostTransferEffects? _inventoryCostEffects;
+  final DemoBusinessAudit? _businessAudit;
   final Map<EntityId, InventoryBalance> _inventory;
   final List<InventoryTransfer> _transfers;
 
@@ -112,12 +118,65 @@ class DemoWarehouseRepository extends InMemoryDemoRepository<Warehouse>
 
   @override
   Future<Warehouse> save(Warehouse value) {
-    return _transactionRunner.run(() => super.save(value));
+    return _transactionRunner.run(() {
+      final staged = createDemoSnapshot();
+      final before = staged[value.entityId];
+      staged[value.entityId] = value;
+      final isCreate = before == null;
+      final audit = _businessAudit?.prepare(
+        event: AuditEvent(
+          action: isCreate ? AuditAction.create : AuditAction.update,
+          outcome: AuditOutcome.success,
+          summary: isCreate
+              ? 'إضافة المخزن ${value.name}'
+              : 'تحديث المخزن ${value.name}',
+          before: before == null
+              ? const <String, Object?>{}
+              : warehouseAuditSnapshot(before),
+          after: warehouseAuditSnapshot(value),
+          entityType: 'warehouse',
+          entityId: value.entityId,
+        ),
+        permission: PermissionCode(
+          module: 'warehouses',
+          action:
+              isCreate ? PermissionAction.create : PermissionAction.update,
+        ),
+      );
+      commitDemoSnapshot(staged);
+      if (audit != null) _businessAudit!.appendPrepared(audit);
+      return value;
+    });
   }
 
   @override
   Future<void> delete(EntityId id) {
-    return _transactionRunner.run(() => super.delete(id));
+    return _transactionRunner.run(() async {
+      final decision = await canDelete(id);
+      if (!decision.isAllowed) {
+        throw StateError(decision.reason ?? 'لا يمكن حذف المخزن');
+      }
+      final staged = createDemoSnapshot();
+      final existing = staged[id]!;
+      final audit = _businessAudit?.prepare(
+        event: AuditEvent(
+          action: AuditAction.delete,
+          outcome: AuditOutcome.success,
+          summary: 'حذف المخزن ${existing.name}',
+          before: warehouseAuditSnapshot(existing),
+          details: const {'permanent': true},
+          entityType: 'warehouse',
+          entityId: existing.entityId,
+        ),
+        permission: PermissionCode(
+          module: 'warehouses',
+          action: PermissionAction.delete,
+        ),
+      );
+      staged.remove(id);
+      commitDemoSnapshot(staged);
+      if (audit != null) _businessAudit!.appendPrepared(audit);
+    });
   }
 
   @override
@@ -257,11 +316,34 @@ class DemoWarehouseRepository extends InMemoryDemoRepository<Warehouse>
       reversalOfId: reversalOfId,
     );
     final stagedCost = _inventoryCostEffects?.stageTransferCost(transfer);
+    final isReversal = reversalOfId != null;
+    final audit = _businessAudit?.prepare(
+      event: AuditEvent(
+        action: AuditAction.create,
+        outcome: AuditOutcome.success,
+        summary: isReversal
+            ? 'عكس النقل المخزني رقم ${transfer.documentNumber}'
+            : 'إنشاء النقل المخزني رقم ${transfer.documentNumber}',
+        after: transferAuditSnapshot(transfer),
+        details: {
+          'operation': isReversal ? 'reverse' : 'transfer',
+          if (reversalOfId != null) 'reversalOfId': reversalOfId.value,
+        },
+        entityType: 'inventory_transfer',
+        entityId: transfer.id,
+      ),
+      permission: PermissionCode(
+        module: 'warehouses',
+        action:
+            isReversal ? PermissionAction.update : PermissionAction.create,
+      ),
+    );
     commitInventorySnapshot(stagedInventory);
     _transfers.add(transfer);
     if (stagedCost != null) {
       _inventoryCostEffects!.commitCostSnapshot(stagedCost);
     }
+    if (audit != null) _businessAudit!.appendPrepared(audit);
     return transfer;
   }
 

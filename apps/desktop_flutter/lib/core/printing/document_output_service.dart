@@ -1,3 +1,4 @@
+import '../domain/business_values.dart';
 import '../services/service_failure.dart';
 
 enum DocumentExportFormat { pdf, excel }
@@ -98,6 +99,7 @@ class DocumentOutputRequest {
     this.subtitle,
     this.fileNameBase,
     this.fields = const [],
+    this.auditTarget,
   });
 
   final String title;
@@ -106,6 +108,20 @@ class DocumentOutputRequest {
   final List<DocumentField> fields;
   final List<DocumentColumn> columns;
   final List<List<String>> rows;
+  final DocumentOutputAuditTarget? auditTarget;
+}
+
+/// Optional stable business-document identity used only by audit decorators.
+/// Generated reports may omit it and are still identified by their title and
+/// variant in safe audit details.
+class DocumentOutputAuditTarget {
+  const DocumentOutputAuditTarget({
+    required this.entityType,
+    required this.entityId,
+  });
+
+  final String entityType;
+  final EntityId entityId;
 }
 
 class DocumentOutputResult {

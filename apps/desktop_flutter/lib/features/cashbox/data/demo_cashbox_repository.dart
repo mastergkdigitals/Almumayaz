@@ -1,7 +1,10 @@
 import '../../../core/data/app_repository.dart';
 import '../../../core/data/demo_transaction_runner.dart';
 import '../../../core/domain/business_values.dart';
+import '../../audit_log/data/demo_business_audit.dart';
+import '../../audit_log/domain/audit_models.dart';
 import '../../parties/data/demo_party_repository.dart';
+import '../../permissions/domain/permission_models.dart';
 import '../../settings/domain/operational_master_data.dart';
 import '../../settings/domain/operational_master_data_repository.dart';
 import '../domain/cashbox_repository.dart';
@@ -50,6 +53,7 @@ class DemoCashboxRepository extends InMemoryDemoRepository<CashboxVoucher>
       iqd: Money.fromMinorUnits(9800000, AppCurrency.iqd),
       usd: Money.fromMinorUnits(450000, AppCurrency.usd),
     ),
+    DemoBusinessAudit? businessAudit,
   }) {
     final values = List<CashboxVoucher>.of(
       initialValues ?? demoCashboxVouchers(),
@@ -66,6 +70,7 @@ class DemoCashboxRepository extends InMemoryDemoRepository<CashboxVoucher>
       parties: resolvedParties,
       transactionRunner: resolvedRunner,
       openingBalance: openingBalance,
+      businessAudit: businessAudit,
     );
   }
 
@@ -75,10 +80,12 @@ class DemoCashboxRepository extends InMemoryDemoRepository<CashboxVoucher>
     required DemoPartyRepository parties,
     required DemoTransactionRunner transactionRunner,
     required CashboxBalanceSnapshot openingBalance,
+    required DemoBusinessAudit? businessAudit,
   })  : _masterData = masterData,
         _parties = parties,
         _transactionRunner = transactionRunner,
         _openingBalance = openingBalance,
+        _businessAudit = businessAudit,
         _openingBalances = _resolveOpeningBalances(initialValues),
         _highestIssuedNumber = _highestVoucherNumber(initialValues),
         _issuedNumbers = {
@@ -93,6 +100,7 @@ class DemoCashboxRepository extends InMemoryDemoRepository<CashboxVoucher>
   final DemoPartyRepository _parties;
   final DemoTransactionRunner _transactionRunner;
   final CashboxBalanceSnapshot _openingBalance;
+  final DemoBusinessAudit? _businessAudit;
   final Map<EntityId, CashboxAccountBalance> _openingBalances;
   int _highestIssuedNumber;
   final Set<int> _issuedNumbers;
@@ -179,10 +187,34 @@ class DemoCashboxRepository extends InMemoryDemoRepository<CashboxVoucher>
       final stagedParties = _parties.stageBalanceAdjustments(
         partyAdjustments,
       );
+      final saved = stagedCashbox.values[value.entityId]!;
+      final isCreate = existing == null;
+      final audit = _businessAudit?.prepare(
+        event: AuditEvent(
+          action: isCreate ? AuditAction.create : AuditAction.update,
+          outcome: AuditOutcome.success,
+          summary: isCreate
+              ? 'إضافة سند الصندوق رقم ${saved.number}'
+              : 'تحديث سند الصندوق رقم ${saved.number}',
+          before: existing == null
+              ? const <String, Object?>{}
+              : cashboxVoucherAuditSnapshot(existing),
+          after: cashboxVoucherAuditSnapshot(saved),
+          details: const {'systemGenerated': false},
+          entityType: 'cashbox_voucher',
+          entityId: saved.entityId,
+        ),
+        permission: PermissionCode(
+          module: 'cashbox',
+          action:
+              isCreate ? PermissionAction.create : PermissionAction.update,
+        ),
+      );
 
       commitCashboxMutation(stagedCashbox);
       _parties.commitPartySnapshot(stagedParties);
-      return stagedCashbox.values[value.entityId]!;
+      if (audit != null) _businessAudit!.appendPrepared(audit);
+      return saved;
     });
   }
 
@@ -212,9 +244,28 @@ class DemoCashboxRepository extends InMemoryDemoRepository<CashboxVoucher>
         await _partyAdjustments(existing, direction: -1),
       );
       final stagedCashbox = _stageRemove(existing.entityId);
+      final audit = _businessAudit?.prepare(
+        event: AuditEvent(
+          action: AuditAction.delete,
+          outcome: AuditOutcome.success,
+          summary: 'حذف سند الصندوق رقم ${existing.number}',
+          before: cashboxVoucherAuditSnapshot(existing),
+          details: const {
+            'permanent': true,
+            'systemGenerated': false,
+          },
+          entityType: 'cashbox_voucher',
+          entityId: existing.entityId,
+        ),
+        permission: PermissionCode(
+          module: 'cashbox',
+          action: PermissionAction.delete,
+        ),
+      );
 
       commitCashboxMutation(stagedCashbox);
       _parties.commitPartySnapshot(stagedParties);
+      if (audit != null) _businessAudit!.appendPrepared(audit);
     });
   }
 

@@ -114,7 +114,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           backupService: services.backups,
           googleDriveService: services.googleDriveBackups,
           fileSelectionService: services.backupFileSelection,
-          auditWriter: services.auditWriter,
           deviceId: almumayazWindowsDeviceId,
         ),
       _SettingsSection.usersSecurity =>
@@ -134,7 +133,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           repository: services.archive,
           validationPolicy: services.archiveValidationPolicy,
           fileSelectionService: services.archiveFileSelection,
-          auditWriter: services.auditWriter,
         ),
     };
   }

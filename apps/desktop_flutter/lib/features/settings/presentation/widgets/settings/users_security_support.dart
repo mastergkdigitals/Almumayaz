@@ -153,6 +153,42 @@ class _SettingsAuditEntry {
   final AuditRecord record;
 }
 
+class _SettingsAuditActorSnapshot {
+  const _SettingsAuditActorSnapshot({
+    required this.id,
+    required this.username,
+    this.fullName,
+  });
+
+  final EntityId id;
+  final String username;
+  final String? fullName;
+}
+
+const _settingsAuditEntityTypes = <({String id, String label})>[
+  (id: 'user', label: 'مستخدم'),
+  (id: 'role', label: 'دور وصلاحيات'),
+  (id: 'session', label: 'جلسة'),
+  (id: 'session_policy', label: 'سياسة الجلسة'),
+  (id: 'party', label: 'طرف'),
+  (id: 'item', label: 'مادة'),
+  (id: 'warehouse', label: 'مخزن'),
+  (id: 'inventory_transfer', label: 'نقل مخزني'),
+  (id: 'sales_invoice', label: 'قائمة بيع'),
+  (id: 'purchase_invoice', label: 'قائمة شراء'),
+  (id: 'cashbox_voucher', label: 'سند صندوق'),
+  (id: 'installment_entry', label: 'دفعة قسط'),
+  (id: 'operational_master_data', label: 'بيانات أساسية'),
+  (id: 'business_policy_settings', label: 'سياسات العمل'),
+  (id: 'operational_defaults', label: 'إعدادات افتراضية'),
+  (id: 'device_settings', label: 'إعدادات الجهاز'),
+  (id: 'backupConfiguration', label: 'إعدادات النسخ الاحتياطي'),
+  (id: 'backupCloudConnection', label: 'اتصال النسخ السحابي'),
+  (id: 'backup', label: 'نسخة احتياطية'),
+  (id: 'archiveDocument', label: 'مستند أرشيف'),
+  (id: 'applicationData', label: 'بيانات التطبيق'),
+];
+
 _SettingsRole _settingsRoleFromDomain(AppRole role) {
   final permissions = _settingsRolePermissions();
   for (final permission in role.permissions) {
@@ -332,6 +368,8 @@ class _SettingsAuditDetailsDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ipAddress = record.metadata.ipAddress;
+    final macAddress = record.metadata.macAddress;
     return AppModuleDialog(
       key: Key(
         'settingsAuditDetailsDialog_${_entityKeySuffix(record.id)}',
@@ -356,7 +394,29 @@ class _SettingsAuditDetailsDialog extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _AuditDetailLine(label: 'المستخدم', value: record.actorUsername),
+            _AuditDetailLine(
+              label: 'معرّف سجل التدقيق',
+              value: record.id.value,
+              valueTextDirection: TextDirection.ltr,
+            ),
+            _AuditDetailLine(
+              label: 'التاريخ والوقت',
+              value: _formatAuditTimestamp(record.occurredAt),
+              valueTextDirection: TextDirection.ltr,
+            ),
+            _AuditDetailLine(
+              label: 'المستخدم',
+              value: record.actorUsername,
+              valueTextDirection: _auditTextDirection(record.actorUsername),
+            ),
+            _AuditDetailLine(
+              label: 'معرّف المستخدم',
+              value: record.actorUserId?.value ??
+                  'غير مرتبط بمستخدم مسجل',
+              valueTextDirection: record.actorUserId == null
+                  ? TextDirection.rtl
+                  : TextDirection.ltr,
+            ),
             _AuditDetailLine(
               label: 'العملية',
               value: _auditActionLabel(record.action),
@@ -372,15 +432,35 @@ class _SettingsAuditDetailsDialog extends StatelessWidget {
             _AuditDetailLine(
               label: 'الجهاز',
               value: record.metadata.deviceId,
+              valueTextDirection: TextDirection.ltr,
             ),
             _AuditDetailLine(
               label: 'معرّف الطلب',
               value: record.metadata.requestId,
+              valueTextDirection: TextDirection.ltr,
             ),
+            if (ipAddress != null && ipAddress.trim().isNotEmpty)
+              _AuditDetailLine(
+                label: 'عنوان IP',
+                value: ipAddress,
+                valueTextDirection: TextDirection.ltr,
+              ),
+            if (macAddress != null && macAddress.trim().isNotEmpty)
+              _AuditDetailLine(
+                label: 'عنوان MAC',
+                value: macAddress,
+                valueTextDirection: TextDirection.ltr,
+              ),
             if (record.entityType != null)
               _AuditDetailLine(
-                label: 'السجل المرتبط',
-                value: '${record.entityType}: ${record.entityId}',
+                label: 'نوع السجل المرتبط',
+                value: _auditEntityTypeLabel(record.entityType!),
+              ),
+            if (record.entityId != null)
+              _AuditDetailLine(
+                label: 'معرّف السجل المرتبط',
+                value: record.entityId!.value,
+                valueTextDirection: TextDirection.ltr,
               ),
             _AuditDetailLine(
               label: 'التفاصيل',
@@ -402,16 +482,48 @@ class _SettingsAuditDetailsDialog extends StatelessWidget {
 }
 
 class _AuditDetailLine extends StatelessWidget {
-  const _AuditDetailLine({required this.label, required this.value});
+  const _AuditDetailLine({
+    required this.label,
+    required this.value,
+    this.valueTextDirection = TextDirection.rtl,
+  });
 
   final String label;
   final String value;
+  final TextDirection valueTextDirection;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: Text('$label: $value'),
+    return Semantics(
+      container: true,
+      label: '$label: $value',
+      child: ExcludeSemantics(
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 170,
+                child: Text(
+                  '$label:',
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Directionality(
+                  textDirection: valueTextDirection,
+                  child: Text(
+                    value,
+                    textAlign: TextAlign.start,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -419,6 +531,94 @@ class _AuditDetailLine extends StatelessWidget {
 String _auditMapText(Map<String, Object?> values) {
   if (values.isEmpty) return 'لا توجد بيانات';
   return values.entries
-      .map((entry) => '${entry.key}=${entry.value ?? '-'}')
+      .map(
+        (entry) =>
+            '${_auditDetailKeyLabel(entry.key)}: '
+            '${_auditDetailValueText(entry.value)}',
+      )
       .join('، ');
 }
+
+String _auditRowSemanticLabel(_SettingsAuditEntry entry) {
+  return '${entry.createdAt}، المستخدم ${entry.username}، '
+      'العملية ${entry.type}، ${entry.details}، '
+      'النتيجة ${entry.status}';
+}
+
+TextDirection _auditTextDirection(String value) {
+  return RegExp(r'[\u0600-\u06FF]').hasMatch(value)
+      ? TextDirection.rtl
+      : TextDirection.ltr;
+}
+
+String _auditEntityTypeLabel(String entityType) {
+  return _settingsAuditEntityTypes
+          .where((option) => option.id == entityType)
+          .firstOrNull
+          ?.label ??
+      _ltrAuditText(entityType);
+}
+
+String _auditDetailKeyLabel(String key) => switch (key) {
+      'reason' => 'السبب',
+      'fullName' => 'الاسم الكامل',
+      'username' => 'اسم المستخدم',
+      'roleIds' => 'الأدوار',
+      'permissions' => 'الصلاحيات',
+      'status' => 'الحالة',
+      'lastLoginAt' => 'آخر دخول',
+      'enabled' => 'مفعّل',
+      'idleMinutes' => 'مدة الخمول بالدقائق',
+      'mode' => 'الوضع',
+      'name' => 'الاسم',
+      'number' => 'الرقم',
+      'documentNumber' => 'رقم المستند',
+      'currency' => 'العملة',
+      'amount' => 'المبلغ',
+      'total' => 'المجموع',
+      'fileName' => 'اسم الملف',
+      'path' => 'المسار',
+      _ => _ltrAuditText(key),
+    };
+
+String _auditDetailValueText(Object? value) {
+  if (value == null) return '—';
+  if (value is bool) return value ? 'نعم' : 'لا';
+  if (value is EntityId) return _ltrAuditText(value.value);
+  if (value is Map<Object?, Object?>) {
+    return value.entries
+        .map(
+          (entry) =>
+              '${_auditDetailKeyLabel(entry.key.toString())} '
+              '${_auditDetailValueText(entry.value)}',
+        )
+        .join('، ');
+  }
+  if (value is Iterable<Object?>) {
+    return value.map(_auditDetailValueText).join('، ');
+  }
+  final text = value.toString();
+  final localized = switch (text) {
+    'invalid_credentials' => 'بيانات الاعتماد غير صحيحة',
+    'account_disabled' => 'الحساب معطل',
+    'account_locked' => 'الحساب مقفل',
+    'account_disabled_locked' => 'الحساب معطل ومقفل',
+    'missing_role_reference' => 'مرجع دور مفقود',
+    'active' => 'نشط',
+    'disabled' => 'معطل',
+    'locked' => 'مقفل',
+    'disabledAndLocked' => 'معطل ومقفل',
+    'userRequest' => 'طلب المستخدم',
+    'idleTimeout' => 'انتهاء مدة الخمول',
+    'systemLock' => 'قفل النظام',
+    'securityPolicy' => 'سياسة الأمان',
+    'administrator_reset' => 'إعادة تعيين بواسطة المدير',
+    _ => null,
+  };
+  if (localized != null) return localized;
+  return _auditTextDirection(text) == TextDirection.ltr
+      ? _ltrAuditText(text)
+      : text;
+}
+
+String _ltrAuditText(String value) => '\u2066$value\u2069';

@@ -7,6 +7,12 @@ extension _PurchaseDocumentState on _PurchaseScreenState {
       title: 'قائمة شراء رقم ${_invoiceNumberController.text}',
       subtitle: supplierName.isEmpty ? 'مجهز غير محدد' : supplierName,
       fileNameBase: 'قائمة شراء ${_invoiceNumberController.text}',
+      auditTarget: _selectedInvoice == null
+          ? null
+          : DocumentOutputAuditTarget(
+              entityType: 'purchase_invoice',
+              entityId: _selectedInvoice!.entityId,
+            ),
       fields: [
         DocumentField(
           label: 'التاريخ',
@@ -326,6 +332,10 @@ extension _PurchaseDocumentState on _PurchaseScreenState {
         exportService: widget.exportService,
         allowPrint: _allowsPurchaseAction(PermissionAction.print),
         allowExport: _allowsPurchaseAction(PermissionAction.export),
+        auditTarget: DocumentOutputAuditTarget(
+          entityType: 'party',
+          entityId: supplierId,
+        ),
       );
     } on ServiceFailure catch (failure) {
       if (mounted) AppToast.showError(context, failure.message);

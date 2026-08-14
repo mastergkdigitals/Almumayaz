@@ -14,3 +14,10 @@ abstract interface class AuditRepository {
 abstract interface class AuditEventWriter {
   Future<AuditRecord> write(AuditEvent event);
 }
+
+/// Supplies the actor snapshot at the start of a potentially asynchronous
+/// operation. This prevents a later sign-out/sign-in from changing who is
+/// attributed when the audit event is finally written.
+abstract interface class AuditActorSnapshotProvider {
+  AuditActor captureAuditActor();
+}

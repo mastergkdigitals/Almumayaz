@@ -27,6 +27,8 @@ class UsersSecuritySettingsSection extends StatefulWidget {
 
 class _UsersSecuritySettingsSectionState
     extends State<UsersSecuritySettingsSection> {
+  static const _auditPageSize = 100;
+
   final _currentPasswordController = TextEditingController();
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -38,10 +40,15 @@ class _UsersSecuritySettingsSectionState
   var _logType = 'الكل';
   var _logOutcome = 'الكل';
   EntityId? _logUserId;
+  String? _logEntityType;
   DateTimeRange? _logDateRange;
   var _auditRefreshGeneration = 0;
+  var _auditOffset = 0;
   var _auditTotalCount = 0;
+  int? _auditRetryOffset;
+  var _isAuditLoading = false;
   var _isLoading = true;
+  String? _auditError;
   String? _loadError;
   late final UserRepository _userRepository;
   late final RoleRepository _roleRepository;
@@ -53,9 +60,18 @@ class _UsersSecuritySettingsSectionState
   final _users = <_SettingsUser>[];
   final _roles = <_SettingsRole>[];
   final _auditEntries = <_SettingsAuditEntry>[];
+  final _auditActors = <EntityId, _SettingsAuditActorSnapshot>{};
+  String? _observedSessionSignature;
+
+  AppSession? _effectiveSession({bool listen = false}) {
+    final scope = listen
+        ? context.dependOnInheritedWidgetOfExactType<AppStoreScope>()
+        : context.getInheritedWidgetOfExactType<AppStoreScope>();
+    return scope == null ? _currentSession : scope.notifier?.session;
+  }
 
   bool get _canManageSecurity =>
-      _currentSession?.allows(
+      _effectiveSession(listen: true)?.allows(
         PermissionCode(
           module: 'settings',
           action: PermissionAction.manage,
@@ -100,10 +116,38 @@ class _UsersSecuritySettingsSectionState
     _loadSecurityState();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final scope = context.dependOnInheritedWidgetOfExactType<AppStoreScope>();
+    if (scope == null) return;
+    final session = scope.notifier?.session;
+    final signature = session == null
+        ? null
+        : '${session.id.value}:${session.state.name}';
+    final previous = _observedSessionSignature;
+    _observedSessionSignature = signature;
+    if (previous == null ||
+        signature == null ||
+        previous == signature ||
+        session?.state != SessionState.active) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !_isLoading) {
+        _refreshAudit(showLoading: _selectedTab == 'logs');
+      }
+    });
+  }
+
   Future<void> _loadSecurityState() async {
+    final auditGeneration = ++_auditRefreshGeneration;
     if (mounted) {
       setState(() {
         _isLoading = true;
+        _isAuditLoading = false;
+        _auditError = null;
+        _auditRetryOffset = null;
         _loadError = null;
       });
     }
@@ -112,8 +156,10 @@ class _UsersSecuritySettingsSectionState
       final users = await _userRepository.search(const UserQuery());
       final policy = await _sessionPolicyRepository.loadAutoLockPolicy();
       final session = await _authenticationService.currentSession();
-      final auditPage = await _auditRepository.search(AuditQuery());
-      if (!mounted) return;
+      final auditPage = await _auditRepository.search(
+        _auditQuery(offset: 0),
+      );
+      if (!mounted || auditGeneration != _auditRefreshGeneration) return;
       setState(() {
         _roles
           ..clear()
@@ -121,24 +167,29 @@ class _UsersSecuritySettingsSectionState
         _users
           ..clear()
           ..addAll(users.map(_settingsUserFromDomain));
+        _rememberAuditActors(
+          users: _users,
+          records: auditPage.records,
+        );
         _idleLockEnabled = policy.isEnabled;
         _idleLockDuration = '${policy.idleTimeout.inMinutes} دقيقة';
         _currentSession = session;
         _auditEntries
           ..clear()
           ..addAll(auditPage.records.map(_settingsAuditFromDomain));
+        _auditOffset = auditPage.offset;
         _auditTotalCount = auditPage.totalCount;
         _isLoading = false;
       });
     } on Object catch (error) {
-      if (mounted) {
-        final message = _serviceMessage(error);
-        setState(() {
-          _isLoading = false;
-          _loadError = message;
-        });
-        AppToast.showError(context, message);
-      }
+      if (!mounted || auditGeneration != _auditRefreshGeneration) return;
+      final message = _serviceMessage(error);
+      setState(() {
+        _isLoading = false;
+        _isAuditLoading = false;
+        _loadError = message;
+      });
+      AppToast.showError(context, message);
     }
   }
 
@@ -178,7 +229,11 @@ class _UsersSecuritySettingsSectionState
         ),
       );
       if (!mounted) return;
-      setState(() => _users.add(_settingsUserFromDomain(created)));
+      final view = _settingsUserFromDomain(created);
+      setState(() {
+        _users.add(view);
+        _rememberAuditActors(users: [view]);
+      });
       await _refreshAudit();
       if (mounted) AppToast.showInfo(context, 'تمت إضافة المستخدم');
     } on Object catch (error) {
@@ -216,7 +271,11 @@ class _UsersSecuritySettingsSectionState
       if (!mounted) return;
       final index = _users.indexWhere((entry) => entry.id == user.id);
       if (index >= 0) {
-        setState(() => _users[index] = _settingsUserFromDomain(updated));
+        final view = _settingsUserFromDomain(updated);
+        setState(() {
+          _users[index] = view;
+          _rememberAuditActors(users: [view]);
+        });
       }
       await _refreshSessionAndAudit();
       if (mounted) AppToast.showSuccess(context, 'تم تحديث المستخدم');
@@ -400,9 +459,15 @@ class _UsersSecuritySettingsSectionState
 
   void _focusLogSearch() {
     setState(() => _selectedTab = 'logs');
+    _refreshAudit(showLoading: true);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _logSearchFocusNode.requestFocus();
     });
+  }
+
+  void _selectSecurityTab(String value) {
+    setState(() => _selectedTab = value);
+    if (value == 'logs') _refreshAudit(showLoading: true);
   }
 
   Future<void> _refreshSessionAndAudit() async {
@@ -424,7 +489,7 @@ class _UsersSecuritySettingsSectionState
       AppToast.showError(context, 'كلمتا المرور الجديدتان غير متطابقتين');
       return;
     }
-    final userId = _currentSession?.userId;
+    final userId = _effectiveSession()?.userId;
     if (userId == null) {
       AppToast.showError(context, 'لا توجد جلسة حالية');
       return;
@@ -505,43 +570,137 @@ class _UsersSecuritySettingsSectionState
     }
   }
 
-  Future<void> _refreshAudit() async {
-    final generation = ++_auditRefreshGeneration;
-    final range = _logDateRange;
-    try {
-      final page = await _auditRepository.search(
-        AuditQuery(
-          searchText: _logSearchController.text,
-          actorUserId: _logUserId,
-          action: _auditActionForLabel(_logType),
-          outcome: _auditOutcomeForLabel(_logOutcome),
-          from: range == null ? null : AuditTimestamp(range.start),
-          to: range == null
-              ? null
-              : AuditTimestamp(
-                  DateTime(
-                    range.end.year,
-                    range.end.month,
-                    range.end.day,
-                    23,
-                    59,
-                    59,
-                    999,
-                  ),
-                ),
-        ),
+  Future<void> _refreshAudit({
+    bool resetPage = false,
+    bool showLoading = false,
+    int? pageOffset,
+  }) =>
+      _refreshAuditPage(
+        resetPage: resetPage,
+        showLoading: showLoading,
+        pageOffset: pageOffset,
       );
-      if (!mounted || generation != _auditRefreshGeneration) return;
+
+  AuditQuery _auditQuery({required int offset}) {
+    final range = _logDateRange;
+    return AuditQuery(
+      searchText: _logSearchController.text,
+      actorUserId: _logUserId,
+      action: _auditActionForLabel(_logType),
+      outcome: _auditOutcomeForLabel(_logOutcome),
+      entityType: _logEntityType,
+      from: range == null ? null : AuditTimestamp(range.start),
+      to: range == null
+          ? null
+          : AuditTimestamp(
+              DateTime(
+                range.end.year,
+                range.end.month,
+                range.end.day,
+                23,
+                59,
+                59,
+                999,
+                999,
+              ),
+            ),
+      offset: offset,
+      limit: _auditPageSize,
+    );
+  }
+
+  Future<void> _refreshAuditPage({
+    bool resetPage = false,
+    bool showLoading = false,
+    int? pageOffset,
+  }) async {
+    final generation = ++_auditRefreshGeneration;
+    var requestedOffset = resetPage ? 0 : pageOffset ?? _auditOffset;
+    if (mounted) {
       setState(() {
+        if (resetPage) {
+          _auditOffset = 0;
+          _auditTotalCount = 0;
+          _auditEntries.clear();
+        }
+        _isAuditLoading = showLoading;
+        _auditError = null;
+        _auditRetryOffset = null;
+      });
+    }
+    try {
+      late AuditPage page;
+      while (true) {
+        page = await _auditRepository.search(
+          _auditQuery(offset: requestedOffset),
+        );
+        if (!mounted || generation != _auditRefreshGeneration) return;
+        if (page.totalCount == 0) {
+          requestedOffset = 0;
+          break;
+        }
+        if (requestedOffset < page.totalCount) break;
+        requestedOffset =
+            ((page.totalCount - 1) ~/ _auditPageSize) * _auditPageSize;
+      }
+      setState(() {
+        _rememberAuditActors(records: page.records);
         _auditEntries
           ..clear()
           ..addAll(page.records.map(_settingsAuditFromDomain));
+        _auditOffset = requestedOffset;
         _auditTotalCount = page.totalCount;
+        _auditRetryOffset = null;
+        _isAuditLoading = false;
+        _auditError = null;
       });
     } on Object catch (error) {
       if (!mounted || generation != _auditRefreshGeneration) return;
-      AppToast.showError(context, _serviceMessage(error));
+      setState(() {
+        _isAuditLoading = false;
+        _auditError = _serviceMessage(error);
+        _auditRetryOffset = requestedOffset;
+      });
     }
+  }
+
+  void _retryAudit() {
+    _refreshAudit(
+      showLoading: true,
+      pageOffset: _auditRetryOffset,
+    );
+  }
+
+  void _rememberAuditActors({
+    Iterable<_SettingsUser> users = const [],
+    Iterable<AuditRecord> records = const [],
+  }) {
+    for (final user in users) {
+      _auditActors[user.id] = _SettingsAuditActorSnapshot(
+        id: user.id,
+        fullName: user.fullName,
+        username: user.username,
+      );
+    }
+    for (final record in records) {
+      final actorId = record.actorUserId;
+      if (actorId == null) continue;
+      _auditActors.putIfAbsent(
+        actorId,
+        () => _SettingsAuditActorSnapshot(
+          id: actorId,
+          username: record.actorUsername,
+        ),
+      );
+    }
+  }
+
+  void _openAuditPage(int offset) {
+    if (_isAuditLoading || offset == _auditOffset) return;
+    _refreshAudit(
+      showLoading: true,
+      pageOffset: offset < 0 ? 0 : offset,
+    );
   }
 
   void _setSecurityViewState(VoidCallback update) => setState(update);
@@ -559,7 +718,7 @@ class _UsersSecuritySettingsSectionState
       primary: false,
       padding: const EdgeInsets.all(AppSpacing.md),
       children: [
-        if (_loadError != null) ...[
+        if (_loadError != null)
           AppStatePanel(
             key: const Key('settingsUsersSecurityLoadError'),
             type: AppStateType.error,
@@ -567,48 +726,48 @@ class _UsersSecuritySettingsSectionState
             message: _loadError!,
             actionLabel: 'إعادة المحاولة',
             onAction: _loadSecurityState,
+          )
+        else ...[
+          AppSelectionTabs<String>(
+            keyPrefix: 'usersSecurityTab_',
+            accentColor: widget.accentColor,
+            selected: _selectedTab,
+            onChanged: _selectSecurityTab,
+            items: const [
+              (
+                value: 'users',
+                label: 'المستخدمون',
+                icon: Icons.manage_accounts_outlined,
+              ),
+              (
+                value: 'roles',
+                label: 'الأدوار والصلاحيات',
+                icon: Icons.admin_panel_settings_outlined,
+              ),
+              (
+                value: 'security',
+                label: 'كلمة المرور والقفل',
+                icon: Icons.lock_outline_rounded,
+              ),
+              (
+                value: 'logs',
+                label: 'السجلات',
+                icon: Icons.receipt_long_outlined,
+              ),
+            ],
           ),
           const SizedBox(height: AppSpacing.lg),
+          IndexedStack(
+            key: const Key('settingsUsersSecurityTabStack'),
+            index: selectedTabIndex,
+            children: [
+              _buildUsersTemplate(),
+              _buildRolesTemplate(),
+              _buildSecurityTemplate(),
+              _buildLogsTemplate(),
+            ],
+          ),
         ],
-        AppSelectionTabs<String>(
-          keyPrefix: 'usersSecurityTab_',
-          accentColor: widget.accentColor,
-          selected: _selectedTab,
-          onChanged: (value) => setState(() => _selectedTab = value),
-          items: const [
-            (
-              value: 'users',
-              label: 'المستخدمون',
-              icon: Icons.manage_accounts_outlined,
-            ),
-            (
-              value: 'roles',
-              label: 'الأدوار والصلاحيات',
-              icon: Icons.admin_panel_settings_outlined,
-            ),
-            (
-              value: 'security',
-              label: 'كلمة المرور والقفل',
-              icon: Icons.lock_outline_rounded,
-            ),
-            (
-              value: 'logs',
-              label: 'السجلات',
-              icon: Icons.receipt_long_outlined,
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        IndexedStack(
-          key: const Key('settingsUsersSecurityTabStack'),
-          index: selectedTabIndex,
-          children: [
-            _buildUsersTemplate(),
-            _buildRolesTemplate(),
-            _buildSecurityTemplate(),
-            _buildLogsTemplate(),
-          ],
-        ),
       ],
     );
     return AppShortcutScope(

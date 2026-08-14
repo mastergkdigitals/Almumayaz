@@ -20,6 +20,7 @@ class DemoIdentityState {
     Map<EntityId, DemoPasswordCredential>? initialCredentials,
     AutoLockPolicy? initialPolicy,
     AuditTimestamp Function()? clock,
+    DemoTransactionRunner? transactionRunner,
     int nextUserSequenceFallback = 4,
     int nextRoleSequenceFallback = 5,
     int nextAuditSequenceFallback = 6,
@@ -37,6 +38,7 @@ class DemoIdentityState {
               isEnabled: true,
               idleTimeout: const Duration(minutes: 15),
             ),
+        transactionRunner = transactionRunner ?? DemoTransactionRunner(),
         _clock = clock ?? _DemoIdentityClock().call {
     if (initialCredentials != null) {
       credentialsByUserId.addAll(initialCredentials);
@@ -55,6 +57,11 @@ class DemoIdentityState {
       auditRecords.map((record) => record.id),
       fallback: nextAuditSequenceFallback,
     );
+    _nextRequestSequence = _nextDemoRequestSequence(
+      auditRecords,
+      fallback: 1,
+    );
+    _lastIssuedTimestamp = _latestAuditTimestamp(auditRecords);
   }
 
   /// Minimal identity seed retained after an internal full-data clear.
@@ -64,6 +71,7 @@ class DemoIdentityState {
   /// immediately after the successful operation signs the current user out.
   factory DemoIdentityState.bootstrap({
     AuditTimestamp Function()? clock,
+    DemoTransactionRunner? transactionRunner,
   }) {
     final administratorId = EntityId.demo('user', 1);
     final administratorRoleId = EntityId.demo('role', 1);
@@ -98,10 +106,11 @@ class DemoIdentityState {
       nextRoleSequenceFallback: 2,
       nextAuditSequenceFallback: 1,
       clock: clock,
+      transactionRunner: transactionRunner,
     );
   }
 
-  final DemoTransactionRunner transactionRunner = DemoTransactionRunner();
+  final DemoTransactionRunner transactionRunner;
   final Map<EntityId, AppUser> usersById;
   final Map<EntityId, AppRole> rolesById;
   final Map<EntityId, DemoPasswordCredential> credentialsByUserId = {};
@@ -115,8 +124,17 @@ class DemoIdentityState {
   late int _nextAuditSequence;
   var _nextSessionSequence = 1;
   var _nextRequestSequence = 1;
+  AuditTimestamp? _lastIssuedTimestamp;
 
-  AuditTimestamp now() => _clock();
+  AuditTimestamp now() {
+    final candidate = _clock();
+    final last = _lastIssuedTimestamp;
+    final resolved = last != null && candidate.compareTo(last) <= 0
+        ? AuditTimestamp(last.value.add(const Duration(microseconds: 1)))
+        : candidate;
+    _lastIssuedTimestamp = resolved;
+    return resolved;
+  }
 
   EntityId nextUserId() => EntityId.demo('user', _nextUserSequence++);
 
@@ -137,6 +155,48 @@ class DemoIdentityState {
     _nextAuditSequence = _sequenceAfter(id, current: _nextAuditSequence);
   }
 
+  /// Returns the immutable records that must survive an internal graph swap.
+  List<AuditRecord> auditHistorySnapshot() =>
+      List<AuditRecord>.unmodifiable(auditRecords);
+
+  /// Installs permanent history into an offline replacement identity graph.
+  ///
+  /// The replacement must not own a session yet. Sequence cursors are rebuilt
+  /// from the carried records so the transition event appended next receives
+  /// fresh audit and request identifiers.
+  void replaceAuditHistoryForDataReplacement(
+    Iterable<AuditRecord> records,
+  ) {
+    if (currentSession != null) {
+      throw StateError(
+        'Audit history can only be installed into an offline identity graph.',
+      );
+    }
+    final snapshot = List<AuditRecord>.unmodifiable(records);
+    final auditIds = {for (final record in snapshot) record.id};
+    if (auditIds.length != snapshot.length) {
+      throw StateError('Cannot carry audit history with duplicate record IDs.');
+    }
+    final requestIds = {
+      for (final record in snapshot) record.metadata.requestId,
+    };
+    if (requestIds.length != snapshot.length) {
+      throw StateError('Cannot carry audit history with duplicate request IDs.');
+    }
+    auditRecords
+      ..clear()
+      ..addAll(snapshot);
+    _nextAuditSequence = _nextSequence(
+      auditRecords.map((record) => record.id),
+      fallback: 1,
+    );
+    _nextRequestSequence = _nextDemoRequestSequence(
+      auditRecords,
+      fallback: 1,
+    );
+    _lastIssuedTimestamp = _latestAuditTimestamp(auditRecords);
+  }
+
   Set<PermissionCode> permissionsFor(AppUser user) {
     return {
       for (final roleId in user.roleIds)
@@ -152,6 +212,36 @@ class DemoIdentityState {
   }
 
   AuditRecord appendAudit({
+    required EntityId? actorUserId,
+    required String actorUsername,
+    required AuditAction action,
+    required AuditOutcome outcome,
+    required String summary,
+    Map<String, Object?> details = const {},
+    Map<String, Object?> before = const {},
+    Map<String, Object?> after = const {},
+    String? entityType,
+    EntityId? entityId,
+  }) {
+    final record = prepareAudit(
+      actorUserId: actorUserId,
+      actorUsername: actorUsername,
+      action: action,
+      outcome: outcome,
+      summary: summary,
+      details: details,
+      before: before,
+      after: after,
+      entityType: entityType,
+      entityId: entityId,
+    );
+    return commitPreparedAudit(record);
+  }
+
+  /// Allocates and validates an immutable record before a no-fail business
+  /// projection swap. Callers owning [transactionRunner] may then make the
+  /// record visible with [commitPreparedAudit] in the same synchronous turn.
+  AuditRecord prepareAudit({
     required EntityId? actorUserId,
     required String actorUsername,
     required AuditAction action,
@@ -181,6 +271,11 @@ class DemoIdentityState {
       entityType: entityType,
       entityId: entityId,
     );
+    return record;
+  }
+
+  /// No-fail journal insertion paired with [prepareAudit].
+  AuditRecord commitPreparedAudit(AuditRecord record) {
     auditRecords.add(record);
     return record;
   }
@@ -319,9 +414,19 @@ List<AuditRecord> demoIdentityAuditRecords() => [
         actorUsername: 'admin',
         action: AuditAction.update,
         outcome: AuditOutcome.success,
-        summary: 'تعديل بيانات المادة: ورق A4',
+        summary: 'تعديل بيانات المادة: ورق تصوير A4',
         entityType: 'item',
-        entityId: EntityId.demo('item', 1),
+        entityId: EntityId('item-003'),
+        before: const {
+          'id': 'item-003',
+          'name': 'ورق تصوير A4',
+          'notes': '',
+        },
+        after: const {
+          'id': 'item-003',
+          'name': 'ورق تصوير A4',
+          'notes': 'رزمة 500 ورقة',
+        },
       ),
       _seedAudit(
         sequence: 3,
@@ -330,9 +435,11 @@ List<AuditRecord> demoIdentityAuditRecords() => [
         actorUsername: 'ahmed',
         action: AuditAction.delete,
         outcome: AuditOutcome.success,
-        summary: 'حذف قائمة بيع تجريبية رقم 1042',
-        entityType: 'sale',
-        entityId: EntityId.demo('sale', 1),
+        summary: 'حذف قائمة بيع تجريبية رقم 101',
+        entityType: 'sales_invoice',
+        entityId: EntityId('sales-invoice-101'),
+        before: _seedSalesInvoice101Snapshot,
+        details: const {'permanent': true, 'demoSeed': true},
       ),
       _seedAudit(
         sequence: 4,
@@ -341,9 +448,11 @@ List<AuditRecord> demoIdentityAuditRecords() => [
         actorUsername: 'admin',
         action: AuditAction.restore,
         outcome: AuditOutcome.success,
-        summary: 'استعادة قائمة البيع رقم 1042',
-        entityType: 'sale',
-        entityId: EntityId.demo('sale', 1),
+        summary: 'استعادة قائمة البيع رقم 101',
+        entityType: 'sales_invoice',
+        entityId: EntityId('sales-invoice-101'),
+        after: _seedSalesInvoice101Snapshot,
+        details: const {'demoSeed': true},
       ),
       _seedAudit(
         sequence: 5,
@@ -355,6 +464,63 @@ List<AuditRecord> demoIdentityAuditRecords() => [
         summary: 'محاولة دخول بكلمة مرور غير صحيحة',
       ),
     ];
+
+const _seedSalesInvoice101Snapshot = <String, Object?>{
+  'id': 'sales-invoice-101',
+  'documentNumber': 101,
+  'date': '2026-07-25',
+  'minuteOfDay': 555,
+  'customerId': 'party-001',
+  'customerNameSnapshot': 'شركة النخيل للتجارة',
+  'defaultWarehouseId': 'warehouse-003',
+  'currency': 'IQD',
+  'exchangeRateTenThousandths': 13100000,
+  'settlementKind': 'credit',
+  'invoiceDiscountMinorUnits': 0,
+  'invoiceDiscountCurrency': 'IQD',
+  'receivedMinorUnits': 0,
+  'receivedCurrency': 'IQD',
+  'receivedAtSaleMinorUnits': 0,
+  'receivedAtSaleCurrency': 'IQD',
+  'installmentReceivedMinorUnits': 0,
+  'installmentReceivedCurrency': 'IQD',
+  'balanceAfterInvoiceMinorUnits': 625000,
+  'balanceAfterInvoiceCurrency': 'IQD',
+  'driverName': 'كرار مهدي',
+  'notes': 'تضاف إلى حساب الزبون',
+  'searchDetailsSnapshot': '25/07/2026 • 3 مواد • آجل',
+  'lineCount': 3,
+  'line.0.id': 'sales-line-1011',
+  'line.0.itemId': 'item-003',
+  'line.0.warehouseId': 'warehouse-003',
+  'line.0.quantity': 5,
+  'line.0.unitPriceMinorUnits': 12000,
+  'line.0.discountPerUnitMinorUnits': 0,
+  'line.0.currency': 'IQD',
+  'line.0.itemCodeSnapshot': '3001',
+  'line.0.itemNameSnapshot': 'ورق طباعة',
+  'line.0.warehouseNameSnapshot': 'الرصافة',
+  'line.1.id': 'sales-line-1012',
+  'line.1.itemId': 'item-002',
+  'line.1.warehouseId': 'warehouse-003',
+  'line.1.quantity': 2,
+  'line.1.unitPriceMinorUnits': 45000,
+  'line.1.discountPerUnitMinorUnits': 0,
+  'line.1.currency': 'IQD',
+  'line.1.itemCodeSnapshot': '3002',
+  'line.1.itemNameSnapshot': 'حبر طابعة',
+  'line.1.warehouseNameSnapshot': 'الرصافة',
+  'line.2.id': 'sales-line-1013',
+  'line.2.itemId': 'item-009',
+  'line.2.warehouseId': 'warehouse-001',
+  'line.2.quantity': 3,
+  'line.2.unitPriceMinorUnits': 10000,
+  'line.2.discountPerUnitMinorUnits': 1000,
+  'line.2.currency': 'IQD',
+  'line.2.itemCodeSnapshot': '3003',
+  'line.2.itemNameSnapshot': 'دباسة',
+  'line.2.warehouseNameSnapshot': 'الرئيسي',
+};
 
 const _demoModules = [
   'sales',
@@ -403,6 +569,9 @@ AuditRecord _seedAudit({
   required String summary,
   String? entityType,
   EntityId? entityId,
+  Map<String, Object?> details = const {'device': 'desktop-demo-01'},
+  Map<String, Object?> before = const {},
+  Map<String, Object?> after = const {},
 }) {
   return AuditRecord(
     id: EntityId.demo('audit', sequence),
@@ -412,10 +581,12 @@ AuditRecord _seedAudit({
     action: action,
     outcome: outcome,
     summary: summary,
-    details: const {'device': 'desktop-demo-01'},
+    details: details,
     metadata: AuditMetadata(
       deviceId: 'desktop-demo-01',
       requestId: 'demo-seed-request-$sequence',
+      before: before,
+      after: after,
     ),
     entityType: entityType,
     entityId: entityId,
@@ -434,6 +605,32 @@ int _nextSequence(Iterable<EntityId> ids, {required int fallback}) {
 int _sequenceAfter(EntityId id, {required int current}) {
   final sequence = int.tryParse(id.value.split('-').last);
   return sequence != null && sequence >= current ? sequence + 1 : current;
+}
+
+int _nextDemoRequestSequence(
+  Iterable<AuditRecord> records, {
+  required int fallback,
+}) {
+  const prefix = 'demo-request-';
+  var next = fallback;
+  for (final record in records) {
+    final requestId = record.metadata.requestId;
+    if (!requestId.startsWith(prefix)) continue;
+    final sequence = int.tryParse(requestId.substring(prefix.length));
+    if (sequence != null && sequence >= next) next = sequence + 1;
+  }
+  return next;
+}
+
+AuditTimestamp? _latestAuditTimestamp(Iterable<AuditRecord> records) {
+  AuditTimestamp? latest;
+  for (final record in records) {
+    final occurredAt = record.occurredAt;
+    if (latest == null || occurredAt.compareTo(latest) > 0) {
+      latest = occurredAt;
+    }
+  }
+  return latest;
 }
 
 String _demoPasswordDigest(String salt, String password) {

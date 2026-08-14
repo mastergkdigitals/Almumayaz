@@ -4,6 +4,7 @@ import '../../features/cashbox/domain/cashbox_voucher.dart';
 import '../../features/items/data/demo_item_repository.dart';
 import '../../features/items/domain/item.dart';
 import '../../features/items/domain/item_repository.dart';
+import '../../features/audit_log/data/demo_business_audit.dart';
 import '../../features/installments/application/installment_schedule_builder.dart';
 import '../../features/installments/data/demo_installment_repository.dart';
 import '../../features/installments/domain/installment_plan.dart';
@@ -62,9 +63,14 @@ class AppRepositories {
   /// The cleared profile deliberately keeps no business or master records.
   /// Deterministic settings may therefore point at missing records so the
   /// ordinary missing-reference screen states remain testable.
-  factory AppRepositories.forProfile(AppDataProfile profile) {
+  factory AppRepositories.forProfile(
+    AppDataProfile profile, {
+    DemoTransactionRunner? transactionRunner,
+    DemoBusinessAudit? businessAudit,
+  }) {
     final isCleared = profile == AppDataProfile.cleared;
-    final transactionRunner = DemoTransactionRunner();
+    final sharedTransactionRunner =
+        transactionRunner ?? DemoTransactionRunner();
     late DemoOperationalMasterDataRepository masterData;
     late DemoPartyRepository parties;
     late DemoItemRepository items;
@@ -86,7 +92,8 @@ class AppRepositories {
     masterData = DemoOperationalMasterDataRepository(
       initialValues:
           isCleared ? const <OperationalMasterDataRecord>[] : null,
-      transactionRunner: transactionRunner,
+      transactionRunner: sharedTransactionRunner,
+      businessAudit: businessAudit,
       isExternallyReferenced: (id) async {
         final record = await masterData.getById(id);
         if (record == null) return false;
@@ -121,7 +128,8 @@ class AppRepositories {
       initialMasterDataReferences:
           isCleared ? const <EntityId, PartyMasterDataReferences>{} : null,
       masterData: masterData,
-      transactionRunner: transactionRunner,
+      transactionRunner: sharedTransactionRunner,
+      businessAudit: businessAudit,
       isReferenced: (partyId) async {
         if ((await sales.getAll()).any(
           (invoice) => invoice.customerId == partyId,
@@ -140,7 +148,8 @@ class AppRepositories {
     items = DemoItemRepository(
       initialValues: isCleared ? const <Item>[] : null,
       masterData: masterData,
-      transactionRunner: transactionRunner,
+      transactionRunner: sharedTransactionRunner,
+      businessAudit: businessAudit,
       isReferenced: (itemId) async {
         if ((await sales.getAll()).any(
           (invoice) => invoice.lines.any((line) => line.itemId == itemId),
@@ -167,7 +176,8 @@ class AppRepositories {
       initialValues: isCleared ? const <Warehouse>[] : null,
       initialInventory: isCleared ? const <InventoryBalance>[] : null,
       initialTransfers: seededTransfers,
-      transactionRunner: transactionRunner,
+      transactionRunner: sharedTransactionRunner,
+      businessAudit: businessAudit,
       inventoryCostEffects: inventoryCosts,
       itemExists: (itemId) async => await items.getById(itemId) != null,
       isExternallyReferenced: (warehouseId) async {
@@ -207,7 +217,8 @@ class AppRepositories {
       ],
       masterData: masterData,
       parties: parties,
-      transactionRunner: transactionRunner,
+      transactionRunner: sharedTransactionRunner,
+      businessAudit: businessAudit,
       openingBalance: isCleared
           ? const CashboxBalanceSnapshot(
               iqd: Money.fromMinorUnits(0, AppCurrency.iqd),
@@ -230,10 +241,12 @@ class AppRepositories {
       warehouseExists: warehouseExists,
       cashboxMainAccountExists: (id) async => (await cashbox.getMainAccounts())
           .any((account) => account.entityId == id),
+      transactionRunner: sharedTransactionRunner,
+      businessAudit: businessAudit,
     );
 
     final invoiceEffects = DemoInvoiceEffectsCoordinator(
-      transactionRunner: transactionRunner,
+      transactionRunner: sharedTransactionRunner,
       parties: parties,
       warehouses: warehouses,
       cashbox: cashbox,
@@ -241,6 +254,7 @@ class AppRepositories {
       inventoryCosts: inventoryCosts,
       sales: () => sales,
       installments: () => installments,
+      businessAudit: businessAudit,
     );
 
     sales = DemoSalesRepository(
@@ -279,6 +293,8 @@ class AppRepositories {
       businessSettings: businessSettings,
       deviceSettings: DemoDeviceSettingsRepository(
         initialValues: isCleared ? const <DeviceSettings>[] : null,
+        transactionRunner: sharedTransactionRunner,
+        businessAudit: businessAudit,
       ),
       operationalMasterData: masterData,
     );

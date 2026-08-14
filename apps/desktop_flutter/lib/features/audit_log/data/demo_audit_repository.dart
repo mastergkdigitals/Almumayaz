@@ -28,6 +28,8 @@ class DemoAuditRepository implements AuditRepository {
           .join(' ');
       final metadataText = '${record.metadata.deviceId} '
           '${record.metadata.requestId} '
+          '${record.metadata.ipAddress ?? ''} '
+          '${record.metadata.macAddress ?? ''} '
           '${record.metadata.before} ${record.metadata.after}';
       final haystack = '${record.actorUsername} ${record.summary} '
               '${record.entityType ?? ''} ${record.entityId ?? ''} '
@@ -78,25 +80,30 @@ class DemoAuditRepository implements AuditRepository {
 
 List<AuditRecord> demoAuditRecords() => demoIdentityAuditRecords();
 
-class DemoIdentityAuditWriter implements AuditEventWriter {
+class DemoIdentityAuditWriter
+    implements AuditEventWriter, AuditActorSnapshotProvider {
   DemoIdentityAuditWriter({required DemoIdentityState state}) : _state = state;
 
   final DemoIdentityState _state;
 
   @override
+  AuditActor captureAuditActor() {
+    final session = _state.currentSession;
+    final currentUser = session == null
+        ? null
+        : _state.usersById[session.userId];
+    return currentUser == null
+        ? const AuditActor(userId: null, username: 'system')
+        : AuditActor(
+            userId: currentUser.id,
+            username: currentUser.username,
+          );
+  }
+
+  @override
   Future<AuditRecord> write(AuditEvent event) {
     return _state.mutate(() {
-      final session = _state.currentSession;
-      final currentUser = session == null
-          ? null
-          : _state.usersById[session.userId];
-      final actor = event.actor ??
-          (currentUser == null
-              ? const AuditActor(userId: null, username: 'system')
-              : AuditActor(
-                  userId: currentUser.id,
-                  username: currentUser.username,
-                ));
+      final actor = event.actor ?? captureAuditActor();
       return _state.appendAudit(
         actorUserId: actor.userId,
         actorUsername: actor.username,

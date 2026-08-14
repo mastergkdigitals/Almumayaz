@@ -221,6 +221,8 @@ class DemoAuthenticationService implements AuthenticationService {
         action: AuditAction.signOut,
         outcome: AuditOutcome.success,
         summary: 'تسجيل خروج',
+        before: {'state': session.state.name},
+        after: {'state': SessionState.signedOut.name},
         entityType: 'session',
         entityId: session.id,
       );
@@ -236,6 +238,18 @@ class DemoAuthenticationService implements AuthenticationService {
     return _state.mutate(() {
       final session = _requireExpectedSession(expectedSessionId);
       if (session.state != SessionState.active) {
+        final user = _requireUser(session.userId);
+        _state.appendAudit(
+          actorUserId: user.id,
+          actorUsername: user.username,
+          action: AuditAction.sessionLock,
+          outcome: AuditOutcome.blocked,
+          summary: 'تم منع قفل جلسة غير نشطة',
+          details: const {'failureCode': 'session_not_active'},
+          before: {'state': session.state.name},
+          entityType: 'session',
+          entityId: session.id,
+        );
         throw const ServiceFailure(
           kind: ServiceFailureKind.conflict,
           code: 'session_not_active',
@@ -256,6 +270,11 @@ class DemoAuthenticationService implements AuthenticationService {
         outcome: AuditOutcome.success,
         summary: 'قفل الجلسة',
         details: {'reason': reason.name},
+        before: {'state': session.state.name},
+        after: {
+          'state': locked.state.name,
+          'reason': reason.name,
+        },
         entityType: 'session',
         entityId: session.id,
       );
@@ -271,6 +290,18 @@ class DemoAuthenticationService implements AuthenticationService {
     return _state.mutate(() {
       final session = _requireExpectedSession(expectedSessionId);
       if (session.state != SessionState.locked) {
+        final user = _requireUser(session.userId);
+        _state.appendAudit(
+          actorUserId: user.id,
+          actorUsername: user.username,
+          action: AuditAction.sessionUnlock,
+          outcome: AuditOutcome.blocked,
+          summary: 'تم منع فتح جلسة غير مقفلة',
+          details: const {'failureCode': 'session_not_locked'},
+          before: {'state': session.state.name},
+          entityType: 'session',
+          entityId: session.id,
+        );
         throw const ServiceFailure(
           kind: ServiceFailureKind.conflict,
           code: 'session_not_locked',
@@ -286,6 +317,8 @@ class DemoAuthenticationService implements AuthenticationService {
           action: AuditAction.sessionUnlock,
           outcome: AuditOutcome.failure,
           summary: 'فشل فتح قفل الجلسة',
+          details: const {'failureCode': 'unlock_password_invalid'},
+          before: {'state': session.state.name},
           entityType: 'session',
           entityId: session.id,
         );
@@ -307,6 +340,8 @@ class DemoAuthenticationService implements AuthenticationService {
         action: AuditAction.sessionUnlock,
         outcome: AuditOutcome.success,
         summary: 'فتح قفل الجلسة',
+        before: {'state': session.state.name},
+        after: {'state': unlocked.state.name},
         entityType: 'session',
         entityId: session.id,
       );
@@ -331,6 +366,17 @@ class DemoAuthenticationService implements AuthenticationService {
     return _state.mutate(() {
       final session = _requireActiveSession();
       if (session.userId != request.userId) {
+        final actor = _requireUser(session.userId);
+        _state.appendAudit(
+          actorUserId: actor.id,
+          actorUsername: actor.username,
+          action: AuditAction.passwordChange,
+          outcome: AuditOutcome.blocked,
+          summary: 'تم منع تغيير كلمة مرور مستخدم آخر',
+          details: const {'failureCode': 'password_change_wrong_actor'},
+          entityType: 'user',
+          entityId: request.userId,
+        );
         throw const ServiceFailure(
           kind: ServiceFailureKind.permissionDenied,
           code: 'password_change_wrong_actor',
@@ -341,6 +387,16 @@ class DemoAuthenticationService implements AuthenticationService {
       final credential = _state.credentialsByUserId[user.id];
       if (credential == null ||
           !credential.verifies(request.currentPassword)) {
+        _state.appendAudit(
+          actorUserId: user.id,
+          actorUsername: user.username,
+          action: AuditAction.passwordChange,
+          outcome: AuditOutcome.failure,
+          summary: 'فشل تغيير كلمة مرور المستخدم الحالي',
+          details: const {'failureCode': 'current_password_invalid'},
+          entityType: 'user',
+          entityId: user.id,
+        );
         throw const ServiceFailure(
           kind: ServiceFailureKind.authenticationRequired,
           code: 'current_password_invalid',
@@ -349,6 +405,16 @@ class DemoAuthenticationService implements AuthenticationService {
       }
       final validation = PasswordPolicy.validationMessage(request.newPassword);
       if (validation != null) {
+        _state.appendAudit(
+          actorUserId: user.id,
+          actorUsername: user.username,
+          action: AuditAction.passwordChange,
+          outcome: AuditOutcome.failure,
+          summary: 'فشل تغيير كلمة مرور المستخدم الحالي',
+          details: const {'failureCode': 'password_too_short'},
+          entityType: 'user',
+          entityId: user.id,
+        );
         throw ServiceFailure(
           kind: ServiceFailureKind.validation,
           code: 'password_too_short',
@@ -366,6 +432,8 @@ class DemoAuthenticationService implements AuthenticationService {
         action: AuditAction.passwordChange,
         outcome: AuditOutcome.success,
         summary: 'تغيير كلمة مرور المستخدم الحالي',
+        before: const {'credentialChanged': false},
+        after: const {'credentialChanged': true},
         entityType: 'user',
         entityId: user.id,
       );
@@ -445,6 +513,7 @@ class DemoSessionPolicyRepository implements SessionPolicyRepository {
   @override
   Future<void> saveAutoLockPolicy(AutoLockPolicy policy) {
     return _state.mutate(() {
+      final previousPolicy = _state.autoLockPolicy;
       if (_enforceManagerPermission) {
         final session = _state.currentSession;
         final permission = PermissionCode(
@@ -454,6 +523,30 @@ class DemoSessionPolicyRepository implements SessionPolicyRepository {
         if (session == null ||
             session.state != SessionState.active ||
             !session.permissions.contains(permission)) {
+          final actor = session == null
+              ? null
+              : _state.usersById[session.userId];
+          _state.appendAudit(
+            actorUserId: actor?.id,
+            actorUsername: actor?.username ?? 'system',
+            action: AuditAction.update,
+            outcome: AuditOutcome.blocked,
+            summary: 'تم منع تحديث سياسة القفل التلقائي',
+            details: const {
+              'failureCode':
+                  'manage_session_policy_permission_required',
+            },
+            before: {
+              'enabled': previousPolicy.isEnabled,
+              'idleMinutes': previousPolicy.idleTimeout.inMinutes,
+            },
+            after: {
+              'enabled': policy.isEnabled,
+              'idleMinutes': policy.idleTimeout.inMinutes,
+            },
+            entityType: 'session_policy',
+            entityId: EntityId.demo('session_policy', 1),
+          );
           throw const ServiceFailure(
             kind: ServiceFailureKind.permissionDenied,
             code: 'manage_session_policy_permission_required',
@@ -471,6 +564,10 @@ class DemoSessionPolicyRepository implements SessionPolicyRepository {
           action: AuditAction.update,
           outcome: AuditOutcome.success,
           summary: 'تحديث سياسة القفل التلقائي',
+          before: {
+            'enabled': previousPolicy.isEnabled,
+            'idleMinutes': previousPolicy.idleTimeout.inMinutes,
+          },
           after: {
             'enabled': policy.isEnabled,
             'idleMinutes': policy.idleTimeout.inMinutes,
@@ -524,7 +621,10 @@ class DemoSecurityAdministrationService
   @override
   Future<AppUser> createUser(UserCreateRequest request) {
     return _state.mutate(() {
-      final actor = _requireAdministrator();
+      final actor = _requireAdministrator(
+        action: AuditAction.create,
+        summary: 'تم منع إضافة مستخدم',
+      );
       _validateRoles(request.roleIds);
       _validateUniqueUsername(request.username);
       final id = _state.nextUserId();
@@ -559,13 +659,27 @@ class DemoSecurityAdministrationService
   @override
   Future<AppUser> updateUser(UserUpdateRequest request) {
     return _state.mutate(() {
-      final actor = _requireAdministrator();
+      final actor = _requireAdministrator(
+        action: AuditAction.update,
+        summary: 'تم منع تحديث مستخدم',
+        entityType: 'user',
+        entityId: request.id,
+      );
       final stored = _requireUser(request.id);
       _validateRoles(request.roleIds);
       _validateUniqueUsername(request.username, excluding: request.id);
       if (stored.isSystemUser &&
           (stored.username.toLowerCase() != request.username.toLowerCase() ||
               !_sameRoleIds(request.roleIds, stored.roleIds))) {
+        _appendBlockedAdministration(
+          actor: actor,
+          action: AuditAction.update,
+          summary: 'تم منع تعديل مستخدم النظام المحمي',
+          failureCode: 'system_user_protected',
+          entityType: 'user',
+          entityId: stored.id,
+          before: _userSnapshot(stored),
+        );
         throw const ServiceFailure(
           kind: ServiceFailureKind.permissionDenied,
           code: 'system_user_protected',
@@ -600,9 +714,24 @@ class DemoSecurityAdministrationService
     UserAccountStatus status,
   ) {
     return _state.mutate(() {
-      final actor = _requireAdministrator();
+      final actor = _requireAdministrator(
+        action: AuditAction.accountStatusChange,
+        summary: 'تم منع تغيير حالة حساب مستخدم',
+        entityType: 'user',
+        entityId: id,
+      );
       final stored = _requireUser(id);
       if (stored.isSystemUser && status != UserAccountStatus.active) {
+        _appendBlockedAdministration(
+          actor: actor,
+          action: AuditAction.accountStatusChange,
+          summary: 'تم منع تغيير حالة مستخدم النظام المحمي',
+          failureCode: 'system_user_status_protected',
+          entityType: 'user',
+          entityId: id,
+          before: {'status': stored.status.name},
+          after: {'status': status.name},
+        );
         throw const ServiceFailure(
           kind: ServiceFailureKind.permissionDenied,
           code: 'system_user_status_protected',
@@ -610,6 +739,16 @@ class DemoSecurityAdministrationService
         );
       }
       if (actor.id == id && status != UserAccountStatus.active) {
+        _appendBlockedAdministration(
+          actor: actor,
+          action: AuditAction.accountStatusChange,
+          summary: 'تم منع المستخدم من تغيير حالة حسابه الحالي',
+          failureCode: 'current_user_status_protected',
+          entityType: 'user',
+          entityId: id,
+          before: {'status': stored.status.name},
+          after: {'status': status.name},
+        );
         throw const ServiceFailure(
           kind: ServiceFailureKind.permissionDenied,
           code: 'current_user_status_protected',
@@ -636,9 +775,23 @@ class DemoSecurityAdministrationService
   @override
   Future<void> deleteUser(EntityId id) {
     return _state.mutate(() {
-      final actor = _requireAdministrator();
+      final actor = _requireAdministrator(
+        action: AuditAction.delete,
+        summary: 'تم منع حذف مستخدم',
+        entityType: 'user',
+        entityId: id,
+      );
       final stored = _requireUser(id);
       if (stored.isSystemUser) {
+        _appendBlockedAdministration(
+          actor: actor,
+          action: AuditAction.delete,
+          summary: 'تم منع حذف مستخدم النظام المحمي',
+          failureCode: 'system_user_delete_protected',
+          entityType: 'user',
+          entityId: id,
+          before: _userSnapshot(stored),
+        );
         throw const ServiceFailure(
           kind: ServiceFailureKind.permissionDenied,
           code: 'system_user_delete_protected',
@@ -646,6 +799,15 @@ class DemoSecurityAdministrationService
         );
       }
       if (actor.id == id) {
+        _appendBlockedAdministration(
+          actor: actor,
+          action: AuditAction.delete,
+          summary: 'تم منع حذف المستخدم الحالي',
+          failureCode: 'current_user_delete_protected',
+          entityType: 'user',
+          entityId: id,
+          before: _userSnapshot(stored),
+        );
         throw const ServiceFailure(
           kind: ServiceFailureKind.permissionDenied,
           code: 'current_user_delete_protected',
@@ -670,7 +832,12 @@ class DemoSecurityAdministrationService
   @override
   Future<void> resetUserPassword(AdminPasswordResetRequest request) {
     return _state.mutate(() {
-      final actor = _requireAdministrator();
+      final actor = _requireAdministrator(
+        action: AuditAction.passwordChange,
+        summary: 'تم منع إعادة تعيين كلمة مرور مستخدم',
+        entityType: 'user',
+        entityId: request.userId,
+      );
       final target = _requireUser(request.userId);
       _state.credentialsByUserId[target.id] =
           DemoPasswordCredential.fromPassword(
@@ -693,7 +860,12 @@ class DemoSecurityAdministrationService
   @override
   Future<AppRole> saveRole(RoleSaveRequest request) {
     return _state.mutate(() {
-      final actor = _requireAdministrator();
+      final actor = _requireAdministrator(
+        action: AuditAction.permissionChange,
+        summary: 'تم منع حفظ دور وصلاحياته',
+        entityType: request.id == null ? null : 'role',
+        entityId: request.id,
+      );
       final stored = request.id == null ? null : _state.rolesById[request.id];
       if (request.id != null && stored == null) {
         throw const ServiceFailure(
@@ -703,10 +875,19 @@ class DemoSecurityAdministrationService
         );
       }
       _validateUniqueRoleName(request.name, excluding: request.id);
-      if (stored?.isSystemRole ?? false) {
-        final changed = stored!.name != request.name ||
+      if (stored != null && stored.isSystemRole) {
+        final changed = stored.name != request.name ||
             !_samePermissions(stored.permissions, request.permissions);
         if (changed) {
+          _appendBlockedAdministration(
+            actor: actor,
+            action: AuditAction.permissionChange,
+            summary: 'تم منع تعديل دور النظام المحمي',
+            failureCode: 'system_role_protected',
+            entityType: 'role',
+            entityId: stored.id,
+            before: _roleSnapshot(stored),
+          );
           throw const ServiceFailure(
             kind: ServiceFailureKind.permissionDenied,
             code: 'system_role_protected',
@@ -742,7 +923,12 @@ class DemoSecurityAdministrationService
   @override
   Future<void> deleteRole(EntityId id) {
     return _state.mutate(() {
-      final actor = _requireAdministrator();
+      final actor = _requireAdministrator(
+        action: AuditAction.delete,
+        summary: 'تم منع حذف دور',
+        entityType: 'role',
+        entityId: id,
+      );
       final stored = _state.rolesById[id];
       if (stored == null) {
         throw const ServiceFailure(
@@ -752,6 +938,15 @@ class DemoSecurityAdministrationService
         );
       }
       if (stored.isSystemRole) {
+        _appendBlockedAdministration(
+          actor: actor,
+          action: AuditAction.delete,
+          summary: 'تم منع حذف دور النظام المحمي',
+          failureCode: 'system_role_delete_protected',
+          entityType: 'role',
+          entityId: id,
+          before: _roleSnapshot(stored),
+        );
         throw const ServiceFailure(
           kind: ServiceFailureKind.permissionDenied,
           code: 'system_role_delete_protected',
@@ -759,6 +954,15 @@ class DemoSecurityAdministrationService
         );
       }
       if (_state.usersById.values.any((user) => user.roleIds.contains(id))) {
+        _appendBlockedAdministration(
+          actor: actor,
+          action: AuditAction.delete,
+          summary: 'تم منع حذف دور مرتبط بمستخدمين',
+          failureCode: 'role_has_users',
+          entityType: 'role',
+          entityId: id,
+          before: _roleSnapshot(stored),
+        );
         throw const ServiceFailure(
           kind: ServiceFailureKind.conflict,
           code: 'role_has_users',
@@ -779,9 +983,27 @@ class DemoSecurityAdministrationService
     });
   }
 
-  AppUser _requireAdministrator() {
+  AppUser _requireAdministrator({
+    required AuditAction action,
+    required String summary,
+    String? entityType,
+    EntityId? entityId,
+  }) {
     final session = _state.currentSession;
     if (session == null || session.state != SessionState.active) {
+      final actor = session == null
+          ? null
+          : _state.usersById[session.userId];
+      _state.appendAudit(
+        actorUserId: actor?.id,
+        actorUsername: actor?.username ?? 'system',
+        action: action,
+        outcome: AuditOutcome.blocked,
+        summary: summary,
+        details: const {'failureCode': 'active_session_required'},
+        entityType: entityType,
+        entityId: entityId,
+      );
       throw const ServiceFailure(
         kind: ServiceFailureKind.authenticationRequired,
         code: 'active_session_required',
@@ -794,6 +1016,16 @@ class DemoSecurityAdministrationService
       action: PermissionAction.manage,
     );
     if (!session.permissions.contains(manageSettings)) {
+      _state.appendAudit(
+        actorUserId: actor.id,
+        actorUsername: actor.username,
+        action: action,
+        outcome: AuditOutcome.blocked,
+        summary: summary,
+        details: const {'failureCode': 'manage_users_permission_required'},
+        entityType: entityType,
+        entityId: entityId,
+      );
       throw const ServiceFailure(
         kind: ServiceFailureKind.permissionDenied,
         code: 'manage_users_permission_required',
@@ -801,6 +1033,30 @@ class DemoSecurityAdministrationService
       );
     }
     return actor;
+  }
+
+  void _appendBlockedAdministration({
+    required AppUser actor,
+    required AuditAction action,
+    required String summary,
+    required String failureCode,
+    required String entityType,
+    required EntityId entityId,
+    Map<String, Object?> before = const {},
+    Map<String, Object?> after = const {},
+  }) {
+    _state.appendAudit(
+      actorUserId: actor.id,
+      actorUsername: actor.username,
+      action: action,
+      outcome: AuditOutcome.blocked,
+      summary: summary,
+      details: {'failureCode': failureCode},
+      before: before,
+      after: after,
+      entityType: entityType,
+      entityId: entityId,
+    );
   }
 
   AppUser _requireUser(EntityId id) {
