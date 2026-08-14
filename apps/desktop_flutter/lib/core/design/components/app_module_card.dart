@@ -213,7 +213,7 @@ class _AppModuleCardState extends State<AppModuleCard> {
     );
 
     return disabled
-        ? AppTooltip(message: disabledReason!, child: card)
+        ? AppTooltip(message: disabledReason, child: card)
         : card;
   }
 }

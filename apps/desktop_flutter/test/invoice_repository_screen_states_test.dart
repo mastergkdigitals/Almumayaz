@@ -5,6 +5,7 @@ import 'package:erp/core/app_state/app_repositories.dart';
 import 'package:erp/core/app_state/app_store.dart';
 import 'package:erp/core/application/invoice_editor_coordinator.dart';
 import 'package:erp/core/data/app_repository.dart';
+import 'package:erp/core/design/components/app_screen_shell.dart';
 import 'package:erp/core/domain/business_values.dart';
 import 'package:erp/features/purchases/domain/purchase_invoice.dart';
 import 'package:erp/features/purchases/domain/purchase_repository.dart';

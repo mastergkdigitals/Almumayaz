@@ -783,7 +783,7 @@ bool _hasFocusWithin(WidgetTester tester, Finder control) {
       .widgetList<Focus>(
         find.descendant(of: control, matching: find.byType(Focus)),
       )
-      .any((focus) => focus.focusNode.hasFocus);
+      .any((focus) => focus.focusNode?.hasFocus ?? false);
 }
 
 Future<AppStore> _settingsDeniedStore() async {
