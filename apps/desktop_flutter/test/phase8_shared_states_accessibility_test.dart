@@ -177,13 +177,13 @@ void main() {
         focusNode.requestFocus();
         await tester.pump();
         expect(focusNode.hasFocus, isTrue);
-        expect(find.bySemanticsLabel('الإجراء المحجوب'), findsOneWidget);
+        expect(find.semantics.byLabel('الإجراء المحجوب'), findsOne);
 
         setHostState(() => isLoading = true);
         await tester.pump();
         expect(focusNode.hasFocus, isFalse);
-        expect(find.bySemanticsLabel('الإجراء المحجوب'), findsNothing);
-        expect(find.bySemanticsLabel('جاري حفظ السجل'), findsOneWidget);
+        expect(find.semantics.byLabel('الإجراء المحجوب'), findsNothing);
+        expect(find.semantics.byLabel('جاري حفظ السجل'), findsOne);
 
         final overlaySemantics = _singleExplicitSemantics(
           tester,
@@ -205,7 +205,7 @@ void main() {
 
         setHostState(() => isLoading = false);
         await tester.pump();
-        expect(find.bySemanticsLabel('الإجراء المحجوب'), findsOneWidget);
+        expect(find.semantics.byLabel('الإجراء المحجوب'), findsOne);
         focusNode.requestFocus();
         await tester.pump();
         await tester.sendKeyEvent(LogicalKeyboardKey.enter);
