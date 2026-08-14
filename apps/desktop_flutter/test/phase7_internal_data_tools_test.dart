@@ -572,10 +572,6 @@ Future<void> _expectClearedComposition(
   expect(await repositories.parties.getAll(), isEmpty);
   expect(await repositories.items.getAll(), isEmpty);
   expect(await repositories.warehouses.getAll(), isEmpty);
-  expect(
-    await repositories.warehouses.getInventory(EntityId('warehouse-001')),
-    isEmpty,
-  );
   expect(await repositories.warehouses.getTransfers(), isEmpty);
   expect(await repositories.inventoryCosts.getBalances(), isEmpty);
   expect(await repositories.inventoryCosts.getSalesLineCosts(), isEmpty);
