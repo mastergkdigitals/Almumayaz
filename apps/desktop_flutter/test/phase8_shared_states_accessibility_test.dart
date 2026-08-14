@@ -779,11 +779,23 @@ SemanticsData _semanticsData(WidgetTester tester, String label) {
 }
 
 bool _hasFocusWithin(WidgetTester tester, Finder control) {
-  return tester
-      .widgetList<Focus>(
-        find.descendant(of: control, matching: find.byType(Focus)),
-      )
-      .any((focus) => focus.focusNode?.hasFocus ?? false);
+  final focusedContext = FocusManager.instance.primaryFocus?.context;
+  if (focusedContext == null) {
+    return false;
+  }
+  final controlElement = tester.element(control);
+  if (identical(focusedContext, controlElement)) {
+    return true;
+  }
+  var isWithin = false;
+  focusedContext.visitAncestorElements((ancestor) {
+    if (identical(ancestor, controlElement)) {
+      isWithin = true;
+      return false;
+    }
+    return true;
+  });
+  return isWithin;
 }
 
 Future<AppStore> _settingsDeniedStore() async {
