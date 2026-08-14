@@ -2,6 +2,7 @@ import '../../../core/domain/business_values.dart';
 import '../../authentication/data/demo_identity_state.dart';
 import '../../authentication/domain/session_models.dart';
 import '../../cashbox/domain/cashbox_voucher.dart';
+import '../../expenses/domain/expense.dart';
 import '../../installments/domain/installment_plan.dart';
 import '../../items/domain/item.dart';
 import '../../parties/domain/party.dart';
@@ -9,6 +10,7 @@ import '../../parties/domain/party_repository.dart';
 import '../../permissions/domain/permission_models.dart';
 import '../../purchases/domain/purchase_invoice.dart';
 import '../../sales/domain/sales_invoice.dart';
+import '../../sales_returns/domain/sales_return.dart';
 import '../../settings/domain/operational_master_data.dart';
 import '../../settings/domain/settings_models.dart';
 import '../../warehouses/domain/inventory_records.dart';
@@ -202,7 +204,7 @@ Map<String, Object?> cashboxVoucherAuditSnapshot(CashboxVoucher value) =>
       'notes': value.notes,
       'sourceKind': value.source?.kind.name,
       'sourceId': value.source?.sourceId.value,
-      'sourcePartyId': value.source?.partyId.value,
+      'sourcePartyId': value.source?.partyId?.value,
     };
 
 Map<String, Object?> salesInvoiceAuditSnapshot(SalesInvoice value) {
@@ -258,6 +260,7 @@ Map<String, Object?> purchaseInvoiceAuditSnapshot(PurchaseInvoice value) {
     'currency': value.currency.code,
     'exchangeRateTenThousandths': value.exchangeRate.tenThousandths,
     'purchaseKind': value.purchaseKind.name,
+    'originalPurchaseInvoiceId': value.originalPurchaseInvoiceId?.value,
     'settlementKind': value.settlementKind.name,
     ..._moneySnapshot('expenses', value.expenses),
     ..._moneySnapshot('invoiceDiscount', value.invoiceDiscount),
@@ -279,6 +282,8 @@ Map<String, Object?> purchaseInvoiceAuditSnapshot(PurchaseInvoice value) {
       ..['line.$index.purchasePriceMinorUnits'] = line.purchasePrice.minorUnits
       ..['line.$index.lineDiscountMinorUnits'] = line.lineDiscount.minorUnits
       ..['line.$index.salePriceMinorUnits'] = line.salePrice.minorUnits
+      ..['line.$index.originalPurchaseLineId'] =
+          line.originalPurchaseLineId?.value
       ..['line.$index.currency'] = line.purchasePrice.currency.code
       ..['line.$index.itemCodeSnapshot'] = line.itemCodeSnapshot
       ..['line.$index.itemNameSnapshot'] = line.itemNameSnapshot
@@ -286,6 +291,64 @@ Map<String, Object?> purchaseInvoiceAuditSnapshot(PurchaseInvoice value) {
   }
   return result;
 }
+
+Map<String, Object?> salesReturnAuditSnapshot(SalesReturn value) {
+  final result = <String, Object?>{
+    'id': value.id.value,
+    'documentNumber': value.documentNumber,
+    'date': value.date.toString(),
+    'minuteOfDay': value.minuteOfDay,
+    'originalSalesInvoiceId': value.originalSalesInvoiceId.value,
+    'originalSalesInvoiceNumber':
+        value.originalSalesInvoiceNumberSnapshot,
+    'customerId': value.customerId.value,
+    'customerNameSnapshot': value.customerNameSnapshot,
+    'currency': value.currency.code,
+    'exchangeRateTenThousandths': value.exchangeRate.tenThousandths,
+    ..._moneySnapshot('total', value.total),
+    ..._moneySnapshot('refundedAtReturn', value.refundedAtReturn),
+    ..._moneySnapshot('creditedToCustomer', value.creditedToCustomer),
+    if (value.balanceAfterReturn != null)
+      ..._moneySnapshot('balanceAfterReturn', value.balanceAfterReturn!),
+    'notes': value.notes,
+    'lineCount': value.lines.length,
+  };
+  for (var index = 0; index < value.lines.length; index++) {
+    final line = value.lines[index];
+    result
+      ..['line.$index.id'] = line.id.value
+      ..['line.$index.sourceSalesLineId'] = line.sourceSalesLineId.value
+      ..['line.$index.itemId'] = line.itemId.value
+      ..['line.$index.warehouseId'] = line.warehouseId.value
+      ..['line.$index.quantity'] = line.quantity.value
+      ..['line.$index.sourceNetUnitPriceMinorUnits'] =
+          line.sourceNetUnitPrice.minorUnits
+      ..['line.$index.allocatedRefundMinorUnits'] =
+          line.allocatedRefund.minorUnits
+      ..['line.$index.currency'] = line.allocatedRefund.currency.code
+      ..['line.$index.itemCodeSnapshot'] = line.itemCodeSnapshot
+      ..['line.$index.itemNameSnapshot'] = line.itemNameSnapshot
+      ..['line.$index.warehouseNameSnapshot'] =
+          line.warehouseNameSnapshot;
+  }
+  return result;
+}
+
+Map<String, Object?> expenseAuditSnapshot(Expense value) =>
+    <String, Object?>{
+      'id': value.id.value,
+      'documentNumber': value.documentNumber,
+      'date': value.date.toString(),
+      'minuteOfDay': value.minuteOfDay,
+      'description': value.description,
+      ..._moneySnapshot('amount', value.amount),
+      'exchangeRateTenThousandths': value.exchangeRate.tenThousandths,
+      'supplierId': value.supplierId?.value,
+      'supplierNameSnapshot': value.supplierNameSnapshot,
+      'paymentStatus': value.paymentStatus.name,
+      'paidAt': value.paidAt?.toString(),
+      'notes': value.notes,
+    };
 
 Map<String, Object?> installmentEntryAuditSnapshot(
   InstallmentEntry value,

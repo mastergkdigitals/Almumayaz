@@ -17,15 +17,17 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('keeps report filters status-free and rows aligned', () {
+  test('keeps report filters intentional and rows aligned', () {
     for (final report in reportDefinitions) {
       for (final variant in report.variants) {
+        final isExpenseReport =
+            report.id == 'cashbox' && variant.id == 'expenses';
         expect(
-          variant.filters.map((filter) => filter.id),
-          isNot(contains('status')),
+          variant.filters.map((filter) => filter.id).contains('status'),
+          isExpenseReport,
         );
         for (final row in _demoRows(report, variant)) {
-          expect(row.filterValues.containsKey('status'), isFalse);
+          expect(row.filterValues.containsKey('status'), isExpenseReport);
           expect(row.cells, hasLength(variant.columns.length));
         }
       }
@@ -49,7 +51,9 @@ void main() {
     final report = reportDefinitions.singleWhere(
       (candidate) => candidate.id == 'salesInvoices',
     );
-    final variant = report.variants.single;
+    final variant = report.variants.singleWhere(
+      (candidate) => candidate.id == 'main',
+    );
     final usdRows = _demoRows(report, variant)
         .where((row) => row.filterValues['currency'] == 'USD')
         .toList(growable: false);
@@ -146,7 +150,9 @@ void main() {
     final cashbox = reportDefinitions.singleWhere(
       (candidate) => candidate.id == 'cashbox',
     );
-    final cashboxVariant = cashbox.variants.single;
+    final cashboxVariant = cashbox.variants.singleWhere(
+      (candidate) => candidate.id == 'main',
+    );
     final cashboxMetrics = ReportSummaryCalculator.calculate(
       reportId: cashbox.id,
       variantId: cashboxVariant.id,

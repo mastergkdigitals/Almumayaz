@@ -105,9 +105,13 @@ void main() {
 
   test('purchase returns subtract stock and restore supplier credit', () async {
     final repositories = AppRepositories.demo();
-    final supplierId = EntityId('party-009');
-    final warehouseId = EntityId('warehouse-001');
-    final itemId = EntityId('item-001');
+    final source = (await repositories.purchases.getById(
+      EntityId('purchase-invoice-101'),
+    ))!;
+    final sourceLine = source.lines.first;
+    final supplierId = source.supplierId;
+    final warehouseId = sourceLine.warehouseId;
+    final itemId = sourceLine.itemId;
     final stockBefore = await _stock(repositories, warehouseId, itemId);
     final supplierBefore = (await repositories.parties.getById(supplierId))!;
     final returned = _invoice(
@@ -117,14 +121,17 @@ void main() {
       supplierId: supplierId,
       warehouseId: warehouseId,
       currency: AppCurrency.iqd,
+      originalPurchaseInvoiceId: source.id,
       lines: [
         _line(
           id: 'phase3-purchase-return-line',
           itemId: itemId,
           warehouseId: warehouseId,
           quantity: 2,
-          price: 100,
+          price: sourceLine.purchasePrice.majorUnits,
+          salePrice: sourceLine.salePrice.majorUnits,
           currency: AppCurrency.iqd,
+          originalPurchaseLineId: sourceLine.id,
         ),
       ],
       paid: 50,
@@ -136,18 +143,22 @@ void main() {
     final supplierAfter = (await repositories.parties.getById(supplierId))!;
     expect(
       supplierAfter.iqdBalance,
-      supplierBefore.iqdBalance + Money.fromMajor(150, AppCurrency.iqd),
+      supplierBefore.iqdBalance + Money.fromMajor(15950, AppCurrency.iqd),
     );
   });
 
   test('replace reverses old effects across every changed dimension', () async {
     final repositories = AppRepositories.demo();
+    final returnSource = (await repositories.purchases.getById(
+      EntityId('purchase-invoice-102'),
+    ))!;
+    final returnSourceLine = returnSource.lines.last;
     final oldSupplierId = EntityId('party-009');
-    final newSupplierId = EntityId('party-011');
+    final newSupplierId = returnSource.supplierId;
     final oldWarehouseId = EntityId('warehouse-001');
-    final newWarehouseId = EntityId('warehouse-002');
+    final newWarehouseId = returnSourceLine.warehouseId;
     final oldItemId = EntityId('item-001');
-    final newItemId = EntityId('item-003');
+    final newItemId = returnSourceLine.itemId;
     final oldStockBefore = await _stock(
       repositories,
       oldWarehouseId,
@@ -186,7 +197,7 @@ void main() {
     final replacement = _invoice(
       id: original.id.value,
       documentNumber: 105,
-      kind: PurchaseTransactionKind.returnPurchase,
+      kind: PurchaseTransactionKind.import,
       supplierId: newSupplierId,
       warehouseId: newWarehouseId,
       currency: AppCurrency.usd,
@@ -196,10 +207,12 @@ void main() {
           itemId: newItemId,
           warehouseId: newWarehouseId,
           quantity: 3,
-          price: 10,
+          price: returnSourceLine.purchasePrice.majorUnits,
+          salePrice: returnSourceLine.salePrice.majorUnits,
           currency: AppCurrency.usd,
         ),
       ],
+      invoiceDiscount: 10.34,
       paid: 4,
     );
     final saved = await repositories.purchases.replaceInvoice(replacement);
@@ -212,7 +225,7 @@ void main() {
     );
     expect(
       await _stock(repositories, newWarehouseId, newItemId),
-      newStockBefore - 3,
+      newStockBefore + 3,
     );
     final oldSupplierAfter =
         (await repositories.parties.getById(oldSupplierId))!;
@@ -223,7 +236,7 @@ void main() {
     expect(newSupplierAfter.iqdBalance, newSupplierBefore.iqdBalance);
     expect(
       newSupplierAfter.usdBalance,
-      newSupplierBefore.usdBalance + Money.fromMajor(26, AppCurrency.usd),
+      newSupplierBefore.usdBalance - Money.fromMajor(285.66, AppCurrency.usd),
     );
     expect(await repositories.purchases.nextDocumentNumber(), 106);
     for (final reservedNumber in const [104, 105]) {
@@ -401,23 +414,46 @@ void main() {
     );
   });
 
-  test('duplicate return lines are aggregated before stock validation',
+  test('linked return lines are aggregated before stock validation',
       () async {
     final repositories = AppRepositories.demo();
     final supplierId = EntityId('party-009');
     final warehouseId = EntityId('warehouse-001');
+    final sourceWarehouseId = EntityId('warehouse-002');
     final itemId = EntityId('item-001');
     final stockBefore = await _stock(repositories, warehouseId, itemId);
     expect(stockBefore, greaterThan(1));
-    final supplierBefore = (await repositories.parties.getById(supplierId))!;
     final perLine = stockBefore ~/ 2 + 1;
+    final source = _invoice(
+      id: 'phase3-purchase-duplicate-source',
+      documentNumber: 104,
+      kind: PurchaseTransactionKind.local,
+      supplierId: supplierId,
+      warehouseId: sourceWarehouseId,
+      currency: AppCurrency.iqd,
+      lines: [
+        for (var index = 0; index < 2; index++)
+          _line(
+            id: 'phase3-purchase-duplicate-source-line-$index',
+            itemId: itemId,
+            warehouseId: sourceWarehouseId,
+            quantity: perLine,
+            price: 1,
+            currency: AppCurrency.iqd,
+          ),
+      ],
+      paid: 0,
+    );
+    await repositories.purchases.createInvoice(source);
+    final supplierBefore = (await repositories.parties.getById(supplierId))!;
     final invoice = _invoice(
       id: 'phase3-purchase-duplicate-lines',
-      documentNumber: 104,
+      documentNumber: 105,
       kind: PurchaseTransactionKind.returnPurchase,
       supplierId: supplierId,
       warehouseId: warehouseId,
       currency: AppCurrency.iqd,
+      originalPurchaseInvoiceId: source.id,
       lines: [
         for (var index = 0; index < 2; index++)
           _line(
@@ -427,6 +463,7 @@ void main() {
             quantity: perLine,
             price: 1,
             currency: AppCurrency.iqd,
+            originalPurchaseLineId: source.lines[index].id,
           ),
       ],
       paid: 0,
@@ -443,13 +480,14 @@ void main() {
       (await repositories.parties.getById(supplierId))!.iqdBalance,
       supplierBefore.iqdBalance,
     );
-    expect(await repositories.purchases.nextDocumentNumber(), 104);
+    expect(await repositories.purchases.nextDocumentNumber(), 105);
   });
 
   test('failed multi-line mutation is atomic and reserves nothing', () async {
     final repositories = AppRepositories.demo();
     final supplierId = EntityId('party-009');
     final warehouseId = EntityId('warehouse-001');
+    final sourceWarehouseId = EntityId('warehouse-002');
     final firstItemId = EntityId('item-001');
     final secondItemId = EntityId('item-002');
     final firstStockBefore = await _stock(
@@ -462,14 +500,43 @@ void main() {
       warehouseId,
       secondItemId,
     );
+    final source = _invoice(
+      id: 'phase3-purchase-atomic-source',
+      documentNumber: 104,
+      kind: PurchaseTransactionKind.local,
+      supplierId: supplierId,
+      warehouseId: sourceWarehouseId,
+      currency: AppCurrency.iqd,
+      lines: [
+        _line(
+          id: 'phase3-purchase-atomic-source-line-1',
+          itemId: firstItemId,
+          warehouseId: sourceWarehouseId,
+          quantity: 1,
+          price: 100,
+          currency: AppCurrency.iqd,
+        ),
+        _line(
+          id: 'phase3-purchase-atomic-source-line-2',
+          itemId: secondItemId,
+          warehouseId: sourceWarehouseId,
+          quantity: secondStockBefore + 1,
+          price: 100,
+          currency: AppCurrency.iqd,
+        ),
+      ],
+      paid: 0,
+    );
+    await repositories.purchases.createInvoice(source);
     final supplierBefore = (await repositories.parties.getById(supplierId))!;
     final invalid = _invoice(
       id: 'phase3-purchase-atomic-failure',
-      documentNumber: 104,
+      documentNumber: 105,
       kind: PurchaseTransactionKind.returnPurchase,
       supplierId: supplierId,
       warehouseId: warehouseId,
       currency: AppCurrency.iqd,
+      originalPurchaseInvoiceId: source.id,
       lines: [
         _line(
           id: 'phase3-purchase-atomic-valid-line',
@@ -478,6 +545,7 @@ void main() {
           quantity: 1,
           price: 100,
           currency: AppCurrency.iqd,
+          originalPurchaseLineId: source.lines.first.id,
         ),
         _line(
           id: 'phase3-purchase-atomic-invalid-line',
@@ -486,6 +554,7 @@ void main() {
           quantity: secondStockBefore + 1,
           price: 100,
           currency: AppCurrency.iqd,
+          originalPurchaseLineId: source.lines.last.id,
         ),
       ],
       paid: 0,
@@ -509,11 +578,11 @@ void main() {
       (await repositories.parties.getById(supplierId))!.iqdBalance,
       supplierBefore.iqdBalance,
     );
-    expect(await repositories.purchases.nextDocumentNumber(), 104);
+    expect(await repositories.purchases.nextDocumentNumber(), 105);
 
     final valid = _invoice(
       id: 'phase3-purchase-after-failure',
-      documentNumber: 104,
+      documentNumber: 105,
       kind: PurchaseTransactionKind.local,
       supplierId: supplierId,
       warehouseId: warehouseId,
@@ -592,7 +661,8 @@ void main() {
       () async {
     final repositories = AppRepositories.demo();
     final seeded = (await repositories.purchases.getAll()).firstWhere(
-      (invoice) => invoice.purchaseKind == PurchaseTransactionKind.local,
+      (invoice) =>
+          invoice.id == const EntityId('purchase-invoice-102'),
     );
     final quantities = _aggregateQuantities(seeded);
     final stockBefore = <_InventoryKey, int>{};
@@ -688,6 +758,8 @@ PurchaseInvoice _invoice({
   required AppCurrency currency,
   required List<PurchaseInvoiceLine> lines,
   required num paid,
+  EntityId? originalPurchaseInvoiceId,
+  num invoiceDiscount = 0,
 }) {
   return PurchaseInvoice(
     id: EntityId(id),
@@ -702,8 +774,9 @@ PurchaseInvoice _invoice({
     settlementKind: PurchaseSettlementKind.credit,
     lines: lines,
     expenses: Money.zero(currency),
-    invoiceDiscount: Money.zero(currency),
+    invoiceDiscount: Money.fromMajor(invoiceDiscount, currency),
     paid: Money.fromMajor(paid, currency),
+    originalPurchaseInvoiceId: originalPurchaseInvoiceId,
   );
 }
 
@@ -714,6 +787,8 @@ PurchaseInvoiceLine _line({
   required int quantity,
   required num price,
   required AppCurrency currency,
+  num? salePrice,
+  EntityId? originalPurchaseLineId,
 }) {
   return PurchaseInvoiceLine(
     id: EntityId(id),
@@ -723,7 +798,8 @@ PurchaseInvoiceLine _line({
     containerQuantity: WholeQuantity(0),
     purchasePrice: Money.fromMajor(price, currency),
     lineDiscount: Money.zero(currency),
-    salePrice: Money.fromMajor(price, currency),
+    salePrice: Money.fromMajor(salePrice ?? price, currency),
+    originalPurchaseLineId: originalPurchaseLineId,
   );
 }
 
@@ -748,6 +824,7 @@ PurchaseInvoice _copyInvoice(
     expenses: source.expenses,
     invoiceDiscount: source.invoiceDiscount,
     paid: source.paid,
+    originalPurchaseInvoiceId: source.originalPurchaseInvoiceId,
     supplierNameSnapshot: source.supplierNameSnapshot,
     searchDetailsSnapshot: source.searchDetailsSnapshot,
     balanceAfterInvoice: source.balanceAfterInvoice,

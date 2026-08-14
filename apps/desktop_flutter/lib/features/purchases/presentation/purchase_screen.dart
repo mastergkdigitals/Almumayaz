@@ -19,6 +19,7 @@ import '../../permissions/domain/permission_models.dart';
 import '../../settings/domain/settings_models.dart';
 import '../../warehouses/domain/warehouse.dart';
 import '../domain/purchase_invoice.dart';
+import '../domain/purchase_return_policy.dart';
 
 part 'purchase_screen_documents.dart';
 part 'purchase_screen_form.dart';

@@ -14,6 +14,7 @@ class PurchaseInvoiceLine {
     required this.purchasePrice,
     required this.lineDiscount,
     required this.salePrice,
+    this.originalPurchaseLineId,
     this.itemCodeSnapshot = '',
     this.itemNameSnapshot = '',
     this.warehouseNameSnapshot = '',
@@ -39,6 +40,12 @@ class PurchaseInvoiceLine {
   final Money purchasePrice;
   final Money lineDiscount;
   final Money salePrice;
+
+  /// Source line for a linked purchase return.
+  ///
+  /// Normal purchase lines keep this null. Demo and API repositories are the
+  /// authoritative boundary that requires and validates it for returns.
+  final EntityId? originalPurchaseLineId;
   final String itemCodeSnapshot;
   final String itemNameSnapshot;
   final String warehouseNameSnapshot;
@@ -64,6 +71,7 @@ class PurchaseInvoice {
     required this.expenses,
     required this.invoiceDiscount,
     required this.paid,
+    this.originalPurchaseInvoiceId,
     this.supplierNameSnapshot = '',
     this.searchDetailsSnapshot = '',
     this.balanceAfterInvoice,
@@ -136,10 +144,19 @@ class PurchaseInvoice {
   final Money expenses;
   final Money invoiceDiscount;
   final Money paid;
+
+  /// Source invoice for a linked purchase return.
+  ///
+  /// Kept nullable at the value-object boundary for compatibility with normal
+  /// purchases. Repositories reject unlinked return mutations.
+  final EntityId? originalPurchaseInvoiceId;
   final String supplierNameSnapshot;
   final String searchDetailsSnapshot;
   final Money? balanceAfterInvoice;
   final String notes;
+
+  bool get isReturn =>
+      purchaseKind == PurchaseTransactionKind.returnPurchase;
 
   Money get subtotal => lines.fold(
         Money.zero(currency),

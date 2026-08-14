@@ -34,8 +34,15 @@ void main() {
     expect(partyOne.iqdBalance, partyOneAccount.iqd);
     expect(partyTwo.iqdBalance, partyTwoAccount.iqd);
     expect(partyTwo.usdBalance, partyTwoAccount.usd);
-    expect(partyThree.usdBalance, partyThreeAccount.usd);
-    expect(generated, hasLength(4));
+    expect(
+      partyThreeAccount.usd,
+      Money.fromMajor(-800, AppCurrency.usd),
+    );
+    expect(
+      partyThree.usdBalance,
+      partyThreeAccount.usd - Money.fromMajor(150, AppCurrency.usd),
+    );
+    expect(generated, hasLength(5));
     expect(
       generated.every(
         (voucher) =>
@@ -217,7 +224,7 @@ void main() {
       seeded.id,
     );
     expect(recreatedPosting.entityId, originalPosting.entityId);
-    expect(recreatedPosting.number, 11);
+    expect(recreatedPosting.number, 12);
     await repositories.sales.deleteInvoicePermanently(seeded.id);
     expect(
       (await repositories.cashbox.getAll()).where(
@@ -228,7 +235,7 @@ void main() {
     expect(
       await (repositories.cashbox as CashboxIssuedNumberRepository)
           .nextVoucherNumber(),
-      12,
+      13,
     );
   });
 

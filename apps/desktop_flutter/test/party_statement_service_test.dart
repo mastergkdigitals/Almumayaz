@@ -4,6 +4,7 @@ import 'package:erp/features/cashbox/domain/cashbox_repository.dart';
 import 'package:erp/features/cashbox/domain/cashbox_voucher.dart';
 import 'package:erp/features/parties/application/party_statement_service.dart';
 import 'package:erp/features/purchases/domain/purchase_invoice.dart';
+import 'package:erp/features/sales_returns/domain/sales_return.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -17,6 +18,8 @@ void main() {
       sales: repositories.sales,
       purchases: repositories.purchases,
       cashbox: repositories.cashbox,
+      salesReturns: repositories.salesReturns,
+      expenses: repositories.expenses,
     );
   });
 
@@ -125,6 +128,7 @@ void main() {
         expenses: seeded.expenses,
         invoiceDiscount: seeded.invoiceDiscount,
         paid: Money.fromMajor(40000, AppCurrency.iqd),
+        originalPurchaseInvoiceId: seeded.originalPurchaseInvoiceId,
         supplierNameSnapshot: seeded.supplierNameSnapshot,
         searchDetailsSnapshot: seeded.searchDetailsSnapshot,
         notes: seeded.notes,
@@ -143,7 +147,70 @@ void main() {
     expect(result.entries, hasLength(1));
     expect(result.entries.single.debit.majorUnits, 90000);
     expect(result.entries.single.credit.majorUnits, 40000);
-    expect(result.entries.single.balance.majorUnits, -30000);
+    expect(result.entries.single.balance.majorUnits, -490000);
+  });
+
+  test('shows an unpaid supplier expense without a duplicate Cashbox row',
+      () async {
+    final result = await service.load(
+      PartyStatementQuery(
+        partyId: EntityId('party-003'),
+        fromDate: BusinessDate(2026, 7, 28),
+        toDate: BusinessDate(2026, 7, 28),
+        currency: AppCurrency.usd,
+      ),
+    );
+
+    expect(result.entries, hasLength(1));
+    expect(result.entries.single.type, PartyStatementEntryType.expense);
+    expect(result.entries.single.debit, Money.zero(AppCurrency.usd));
+    expect(
+      result.entries.single.credit,
+      Money.fromMajor(150, AppCurrency.usd),
+    );
+    expect(
+      result.entries.single.balance,
+      Money.fromMajor(-950, AppCurrency.usd),
+    );
+  });
+
+  test('shows one Sales-return movement and excludes its system payment',
+      () async {
+    final source = (await repositories.sales.getById(
+      EntityId('sales-invoice-103'),
+    ))!;
+    final saved = await repositories.salesReturns.createReturn(
+      SalesReturnSaveRequest(
+        originalSalesInvoiceId: source.id,
+        date: BusinessDate(2026, 8, 14),
+        minuteOfDay: 10 * 60,
+        lines: [
+          SalesReturnLineRequest(
+            sourceSalesLineId: source.lines.first.id,
+            quantity: WholeQuantity(1),
+          ),
+        ],
+        refundedAtReturn: Money.fromMajor(10000, AppCurrency.iqd),
+      ),
+    );
+
+    final result = await service.load(
+      PartyStatementQuery(
+        partyId: source.customerId,
+        fromDate: BusinessDate(2026, 8, 14),
+        toDate: BusinessDate(2026, 8, 14),
+        currency: source.currency,
+      ),
+    );
+
+    expect(result.entries, hasLength(1));
+    expect(result.entries.single.type, PartyStatementEntryType.saleReturn);
+    expect(result.entries.single.debit, saved.refundedAtReturn);
+    expect(result.entries.single.credit, saved.total);
+    expect(
+      result.closingBalance,
+      (await repositories.parties.getById(source.customerId))!.iqdBalance,
+    );
   });
 
   test('carries pre-range movements into opening and running balances',
@@ -166,7 +233,10 @@ void main() {
 
   test('combines sale, purchase, and manual cashbox movements by party id',
       () async {
-    final template = (await repositories.purchases.getAll()).first;
+    final template = (await repositories.purchases.getAll()).firstWhere(
+      (invoice) =>
+          invoice.id == const EntityId('purchase-invoice-101'),
+    );
     await repositories.purchases.createInvoice(
       PurchaseInvoice(
         id: EntityId('purchase-invoice-mixed-party'),
@@ -211,7 +281,7 @@ void main() {
       expect(entry.balance, expectedBalance);
     }
     expect(result.closingBalance, expectedBalance);
-    expect(result.closingBalance.majorUnits, 350000);
+    expect(result.closingBalance.majorUnits, 260000);
   });
 
   test('excludes source-linked invoice postings from statement movements',

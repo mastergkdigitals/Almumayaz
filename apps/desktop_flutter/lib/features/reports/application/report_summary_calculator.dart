@@ -17,21 +17,17 @@ abstract final class ReportSummaryCalculator {
     num? cashboxOpeningUsd,
   }) {
     final values = switch ((reportId, variantId)) {
+      ('salesInvoices', 'returns') => _salesReturnValues(rows),
       ('salesInvoices', _) => _invoiceValues(
           rows,
           paidColumn: 8,
           paidLabel: 'المقبوض',
         ),
-      ('purchaseInvoices', _) => _invoiceValues(
-          rows,
-          paidColumn: 9,
-          paidLabel: 'المدفوع',
-          totalColumn: 8,
-          remainingColumn: 10,
-        ),
+      ('purchaseInvoices', _) => _purchaseValues(rows),
       ('profits', _) => _profitValues(rows),
       ('inventory', 'currentStock') => _stockValues(rows),
       ('inventory', 'transfers') => _transferValues(rows),
+      ('cashbox', 'expenses') => _expenseValues(rows),
       ('cashbox', _) => _cashboxValues(
           rows,
           openingIqd: cashboxOpeningIqd,
@@ -117,6 +113,68 @@ abstract final class ReportSummaryCalculator {
           costedSales == 0
               ? '0.00%'
               : '${(profit / costedSales * 100).toStringAsFixed(2)}%';
+    }
+    return values;
+  }
+
+  static Map<String, String> _salesReturnValues(
+    List<ReportRowDefinition> rows,
+  ) {
+    final values = <String, String>{};
+    for (final currency in const ['IQD', 'USD']) {
+      final currencyRows = rows
+          .where((row) => _hasFilterValue(row, 'currency', currency))
+          .toList(growable: false);
+      final suffix = currency == 'IQD' ? 'دينار' : 'دولار';
+      final decimals = currency == 'IQD' ? 0 : 2;
+      values['عدد المرتجعات - $suffix'] = '${currencyRows.length}';
+      values['الإجمالي - $suffix'] = _format(
+        _sumColumn(currencyRows, 6),
+        decimals: decimals,
+      );
+      values['المسترد - $suffix'] = _format(
+        _sumColumn(currencyRows, 7),
+        decimals: decimals,
+      );
+      values['المضاف للرصيد - $suffix'] = _format(
+        _sumColumn(currencyRows, 8),
+        decimals: decimals,
+      );
+    }
+    return values;
+  }
+
+  static Map<String, String> _purchaseValues(
+    List<ReportRowDefinition> rows,
+  ) {
+    final values = <String, String>{};
+    for (final currency in const ['IQD', 'USD']) {
+      final currencyRows = rows
+          .where((row) => _hasFilterValue(row, 'currency', currency))
+          .toList(growable: false);
+      final suffix = currency == 'IQD' ? 'دينار' : 'دولار';
+      final decimals = currency == 'IQD' ? 0 : 2;
+      double netColumn(int column) => currencyRows.fold<double>(
+            0,
+            (sum, row) {
+              final direction =
+                  _hasFilterValue(row, 'purchaseType', 'return') ? -1 : 1;
+              return sum + (_numberAt(row, column) ?? 0) * direction;
+            },
+          );
+      values['عدد القوائم - $suffix'] = '${currencyRows.length}';
+      values['الإجمالي - $suffix'] = _format(
+        netColumn(9),
+        decimals: decimals,
+      );
+      values['المدفوع - $suffix'] = _format(
+        netColumn(10),
+        decimals: decimals,
+      );
+      values['المتبقي - $suffix'] = _format(
+        netColumn(11),
+        decimals: decimals,
+      );
     }
     return values;
   }
@@ -216,6 +274,36 @@ abstract final class ReportSummaryCalculator {
         decimals: 2,
       ),
       'عدد الحركات': '${rows.length}',
+    };
+  }
+
+  static Map<String, String> _expenseValues(
+    List<ReportRowDefinition> rows,
+  ) {
+    double amountFor(String currency, String status, int column) => rows
+        .where(
+          (row) =>
+              _hasFilterValue(row, 'currency', currency) &&
+              _hasFilterValue(row, 'status', status),
+        )
+        .fold<double>(
+          0,
+          (sum, row) => sum + (_numberAt(row, column) ?? 0),
+        );
+    return {
+      'عدد المصاريف': '${rows.length}',
+      'المدفوع - دينار': _format(amountFor('IQD', 'paid', 9)),
+      'غير المدفوع - دينار': _format(amountFor('IQD', 'unpaid', 10)),
+      'المدفوع - دولار': _format(
+        amountFor('USD', 'paid', 9),
+        decimals: 2,
+      ),
+      'غير المدفوع - دولار': _format(
+        amountFor('USD', 'unpaid', 10),
+        decimals: 2,
+      ),
+      'عدد غير المدفوع':
+          '${rows.where((row) => _hasFilterValue(row, 'status', 'unpaid')).length}',
     };
   }
 

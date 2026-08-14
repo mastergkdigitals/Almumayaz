@@ -1,6 +1,9 @@
 import '../../features/cashbox/data/demo_cashbox_repository.dart';
 import '../../features/cashbox/domain/cashbox_repository.dart';
 import '../../features/cashbox/domain/cashbox_voucher.dart';
+import '../../features/expenses/data/demo_expense_repository.dart';
+import '../../features/expenses/domain/expense.dart';
+import '../../features/expenses/domain/expense_repository.dart';
 import '../../features/items/data/demo_item_repository.dart';
 import '../../features/items/domain/item.dart';
 import '../../features/items/domain/item_repository.dart';
@@ -18,6 +21,9 @@ import '../../features/purchases/domain/purchase_repository.dart';
 import '../../features/sales/data/demo_sales_repository.dart';
 import '../../features/sales/domain/sales_invoice.dart';
 import '../../features/sales/domain/sales_repository.dart';
+import '../../features/sales_returns/data/demo_sales_return_repository.dart';
+import '../../features/sales_returns/domain/sales_return.dart';
+import '../../features/sales_returns/domain/sales_return_repository.dart';
 import '../../features/settings/data/demo_operational_settings_repositories.dart';
 import '../../features/settings/domain/operational_master_data.dart';
 import '../../features/settings/domain/operational_master_data_repository.dart';
@@ -34,6 +40,7 @@ import '../data/demo_transaction_runner.dart';
 import '../domain/business_values.dart';
 import 'app_data_profile.dart';
 import 'demo_invoice_effects_coordinator.dart';
+import 'demo_phase9b_effects_coordinator.dart';
 
 /// One composition root for every repository used by the desktop app.
 ///
@@ -48,8 +55,10 @@ class AppRepositories {
     required this.inventoryCosts,
     required this.cashbox,
     required this.sales,
+    required this.salesReturns,
     required this.purchases,
     required this.installments,
+    required this.expenses,
     required this.businessSettings,
     required this.deviceSettings,
     required this.operationalMasterData,
@@ -78,12 +87,17 @@ class AppRepositories {
     late DemoInventoryCostRepository inventoryCosts;
     late DemoCashboxRepository cashbox;
     late DemoSalesRepository sales;
+    late DemoSalesReturnRepository salesReturns;
     late DemoPurchaseRepository purchases;
     late DemoInstallmentRepository installments;
+    late DemoExpenseRepository expenses;
     late DemoBusinessSettingsRepository businessSettings;
     final seededSales = isCleared ? <SalesInvoice>[] : demoSalesInvoices();
+    final seededSalesReturns =
+        isCleared ? <SalesReturn>[] : demoSalesReturns();
     final seededPurchases =
         isCleared ? <PurchaseInvoice>[] : demoPurchaseInvoices();
+    final seededExpenses = isCleared ? <Expense>[] : demoExpenses();
     final seededTransfers =
         isCleared ? <InventoryTransfer>[] : demoInventoryTransfers();
     final seededManualCashbox =
@@ -141,6 +155,12 @@ class AppRepositories {
         )) {
           return true;
         }
+        if ((await salesReturns.getAll()).any(
+          (salesReturn) => salesReturn.customerId == partyId,
+        )) {
+          return true;
+        }
+        if (await expenses.referencesParty(partyId)) return true;
         return cashbox.referencesParty(partyId);
       },
     );
@@ -161,6 +181,12 @@ class AppRepositories {
         )) {
           return true;
         }
+        if ((await salesReturns.getAll()).any(
+          (salesReturn) =>
+              salesReturn.lines.any((line) => line.itemId == itemId),
+        )) {
+          return true;
+        }
         return warehouses.referencesItem(itemId);
       },
     );
@@ -170,6 +196,7 @@ class AppRepositories {
           isCleared ? const <InventoryCostBalance>[] : null,
       purchases: seededPurchases,
       sales: seededSales,
+      salesReturns: seededSalesReturns,
       transfers: seededTransfers,
     );
     warehouses = DemoWarehouseRepository(
@@ -195,6 +222,11 @@ class AppRepositories {
                     (line) => line.warehouseId == warehouseId,
                   ),
             ) ||
+            (await salesReturns.getAll()).any(
+              (salesReturn) => salesReturn.lines.any(
+                (line) => line.warehouseId == warehouseId,
+              ),
+            ) ||
             (await businessSettings.loadOperationalDefaults())
                     .purchases
                     .warehouseId ==
@@ -205,15 +237,24 @@ class AppRepositories {
                 warehouseId;
       },
     );
-    cashbox = DemoCashboxRepository(
-      initialValues: [
-        ...seededManualCashbox,
-        ..._demoInvoiceCashboxPostings(
+    final invoicePostings = _demoInvoiceCashboxPostings(
           sales: seededSales,
           purchases: seededPurchases,
           existingVouchers: seededManualCashbox,
           firstNumber: _highestCashboxNumber(seededManualCashbox) + 1,
-        ),
+        );
+    final expensePostings = _demoExpenseCashboxPostings(
+      expenses: seededExpenses,
+      existingVouchers: [...seededManualCashbox, ...invoicePostings],
+      firstNumber:
+          _highestCashboxNumber([...seededManualCashbox, ...invoicePostings]) +
+              1,
+    );
+    cashbox = DemoCashboxRepository(
+      initialValues: [
+        ...seededManualCashbox,
+        ...invoicePostings,
+        ...expensePostings,
       ],
       masterData: masterData,
       parties: parties,
@@ -256,6 +297,17 @@ class AppRepositories {
       installments: () => installments,
       businessAudit: businessAudit,
     );
+    final phase9bEffects = DemoPhase9bEffectsCoordinator(
+      transactionRunner: sharedTransactionRunner,
+      parties: parties,
+      warehouses: warehouses,
+      cashbox: cashbox,
+      inventoryCosts: inventoryCosts,
+      sales: () => sales,
+      salesReturns: () => salesReturns,
+      installments: () => installments,
+      businessAudit: businessAudit,
+    );
 
     sales = DemoSalesRepository(
       initialValues: seededSales,
@@ -263,6 +315,7 @@ class AppRepositories {
       itemExists: itemExists,
       warehouseExists: warehouseExists,
       mutationEffects: invoiceEffects,
+      hasReturnsForInvoice: (id) => salesReturns.hasReturnsForInvoice(id),
       partyLabelOf: (id) async => (await parties.getById(id))?.name,
       itemLabelOf: (id) async => (await items.getById(id))?.name,
     );
@@ -280,6 +333,16 @@ class AppRepositories {
       mutationEffects: invoiceEffects,
       salesInvoiceLoader: sales.getById,
     );
+    salesReturns = DemoSalesReturnRepository(
+      initialValues: seededSalesReturns,
+      salesInvoiceLoader: sales.getById,
+      mutationEffects: phase9bEffects,
+    );
+    expenses = DemoExpenseRepository(
+      initialValues: seededExpenses,
+      partyLoader: parties.getById,
+      mutationEffects: phase9bEffects,
+    );
 
     return AppRepositories(
       parties: parties,
@@ -288,8 +351,10 @@ class AppRepositories {
       inventoryCosts: inventoryCosts,
       cashbox: cashbox,
       sales: sales,
+      salesReturns: salesReturns,
       purchases: purchases,
       installments: installments,
+      expenses: expenses,
       businessSettings: businessSettings,
       deviceSettings: DemoDeviceSettingsRepository(
         initialValues: isCleared ? const <DeviceSettings>[] : null,
@@ -306,8 +371,10 @@ class AppRepositories {
   final InventoryCostRepository inventoryCosts;
   final CashboxRepository cashbox;
   final SalesRepository sales;
+  final SalesReturnRepository salesReturns;
   final PurchaseRepository purchases;
   final InstallmentRepository installments;
+  final ExpenseRepository expenses;
   final BusinessSettingsRepository businessSettings;
   final DeviceSettingsRepository deviceSettings;
   final OperationalMasterDataRepository operationalMasterData;
@@ -371,7 +438,9 @@ List<CashboxVoucher> _demoInvoiceCashboxPostings({
               : CashboxVoucherType.payment,
           exchangeRate: invoice.exchangeRate,
           amount: invoice.paid,
-          notes: 'قيد آلي لفاتورة شراء رقم ${invoice.documentNumber}',
+          notes: invoice.isReturn
+              ? 'قيد آلي لمرتجع شراء رقم ${invoice.documentNumber}'
+              : 'قيد آلي لفاتورة شراء رقم ${invoice.documentNumber}',
         ),
   ]
     ..sort((first, second) {
@@ -384,6 +453,52 @@ List<CashboxVoucher> _demoInvoiceCashboxPostings({
               second.source.sourceId.value,
             );
     });
+  return _materializeSeededPostings(
+    postings: postings,
+    existingVouchers: existingVouchers,
+    firstNumber: firstNumber,
+  );
+}
+
+List<CashboxVoucher> _demoExpenseCashboxPostings({
+  required Iterable<Expense> expenses,
+  required Iterable<CashboxVoucher> existingVouchers,
+  required int firstNumber,
+}) {
+  final paidExpenses = expenses.where((expense) => expense.isPaid).toList()
+    ..sort((first, second) {
+      final byTimestamp = first.paidAt!.compareTo(second.paidAt!);
+      return byTimestamp != 0
+          ? byTimestamp
+          : first.id.value.compareTo(second.id.value);
+    });
+  return _materializeSeededPostings(
+    postings: [
+      for (final expense in paidExpenses)
+        _SeededInvoicePosting(
+          source: CashboxVoucherSource(
+            kind: CashboxVoucherSourceKind.expense,
+            sourceId: expense.id,
+            partyId: expense.supplierId,
+          ),
+          createdTimestamp: expense.paidAt!,
+          type: CashboxVoucherType.payment,
+          exchangeRate: expense.exchangeRate,
+          amount: expense.amount,
+          notes: 'قيد آلي للمصروف رقم ${expense.documentNumber}: '
+              '${expense.description}',
+        ),
+    ],
+    existingVouchers: existingVouchers,
+    firstNumber: firstNumber,
+  );
+}
+
+List<CashboxVoucher> _materializeSeededPostings({
+  required Iterable<_SeededInvoicePosting> postings,
+  required Iterable<CashboxVoucher> existingVouchers,
+  required int firstNumber,
+}) {
   final chronologicalExisting = [...existingVouchers]
     ..sort((first, second) {
       final byTimestamp = first.createdTimestamp.compareTo(
@@ -401,8 +516,9 @@ List<CashboxVoucher> _demoInvoiceCashboxPostings({
     );
   }
   final result = <CashboxVoucher>[];
-  for (var index = 0; index < postings.length; index++) {
-    final posting = postings[index];
+  final postingList = postings.toList(growable: false);
+  for (var index = 0; index < postingList.length; index++) {
+    final posting = postingList[index];
     final account = _seededPostingAccount();
     final zeroIqd = Money.zero(AppCurrency.iqd);
     final zeroUsd = Money.zero(AppCurrency.usd);

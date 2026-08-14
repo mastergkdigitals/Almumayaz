@@ -327,7 +327,12 @@ void main() {
       store: store,
     );
 
-    final selected = (await store.repositories.purchases.getAll()).first;
+    final purchases = await store.repositories.purchases.getAll();
+    final selected = purchases.first;
+    for (final purchase in purchases.where((invoice) => invoice.isReturn)) {
+      await store.repositories.purchases
+          .deleteInvoicePermanently(purchase.id);
+    }
     await store.repositories.purchases.deleteInvoicePermanently(selected.id);
     await tester.tap(find.byKey(const Key('purchasePdfButton')));
     await tester.pumpAndSettle();
@@ -764,6 +769,7 @@ PurchaseInvoice _purchaseWithSupplierName(
     exchangeRate: invoice.exchangeRate,
     purchaseKind: invoice.purchaseKind,
     settlementKind: invoice.settlementKind,
+    originalPurchaseInvoiceId: invoice.originalPurchaseInvoiceId,
     lines: invoice.lines,
     expenses: invoice.expenses,
     invoiceDiscount: invoice.invoiceDiscount,
@@ -786,8 +792,10 @@ AppRepositories _repositoriesWithSales(
     inventoryCosts: repositories.inventoryCosts,
     cashbox: repositories.cashbox,
     sales: sales,
+    salesReturns: repositories.salesReturns,
     purchases: repositories.purchases,
     installments: repositories.installments,
+    expenses: repositories.expenses,
     businessSettings: repositories.businessSettings,
     deviceSettings: repositories.deviceSettings,
     operationalMasterData: repositories.operationalMasterData,
@@ -805,8 +813,10 @@ AppRepositories _repositoriesWithPurchases(
     inventoryCosts: repositories.inventoryCosts,
     cashbox: repositories.cashbox,
     sales: repositories.sales,
+    salesReturns: repositories.salesReturns,
     purchases: purchases,
     installments: repositories.installments,
+    expenses: repositories.expenses,
     businessSettings: repositories.businessSettings,
     deviceSettings: repositories.deviceSettings,
     operationalMasterData: repositories.operationalMasterData,

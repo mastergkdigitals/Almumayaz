@@ -46,6 +46,7 @@ extension _PurchaseRepositoryState on _PurchaseScreenState {
     final loadedInvoices = await repositories.purchases.getAll();
     final invoices = [...loadedInvoices]
       ..sort((left, right) => left.documentNumber.compareTo(right.documentNumber));
+    final invoicesById = {for (final invoice in invoices) invoice.id: invoice};
 
     final partiesById = {for (final party in parties) party.entityId: party};
     final itemsById = {for (final item in items) item.entityId: item};
@@ -109,9 +110,18 @@ extension _PurchaseRepositoryState on _PurchaseScreenState {
     for (final invoice in invoices) {
       final party = partiesById[invoice.supplierId];
       final warehouse = warehousesById[invoice.defaultWarehouseId];
+      final originalInvoice = invoice.originalPurchaseInvoiceId == null
+          ? null
+          : invoicesById[invoice.originalPurchaseInvoiceId];
       if (party == null || warehouse == null) {
         throw const InvoiceMissingReferenceException(
           'إحدى قوائم الشراء مرتبطة بمجهز أو مخزن غير موجود.',
+        );
+      }
+      if (invoice.isReturn &&
+          (originalInvoice == null || originalInvoice.isReturn)) {
+        throw const InvoiceMissingReferenceException(
+          'أحد مرتجعات الشراء مرتبط بقائمة أصلية غير موجودة.',
         );
       }
       for (final line in invoice.lines) {
@@ -121,6 +131,17 @@ extension _PurchaseRepositoryState on _PurchaseScreenState {
             'إحدى مواد قوائم الشراء مرتبطة بمادة أو مخزن غير موجود.',
           );
         }
+        if (invoice.isReturn &&
+            (line.originalPurchaseLineId == null ||
+                !originalInvoice!.lines.any(
+                  (sourceLine) =>
+                      sourceLine.id == line.originalPurchaseLineId &&
+                      sourceLine.itemId == line.itemId,
+                ))) {
+          throw const InvoiceMissingReferenceException(
+            'أحد سطور مرتجعات الشراء مرتبط بسطر أصلي غير موجود.',
+          );
+        }
       }
       result.add(
         _purchaseViewFromDomain(
@@ -128,6 +149,7 @@ extension _PurchaseRepositoryState on _PurchaseScreenState {
           party: party,
           itemsById: itemsById,
           warehousesById: warehousesById,
+          originalInvoice: originalInvoice,
         ),
       );
     }
@@ -139,6 +161,7 @@ extension _PurchaseRepositoryState on _PurchaseScreenState {
     required Party party,
     required Map<EntityId, Item> itemsById,
     required Map<EntityId, Warehouse> warehousesById,
+    PurchaseInvoice? originalInvoice,
   }) {
     final currency = invoice.currency.code;
     final rows = <AppPurchaseInvoiceTableRowData>[
@@ -206,6 +229,7 @@ extension _PurchaseRepositoryState on _PurchaseScreenState {
         supplierName,
         party.name,
         _purchaseTransactionLabel(invoice.purchaseKind),
+        if (originalInvoice != null) '${originalInvoice.documentNumber}',
         currency,
         AppFormatters.currency(currency),
         for (var index = 0; index < rows.length; index++) ...[

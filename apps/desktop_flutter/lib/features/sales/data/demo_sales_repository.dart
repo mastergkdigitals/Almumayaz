@@ -25,6 +25,7 @@ class DemoSalesRepository extends InMemoryDemoRepository<SalesInvoice>
     required SalesReferenceExists itemExists,
     required SalesReferenceExists warehouseExists,
     required DemoSalesMutationEffects mutationEffects,
+    SalesReferenceExists? hasReturnsForInvoice,
     SalesReferenceLabel? partyLabelOf,
     SalesReferenceLabel? itemLabelOf,
   }) {
@@ -37,6 +38,7 @@ class DemoSalesRepository extends InMemoryDemoRepository<SalesInvoice>
       itemExists: itemExists,
       warehouseExists: warehouseExists,
       mutationEffects: mutationEffects,
+      hasReturnsForInvoice: hasReturnsForInvoice,
       partyLabelOf: partyLabelOf,
       itemLabelOf: itemLabelOf,
     );
@@ -48,12 +50,14 @@ class DemoSalesRepository extends InMemoryDemoRepository<SalesInvoice>
     required SalesReferenceExists itemExists,
     required SalesReferenceExists warehouseExists,
     required DemoSalesMutationEffects mutationEffects,
+    SalesReferenceExists? hasReturnsForInvoice,
     SalesReferenceLabel? partyLabelOf,
     SalesReferenceLabel? itemLabelOf,
   })  : _partyExists = partyExists,
         _itemExists = itemExists,
         _warehouseExists = warehouseExists,
         _mutationEffects = mutationEffects,
+        _hasReturnsForInvoice = hasReturnsForInvoice ?? _neverReferenced,
         _partyLabelOf = partyLabelOf,
         _itemLabelOf = itemLabelOf,
         _highestIssuedDocumentNumber = _highestDocumentNumber(initialValues),
@@ -69,6 +73,7 @@ class DemoSalesRepository extends InMemoryDemoRepository<SalesInvoice>
   final SalesReferenceExists _itemExists;
   final SalesReferenceExists _warehouseExists;
   final DemoSalesMutationEffects _mutationEffects;
+  final SalesReferenceExists _hasReturnsForInvoice;
   final SalesReferenceLabel? _partyLabelOf;
   final SalesReferenceLabel? _itemLabelOf;
   int _highestIssuedDocumentNumber;
@@ -99,6 +104,14 @@ class DemoSalesRepository extends InMemoryDemoRepository<SalesInvoice>
         }
         if (mode == _SalesMutationMode.replace && existing == null) {
           throw StateError('فاتورة البيع غير موجودة');
+        }
+        if (existing != null &&
+            !_hasSameReturnSourceTerms(existing, invoice) &&
+            await _hasReturnsForInvoice(existing.id)) {
+          throw StateError(
+            'لا يمكن تغيير بيانات قائمة بيع مرتبطة بمرتجع؛ '
+            'احذف المرتجع أولاً',
+          );
         }
         await _validate(invoice);
         _ensureDocumentNumberAvailable(
@@ -151,6 +164,20 @@ class DemoSalesRepository extends InMemoryDemoRepository<SalesInvoice>
   }
 
   @override
+  Future<DeleteDecision> canDelete(EntityId id) async {
+    final existing = getDemoValue(id);
+    if (existing == null) {
+      return const DeleteDecision.blocked('فاتورة البيع غير موجودة');
+    }
+    if (await _hasReturnsForInvoice(existing.id)) {
+      return const DeleteDecision.blocked(
+        'لا يمكن حذف قائمة بيع مرتبطة بمرتجع؛ احذف المرتجع أولاً',
+      );
+    }
+    return const DeleteDecision.allowed();
+  }
+
+  @override
   Future<void> delete(EntityId id) => deleteInvoicePermanently(id);
 
   @override
@@ -161,6 +188,11 @@ class DemoSalesRepository extends InMemoryDemoRepository<SalesInvoice>
         final existing = getDemoValue(id);
         if (existing == null) {
           throw StateError('فاتورة البيع غير موجودة');
+        }
+        if (await _hasReturnsForInvoice(existing.id)) {
+          throw StateError(
+            'لا يمكن حذف قائمة بيع مرتبطة بمرتجع؛ احذف المرتجع أولاً',
+          );
         }
         return existing;
       },
@@ -245,6 +277,40 @@ class DemoSalesRepository extends InMemoryDemoRepository<SalesInvoice>
   void commitSalesMutation(DemoSalesStagedInstallmentReceipt staged) {
     commitDemoSnapshot(staged.values);
   }
+}
+
+Future<bool> _neverReferenced(EntityId _) async => false;
+
+bool _hasSameReturnSourceTerms(SalesInvoice first, SalesInvoice second) {
+  if (first.id != second.id ||
+      first.documentNumber != second.documentNumber ||
+      first.date != second.date ||
+      first.minuteOfDay != second.minuteOfDay ||
+      first.customerId != second.customerId ||
+      first.defaultWarehouseId != second.defaultWarehouseId ||
+      first.currency != second.currency ||
+      first.exchangeRate != second.exchangeRate ||
+      first.settlementKind != second.settlementKind ||
+      first.invoiceDiscount != second.invoiceDiscount ||
+      first.received != second.received ||
+      first.receivedAtSale != second.receivedAtSale ||
+      first.installmentReceived != second.installmentReceived ||
+      first.lines.length != second.lines.length) {
+    return false;
+  }
+  final secondLines = {for (final line in second.lines) line.id: line};
+  for (final firstLine in first.lines) {
+    final secondLine = secondLines[firstLine.id];
+    if (secondLine == null ||
+        firstLine.itemId != secondLine.itemId ||
+        firstLine.warehouseId != secondLine.warehouseId ||
+        firstLine.quantity != secondLine.quantity ||
+        firstLine.unitPrice != secondLine.unitPrice ||
+        firstLine.discountPerUnit != secondLine.discountPerUnit) {
+      return false;
+    }
+  }
+  return true;
 }
 
 enum _SalesMutationMode { create, replace, upsert }

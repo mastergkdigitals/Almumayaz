@@ -9,14 +9,20 @@ import 'demo/sales_report_demo_data.dart';
 
 final Map<String, Map<String, List<ReportRowDefinition>>> _demoRowsByReport =
     {
-  'salesInvoices': {'main': salesInvoiceDemoRows},
+  'salesInvoices': {
+    'main': salesInvoiceDemoRows,
+    'returns': const [],
+  },
   'purchaseInvoices': {'main': purchaseInvoiceDemoRows},
   'profits': {'main': profitDemoRows},
   'inventory': {
     'currentStock': currentStockDemoRows,
     'transfers': transferDemoRows,
   },
-  'cashbox': {'main': cashboxDemoRows},
+  'cashbox': {
+    'main': cashboxDemoRows,
+    'expenses': const [],
+  },
   'partyBalances': {'main': partyBalanceDemoRows},
   'debtsInstallments': {'main': debtDemoRows},
 };

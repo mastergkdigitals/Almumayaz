@@ -141,6 +141,8 @@ class _PartiesScreenState extends State<PartiesScreen> {
       sales: repositories.sales,
       purchases: repositories.purchases,
       cashbox: repositories.cashbox,
+      salesReturns: repositories.salesReturns,
+      expenses: repositories.expenses,
     );
   }
 

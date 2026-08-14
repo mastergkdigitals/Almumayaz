@@ -17,6 +17,14 @@ final ReportDefinition cashboxReportDefinition = ReportDefinition(
       metrics: _cashboxMetrics,
       columns: _cashboxColumns,
     ),
+    ReportVariantDefinition(
+      id: 'expenses',
+      label: 'المصاريف',
+      icon: Icons.receipt_long_rounded,
+      filters: _expenseFilters,
+      metrics: _expenseMetrics,
+      columns: _expenseColumns,
+    ),
   ],
 );
 
@@ -157,6 +165,107 @@ const List<ReportColumnDefinition> _cashboxColumns = [
   ),
   ReportColumnDefinition(
     label: 'سعر الصرف',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+  ),
+  ReportColumnDefinition(label: 'الملاحظات', flex: 1.5),
+];
+
+const List<ReportFilterDefinition> _expenseFilters = [
+  ReportFilterDefinition.dateRange(id: 'period', label: 'الفترة'),
+  ReportFilterDefinition.dropdown(
+    id: 'status',
+    label: 'حالة الدفع',
+    icon: Icons.price_check_rounded,
+    options: [
+      ReportFilterOption('all', 'الكل'),
+      ReportFilterOption('paid', 'مدفوع'),
+      ReportFilterOption('unpaid', 'غير مدفوع'),
+    ],
+  ),
+  ReportFilterDefinition.dropdown(
+    id: 'supplier',
+    label: 'المجهز',
+    icon: Icons.local_shipping_rounded,
+    options: [ReportFilterOption('all', 'الكل')],
+  ),
+  ReportFilterDefinition.dropdown(
+    id: 'currency',
+    label: 'العملة',
+    icon: Icons.currency_exchange_rounded,
+    options: _currencyOptions,
+  ),
+];
+
+const List<ReportMetricDefinition> _expenseMetrics = [
+  ReportMetricDefinition(
+    label: 'عدد المصاريف',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
+  ReportMetricDefinition(
+    label: 'المدفوع - دينار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+    spreadsheetDecimalPlaces: 0,
+  ),
+  ReportMetricDefinition(
+    label: 'غير المدفوع - دينار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+    spreadsheetDecimalPlaces: 0,
+  ),
+  ReportMetricDefinition(
+    label: 'المدفوع - دولار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+    spreadsheetDecimalPlaces: 2,
+  ),
+  ReportMetricDefinition(
+    label: 'غير المدفوع - دولار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+    spreadsheetDecimalPlaces: 2,
+  ),
+  ReportMetricDefinition(
+    label: 'عدد غير المدفوع',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
+];
+
+const List<ReportColumnDefinition> _expenseColumns = [
+  ReportColumnDefinition(
+    label: 'ت',
+    numeric: true,
+    flex: 0.5,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
+  ReportColumnDefinition(
+    label: 'رقم المصروف',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
+  ReportColumnDefinition(
+    label: 'التاريخ',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.date,
+  ),
+  ReportColumnDefinition(
+    label: 'الوقت',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.time,
+  ),
+  ReportColumnDefinition(label: 'البيان', flex: 1.7),
+  ReportColumnDefinition(label: 'المجهز', flex: 1.2),
+  ReportColumnDefinition(label: 'الحالة'),
+  ReportColumnDefinition(label: 'العملة'),
+  ReportColumnDefinition(
+    label: 'المبلغ',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+  ),
+  ReportColumnDefinition(
+    label: 'المدفوع',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+  ),
+  ReportColumnDefinition(
+    label: 'غير المدفوع',
     numeric: true,
     spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
   ),

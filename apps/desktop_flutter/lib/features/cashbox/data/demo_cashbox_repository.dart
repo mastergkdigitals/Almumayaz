@@ -226,7 +226,7 @@ class DemoCashboxRepository extends InMemoryDemoRepository<CashboxVoucher>
     }
     if (existing.isSystemGenerated) {
       return const DeleteDecision.blocked(
-        'لا يمكن حذف قيد صندوق مولد من فاتورة',
+        'لا يمكن حذف قيد صندوق مولد آلياً',
       );
     }
     return const DeleteDecision.allowed();
@@ -238,7 +238,7 @@ class DemoCashboxRepository extends InMemoryDemoRepository<CashboxVoucher>
       final existing = getDemoValue(id);
       if (existing == null) throw StateError('السجل غير موجود');
       if (existing.isSystemGenerated) {
-        throw StateError('لا يمكن حذف قيد صندوق مولد من فاتورة');
+        throw StateError('لا يمكن حذف قيد صندوق مولد آلياً');
       }
       final stagedParties = _parties.stageBalanceAdjustments(
         await _partyAdjustments(existing, direction: -1),

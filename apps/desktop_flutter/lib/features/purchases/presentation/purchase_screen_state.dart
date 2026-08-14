@@ -17,6 +17,7 @@ class PurchaseScreen extends StatefulWidget {
 class _PurchaseScreenState extends State<PurchaseScreen> {
   final _invoiceNumberController = TextEditingController(text: '1');
   final _exchangeRateController = TextEditingController(text: '1,310');
+  final _originalInvoiceController = TextEditingController();
   final _supplierNameController = TextEditingController();
   final _notesController = TextEditingController();
   final _expensesController = TextEditingController(text: '0');
@@ -32,6 +33,8 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
   DateTime _invoiceDateTime = DateTime.now();
   _PurchaseInvoiceViewData? _selectedInvoice;
   List<AppPurchaseInvoiceTableRowData> _activeItems = const [];
+  List<_PurchaseReturnLineDraft> _returnLines = const [];
+  EntityId? _selectedOriginalPurchaseInvoiceId;
   var _warehouseId = '';
   var _purchaseType = 'محلي';
   var _paymentType = 'نقدي';
@@ -78,6 +81,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
 
   Iterable<TextEditingController> get _editableControllers => [
         _exchangeRateController,
+        _originalInvoiceController,
         _supplierNameController,
         _notesController,
         _expensesController,
@@ -85,6 +89,8 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
         _discountPercentageController,
         _paidController,
       ];
+
+  bool get _isPurchaseReturn => _purchaseType == 'إرجاع';
 
   int get _nextInvoiceNumber {
     return _repositoryNextInvoiceNumber;
@@ -94,7 +100,9 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
         for (final invoice in _purchaseInvoices)
           AppSearchRecord(
             value: invoice.entityId,
-            title: 'قائمة شراء رقم ${invoice.documentNumber}',
+            title: invoice.source.isReturn
+                ? 'مرتجع شراء رقم ${invoice.documentNumber}'
+                : 'قائمة شراء رقم ${invoice.documentNumber}',
             subtitle: invoice.supplierName,
             details: invoice.searchDetails,
             searchTerms: invoice.searchTerms,
@@ -123,6 +131,8 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
       sales: repositories.sales,
       purchases: repositories.purchases,
       cashbox: repositories.cashbox,
+      salesReturns: repositories.salesReturns,
+      expenses: repositories.expenses,
     );
     _coordinator = InvoiceEditorCoordinator<_PurchaseInvoiceViewData>(
       loadRecords: _loadRepositoryInvoices,
@@ -202,7 +212,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
     if (_selectedInvoice != null) {
       AppToast.showWarning(
         context,
-        'استخدم زر تحديث لتعديل قائمة الشراء المحددة',
+        'استخدم زر تحديث لتعديل مستند الشراء المحدد',
       );
       return;
     }
@@ -219,19 +229,24 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
     }
     final saved = await _runRepositoryMutation(
       () => _store!.repositories.purchases.createInvoice(invoice),
-      failureMessage: 'تعذر حفظ قائمة الشراء',
+      failureMessage: _isPurchaseReturn
+          ? 'تعذر حفظ مرتجع الشراء'
+          : 'تعذر حفظ قائمة الشراء',
     );
     if (saved == null || !mounted) return;
     await _loadData(showLoading: false, selectEntityId: saved.id);
     if (!mounted) return;
-    AppToast.showInfo(context, 'تم حفظ قائمة الشراء');
+    AppToast.showInfo(
+      context,
+      _isPurchaseReturn ? 'تم حفظ مرتجع الشراء' : 'تم حفظ قائمة الشراء',
+    );
   }
 
   Future<void> _update() async {
     if (!_allowsPurchaseAction(PermissionAction.update)) return;
     final selected = _selectedInvoice;
     if (selected == null) {
-      AppToast.showWarning(context, 'اختر قائمة شراء لتحديثها');
+      AppToast.showWarning(context, 'اختر مستند شراء لتحديثه');
       return;
     }
     if (!_validateForm()) return;
@@ -245,12 +260,17 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
     }
     final saved = await _runRepositoryMutation(
       () => _store!.repositories.purchases.replaceInvoice(updated),
-      failureMessage: 'تعذر تحديث قائمة الشراء',
+      failureMessage: _isPurchaseReturn
+          ? 'تعذر تحديث مرتجع الشراء'
+          : 'تعذر تحديث قائمة الشراء',
     );
     if (saved == null || !mounted) return;
     await _loadData(showLoading: false, selectEntityId: saved.id);
     if (!mounted) return;
-    AppToast.showSuccess(context, 'تم تحديث قائمة الشراء');
+    AppToast.showSuccess(
+      context,
+      saved.isReturn ? 'تم تحديث مرتجع الشراء' : 'تم تحديث قائمة الشراء',
+    );
   }
 
   void _undo() {
@@ -272,14 +292,18 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
     if (!_allowsPurchaseAction(PermissionAction.delete)) return;
     final selected = _selectedInvoice;
     if (selected == null) {
-      AppToast.showWarning(context, 'اختر قائمة شراء لحذفها');
+      AppToast.showWarning(context, 'اختر مستند شراء لحذفه');
       return;
     }
 
     final confirmed = await AppDialogs.confirm(
       context: context,
-      title: 'حذف قائمة الشراء',
-      message: 'هل تريد حذف قائمة الشراء رقم ${selected.documentNumber}؟',
+      title: selected.source.isReturn
+          ? 'حذف مرتجع الشراء'
+          : 'حذف قائمة الشراء',
+      message: selected.source.isReturn
+          ? 'هل تريد حذف مرتجع الشراء رقم ${selected.documentNumber}؟'
+          : 'هل تريد حذف قائمة الشراء رقم ${selected.documentNumber}؟',
       confirmLabel: 'حذف',
       isDanger: true,
     );
@@ -291,13 +315,20 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
             .deleteInvoicePermanently(selected.entityId);
         return true;
       },
-      failureMessage: 'تعذر حذف قائمة الشراء',
+      failureMessage: selected.source.isReturn
+          ? 'تعذر حذف مرتجع الشراء'
+          : 'تعذر حذف قائمة الشراء',
     );
     if (deleted == null || !mounted) return;
     await _loadData(showLoading: false);
     if (!mounted) return;
     setState(_setNewForm);
-    AppToast.showDanger(context, 'تم حذف قائمة الشراء');
+    AppToast.showDanger(
+      context,
+      selected.source.isReturn
+          ? 'تم حذف مرتجع الشراء'
+          : 'تم حذف قائمة الشراء',
+    );
   }
 
   Future<T?> _runRepositoryMutation<T>(
@@ -371,6 +402,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
     }
     _invoiceNumberController.dispose();
     _exchangeRateController.dispose();
+    _originalInvoiceController.dispose();
     _supplierNameController.dispose();
     _notesController.dispose();
     _expensesController.dispose();

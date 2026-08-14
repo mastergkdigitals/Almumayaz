@@ -15,7 +15,9 @@ void main() {
   test('demo repositories expose resolvable cross-module references', () async {
     final repositories = AppRepositories.demo();
     final sale = (await repositories.sales.getAll()).first;
-    final purchase = (await repositories.purchases.getAll()).first;
+    final purchase = (await repositories.purchases.getAll()).singleWhere(
+      (invoice) => invoice.id == EntityId('purchase-invoice-102'),
+    );
 
     expect((await repositories.sales.getAll()).map((entry) => entry.documentNumber),
         [101, 102, 103]);
@@ -428,7 +430,10 @@ void main() {
   test('invoice numbers remain reserved after permanent deletion', () async {
     final repositories = AppRepositories.demo();
     final sale = (await repositories.sales.getAll()).first;
-    final purchase = (await repositories.purchases.getAll()).first;
+    final purchase = (await repositories.purchases.getAll()).firstWhere(
+      (invoice) =>
+          invoice.id == const EntityId('purchase-invoice-102'),
+    );
 
     await repositories.sales.deleteInvoicePermanently(sale.id);
     await repositories.purchases.deleteInvoicePermanently(purchase.id);
@@ -563,6 +568,7 @@ PurchaseInvoice _copyPurchase(
     exchangeRate: source.exchangeRate,
     purchaseKind: source.purchaseKind,
     settlementKind: source.settlementKind,
+    originalPurchaseInvoiceId: source.originalPurchaseInvoiceId,
     lines: source.lines,
     expenses: source.expenses,
     invoiceDiscount: source.invoiceDiscount,

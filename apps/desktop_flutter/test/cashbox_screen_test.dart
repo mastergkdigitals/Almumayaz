@@ -23,7 +23,7 @@ void main() {
     addTearDown(controller.dispose);
     await controller.load();
 
-    expect(controller.state.vouchers, hasLength(10));
+    expect(controller.state.vouchers, hasLength(11));
     expect(
       controller.state.vouchers.first.entityId,
       EntityId('cashbox-001'),
@@ -49,7 +49,7 @@ void main() {
     expect(controller.selectedVoucher?.number, 2);
 
     controller.last();
-    expect(controller.selectedVoucher?.number, 10);
+    expect(controller.selectedVoucher?.number, 11);
 
     controller.last();
     expect(controller.selectedVoucher, isNull);
@@ -64,12 +64,12 @@ void main() {
     addTearDown(controller.dispose);
     await controller.load();
 
-    expect(controller.state.vouchers, hasLength(10));
-    expect(controller.summary.todayReceiptIqd, 1150000);
-    expect(controller.summary.todayPaymentIqd, 125000);
+    expect(controller.state.vouchers, hasLength(11));
+    expect(controller.summary.todayReceiptIqd, 0);
+    expect(controller.summary.todayPaymentIqd, 75000);
     expect(
       controller.summary.iqdTodayReceipt,
-      Money.fromMajor(1150000, AppCurrency.iqd),
+      Money.zero(AppCurrency.iqd),
     );
 
     controller.select('cashbox-003');
@@ -109,7 +109,7 @@ void main() {
     );
     addTearDown(reopened.dispose);
     await reopened.load();
-    expect(reopened.state.vouchers, hasLength(10));
+    expect(reopened.state.vouchers, hasLength(11));
     expect(reopened.accountBalance(third.subaccountId).usd, -1190);
   });
 
@@ -309,7 +309,7 @@ void main() {
         'المبلغ دولار',
       ],
     );
-    expect(table.rows, hasLength(10));
+    expect(table.rows, hasLength(11));
     expect(table.alternatingRowColor, isNull);
 
     expect(

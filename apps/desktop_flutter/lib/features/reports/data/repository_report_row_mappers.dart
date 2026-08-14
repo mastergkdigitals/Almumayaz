@@ -34,11 +34,58 @@ ReportRowDefinition _salesRow(
     ],
   );
 }
+
+ReportRowDefinition _salesReturnRow(
+  SalesReturn value, {
+  required int index,
+  required Map<EntityId, Party> partyById,
+}) {
+  final quantity = value.lines.fold<int>(
+    0,
+    (sum, line) => sum + line.quantity.value,
+  );
+  return ReportRowDefinition(
+    id: value.id.value,
+    date: value.date.value,
+    filterValues: {
+      'customer': value.customerId.value,
+      'currency': value.currency.code,
+    },
+    searchTerms: [
+      value.notes,
+      value.searchDetailsSnapshot,
+      '${value.originalSalesInvoiceNumberSnapshot}',
+      for (final line in value.lines) ...[
+        line.itemCodeSnapshot,
+        line.itemNameSnapshot,
+        line.warehouseNameSnapshot,
+      ],
+    ],
+    cells: [
+      '${index + 1}',
+      '${value.documentNumber}',
+      '${value.originalSalesInvoiceNumberSnapshot}',
+      _date(value.date.value),
+      _availableLabel(
+        partyById[value.customerId]?.name,
+        value.customerNameSnapshot,
+      ),
+      value.currency.arabicName,
+      _money(value.total),
+      _money(value.refundedAtReturn),
+      _money(value.creditedToCustomer),
+      '$quantity',
+      '${value.lines.length}',
+      value.notes.isEmpty ? '-' : value.notes,
+    ],
+  );
+}
 ReportRowDefinition _purchaseRow(
   PurchaseInvoice invoice, {
   required int index,
   required Map<EntityId, Party> partyById,
   required Map<EntityId, Warehouse> warehouseById,
+  int? originalDocumentNumber,
 }) {
   final supplier = partyById[invoice.supplierId]?.name;
   final warehouse = warehouseById[invoice.defaultWarehouseId]?.name;
@@ -53,10 +100,15 @@ ReportRowDefinition _purchaseRow(
       'paymentType': _purchasePaymentValue(invoice.settlementKind),
       'currency': invoice.currency.code,
     },
-    searchTerms: [invoice.notes, invoice.searchDetailsSnapshot],
+    searchTerms: [
+      invoice.notes,
+      invoice.searchDetailsSnapshot,
+      if (originalDocumentNumber != null) '$originalDocumentNumber',
+    ],
     cells: [
       '${index + 1}',
       '${invoice.documentNumber}',
+      originalDocumentNumber == null ? '' : '$originalDocumentNumber',
       _date(invoice.date.value),
       _availableLabel(supplier, invoice.supplierNameSnapshot),
       _availableLabel(
@@ -120,6 +172,63 @@ ReportRowDefinition _profitRow(
           .arabicLabel,
       (cost?.method ?? InventoryCostMethod.unavailable).arabicLabel,
       invoice.currency.arabicName,
+    ],
+  );
+}
+
+ReportRowDefinition _salesReturnProfitRow(
+  SalesReturn salesReturn,
+  SalesReturnLine line, {
+  required int index,
+  required Map<EntityId, Party> partyById,
+  required Map<EntityId, Item> itemById,
+  required Map<EntityId, Warehouse> warehouseById,
+  required SalesReturnLineCostRecord? cost,
+}) {
+  final party = partyById[salesReturn.customerId];
+  final item = itemById[line.itemId];
+  final warehouse = warehouseById[line.warehouseId];
+  final revenue = -line.allocatedRefund;
+  final restoredCost = cost?.restoredCost;
+  final reversedProfit = cost?.reversedProfit;
+  final totalCost = restoredCost == null ? null : -restoredCost;
+  final profit = reversedProfit == null ? null : -reversedProfit;
+  final margin = profit == null || revenue.isZero
+      ? null
+      : profit.minorUnits * 100 / revenue.minorUnits;
+  return ReportRowDefinition(
+    id: '${salesReturn.id.value}:${line.id.value}',
+    date: salesReturn.date.value,
+    filterValues: {
+      'warehouse': line.warehouseId.value,
+      'customer': salesReturn.customerId.value,
+      'product': line.itemId.value,
+      'currency': salesReturn.currency.code,
+    },
+    searchTerms: [
+      salesReturn.notes,
+      item?.barcode ?? '',
+      '${salesReturn.originalSalesInvoiceNumberSnapshot}',
+      'مرتجع بيع',
+    ],
+    cells: [
+      '${index + 1}',
+      '${salesReturn.documentNumber}',
+      _date(salesReturn.date.value),
+      _availableLabel(party?.name, salesReturn.customerNameSnapshot),
+      _availableLabel(warehouse?.name, line.warehouseNameSnapshot),
+      _availableLabel(item?.code, line.itemCodeSnapshot),
+      _availableLabel(item?.name, line.itemNameSnapshot),
+      '${-line.quantity.value}',
+      _money(-line.sourceNetUnitPrice),
+      _money(revenue),
+      totalCost == null ? '-' : _money(totalCost),
+      profit == null ? '-' : _money(profit),
+      margin == null ? '-' : '${margin.toStringAsFixed(2)}%',
+      (cost?.availability ?? InventoryCostAvailability.unavailable)
+          .arabicLabel,
+      (cost?.method ?? InventoryCostMethod.unavailable).arabicLabel,
+      salesReturn.currency.arabicName,
     ],
   );
 }
@@ -202,6 +311,52 @@ ReportRowDefinition _cashboxRow(CashboxVoucher voucher, {required int index}) {
   );
 }
 
+ReportRowDefinition _expenseRow(
+  Expense expense, {
+  required int index,
+  required Map<EntityId, Party> partyById,
+}) {
+  final paid = expense.isPaid
+      ? expense.amount
+      : Money.zero(expense.amount.currency);
+  final unpaid = expense.isUnpaid
+      ? expense.amount
+      : Money.zero(expense.amount.currency);
+  final liveSupplier = expense.supplierId == null
+      ? null
+      : partyById[expense.supplierId]?.name;
+  return ReportRowDefinition(
+    id: expense.id.value,
+    date: expense.date.value,
+    filterValues: {
+      'status': expense.paymentStatus.name,
+      if (expense.supplierId != null)
+        'supplier': expense.supplierId!.value,
+      'currency': expense.amount.currency.code,
+    },
+    searchTerms: [expense.description, expense.notes],
+    cells: [
+      '${index + 1}',
+      '${expense.documentNumber}',
+      _date(expense.date.value),
+      _time(expense.occurredAt.value.toLocal()),
+      expense.description,
+      expense.supplierId == null
+          ? '—'
+          : _availableLabel(
+              liveSupplier,
+              expense.supplierNameSnapshot ?? '',
+            ),
+      expense.paymentStatus.label,
+      expense.amount.currency.arabicName,
+      _money(expense.amount),
+      _money(paid),
+      _money(unpaid),
+      expense.notes.isEmpty ? '-' : expense.notes,
+    ],
+  );
+}
+
 ReportRowDefinition _partyBalanceRow(
   Party party, {
   required int index,
@@ -271,8 +426,10 @@ ReportRowDefinition _debtRow(
   required Map<EntityId, Party> partyById,
   required BusinessDate dueDate,
   required BusinessDate today,
+  required Money adjustedTotal,
+  required Money adjustedReceived,
 }) {
-  final remaining = invoice.total - invoice.received;
+  final remaining = adjustedTotal - adjustedReceived;
   final status = dueDate.compareTo(today) < 0 ? 'متأخر' : 'مستحق';
   return ReportRowDefinition(
     id: 'debt:${invoice.id.value}',
@@ -294,8 +451,8 @@ ReportRowDefinition _debtRow(
       ),
       _date(dueDate.value),
       invoice.currency.arabicName,
-      _money(invoice.total),
-      _money(invoice.received),
+      _money(adjustedTotal),
+      _money(adjustedReceived),
       _money(remaining),
       status,
       'رصيد قائم من قائمة مبيعات',

@@ -3,10 +3,14 @@ import 'package:flutter/foundation.dart';
 import '../../../core/domain/business_values.dart';
 import '../../cashbox/domain/cashbox_repository.dart';
 import '../../cashbox/domain/cashbox_voucher.dart';
+import '../../expenses/domain/expense.dart';
+import '../../expenses/domain/expense_repository.dart';
 import '../../purchases/domain/purchase_invoice.dart';
 import '../../purchases/domain/purchase_repository.dart';
 import '../../sales/domain/sales_invoice.dart';
 import '../../sales/domain/sales_repository.dart';
+import '../../sales_returns/domain/sales_return.dart';
+import '../../sales_returns/domain/sales_return_repository.dart';
 import '../domain/party_repository.dart';
 
 @immutable
@@ -34,7 +38,11 @@ class PartyStatementQuery {
 
 enum PartyStatementEntryType {
   sale('بيع'),
+  saleReturn('مرتجع بيع'),
   purchase('شراء'),
+  purchaseReturn('مرتجع شراء'),
+  expense('مصروف'),
+  expensePayment('تسديد مصروف'),
   receipt('قبض'),
   payment('صرف');
 
@@ -94,15 +102,21 @@ class RepositoryPartyStatementService implements PartyStatementService {
     required SalesRepository sales,
     required PurchaseRepository purchases,
     required CashboxRepository cashbox,
+    SalesReturnRepository? salesReturns,
+    ExpenseRepository? expenses,
   })  : _parties = parties,
         _sales = sales,
         _purchases = purchases,
-        _cashbox = cashbox;
+        _cashbox = cashbox,
+        _salesReturns = salesReturns,
+        _expenses = expenses;
 
   final PartyRepository _parties;
   final SalesRepository _sales;
   final PurchaseRepository _purchases;
   final CashboxRepository _cashbox;
+  final SalesReturnRepository? _salesReturns;
+  final ExpenseRepository? _expenses;
 
   @override
   Future<PartyStatementResult> load(PartyStatementQuery query) async {
@@ -112,6 +126,15 @@ class RepositoryPartyStatementService implements PartyStatementService {
     }
     final sales = await _sales.getAll();
     final purchases = await _purchases.getAll();
+    final purchaseById = {
+      for (final invoice in purchases) invoice.id: invoice,
+    };
+    final salesReturns = _salesReturns == null
+        ? const <SalesReturn>[]
+        : await _salesReturns.getAll();
+    final expenses = _expenses == null
+        ? const <Expense>[]
+        : await _expenses.getAll();
     final vouchers = await _cashbox.getByParty(query.partyId);
     final allMovements = <_PartyStatementMovement>[
       for (final invoice in sales)
@@ -121,7 +144,22 @@ class RepositoryPartyStatementService implements PartyStatementService {
       for (final invoice in purchases)
         if (invoice.supplierId == query.partyId &&
             invoice.currency == query.currency)
-          _purchaseMovement(invoice),
+          _purchaseMovement(
+            invoice,
+            originalDocumentNumber:
+                purchaseById[invoice.originalPurchaseInvoiceId]
+                    ?.documentNumber,
+          ),
+      for (final salesReturn in salesReturns)
+        if (salesReturn.customerId == query.partyId &&
+            salesReturn.currency == query.currency)
+          _salesReturnMovement(salesReturn),
+      for (final expense in expenses)
+        if (expense.supplierId == query.partyId &&
+            expense.amount.currency == query.currency) ...[
+          _expenseMovement(expense),
+          if (expense.isPaid) _expensePaymentMovement(expense),
+        ],
       for (final voucher in vouchers)
         if (!voucher.isSystemGenerated ||
             voucher.source?.kind ==
@@ -222,8 +260,9 @@ class RepositoryPartyStatementService implements PartyStatementService {
   }
 
   static _PartyStatementMovement _purchaseMovement(
-    PurchaseInvoice invoice,
-  ) {
+    PurchaseInvoice invoice, {
+    int? originalDocumentNumber,
+  }) {
     final isReturn =
         invoice.purchaseKind == PurchaseTransactionKind.returnPurchase;
     return _PartyStatementMovement(
@@ -234,15 +273,69 @@ class RepositoryPartyStatementService implements PartyStatementService {
       ),
       debit: isReturn ? invoice.total : invoice.paid,
       credit: isReturn ? invoice.paid : invoice.total,
-      type: PartyStatementEntryType.purchase,
+      type: isReturn
+          ? PartyStatementEntryType.purchaseReturn
+          : PartyStatementEntryType.purchase,
       quantity: invoice.lines.fold<int>(
         0,
         (total, line) => total + line.quantity.value,
       ),
       details: _withNotes(
-        'قائمة شراء رقم ${invoice.documentNumber}',
+        isReturn
+            ? 'مرتجع شراء رقم ${invoice.documentNumber} عن القائمة رقم '
+                '${originalDocumentNumber ?? 'محذوف'}'
+            : 'قائمة شراء رقم ${invoice.documentNumber}',
         invoice.notes,
       ),
+    );
+  }
+
+  static _PartyStatementMovement _salesReturnMovement(
+    SalesReturn value,
+  ) {
+    return _PartyStatementMovement(
+      id: value.id,
+      date: value.date.atTime(
+        hour: value.minuteOfDay ~/ Duration.minutesPerHour,
+        minute: value.minuteOfDay % Duration.minutesPerHour,
+      ),
+      debit: value.refundedAtReturn,
+      credit: value.total,
+      type: PartyStatementEntryType.saleReturn,
+      quantity: value.lines.fold<int>(
+        0,
+        (sum, line) => sum + line.quantity.value,
+      ),
+      details: _withNotes(
+        'مرتجع بيع رقم ${value.documentNumber} عن القائمة رقم '
+            '${value.originalSalesInvoiceNumberSnapshot}',
+        value.notes,
+      ),
+    );
+  }
+
+  static _PartyStatementMovement _expenseMovement(Expense value) {
+    return _PartyStatementMovement(
+      id: value.id,
+      date: value.occurredAt.value.toLocal(),
+      debit: Money.zero(value.amount.currency),
+      credit: value.amount,
+      type: PartyStatementEntryType.expense,
+      details: _withNotes(
+        'مصروف رقم ${value.documentNumber}: ${value.description}',
+        value.notes,
+      ),
+    );
+  }
+
+  static _PartyStatementMovement _expensePaymentMovement(Expense value) {
+    return _PartyStatementMovement(
+      id: EntityId('${value.id.value}-payment'),
+      date: value.paidAt!.value.toLocal(),
+      debit: value.amount,
+      credit: Money.zero(value.amount.currency),
+      type: PartyStatementEntryType.expensePayment,
+      details: 'تسديد المصروف رقم ${value.documentNumber}',
     );
   }
 

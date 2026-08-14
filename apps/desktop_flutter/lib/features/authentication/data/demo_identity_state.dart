@@ -372,7 +372,7 @@ List<AppRole> demoIdentityRoles() => [
         name: 'الحسابات',
         permissions: {
           ..._permissionsFor(
-            modules: const ['cashbox'],
+            modules: const ['cashbox', 'expenses'],
             actions: PermissionAction.values,
           ),
           ..._permissionsFor(
@@ -527,6 +527,7 @@ const _demoModules = [
   'purchases',
   'parties',
   'cashbox',
+  'expenses',
   'warehouses',
   'items',
   'reports',

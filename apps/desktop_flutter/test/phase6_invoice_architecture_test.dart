@@ -188,7 +188,11 @@ void main() {
     expect(updatedPurchase.defaultWarehouseId, EntityId('warehouse-003'));
     expect(
       updatedPurchase.lines.map((line) => line.warehouseId),
-      [EntityId('warehouse-003'), EntityId('warehouse-003')],
+      [
+        EntityId('warehouse-003'),
+        EntityId('warehouse-003'),
+        EntityId('warehouse-001'),
+      ],
     );
     await tester.tap(find.byKey(const Key('purchaseLastButton')));
     await tester.pumpAndSettle();

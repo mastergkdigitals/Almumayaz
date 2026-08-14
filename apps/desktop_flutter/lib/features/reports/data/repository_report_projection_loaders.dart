@@ -44,6 +44,35 @@ extension _RepositoryReportProjectionLoaders
     );
   }
 
+  Future<ReportDataSnapshot> _salesReturns() async {
+    final values = await Future.wait([
+      _repositories.salesReturns.getAll(),
+      _repositories.parties.getAll(),
+    ]);
+    final returns = values[0] as List<SalesReturn>;
+    final parties = values[1] as List<Party>;
+    final partyById = {for (final party in parties) party.entityId: party};
+    final sorted = [...returns]..sort(_compareSalesReturnsNewestFirst);
+    return ReportDataSnapshot(
+      rows: [
+        for (var index = 0; index < sorted.length; index++)
+          _salesReturnRow(
+            sorted[index],
+            index: index,
+            partyById: partyById,
+          ),
+      ],
+      filterOptions: {
+        'customer': _entityOptions(
+          parties.where(_canBuy),
+          idOf: (party) => party.entityId,
+          labelOf: (party) => party.name,
+        ),
+        'currency': _currencyOptions,
+      },
+    );
+  }
+
   Future<ReportDataSnapshot> _purchases() async {
     final values = await Future.wait([
       _repositories.purchases.getAll(),
@@ -57,6 +86,9 @@ extension _RepositoryReportProjectionLoaders
     final warehouseById = {
       for (final warehouse in warehouses) warehouse.entityId: warehouse,
     };
+    final purchaseById = {
+      for (final invoice in invoices) invoice.id: invoice,
+    };
     final sorted = [...invoices]..sort(_comparePurchasesNewestFirst);
 
     return ReportDataSnapshot(
@@ -67,6 +99,9 @@ extension _RepositoryReportProjectionLoaders
             index: index,
             partyById: partyById,
             warehouseById: warehouseById,
+            originalDocumentNumber:
+                purchaseById[sorted[index].originalPurchaseInvoiceId]
+                    ?.documentNumber,
           ),
       ],
       filterOptions: {
@@ -94,12 +129,16 @@ extension _RepositoryReportProjectionLoaders
       _repositories.items.getAll(),
       _repositories.warehouses.getAll(),
       _repositories.inventoryCosts.getSalesLineCosts(),
+      _repositories.salesReturns.getAll(),
+      _repositories.inventoryCosts.getSalesReturnLineCosts(),
     ]);
     final invoices = values[0] as List<SalesInvoice>;
     final parties = values[1] as List<Party>;
     final items = values[2] as List<Item>;
     final warehouses = values[3] as List<Warehouse>;
     final lineCosts = values[4] as List<SalesLineCostRecord>;
+    final salesReturns = values[5] as List<SalesReturn>;
+    final returnLineCosts = values[6] as List<SalesReturnLineCostRecord>;
     final partyById = {for (final party in parties) party.entityId: party};
     final itemById = {for (final item in items) item.entityId: item};
     final warehouseById = {
@@ -108,21 +147,71 @@ extension _RepositoryReportProjectionLoaders
     final costByLineId = {
       for (final cost in lineCosts) cost.salesLineId: cost,
     };
-    final sorted = [...invoices]..sort(_compareSalesNewestFirst);
-    final rows = <ReportRowDefinition>[];
-    for (final invoice in sorted) {
-      for (final line in invoice.lines) {
-        rows.add(
-          _profitRow(
-            invoice,
-            line,
-            index: rows.length,
-            partyById: partyById,
-            itemById: itemById,
-            warehouseById: warehouseById,
-            cost: costByLineId[line.id],
+    final returnCostByLineId = {
+      for (final cost in returnLineCosts) cost.salesReturnLineId: cost,
+    };
+    final events = <(DateTime, SalesInvoice?, SalesReturn?)>[
+      for (final invoice in invoices)
+        (
+          invoice.date.atTime(
+            hour: invoice.minuteOfDay ~/ Duration.minutesPerHour,
+            minute: invoice.minuteOfDay % Duration.minutesPerHour,
           ),
-        );
+          invoice,
+          null,
+        ),
+      for (final salesReturn in salesReturns)
+        (
+          salesReturn.date.atTime(
+            hour: salesReturn.minuteOfDay ~/ Duration.minutesPerHour,
+            minute: salesReturn.minuteOfDay % Duration.minutesPerHour,
+          ),
+          null,
+          salesReturn,
+        ),
+    ]
+      ..sort((first, second) {
+        final byTimestamp = second.$1.compareTo(first.$1);
+        if (byTimestamp != 0) return byTimestamp;
+        final firstIsReturn = first.$3 != null;
+        final secondIsReturn = second.$3 != null;
+        if (firstIsReturn != secondIsReturn) return firstIsReturn ? -1 : 1;
+        final firstId = first.$2?.id.value ?? first.$3!.id.value;
+        final secondId = second.$2?.id.value ?? second.$3!.id.value;
+        return secondId.compareTo(firstId);
+      });
+    final rows = <ReportRowDefinition>[];
+    for (final event in events) {
+      final invoice = event.$2;
+      if (invoice != null) {
+        for (final line in invoice.lines) {
+          rows.add(
+            _profitRow(
+              invoice,
+              line,
+              index: rows.length,
+              partyById: partyById,
+              itemById: itemById,
+              warehouseById: warehouseById,
+              cost: costByLineId[line.id],
+            ),
+          );
+        }
+      } else {
+        final salesReturn = event.$3!;
+        for (final line in salesReturn.lines) {
+          rows.add(
+            _salesReturnProfitRow(
+              salesReturn,
+              line,
+              index: rows.length,
+              partyById: partyById,
+              itemById: itemById,
+              warehouseById: warehouseById,
+              cost: returnCostByLineId[line.id],
+            ),
+          );
+        }
       }
     }
 
@@ -320,6 +409,36 @@ extension _RepositoryReportProjectionLoaders
     );
   }
 
+  Future<ReportDataSnapshot> _expenses() async {
+    final values = await Future.wait([
+      _repositories.expenses.getAll(),
+      _repositories.parties.getAll(),
+    ]);
+    final expenses = values[0] as List<Expense>;
+    final parties = values[1] as List<Party>;
+    final partyById = {for (final party in parties) party.entityId: party};
+    final sorted = [...expenses]..sort(_compareExpensesNewestFirst);
+    return ReportDataSnapshot(
+      rows: [
+        for (var index = 0; index < sorted.length; index++)
+          _expenseRow(
+            sorted[index],
+            index: index,
+            partyById: partyById,
+          ),
+      ],
+      filterOptions: {
+        'status': _expenseStatusOptions,
+        'supplier': _entityOptions(
+          parties.where(_canSupply),
+          idOf: (party) => party.entityId,
+          labelOf: (party) => party.name,
+        ),
+        'currency': _currencyOptions,
+      },
+    );
+  }
+
   Future<ReportDataSnapshot> _partyBalances() async {
     final values = await Future.wait([
       _repositories.parties.getAll(),
@@ -382,13 +501,34 @@ extension _RepositoryReportProjectionLoaders
       _repositories.parties.getAll(),
       _repositories.installments.getAll(),
       _repositories.businessSettings.loadBusinessPolicies(),
+      _repositories.salesReturns.getAll(),
     ]);
     final invoices = values[0] as List<SalesInvoice>;
     final parties = values[1] as List<Party>;
     final plans = values[2] as List<InstallmentPlan>;
     final policies = values[3] as BusinessPolicySettings;
+    final salesReturns = values[4] as List<SalesReturn>;
     final partyById = {for (final party in parties) party.entityId: party};
     final invoiceById = {for (final invoice in invoices) invoice.id: invoice};
+    final returnTotals = <
+      EntityId,
+      ({Money total, Money refunded})
+    >{};
+    for (final salesReturn in salesReturns) {
+      final invoice = invoiceById[salesReturn.originalSalesInvoiceId];
+      if (invoice == null || invoice.currency != salesReturn.currency) {
+        throw StateError('يوجد مرتجع بيع مرتبط بقائمة مفقودة');
+      }
+      final current = returnTotals[invoice.id] ??
+          (
+            total: Money.zero(invoice.currency),
+            refunded: Money.zero(invoice.currency),
+          );
+      returnTotals[invoice.id] = (
+        total: current.total + salesReturn.total,
+        refunded: current.refunded + salesReturn.refundedAtReturn,
+      );
+    }
     final planInvoiceIds = {for (final plan in plans) plan.salesInvoiceId};
     if (plans.any((plan) => invoiceById[plan.salesInvoiceId] == null) ||
         invoices.any(
@@ -403,7 +543,8 @@ extension _RepositoryReportProjectionLoaders
         .where(
           (invoice) =>
               invoice.settlementKind == SalesSettlementKind.credit &&
-              invoice.total.compareTo(invoice.received) > 0,
+              _adjustedDebtRemaining(invoice, returnTotals[invoice.id])
+                  .isPositive,
         )
         .toList()
       ..sort(_compareSalesNewestFirst);
@@ -429,6 +570,12 @@ extension _RepositoryReportProjectionLoaders
             ),
           ),
           today: today,
+          adjustedTotal: invoice.total -
+              (returnTotals[invoice.id]?.total ??
+                  Money.zero(invoice.currency)),
+          adjustedReceived: invoice.received -
+              (returnTotals[invoice.id]?.refunded ??
+                  Money.zero(invoice.currency)),
         ),
       );
     }
@@ -462,4 +609,13 @@ extension _RepositoryReportProjectionLoaders
       },
     );
   }
+}
+
+Money _adjustedDebtRemaining(
+  SalesInvoice invoice,
+  ({Money total, Money refunded})? returned,
+) {
+  if (returned == null) return invoice.total - invoice.received;
+  return (invoice.total - returned.total) -
+      (invoice.received - returned.refunded);
 }

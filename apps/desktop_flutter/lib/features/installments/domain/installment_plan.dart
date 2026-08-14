@@ -82,9 +82,6 @@ class InstallmentPlan {
     required this.currency,
     required Iterable<InstallmentEntry> entries,
   }) : entries = List.unmodifiable(entries) {
-    if (this.entries.isEmpty) {
-      throw ArgumentError.value(entries, 'entries', 'Must not be empty');
-    }
     if (this.entries.any((entry) => entry.amount.currency != currency)) {
       throw ArgumentError('Every installment must use the plan currency');
     }
@@ -95,13 +92,6 @@ class InstallmentPlan {
     if ({for (final entry in this.entries) entry.number}.length !=
         this.entries.length) {
       throw ArgumentError('Installment numbers must be unique');
-    }
-    final orderedNumbers = this.entries.map((entry) => entry.number).toList()
-      ..sort();
-    for (var index = 0; index < orderedNumbers.length; index++) {
-      if (orderedNumbers[index] != index + 1) {
-        throw ArgumentError('Installment numbers must be consecutive');
-      }
     }
   }
 

@@ -14,4 +14,12 @@ abstract interface class InventoryCostRepository {
   });
 
   Future<SalesLineCostRecord?> getSalesLineCost(EntityId salesLineId);
+
+  Future<List<SalesReturnLineCostRecord>> getSalesReturnLineCosts({
+    EntityId? salesReturnId,
+  });
+
+  Future<SalesReturnLineCostRecord?> getSalesReturnLineCost(
+    EntityId salesReturnLineId,
+  );
 }

@@ -8,10 +8,15 @@ abstract interface class PurchaseRepository
 
   Future<int> nextDocumentNumber();
 
+  /// Creates a normal purchase or an independently numbered linked return.
+  /// Return links, source-derived values, and cumulative quantities are
+  /// validated inside the repository transaction.
   Future<PurchaseInvoice> createInvoice(PurchaseInvoice invoice);
 
   /// API adapters must reverse the previous effects and apply [invoice]
   /// atomically. Demo adapters validate fully before replacing the record.
+  /// Return validation excludes the record being replaced from cumulative
+  /// quantity and discount calculations.
   Future<PurchaseInvoice> replaceInvoice(PurchaseInvoice invoice);
 
   /// Permanently removes the invoice without making its number reusable.

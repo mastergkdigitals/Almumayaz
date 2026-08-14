@@ -144,3 +144,209 @@ class _PurchaseMoneyField extends StatelessWidget {
     );
   }
 }
+
+const _purchaseReturnColumns = <AppInvoiceFieldColumn>[
+  AppInvoiceFieldColumn('رمز المادة', 120, grow: 0.8),
+  AppInvoiceFieldColumn('اسم المادة', 190, grow: 2),
+  AppInvoiceFieldColumn('المشتراة', 88),
+  AppInvoiceFieldColumn('مرتجع سابق', 100),
+  AppInvoiceFieldColumn('المتاح', 88),
+  AppInvoiceFieldColumn('مخزن الإرجاع', 145, grow: 1.1),
+  AppInvoiceFieldColumn('كمية المرتجع', 115),
+  AppInvoiceFieldColumn('سعر المصدر', 115),
+  AppInvoiceFieldColumn('خصم السطر', 105),
+  AppInvoiceFieldColumn('قيمة المرتجع', 125),
+];
+
+class _PurchaseReturnLineEditor {
+  _PurchaseReturnLineEditor(this.draft)
+      : quantityController = TextEditingController(text: draft.quantityText);
+
+  _PurchaseReturnLineDraft draft;
+  final TextEditingController quantityController;
+
+  void dispose() => quantityController.dispose();
+}
+
+class _PurchaseReturnLinesTable extends StatefulWidget {
+  const _PurchaseReturnLinesTable({
+    required this.lines,
+    required this.dataVersion,
+    required this.warehouseOptions,
+    required this.currencyCode,
+    required this.onChanged,
+    super.key,
+  });
+
+  final List<_PurchaseReturnLineDraft> lines;
+  final Object? dataVersion;
+  final List<AppDropdownOption<String>> warehouseOptions;
+  final String currencyCode;
+  final ValueChanged<List<_PurchaseReturnLineDraft>> onChanged;
+
+  @override
+  State<_PurchaseReturnLinesTable> createState() =>
+      _PurchaseReturnLinesTableState();
+}
+
+class _PurchaseReturnLinesTableState
+    extends State<_PurchaseReturnLinesTable> {
+  final _scrollController = ScrollController();
+  late List<_PurchaseReturnLineEditor> _editors;
+
+  @override
+  void initState() {
+    super.initState();
+    _editors = _createEditors();
+  }
+
+  @override
+  void didUpdateWidget(covariant _PurchaseReturnLinesTable oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.dataVersion == widget.dataVersion) return;
+    for (final editor in _editors) {
+      editor.dispose();
+    }
+    _editors = _createEditors();
+  }
+
+  List<_PurchaseReturnLineEditor> _createEditors() => [
+        for (final line in widget.lines) _PurchaseReturnLineEditor(line),
+      ];
+
+  void _notifyChanged() {
+    widget.onChanged(
+      List<_PurchaseReturnLineDraft>.unmodifiable(
+        _editors.map((editor) => editor.draft),
+      ),
+    );
+  }
+
+  void _changeQuantity(_PurchaseReturnLineEditor editor, String value) {
+    editor.draft = editor.draft.copyWith(quantityText: value);
+    _notifyChanged();
+    setState(() {});
+  }
+
+  void _changeWarehouse(
+    _PurchaseReturnLineEditor editor,
+    String? warehouseId,
+  ) {
+    if (warehouseId == null) return;
+    final selected = widget.warehouseOptions.firstWhere(
+      (option) => option.value == warehouseId,
+    );
+    editor.draft = editor.draft.copyWith(
+      warehouseId: selected.value,
+      warehouseName: selected.label,
+    );
+    _notifyChanged();
+    setState(() {});
+  }
+
+  String _money(Money value) => AppFormatters.moneyByCurrency(
+        value.majorUnits,
+        widget.currencyCode,
+      );
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    for (final editor in _editors) {
+      editor.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = _editors
+        .map((editor) => editor.draft)
+        .where((draft) => draft.effectiveQuantity > 0)
+        .toList(growable: false);
+    final quantity = selected.fold<int>(
+      0,
+      (total, draft) => total + draft.effectiveQuantity,
+    );
+    final total = selected.fold<Money>(
+      Money.zero(AppCurrency.parse(widget.currencyCode)),
+      (sum, draft) => sum + draft.netTotal,
+    );
+    return AppInvoiceFieldTable(
+      surfaceKey: const Key('purchaseReturnLinesTableSurface'),
+      horizontalScrollKey:
+          const Key('purchaseReturnLinesHorizontalScroll'),
+      rowsKey: const Key('purchaseReturnLinesRows'),
+      headerKey: const Key('purchaseReturnLinesHeader'),
+      summaryKey: const Key('purchaseReturnLinesSummary'),
+      columns: _purchaseReturnColumns,
+      rowCount: _editors.length,
+      verticalScrollController: _scrollController,
+      accentColor: AppModulePalettes.purchases.middle,
+      lightAccentColor: AppModulePalettes.purchases.light,
+      rowKeyBuilder: (index) => Key(
+        'purchaseReturnLine-${_editors[index].draft.sourceLine.id.value}',
+      ),
+      rowCellsBuilder: (context, index) {
+        final editor = _editors[index];
+        final line = editor.draft;
+        final suffix = line.sourceLine.id.value;
+        return [
+          _returnCell(line.itemCode),
+          _returnCell(line.itemName),
+          _returnCell('${line.sourceLine.quantity.value}'),
+          _returnCell('${line.previouslyReturnedQuantity}'),
+          _returnCell('${line.maximumQuantity}'),
+          AppDropdownField<String>(
+            fieldKey: Key('purchaseReturnWarehouse-$suffix'),
+            label: 'مخزن الإرجاع',
+            icon: Icons.warehouse_rounded,
+            accentColor: AppModuleColors.purchases,
+            value: line.warehouseId,
+            options: widget.warehouseOptions,
+            onChanged: (value) => _changeWarehouse(editor, value),
+            showLabel: false,
+            useIntrinsicHeight: true,
+            minimumHeight: AppControlHeights.invoiceField,
+            borderRadius: AppRadii.sm,
+          ),
+          AppIntegerField(
+            fieldKey: Key('purchaseReturnQuantity-$suffix'),
+            controller: editor.quantityController,
+            label: 'كمية المرتجع',
+            icon: null,
+            accentColor: AppModuleColors.purchases,
+            textAlign: TextAlign.center,
+            textDirection: TextDirection.ltr,
+            showLabel: false,
+            borderRadius: AppRadii.sm,
+            onChanged: (value) => _changeQuantity(editor, value),
+          ),
+          _returnCell(_money(line.sourceLine.purchasePrice)),
+          _returnCell(_money(line.lineDiscount)),
+          _returnCell(_money(line.netTotal)),
+        ];
+      },
+      summaryCells: [
+        const SizedBox.shrink(),
+        const Text('المجموع'),
+        const SizedBox.shrink(),
+        const SizedBox.shrink(),
+        const SizedBox.shrink(),
+        const SizedBox.shrink(),
+        _returnCell('$quantity'),
+        const SizedBox.shrink(),
+        const SizedBox.shrink(),
+        _returnCell(_money(total)),
+      ],
+    );
+  }
+
+  static Widget _returnCell(String value) => Center(
+        child: Text(
+          value,
+          textAlign: TextAlign.center,
+          textDirection: TextDirection.rtl,
+        ),
+      );
+}

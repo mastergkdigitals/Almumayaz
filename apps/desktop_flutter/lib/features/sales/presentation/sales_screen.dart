@@ -16,6 +16,7 @@ import '../../parties/application/party_statement_service.dart';
 import '../../parties/domain/party.dart';
 import '../../parties/domain/party_repository.dart';
 import '../../permissions/domain/permission_models.dart';
+import '../../sales_returns/presentation/sales_return_screen.dart';
 import '../../settings/domain/settings_models.dart';
 import '../../warehouses/domain/warehouse.dart';
 import '../domain/sales_invoice.dart';
@@ -350,6 +351,8 @@ class _SalesScreenState extends State<SalesScreen> {
       sales: repositories.sales,
       purchases: repositories.purchases,
       cashbox: repositories.cashbox,
+      salesReturns: repositories.salesReturns,
+      expenses: repositories.expenses,
     );
     _coordinator = InvoiceEditorCoordinator<_SalesInvoiceViewData>(
       loadRecords: _loadRepositoryInvoices,

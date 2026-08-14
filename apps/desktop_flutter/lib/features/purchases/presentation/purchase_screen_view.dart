@@ -18,6 +18,7 @@ extension _PurchaseViewState on _PurchaseScreenState {
     final canExport = _allowsPurchaseAction(PermissionAction.export);
     final canUseSavedInvoiceOutput =
         _canUseSelectedPurchaseInvoiceForOutput;
+    final isPersistedReturn = _selectedInvoice?.source.isReturn == true;
     final tint = Color.alphaBlend(
       AppModuleColors.purchases.withAlpha(12),
       AppColors.surface,
@@ -112,6 +113,7 @@ extension _PurchaseViewState on _PurchaseScreenState {
                     menuTextDirection: TextDirection.rtl,
                     value: _warehouseId,
                     options: _warehouseOptions,
+                    enabled: !_isPurchaseReturn,
                     onChanged: (value) {
                       if (value == null) return;
                       _changeWarehouse(value);
@@ -128,6 +130,7 @@ extension _PurchaseViewState on _PurchaseScreenState {
                     menuTextDirection: TextDirection.rtl,
                     value: _purchaseType,
                     options: _purchaseTypeOptions,
+                    enabled: _selectedInvoice == null,
                     onChanged: (value) {
                       if (value == null) return;
                       _changePurchaseType(value);
@@ -160,6 +163,7 @@ extension _PurchaseViewState on _PurchaseScreenState {
                     menuTextDirection: TextDirection.rtl,
                     value: _currency,
                     options: _purchaseCurrencyOptions,
+                    enabled: !_isPurchaseReturn,
                     onChanged: (value) {
                       if (value == null) return;
                       _changeCurrency(value);
@@ -173,13 +177,46 @@ extension _PurchaseViewState on _PurchaseScreenState {
                     accentColor: AppModuleColors.purchases,
                     textDirection: TextDirection.rtl,
                     textAlign: TextAlign.right,
-                    enabled: _currency == 'USD',
-                    readOnly: _currency != 'USD',
+                    enabled: _currency == 'USD' && !_isPurchaseReturn,
+                    readOnly: _currency != 'USD' || _isPurchaseReturn,
                     decimalPlaces: 4,
                     textInputAction: TextInputAction.next,
                   ),
                 ],
               ),
+              if (_isPurchaseReturn) ...[
+                const SizedBox(height: AppSpacing.md),
+                _PurchaseFieldRow(
+                  children: [
+                    AppAutocompleteField<_PurchaseInvoiceViewData>(
+                      fieldKey:
+                          const Key('purchaseOriginalInvoiceField'),
+                      controller: _originalInvoiceController,
+                      label: 'قائمة الشراء الأصلية',
+                      hint: 'ابحث برقم القائمة أو اسم المجهز',
+                      icon: Icons.link_rounded,
+                      accentColor: AppModuleColors.purchases,
+                      options: _returnSourceOptions,
+                      displayStringForOption: (invoice) =>
+                          'قائمة شراء رقم ${invoice.documentNumber}',
+                      searchTermsForOption: (invoice) => [
+                        '${invoice.documentNumber}',
+                        invoice.supplierName,
+                        invoice.searchDetails,
+                      ],
+                      optionSubtitle: (invoice) =>
+                          '${invoice.supplierName} • ${invoice.searchDetails}',
+                      enabled: !isPersistedReturn,
+                      onSelected: _selectOriginalPurchaseInvoice,
+                      onChanged: _changeOriginalPurchaseInvoiceText,
+                      textDirection: TextDirection.rtl,
+                      textAlign: TextAlign.right,
+                      noResultsText:
+                          'لا توجد قائمة أصلية بكمية قابلة للإرجاع',
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: AppSpacing.md),
               _PurchaseFieldRow(
                 children: [
@@ -200,8 +237,11 @@ extension _PurchaseViewState on _PurchaseScreenState {
                     onSelected: _selectSupplier,
                     onChanged: _changeSupplierText,
                     createActionLabel: 'إضافة مجهز جديد',
-                    onCreateRequested:
-                        _allowsPartyCreate() ? _createSupplier : null,
+                    enabled: !_isPurchaseReturn,
+                    onCreateRequested: !_isPurchaseReturn &&
+                            _allowsPartyCreate()
+                        ? _createSupplier
+                        : null,
                     textDirection: TextDirection.rtl,
                     textAlign: TextAlign.right,
                   ),
@@ -219,24 +259,33 @@ extension _PurchaseViewState on _PurchaseScreenState {
               ),
               const SizedBox(height: AppSpacing.md),
               Expanded(
-                child: AppPurchaseInvoiceTableTemplate(
-                  key: const Key('purchaseItemsTable'),
-                  initialRows: _activeItems,
-                  dataVersion: _tableDataVersion,
-                  summaryQuantity: _summaryQuantity,
-                  summaryDiscount: _summaryDiscount,
-                  summaryTotal: _summaryTotal,
-                  summaryTotalCost: _summaryTotalCost,
-                  currencyCode: _currency,
-                  invoiceAdjustment: _invoiceAdjustment,
-                  itemOptions: _itemOptions,
-                  warehouseOptions: _warehouseOptions,
-                  defaultWarehouse: _defaultWarehouseId,
-                  defaultWarehouseLabel: _defaultWarehouseName,
-                  onRowsChanged: _changeItems,
-                  onCreateItemRequested:
-                      _allowsItemCreate() ? _createItem : null,
-                ),
+                child: _isPurchaseReturn
+                    ? _PurchaseReturnLinesTable(
+                        key: const Key('purchaseReturnLinesTable'),
+                        lines: _returnLines,
+                        dataVersion: _tableDataVersion,
+                        warehouseOptions: _warehouseOptions,
+                        currencyCode: _currency,
+                        onChanged: _changeReturnLines,
+                      )
+                    : AppPurchaseInvoiceTableTemplate(
+                        key: const Key('purchaseItemsTable'),
+                        initialRows: _activeItems,
+                        dataVersion: _tableDataVersion,
+                        summaryQuantity: _summaryQuantity,
+                        summaryDiscount: _summaryDiscount,
+                        summaryTotal: _summaryTotal,
+                        summaryTotalCost: _summaryTotalCost,
+                        currencyCode: _currency,
+                        invoiceAdjustment: _invoiceAdjustment,
+                        itemOptions: _itemOptions,
+                        warehouseOptions: _warehouseOptions,
+                        defaultWarehouse: _defaultWarehouseId,
+                        defaultWarehouseLabel: _defaultWarehouseName,
+                        onRowsChanged: _changeItems,
+                        onCreateItemRequested:
+                            _allowsItemCreate() ? _createItem : null,
+                      ),
               ),
               const SizedBox(height: AppSpacing.md),
               _PurchaseFieldRow(
@@ -246,7 +295,9 @@ extension _PurchaseViewState on _PurchaseScreenState {
                     key: const Key('purchaseExpensesButton'),
                     label: 'المصاريف',
                     icon: Icons.receipt_long_rounded,
-                    onPressed: () => _expensesFocusNode.requestFocus(),
+                    onPressed: _isPurchaseReturn
+                        ? null
+                        : () => _expensesFocusNode.requestFocus(),
                   ),
                   _PurchaseMoneyField(
                     fieldKey: const Key('purchaseExpensesField'),
@@ -255,6 +306,7 @@ extension _PurchaseViewState on _PurchaseScreenState {
                     label: 'المصاريف',
                     icon: Icons.payments_rounded,
                     decimalPlaces: _currency == 'USD' ? 2 : 0,
+                    enabled: !_isPurchaseReturn,
                     onChanged: _changeExpenses,
                   ),
                   _PurchaseMoneyField(
@@ -263,6 +315,7 @@ extension _PurchaseViewState on _PurchaseScreenState {
                     label: 'خصم القائمة',
                     icon: Icons.discount_rounded,
                     decimalPlaces: _currency == 'USD' ? 2 : 0,
+                    enabled: !_isPurchaseReturn,
                     onChanged: _changeInvoiceDiscount,
                   ),
                   _PurchaseMoneyField(
@@ -271,12 +324,13 @@ extension _PurchaseViewState on _PurchaseScreenState {
                     label: 'نسبة الخصم',
                     icon: Icons.percent_rounded,
                     decimalPlaces: 2,
+                    enabled: !_isPurchaseReturn,
                     onChanged: _changeDiscountPercentage,
                   ),
                   _PurchaseMoneyField(
                     fieldKey: const Key('purchasePaidField'),
                     controller: _paidController,
-                    label: 'المدفوع',
+                    label: _isPurchaseReturn ? 'المستلم' : 'المدفوع',
                     icon: Icons.payments_rounded,
                     decimalPlaces: _currency == 'USD' ? 2 : 0,
                     enabled: _paymentType != 'نقدي',

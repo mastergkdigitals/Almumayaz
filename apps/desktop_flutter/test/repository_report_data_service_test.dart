@@ -10,6 +10,7 @@ import 'package:erp/features/reports/application/report_data_snapshot_service.da
 import 'package:erp/features/reports/application/report_rows_service.dart';
 import 'package:erp/features/reports/data/repository_report_data_service.dart';
 import 'package:erp/features/sales/domain/sales_invoice.dart';
+import 'package:erp/features/sales_returns/domain/sales_return.dart';
 import 'package:erp/features/warehouses/domain/inventory_records.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -29,11 +30,12 @@ void main() {
       () async {
     final expectedColumns = <(String, String), int>{
       ('salesInvoices', 'main'): 11,
-      ('purchaseInvoices', 'main'): 12,
+      ('purchaseInvoices', 'main'): 13,
       ('profits', 'main'): 16,
       ('inventory', 'currentStock'): 7,
       ('inventory', 'transfers'): 6,
       ('cashbox', 'main'): 11,
+      ('cashbox', 'expenses'): 12,
       ('partyBalances', 'main'): 12,
       ('debtsInstallments', 'main'): 12,
     };
@@ -92,6 +94,69 @@ void main() {
           .every((option) => option.value.startsWith('demo-')),
       isTrue,
     );
+  });
+
+  test('projects Sales returns, restored profit, Expenses and source links',
+      () async {
+    final source = (await repositories.sales.getById(
+      EntityId('sales-invoice-103'),
+    ))!;
+    final saved = await repositories.salesReturns.createReturn(
+      SalesReturnSaveRequest(
+        originalSalesInvoiceId: source.id,
+        date: BusinessDate(2026, 8, 14),
+        minuteOfDay: 12 * 60,
+        lines: [
+          SalesReturnLineRequest(
+            sourceSalesLineId: source.lines.first.id,
+            quantity: WholeQuantity(1),
+          ),
+        ],
+        refundedAtReturn: Money.fromMajor(10000, AppCurrency.iqd),
+      ),
+    );
+
+    final returns = await _snapshot(
+      service,
+      'salesInvoices',
+      variantId: 'returns',
+    );
+    final returnRow = returns.rows.singleWhere(
+      (row) => row.id == saved.id.value,
+    );
+    expect(returnRow.cells, hasLength(12));
+    expect(returnRow.cells[2], '${source.documentNumber}');
+    expect(
+      returnRow.cells[6].replaceAll(',', ''),
+      saved.total.toPlainString(),
+    );
+    expect(returnRow.filterValues['customer'], source.customerId.value);
+
+    final profits = await _snapshot(service, 'profits');
+    final returnProfit = profits.rows.singleWhere(
+      (row) => row.id == '${saved.id.value}:${saved.lines.single.id.value}',
+    );
+    expect(profits.rows.first.id, returnProfit.id);
+    expect(returnProfit.cells[7], '-1');
+    expect(returnProfit.cells[9], startsWith('-'));
+    expect(returnProfit.cells[10], startsWith('-'));
+
+    final expenses = await _snapshot(
+      service,
+      'cashbox',
+      variantId: 'expenses',
+    );
+    expect(expenses.rows, hasLength(2));
+    expect(
+      expenses.rows.map((row) => row.filterValues['status']),
+      containsAll(['paid', 'unpaid']),
+    );
+
+    final purchases = await _snapshot(service, 'purchaseInvoices');
+    final purchaseReturn = purchases.rows.singleWhere(
+      (row) => row.id == 'purchase-invoice-103',
+    );
+    expect(purchaseReturn.cells[2], '101');
   });
 
   test('invoice mutations refresh sales, stock, balances, debts and profits',
@@ -225,9 +290,9 @@ void main() {
     final created = purchases.rows.firstWhere(
       (row) => row.id == 'phase4-report-purchase',
     );
-    expect(created.cells[8], '50');
-    expect(created.cells[9], '20');
-    expect(created.cells[10], '30');
+    expect(created.cells[9], '50');
+    expect(created.cells[10], '20');
+    expect(created.cells[11], '30');
     expect(created.filterValues['supplier'], 'party-011');
 
     final stock = await _snapshot(
@@ -406,8 +471,10 @@ AppRepositories _replaceRepositories(
     inventoryCosts: base.inventoryCosts,
     cashbox: base.cashbox,
     sales: base.sales,
+    salesReturns: base.salesReturns,
     purchases: base.purchases,
     installments: base.installments,
+    expenses: base.expenses,
     businessSettings: base.businessSettings,
     deviceSettings: base.deviceSettings,
     operationalMasterData: base.operationalMasterData,

@@ -38,6 +38,12 @@ const List<ReportFilterOption> _cashboxTypeOptions = [
   ReportFilterOption('out', 'صرف'),
 ];
 
+const List<ReportFilterOption> _expenseStatusOptions = [
+  ReportFilterOption('all', 'الكل'),
+  ReportFilterOption('paid', 'مدفوع'),
+  ReportFilterOption('unpaid', 'غير مدفوع'),
+];
+
 const List<ReportFilterOption> _partyTypeOptions = [
   ReportFilterOption('all', 'الكل'),
   ReportFilterOption('customer', 'زبون'),
@@ -100,6 +106,27 @@ int _comparePurchasesNewestFirst(
   PurchaseInvoice first,
   PurchaseInvoice second,
 ) {
+  final byDate = second.date.compareTo(first.date);
+  if (byDate != 0) return byDate;
+  final byTime = second.minuteOfDay.compareTo(first.minuteOfDay);
+  return byTime != 0
+      ? byTime
+      : second.documentNumber.compareTo(first.documentNumber);
+}
+
+int _compareSalesReturnsNewestFirst(
+  SalesReturn first,
+  SalesReturn second,
+) {
+  final byDate = second.date.compareTo(first.date);
+  if (byDate != 0) return byDate;
+  final byTime = second.minuteOfDay.compareTo(first.minuteOfDay);
+  return byTime != 0
+      ? byTime
+      : second.documentNumber.compareTo(first.documentNumber);
+}
+
+int _compareExpensesNewestFirst(Expense first, Expense second) {
   final byDate = second.date.compareTo(first.date);
   if (byDate != 0) return byDate;
   final byTime = second.minuteOfDay.compareTo(first.minuteOfDay);

@@ -75,7 +75,9 @@ void main() {
 
       expect(await store.repositories.parties.nextPartyNumber(), 1);
       expect(await store.repositories.sales.nextDocumentNumber(), 1);
+      expect(await store.repositories.salesReturns.nextDocumentNumber(), 1);
       expect(await store.repositories.purchases.nextDocumentNumber(), 1);
+      expect(await store.repositories.expenses.nextDocumentNumber(), 1);
       expect(
         await (store.repositories.cashbox as CashboxIssuedNumberRepository)
             .nextVoucherNumber(),
@@ -665,7 +667,9 @@ void main() {
       expect(find.byKey(const Key('usernameField')), findsOneWidget);
       expect(find.byKey(const Key('aboutScreen')), findsNothing);
       expect(await store.repositories.sales.getAll(), hasLength(3));
+      expect(await store.repositories.salesReturns.getAll(), isEmpty);
       expect(await store.repositories.purchases.getAll(), hasLength(3));
+      expect(await store.repositories.expenses.getAll(), hasLength(2));
       expect(await store.repositories.parties.getAll(), isNotEmpty);
     });
 
@@ -761,14 +765,20 @@ Future<void> _expectClearedComposition(
   expect(await repositories.warehouses.getTransfers(), isEmpty);
   expect(await repositories.inventoryCosts.getBalances(), isEmpty);
   expect(await repositories.inventoryCosts.getSalesLineCosts(), isEmpty);
+  expect(
+    await repositories.inventoryCosts.getSalesReturnLineCosts(),
+    isEmpty,
+  );
   expect(await repositories.cashbox.getAll(), isEmpty);
   expect(await repositories.cashbox.getMainAccounts(), isEmpty);
   final opening = await repositories.cashbox.getOpeningBalance();
   expect(opening.iqd, Money.zero(AppCurrency.iqd));
   expect(opening.usd, Money.zero(AppCurrency.usd));
   expect(await repositories.sales.getAll(), isEmpty);
+  expect(await repositories.salesReturns.getAll(), isEmpty);
   expect(await repositories.purchases.getAll(), isEmpty);
   expect(await repositories.installments.getAll(), isEmpty);
+  expect(await repositories.expenses.getAll(), isEmpty);
   expect(await repositories.operationalMasterData.getAll(), isEmpty);
 
   final policies = await repositories.businessSettings.loadBusinessPolicies();
@@ -858,13 +868,20 @@ Future<Map<String, Object?>> _compositionSignature(
   final lineCosts = [
     ...await repositories.inventoryCosts.getSalesLineCosts(),
   ]..sort((a, b) => a.id.value.compareTo(b.id.value));
+  final returnLineCosts = [
+    ...await repositories.inventoryCosts.getSalesReturnLineCosts(),
+  ]..sort((a, b) => a.id.value.compareTo(b.id.value));
   final cashbox = [...await repositories.cashbox.getAll()]
     ..sort((a, b) => a.id.compareTo(b.id));
   final sales = [...await repositories.sales.getAll()]
     ..sort((a, b) => a.id.value.compareTo(b.id.value));
+  final salesReturns = [...await repositories.salesReturns.getAll()]
+    ..sort((a, b) => a.id.value.compareTo(b.id.value));
   final purchases = [...await repositories.purchases.getAll()]
     ..sort((a, b) => a.id.value.compareTo(b.id.value));
   final installments = [...await repositories.installments.getAll()]
+    ..sort((a, b) => a.id.value.compareTo(b.id.value));
+  final expenses = [...await repositories.expenses.getAll()]
     ..sort((a, b) => a.id.value.compareTo(b.id.value));
   final master = [...await repositories.operationalMasterData.getAll()]
     ..sort((a, b) => a.id.value.compareTo(b.id.value));
@@ -941,6 +958,15 @@ Future<Map<String, Object?>> _compositionSignature(
             '${cost.allocatedRevenue}|${cost.totalCostIqd}|${cost.totalCost}|'
             '${cost.availability.name}|${cost.method.name}',
     ],
+    'salesReturnLineCosts': [
+      for (final cost in returnLineCosts)
+        '${cost.id}|${cost.salesReturnId}|${cost.salesReturnLineId}|'
+            '${cost.originalSalesInvoiceId}|${cost.originalSalesLineId}|'
+            '${cost.warehouseId}|${cost.itemId}|${cost.quantity.value}|'
+            '${cost.allocatedRefund}|${cost.restoredCostIqd}|'
+            '${cost.restoredCost}|${cost.availability.name}|'
+            '${cost.method.name}',
+    ],
     'cashbox': [
       for (final voucher in cashbox)
         '${voucher.entityId}|${voucher.number}|${voucher.createdTimestamp}|'
@@ -965,23 +991,42 @@ Future<Map<String, Object?>> _compositionSignature(
             '${invoice.balanceAfterInvoice}|${invoice.driverName}|${invoice.notes}|'
             '${invoice.lines.map((line) => '${line.id}:${line.itemId}:${line.warehouseId}:${line.quantity.value}:${line.unitPrice}:${line.discountPerUnit}:${line.itemCodeSnapshot}:${line.itemNameSnapshot}:${line.warehouseNameSnapshot}').join(',')}',
     ],
+    'salesReturns': [
+      for (final value in salesReturns)
+        '${value.id}|${value.documentNumber}|${value.date}|'
+            '${value.minuteOfDay}|${value.originalSalesInvoiceId}|'
+            '${value.originalSalesInvoiceNumberSnapshot}|${value.customerId}|'
+            '${value.currency.name}|${value.exchangeRate}|${value.total}|'
+            '${value.refundedAtReturn}|${value.balanceAfterReturn}|'
+            '${value.notes}|'
+            '${value.lines.map((line) => '${line.id}:${line.sourceSalesLineId}:${line.itemId}:${line.warehouseId}:${line.quantity.value}:${line.allocatedRefund}').join(',')}',
+    ],
     'purchases': [
       for (final invoice in purchases)
         '${invoice.id}|${invoice.documentNumber}|${invoice.date}|'
             '${invoice.minuteOfDay}|${invoice.supplierId}|'
             '${invoice.defaultWarehouseId}|${invoice.currency.name}|'
             '${invoice.exchangeRate}|${invoice.purchaseKind.name}|'
+            '${invoice.originalPurchaseInvoiceId}|'
             '${invoice.settlementKind.name}|${invoice.expenses}|'
             '${invoice.invoiceDiscount}|${invoice.paid}|'
             '${invoice.supplierNameSnapshot}|${invoice.searchDetailsSnapshot}|'
             '${invoice.balanceAfterInvoice}|${invoice.notes}|'
-            '${invoice.lines.map((line) => '${line.id}:${line.itemId}:${line.warehouseId}:${line.quantity.value}:${line.containerQuantity.value}:${line.purchasePrice}:${line.lineDiscount}:${line.salePrice}:${line.itemCodeSnapshot}:${line.itemNameSnapshot}:${line.warehouseNameSnapshot}').join(',')}',
+            '${invoice.lines.map((line) => '${line.id}:${line.originalPurchaseLineId}:${line.itemId}:${line.warehouseId}:${line.quantity.value}:${line.containerQuantity.value}:${line.purchasePrice}:${line.lineDiscount}:${line.salePrice}:${line.itemCodeSnapshot}:${line.itemNameSnapshot}:${line.warehouseNameSnapshot}').join(',')}',
     ],
     'installments': [
       for (final plan in installments)
         '${plan.id}|${plan.salesInvoiceId}|${plan.customerId}|'
             '${plan.currency.name}|'
             '${plan.entries.map((entry) => '${entry.id}:${entry.number}:${entry.dueDate}:${entry.amount}:${entry.status.name}:${entry.paidAt}:${entry.notes}').join(',')}',
+    ],
+    'expenses': [
+      for (final expense in expenses)
+        '${expense.id}|${expense.documentNumber}|${expense.date}|'
+            '${expense.minuteOfDay}|${expense.description}|${expense.amount}|'
+            '${expense.exchangeRate}|${expense.supplierId}|'
+            '${expense.supplierNameSnapshot}|${expense.paymentStatus.name}|'
+            '${expense.paidAt}|${expense.notes}',
     ],
     'master': [
       for (final record in master)

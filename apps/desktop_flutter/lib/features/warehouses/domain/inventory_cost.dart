@@ -130,3 +130,74 @@ class SalesLineCostRecord {
   Money? get profit =>
       totalCost == null ? null : allocatedRevenue - totalCost!;
 }
+
+/// Cost restored to stock by one persisted sales-return line.
+///
+/// Both values are positive magnitudes. Report projections apply the negative
+/// sign when presenting the reversal of revenue, cost of goods and profit.
+class SalesReturnLineCostRecord {
+  SalesReturnLineCostRecord({
+    required this.id,
+    required this.salesReturnId,
+    required this.salesReturnLineId,
+    required this.originalSalesInvoiceId,
+    required this.originalSalesLineId,
+    required this.warehouseId,
+    required this.itemId,
+    required this.quantity,
+    required this.allocatedRefund,
+    required this.restoredCostIqd,
+    required this.restoredCost,
+    required this.availability,
+    required this.method,
+  }) {
+    if (quantity.isZero) {
+      throw ArgumentError.value(quantity, 'quantity', 'Must be positive');
+    }
+    final hasCost = restoredCostIqd != null && restoredCost != null;
+    if (availability == InventoryCostAvailability.available && !hasCost) {
+      throw ArgumentError('Available return costs must contain both values');
+    }
+    if (availability == InventoryCostAvailability.unavailable && hasCost) {
+      throw ArgumentError('Unavailable return costs must not contain values');
+    }
+    if ((restoredCostIqd == null) != (restoredCost == null)) {
+      throw ArgumentError('Return cost values must be both present or absent');
+    }
+    if (restoredCostIqd != null &&
+        (restoredCostIqd!.currency != AppCurrency.iqd ||
+            restoredCostIqd!.isNegative)) {
+      throw ArgumentError.value(restoredCostIqd, 'restoredCostIqd');
+    }
+    if (restoredCost != null &&
+        (restoredCost!.currency != allocatedRefund.currency ||
+            restoredCost!.isNegative)) {
+      throw ArgumentError.value(restoredCost, 'restoredCost');
+    }
+    if (availability == InventoryCostAvailability.available &&
+        method != InventoryCostMethod.movingAverage) {
+      throw ArgumentError('Available return costs must use moving average');
+    }
+    if (availability == InventoryCostAvailability.unavailable &&
+        method != InventoryCostMethod.unavailable) {
+      throw ArgumentError('Unavailable return costs need unavailable method');
+    }
+  }
+
+  final EntityId id;
+  final EntityId salesReturnId;
+  final EntityId salesReturnLineId;
+  final EntityId originalSalesInvoiceId;
+  final EntityId originalSalesLineId;
+  final EntityId warehouseId;
+  final EntityId itemId;
+  final WholeQuantity quantity;
+  final Money allocatedRefund;
+  final Money? restoredCostIqd;
+  final Money? restoredCost;
+  final InventoryCostAvailability availability;
+  final InventoryCostMethod method;
+
+  Money? get reversedProfit =>
+      restoredCost == null ? null : allocatedRefund - restoredCost!;
+}

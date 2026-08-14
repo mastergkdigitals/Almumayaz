@@ -22,9 +22,18 @@ void main() {
       [i, n, n, n, i, n, n, n],
       [null, 0, 0, 0, null, 2, 2, 2],
     ),
-    ('purchaseInvoices', 'main'): _ExpectedSchema(
-      [i, i, d, t, t, t, t, t, n, n, n, i],
+    ('salesInvoices', 'returns'): _ExpectedSchema(
+      [i, i, i, d, t, t, n, n, n, i, i, t],
       [null, null, null, null, null, null, null, null, null, null, null, null],
+      [i, n, n, n, i, n, n, n],
+      [null, 0, 0, 0, null, 2, 2, 2],
+    ),
+    ('purchaseInvoices', 'main'): _ExpectedSchema(
+      [i, i, i, d, t, t, t, t, t, n, n, n, i],
+      [
+        null, null, null, null, null, null, null,
+        null, null, null, null, null, null,
+      ],
       [i, n, n, n, i, n, n, n],
       [null, 0, 0, 0, null, 2, 2, 2],
     ),
@@ -55,6 +64,12 @@ void main() {
       [n, n, n, n, n, n, n, n, i],
       [0, 0, 0, 0, 2, 2, 2, 2, null],
     ),
+    ('cashbox', 'expenses'): _ExpectedSchema(
+      [i, i, d, m, t, t, t, t, n, n, n, t],
+      [null, null, null, null, null, null, null, null, null, null, null, null],
+      [i, n, n, n, n, i],
+      [null, 0, 0, 2, 2, null],
+    ),
     ('partyBalances', 'main'): _ExpectedSchema(
       [i, i, t, t, t, t, t, t, n, t, n, t],
       [null, null, null, null, null, null, null, null, 0, null, 2, null],
@@ -79,11 +94,21 @@ void main() {
       'المقبوض - دولار': '250.00',
       'المتبقي - دولار': '1,000.00',
     },
+    ('salesInvoices', 'returns'): {
+      'عدد المرتجعات - دينار': '0',
+      'الإجمالي - دينار': '0',
+      'المسترد - دينار': '0',
+      'المضاف للرصيد - دينار': '0',
+      'عدد المرتجعات - دولار': '0',
+      'الإجمالي - دولار': '0.00',
+      'المسترد - دولار': '0.00',
+      'المضاف للرصيد - دولار': '0.00',
+    },
     ('purchaseInvoices', 'main'): {
       'عدد القوائم - دينار': '2',
-      'الإجمالي - دينار': '240,000',
-      'المدفوع - دينار': '90,000',
-      'المتبقي - دينار': '150,000',
+      'الإجمالي - دينار': '150,000',
+      'المدفوع - دينار': '-90,000',
+      'المتبقي - دينار': '240,000',
       'عدد القوائم - دولار': '1',
       'الإجمالي - دولار': '1,500.00',
       'المدفوع - دولار': '500.00',
@@ -121,6 +146,14 @@ void main() {
       'الرصيد - دولار': '4,100.00',
       'عدد الحركات': '6',
     },
+    ('cashbox', 'expenses'): {
+      'عدد المصاريف': '0',
+      'المدفوع - دينار': '0',
+      'غير المدفوع - دينار': '0',
+      'المدفوع - دولار': '0.00',
+      'غير المدفوع - دولار': '0.00',
+      'عدد غير المدفوع': '0',
+    },
     ('partyBalances', 'main'): {
       'عدد الأطراف': '8',
       'بدون رصيد': '0',
@@ -143,7 +176,7 @@ void main() {
     },
   };
 
-  test('catalog exposes the complete eight-variant report set', () {
+  test('catalog exposes the complete ten-variant report set', () {
     final actual = <(String, String)>{
       for (final report in reportDefinitions)
         for (final variant in report.variants) (report.id, variant.id),
@@ -153,7 +186,7 @@ void main() {
     expect(actual, expectedSchemas.keys.toSet());
   });
 
-  test('all eight variants declare exact spreadsheet kinds and precision', () {
+  test('all ten variants declare exact spreadsheet kinds and precision', () {
     for (final entry in expectedSchemas.entries) {
       final (_, variant) = _definition(entry.key);
       expect(
@@ -179,7 +212,7 @@ void main() {
     }
   });
 
-  test('all eight variants calculate exact summaries from visible rows', () {
+  test('all ten variants calculate exact summaries from visible rows', () {
     for (final entry in expectedSummaries.entries) {
       final (report, variant) = _definition(entry.key);
       final rows = reportDemoRowsFor(
@@ -201,7 +234,7 @@ void main() {
     }
   });
 
-  test('factory and document adapter preserve all eight report schemas',
+  test('factory and document adapter preserve all ten report schemas',
       () async {
     for (final entry in expectedSchemas.entries) {
       final (report, variant) = _definition(entry.key);

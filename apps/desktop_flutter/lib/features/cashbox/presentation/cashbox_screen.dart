@@ -8,6 +8,7 @@ import '../../../core/data/app_repository.dart';
 import '../../../core/design/app_design_system.dart';
 import '../../../core/printing/document_output_service.dart';
 import '../../../core/services/service_failure.dart';
+import '../../expenses/presentation/expenses_screen.dart';
 import '../../permissions/domain/permission_models.dart';
 import '../domain/cashbox_voucher.dart';
 import 'cashbox_controller.dart';
@@ -475,6 +476,24 @@ class _CashboxScreenState extends State<CashboxScreen> {
     Navigator.of(context).pop();
   }
 
+  Future<void> _openExpenses() async {
+    final store = AppStoreScope.of(context, listen: false);
+    if (!store.allowsFeatureAction('expenses', PermissionAction.view)) {
+      AppToast.showError(context, 'ليس لديك صلاحية لفتح شاشة المصاريف');
+      return;
+    }
+    if (!await _confirmDiscardChanges() || !mounted) return;
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => ExpensesScreen(
+          outputService: store.services.documentOutput,
+        ),
+      ),
+    );
+    if (!mounted) return;
+    await _loadCashbox();
+  }
+
   bool _validateForm() {
     if (_formControllers.mainAccount.text.trim() !=
         _selectedMainAccount.label) {
@@ -799,14 +818,27 @@ class _CashboxScreenState extends State<CashboxScreen> {
                     ? _save
                     : null,
             actions: [
-            AppHeaderIconButton(
-              key: const Key('cashboxPrintButton'),
-              tooltipKey: const Key('cashboxPrintTooltip'),
-              icon: Icons.print_rounded,
-              tooltip: 'طباعة',
-              onPressed: _isPrinting || !canPrint ? null : _print,
-            ),
-          ],
+              AppHeaderIconButton(
+                key: const Key('cashboxExpensesButton'),
+                tooltipKey: const Key('cashboxExpensesTooltip'),
+                icon: Icons.receipt_long_rounded,
+                tooltip: 'المصاريف',
+                onPressed: AppStoreScope.of(context, listen: false)
+                        .allowsFeatureAction(
+                          'expenses',
+                          PermissionAction.view,
+                        )
+                    ? () => unawaited(_openExpenses())
+                    : null,
+              ),
+              AppHeaderIconButton(
+                key: const Key('cashboxPrintButton'),
+                tooltipKey: const Key('cashboxPrintTooltip'),
+                icon: Icons.print_rounded,
+                tooltip: 'طباعة',
+                onPressed: _isPrinting || !canPrint ? null : _print,
+              ),
+            ],
             body: Padding(
               padding: const EdgeInsets.all(AppSpacing.lg),
               child: showEditor

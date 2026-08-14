@@ -3,10 +3,16 @@ part of 'purchase_screen.dart';
 extension _PurchaseDocumentState on _PurchaseScreenState {
   DocumentOutputRequest _purchaseDocumentRequest() {
     final supplierName = _supplierNameController.text.trim();
+    final isReturn = _isPurchaseReturn;
+    final source = _storedPurchase(_selectedOriginalPurchaseInvoiceId);
     return DocumentOutputRequest(
-      title: 'قائمة شراء رقم ${_invoiceNumberController.text}',
+      title: isReturn
+          ? 'مرتجع شراء رقم ${_invoiceNumberController.text}'
+          : 'قائمة شراء رقم ${_invoiceNumberController.text}',
       subtitle: supplierName.isEmpty ? 'مجهز غير محدد' : supplierName,
-      fileNameBase: 'قائمة شراء ${_invoiceNumberController.text}',
+      fileNameBase: isReturn
+          ? 'مرتجع شراء ${_invoiceNumberController.text}'
+          : 'قائمة شراء ${_invoiceNumberController.text}',
       auditTarget: _selectedInvoice == null
           ? null
           : DocumentOutputAuditTarget(
@@ -27,6 +33,17 @@ extension _PurchaseDocumentState on _PurchaseScreenState {
           value: _warehouseNamesById[_warehouseId] ?? _warehouseId,
         ),
         DocumentField(label: 'نوع الشراء', value: _purchaseType),
+        if (source != null)
+          DocumentField(
+            label: 'قائمة الشراء الأصلية',
+            value: '${source.documentNumber}',
+            spreadsheetCellKind: DocumentSpreadsheetCellKind.integer,
+          ),
+        if (isReturn)
+          const DocumentField(
+            label: 'سياسة تكلفة المخزون',
+            value: 'الإصدار بمتوسط الكلفة المتحرك الحالي للمخزن',
+          ),
         DocumentField(label: 'نوع الدفع', value: _paymentType),
         DocumentField(
           label: 'العملة',
@@ -48,7 +65,7 @@ extension _PurchaseDocumentState on _PurchaseScreenState {
           isPrice: true,
         ),
         DocumentField(
-          label: 'المدفوع',
+          label: isReturn ? 'المستلم' : 'المدفوع',
           value: _paidController.text,
           isPrice: true,
         ),
@@ -58,39 +75,78 @@ extension _PurchaseDocumentState on _PurchaseScreenState {
           isPrice: true,
         ),
       ],
-      columns: const [
-        DocumentColumn(label: 'الرمز'),
-        DocumentColumn(label: 'المادة'),
-        DocumentColumn(label: 'المخزن'),
-        DocumentColumn(label: 'الكمية'),
-        DocumentColumn(label: 'الحاوية'),
-        DocumentColumn(label: 'سعر الشراء', isPrice: true),
-        DocumentColumn(label: 'الخصم', isPrice: true),
-        DocumentColumn(label: 'السعر بعد الخصم', isPrice: true),
-        DocumentColumn(label: 'المجموع', isPrice: true),
-        DocumentColumn(label: 'الكلفة', isPrice: true),
-        DocumentColumn(label: 'إجمالي الكلفة', isPrice: true),
-        DocumentColumn(label: 'سعر البيع', isPrice: true),
-      ],
+      columns: isReturn
+          ? [
+              const DocumentColumn(label: 'الرمز'),
+              const DocumentColumn(label: 'المادة'),
+              const DocumentColumn(label: 'مخزن الإرجاع'),
+              const DocumentColumn(
+                label: 'الكمية',
+                spreadsheetCellKind: DocumentSpreadsheetCellKind.integer,
+              ),
+              DocumentColumn(
+                label: 'سعر المصدر',
+                isPrice: true,
+                spreadsheetCellKind: DocumentSpreadsheetCellKind.decimal,
+                spreadsheetDecimalPlaces: _currency.decimalPlaces,
+              ),
+              DocumentColumn(
+                label: 'خصم السطر',
+                isPrice: true,
+                spreadsheetCellKind: DocumentSpreadsheetCellKind.decimal,
+                spreadsheetDecimalPlaces: _currency.decimalPlaces,
+              ),
+              DocumentColumn(
+                label: 'قيمة السطر',
+                isPrice: true,
+                spreadsheetCellKind: DocumentSpreadsheetCellKind.decimal,
+                spreadsheetDecimalPlaces: _currency.decimalPlaces,
+              ),
+            ]
+          : const [
+              DocumentColumn(label: 'الرمز'),
+              DocumentColumn(label: 'المادة'),
+              DocumentColumn(label: 'المخزن'),
+              DocumentColumn(label: 'الكمية'),
+              DocumentColumn(label: 'الحاوية'),
+              DocumentColumn(label: 'سعر الشراء', isPrice: true),
+              DocumentColumn(label: 'الخصم', isPrice: true),
+              DocumentColumn(label: 'السعر بعد الخصم', isPrice: true),
+              DocumentColumn(label: 'المجموع', isPrice: true),
+              DocumentColumn(label: 'الكلفة', isPrice: true),
+              DocumentColumn(label: 'إجمالي الكلفة', isPrice: true),
+              DocumentColumn(label: 'سعر البيع', isPrice: true),
+            ],
       rows: [
         for (final item in _activeItems.where(
           (item) =>
               !item.isEmptyForDefaultWarehouse(_defaultWarehouseId),
         ))
-          [
-            item.code,
-            item.name,
-            item.warehouse,
-            item.quantity,
-            item.container,
-            item.purchasePrice,
-            item.discount.isEmpty ? '0' : item.discount,
-            item.priceAfterDiscount,
-            item.total,
-            item.cost,
-            item.totalCost,
-            item.salePrice,
-          ],
+          if (isReturn)
+            [
+              item.code,
+              item.name,
+              item.warehouse,
+              item.quantity,
+              item.purchasePrice,
+              item.discount.isEmpty ? '0' : item.discount,
+              item.total,
+            ]
+          else
+            [
+              item.code,
+              item.name,
+              item.warehouse,
+              item.quantity,
+              item.container,
+              item.purchasePrice,
+              item.discount.isEmpty ? '0' : item.discount,
+              item.priceAfterDiscount,
+              item.total,
+              item.cost,
+              item.totalCost,
+              item.salePrice,
+            ],
       ],
     );
   }

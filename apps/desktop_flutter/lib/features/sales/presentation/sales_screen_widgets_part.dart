@@ -35,6 +35,13 @@ class _SalesInvoiceButtons extends StatelessWidget {
           onPressed: onSearch,
         ),
         AppHeaderIconButton(
+          key: const Key('salesReturnsButton'),
+          tooltipKey: const Key('salesReturnsTooltip'),
+          icon: Icons.assignment_return_rounded,
+          tooltip: 'مرتجعات البيع',
+          onPressed: () => unawaited(SalesReturnScreen.open(context)),
+        ),
+        AppHeaderIconButton(
           key: const Key('salesPrintButton'),
           tooltipKey: const Key('salesPrintTooltip'),
           icon: Icons.print_rounded,

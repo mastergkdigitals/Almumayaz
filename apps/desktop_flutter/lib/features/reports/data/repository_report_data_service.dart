@@ -3,12 +3,14 @@ import '../../../core/design/app_formatters.dart';
 import '../../../core/domain/business_values.dart';
 import '../../cashbox/domain/cashbox_repository.dart';
 import '../../cashbox/domain/cashbox_voucher.dart';
+import '../../expenses/domain/expense.dart';
 import '../../items/domain/item.dart';
 import '../../installments/domain/installment_plan.dart';
 import '../../parties/domain/party.dart';
 import '../../parties/domain/party_repository.dart';
 import '../../purchases/domain/purchase_invoice.dart';
 import '../../sales/domain/sales_invoice.dart';
+import '../../sales_returns/domain/sales_return.dart';
 import '../../settings/domain/operational_master_data.dart';
 import '../../settings/domain/settings_models.dart';
 import '../../warehouses/domain/inventory_records.dart';
@@ -46,6 +48,8 @@ class RepositoryReportDataService
     return switch ((request.reportId, request.variantId)) {
       ('salesInvoices', 'main') =>
         _RepositoryReportProjectionLoaders(this)._sales(),
+      ('salesInvoices', 'returns') =>
+        _RepositoryReportProjectionLoaders(this)._salesReturns(),
       ('purchaseInvoices', 'main') =>
         _RepositoryReportProjectionLoaders(this)._purchases(),
       ('profits', 'main') =>
@@ -56,6 +60,8 @@ class RepositoryReportDataService
         _RepositoryReportProjectionLoaders(this)._transfers(),
       ('cashbox', 'main') =>
         _RepositoryReportProjectionLoaders(this)._cashbox(),
+      ('cashbox', 'expenses') =>
+        _RepositoryReportProjectionLoaders(this)._expenses(),
       ('partyBalances', 'main') =>
         _RepositoryReportProjectionLoaders(this)._partyBalances(),
       ('debtsInstallments', 'main') =>

@@ -345,13 +345,16 @@ class DemoInvoiceEffectsCoordinator
         signedBalance.absolute,
       );
       final isCreate = previous == null;
+      final documentLabel = normalized.isReturn
+          ? 'مرتجع الشراء'
+          : 'قائمة الشراء';
       final audit = _businessAudit?.prepare(
         event: AuditEvent(
           action: isCreate ? AuditAction.create : AuditAction.update,
           outcome: AuditOutcome.success,
           summary: isCreate
-              ? 'إضافة قائمة الشراء رقم ${normalized.documentNumber}'
-              : 'تحديث قائمة الشراء رقم ${normalized.documentNumber}',
+              ? 'إضافة $documentLabel رقم ${normalized.documentNumber}'
+              : 'تحديث $documentLabel رقم ${normalized.documentNumber}',
           before: previous == null
               ? const <String, Object?>{}
               : purchaseInvoiceAuditSnapshot(previous),
@@ -360,6 +363,8 @@ class DemoInvoiceEffectsCoordinator
             'inventoryLineCount': normalized.lines.length,
             'partyId': normalized.supplierId.value,
             'cashboxSourceId': normalized.id.value,
+            'originalPurchaseInvoiceId':
+                normalized.originalPurchaseInvoiceId?.value,
           },
           entityType: 'purchase_invoice',
           entityId: normalized.id,
@@ -408,13 +413,16 @@ class DemoInvoiceEffectsCoordinator
         event: AuditEvent(
           action: AuditAction.delete,
           outcome: AuditOutcome.success,
-          summary: 'حذف قائمة الشراء رقم ${previous.documentNumber}',
+          summary: 'حذف ${previous.isReturn ? 'مرتجع الشراء' : 'قائمة الشراء'} '
+              'رقم ${previous.documentNumber}',
           before: purchaseInvoiceAuditSnapshot(previous),
           details: {
             'permanent': true,
             'inventoryLineCount': previous.lines.length,
             'partyId': previous.supplierId.value,
             'cashboxSourceId': previous.id.value,
+            'originalPurchaseInvoiceId':
+                previous.originalPurchaseInvoiceId?.value,
           },
           entityType: 'purchase_invoice',
           entityId: previous.id,
@@ -555,6 +563,21 @@ class DemoInvoiceEffectsCoordinator
     if (!remaining.isPositive) {
       throw StateError('يجب أن تحتوي قائمة الأقساط على مبلغ متبقٍ');
     }
+    // A linked return may already have reduced every still-pending entry, or
+    // removed them all. Rebuilding when none of the schedule inputs changed
+    // would silently erase that restatement on a notes/driver-only edit.
+    if (previous != null &&
+        previousPlan != null &&
+        _hasSameInstallmentScheduleInputs(previous, candidate)) {
+      final planMismatch = previousPlan.salesInvoiceId != candidate.id ||
+          previousPlan.customerId != candidate.customerId ||
+          previousPlan.currency != candidate.currency ||
+          previousPlan.total.compareTo(remaining) > 0;
+      if (planMismatch) {
+        throw StateError('خطة الأقساط لا تطابق قائمة البيع');
+      }
+      return repository.stageUpsertPlan(previousPlan);
+    }
     final planId = previousPlan?.id ??
         EntityId('installment-plan-${candidate.id.value}');
     final rebuilt = InstallmentScheduleBuilder.build(
@@ -565,6 +588,19 @@ class DemoInvoiceEffectsCoordinator
       invoiceDate: candidate.date,
     );
     return repository.stageUpsertPlan(rebuilt);
+  }
+
+  bool _hasSameInstallmentScheduleInputs(
+    SalesInvoice previous,
+    SalesInvoice candidate,
+  ) {
+    return previous.settlementKind == SalesSettlementKind.installments &&
+        previous.id == candidate.id &&
+        previous.customerId == candidate.customerId &&
+        previous.currency == candidate.currency &&
+        previous.date == candidate.date &&
+        previous.total - previous.receivedAtSale ==
+            candidate.total - candidate.receivedAtSale;
   }
 
   void _validatePaidPlanUpdate({
@@ -600,7 +636,9 @@ class DemoInvoiceEffectsCoordinator
           : CashboxVoucherType.payment,
       exchangeRate: invoice.exchangeRate,
       amount: invoice.paid,
-      notes: 'قيد آلي لفاتورة شراء رقم ${invoice.documentNumber}',
+      notes: invoice.isReturn
+          ? 'قيد آلي لمرتجع شراء رقم ${invoice.documentNumber}'
+          : 'قيد آلي لفاتورة شراء رقم ${invoice.documentNumber}',
     );
   }
 
@@ -668,6 +706,7 @@ PurchaseInvoice _purchaseWithBalance(PurchaseInvoice source, Money balance) {
     expenses: source.expenses,
     invoiceDiscount: source.invoiceDiscount,
     paid: source.paid,
+    originalPurchaseInvoiceId: source.originalPurchaseInvoiceId,
     supplierNameSnapshot: source.supplierNameSnapshot,
     searchDetailsSnapshot: source.searchDetailsSnapshot,
     balanceAfterInvoice: balance,

@@ -212,7 +212,7 @@ void main() {
 
       final purchase =
           (await harness.repositories.purchases.getAll()).firstWhere(
-        (invoice) => invoice.id == EntityId('purchase-invoice-101'),
+        (invoice) => invoice.id == EntityId('purchase-invoice-102'),
       );
       final savedPurchase =
           await harness.repositories.purchases.replaceInvoice(
@@ -447,6 +447,7 @@ PurchaseInvoice _copyPurchase(PurchaseInvoice source, {required String notes}) {
     exchangeRate: source.exchangeRate,
     purchaseKind: source.purchaseKind,
     settlementKind: source.settlementKind,
+    originalPurchaseInvoiceId: source.originalPurchaseInvoiceId,
     lines: source.lines,
     expenses: source.expenses,
     invoiceDiscount: source.invoiceDiscount,

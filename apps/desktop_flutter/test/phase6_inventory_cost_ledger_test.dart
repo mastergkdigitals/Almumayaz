@@ -4,6 +4,7 @@ import 'package:erp/core/domain/business_values.dart';
 import 'package:erp/core/domain/invoice_value_allocator.dart';
 import 'package:erp/features/purchases/domain/purchase_invoice.dart';
 import 'package:erp/features/sales/domain/sales_invoice.dart';
+import 'package:erp/features/sales_returns/domain/sales_return.dart';
 import 'package:erp/features/warehouses/data/demo_inventory_cost_repository.dart';
 import 'package:erp/features/warehouses/data/demo_warehouse_repository.dart';
 import 'package:erp/features/warehouses/domain/inventory_cost.dart';
@@ -45,6 +46,101 @@ void main() {
     );
     expect(divideAndRoundHalfAwayFromZero(5, 2), 3);
     expect(divideAndRoundHalfAwayFromZero(-5, 2), -3);
+    const maximumInt = 0x7fffffffffffffff;
+    expect(
+      multiplyDivideAndRoundHalfAwayFromZero(
+        maximumInt,
+        maximumInt - 1,
+        maximumInt,
+      ),
+      maximumInt - 1,
+    );
+  });
+
+  test('same-minute sales returns replay in issued-number order', () async {
+    final sourceLine = _salesLine(
+      id: 'same-minute-source-line',
+      itemId: 'same-minute-item',
+      warehouseId: 'same-minute-warehouse',
+      quantity: 2,
+      unitPrice: Money.fromMajor(1, AppCurrency.iqd),
+    );
+    final source = _sale(
+      id: 'same-minute-source',
+      documentNumber: 1,
+      date: BusinessDate(2026, 8, 14),
+      minuteOfDay: 9 * 60,
+      currency: AppCurrency.iqd,
+      exchangeRate: ExchangeRate.parse('1310'),
+      lines: [sourceLine],
+    );
+    SalesReturn returned({
+      required String id,
+      required int documentNumber,
+      required String lineId,
+      required int allocatedRefund,
+    }) =>
+        SalesReturn(
+          id: EntityId(id),
+          documentNumber: documentNumber,
+          date: BusinessDate(2026, 8, 14),
+          minuteOfDay: 10 * 60,
+          originalSalesInvoiceId: source.id,
+          originalSalesInvoiceNumberSnapshot: source.documentNumber,
+          customerId: source.customerId,
+          currency: source.currency,
+          exchangeRate: source.exchangeRate,
+          lines: [
+            SalesReturnLine(
+              id: EntityId(lineId),
+              sourceSalesLineId: sourceLine.id,
+              itemId: sourceLine.itemId,
+              warehouseId: sourceLine.warehouseId,
+              quantity: WholeQuantity(1),
+              sourceNetUnitPrice: sourceLine.netUnitPrice,
+              allocatedRefund: Money.fromMinorUnits(
+                allocatedRefund,
+                source.currency,
+              ),
+            ),
+          ],
+          refundedAtReturn: Money.zero(source.currency),
+        );
+    final first = returned(
+      id: 'z-return-nine',
+      documentNumber: 9,
+      lineId: 'z-return-nine-line',
+      allocatedRefund: 1,
+    );
+    final second = returned(
+      id: 'a-return-ten',
+      documentNumber: 10,
+      lineId: 'a-return-ten-line',
+      allocatedRefund: 1,
+    );
+    final repository = DemoInventoryCostRepository(
+      openingBalances: [
+        _openingCost(
+          warehouseId: sourceLine.warehouseId.value,
+          itemId: sourceLine.itemId.value,
+          quantity: 2,
+          totalCostIqd: 1,
+        ),
+      ],
+      sales: [source],
+      salesReturns: [second, first],
+    );
+
+    expect(
+      (await repository.getSalesReturnLineCost(first.lines.single.id))!
+          .restoredCostIqd,
+      Money.fromMajor(1, AppCurrency.iqd),
+    );
+    expect(
+      (await repository.getSalesReturnLineCost(second.lines.single.id))!
+          .restoredCostIqd,
+      Money.zero(AppCurrency.iqd),
+    );
   });
 
   test('seeded cost quantities reconcile with shared warehouse inventory',

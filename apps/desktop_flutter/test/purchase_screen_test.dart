@@ -349,11 +349,11 @@ void main() {
       ),
       'ورق طباعة A4',
     );
-    expect(_fieldValue(tester, 'purchaseTotalField'), '150,000');
-    expect(_fieldValue(tester, 'purchaseRemainingField'), '150,000');
+    expect(_fieldValue(tester, 'purchaseTotalField'), '240,000');
+    expect(_fieldValue(tester, 'purchaseRemainingField'), '240,000');
     expect(
       _fieldValue(tester, 'purchaseCurrentBalanceField'),
-      '450,000',
+      '540,000',
     );
 
     expect(
@@ -713,7 +713,7 @@ void main() {
       '999999',
     );
     await tester.pump();
-    expect(_fieldValue(tester, 'purchasePaidField'), '150,000');
+    expect(_fieldValue(tester, 'purchasePaidField'), '240,000');
     expect(_fieldValue(tester, 'purchaseRemainingField'), '0');
 
     await tester.enterText(
@@ -725,8 +725,8 @@ void main() {
       '100000',
     );
     await tester.pump();
-    expect(_fieldValue(tester, 'purchaseTotalField'), '50,000');
-    expect(_fieldValue(tester, 'purchasePaidField'), '50,000');
+    expect(_fieldValue(tester, 'purchaseTotalField'), '140,000');
+    expect(_fieldValue(tester, 'purchasePaidField'), '100,000');
 
     _dropdown(tester, 'purchaseCurrencyField').onChanged('USD');
     await tester.pump();
@@ -735,7 +735,7 @@ void main() {
       '999999',
     );
     await tester.pump();
-    expect(_fieldValue(tester, 'purchasePaidField'), '50,000.00');
+    expect(_fieldValue(tester, 'purchasePaidField'), '140,000.00');
     expect(_fieldValue(tester, 'purchaseRemainingField'), '0.00');
   });
 
@@ -749,7 +749,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(_fieldValue(tester, 'purchaseInvoiceDiscountField'), '150,000');
+    expect(_fieldValue(tester, 'purchaseInvoiceDiscountField'), '240,000');
     expect(_fieldValue(tester, 'purchaseDiscountPercentageField'), '100.00');
     expect(_fieldValue(tester, 'purchaseTotalField'), '0');
     expect(_fieldValue(tester, 'purchasePaidField'), '0');
@@ -762,7 +762,7 @@ void main() {
     await tester.pump();
 
     expect(_fieldValue(tester, 'purchaseDiscountPercentageField'), '100.00');
-    expect(_fieldValue(tester, 'purchaseInvoiceDiscountField'), '150,000');
+    expect(_fieldValue(tester, 'purchaseInvoiceDiscountField'), '240,000');
     expect(_fieldValue(tester, 'purchaseTotalField'), '0');
   });
 
@@ -1083,7 +1083,7 @@ void main() {
     expect(_fieldValue(tester, 'purchaseInvoiceNumberField'), '103');
     expect(
       _fieldValue(tester, 'purchaseSupplierNameField'),
-      'مجهز الكرادة',
+      'شركة الرافدين للتجهيز',
     );
     expect(_dropdown(tester, 'purchasePaymentTypeField').value, 'نقدي');
     expect(_textField(tester, 'purchasePaidField').enabled, isFalse);

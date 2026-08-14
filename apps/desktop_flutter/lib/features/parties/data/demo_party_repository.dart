@@ -508,8 +508,8 @@ List<Party> demoParties() => [
         address: 'العشار',
         notes: 'التواصل صباحاً',
         balanceIqd: -3200000,
-        // Current balance after seeded cashbox payment cashbox-003.
-        balanceUsd: -800,
+        // Includes the seeded unpaid USD operating expense.
+        balanceUsd: -950,
       ),
       _demoParty(
         id: 'party-004',
@@ -636,7 +636,8 @@ List<Party> demoParties() => [
         city: 'البصرة',
         address: 'العشار',
         notes: '',
-        balanceIqd: -450000,
+        // Includes the added source line in purchase 101.
+        balanceIqd: -540000,
         balanceUsd: 0,
       ),
       _demoParty(

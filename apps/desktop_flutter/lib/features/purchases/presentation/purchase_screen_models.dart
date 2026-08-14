@@ -65,6 +65,73 @@ class _PurchaseInvoiceViewData {
   final List<AppPurchaseInvoiceTableRowData> items;
 }
 
+class _PurchaseReturnLineDraft {
+  const _PurchaseReturnLineDraft({
+    required this.sourceLine,
+    required this.previouslyReturnedQuantity,
+    required this.previouslyReturnedDiscount,
+    required this.maximumQuantity,
+    required this.itemCode,
+    required this.itemName,
+    required this.warehouseId,
+    required this.warehouseName,
+    this.returnLineId,
+    this.quantityText = '0',
+  });
+
+  final PurchaseInvoiceLine sourceLine;
+  final int previouslyReturnedQuantity;
+  final Money previouslyReturnedDiscount;
+  final int maximumQuantity;
+  final String itemCode;
+  final String itemName;
+  final EntityId? returnLineId;
+  final String warehouseId;
+  final String warehouseName;
+  final String quantityText;
+
+  int get quantity => AppFormatters.parseInteger(quantityText) ?? 0;
+
+  int get effectiveQuantity => quantity < 0
+      ? 0
+      : quantity > maximumQuantity
+          ? maximumQuantity
+          : quantity;
+
+  bool get hasValidQuantity =>
+      quantity >= 0 && quantity <= maximumQuantity;
+
+  Money get lineDiscount => PurchaseReturnPolicy.lineDiscount(
+        sourceLine: sourceLine,
+        totalReturnedQuantity:
+            previouslyReturnedQuantity + effectiveQuantity,
+        discountAlreadyReturned: previouslyReturnedDiscount,
+      );
+
+  Money get grossTotal => sourceLine.purchasePrice * effectiveQuantity;
+
+  Money get netTotal => grossTotal - lineDiscount;
+
+  _PurchaseReturnLineDraft copyWith({
+    String? warehouseId,
+    String? warehouseName,
+    String? quantityText,
+  }) {
+    return _PurchaseReturnLineDraft(
+      sourceLine: sourceLine,
+      previouslyReturnedQuantity: previouslyReturnedQuantity,
+      previouslyReturnedDiscount: previouslyReturnedDiscount,
+      maximumQuantity: maximumQuantity,
+      itemCode: itemCode,
+      itemName: itemName,
+      returnLineId: returnLineId,
+      warehouseId: warehouseId ?? this.warehouseId,
+      warehouseName: warehouseName ?? this.warehouseName,
+      quantityText: quantityText ?? this.quantityText,
+    );
+  }
+}
+
 enum _PurchaseDiscountInputSource { amount, percentage }
 
 typedef _PurchaseFormSnapshot = ({
@@ -76,6 +143,7 @@ typedef _PurchaseFormSnapshot = ({
   String exchangeRate,
   String supplierName,
   String? supplierId,
+  String? originalPurchaseInvoiceId,
   String notes,
   String expenses,
   String invoiceDiscount,

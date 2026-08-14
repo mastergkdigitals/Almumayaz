@@ -139,6 +139,226 @@ extension on _PurchaseScreenState {
 }
 
 extension _PurchaseFormState on _PurchaseScreenState {
+  PurchaseInvoice? _storedPurchase(EntityId? id) {
+    if (id == null) return null;
+    for (final invoice in _purchaseInvoices) {
+      if (invoice.entityId == id) return invoice.source;
+    }
+    return null;
+  }
+
+  List<_PurchaseInvoiceViewData> get _returnSourceOptions {
+    return _purchaseInvoices.where((invoice) {
+      if (invoice.source.isReturn) return false;
+      if (invoice.entityId == _selectedOriginalPurchaseInvoiceId) return true;
+      final usage = _returnUsage(
+        invoice.source,
+        excludingReturnId: _selectedInvoice?.source.isReturn == true
+            ? _selectedInvoice!.entityId
+            : null,
+      );
+      return invoice.source.lines.any(
+        (line) =>
+            (usage.quantities[line.id] ?? 0) < line.quantity.value,
+      );
+    }).toList(growable: false);
+  }
+
+  ({
+    Map<EntityId, int> quantities,
+    Map<EntityId, Money> lineDiscounts,
+    Money invoiceDiscount,
+  }) _returnUsage(
+    PurchaseInvoice source, {
+    EntityId? excludingReturnId,
+  }) {
+    final quantities = <EntityId, int>{};
+    final lineDiscounts = <EntityId, Money>{};
+    var invoiceDiscount = Money.zero(source.currency);
+    for (final candidate in _purchaseInvoices) {
+      final returned = candidate.source;
+      if (returned.id == excludingReturnId ||
+          !returned.isReturn ||
+          returned.originalPurchaseInvoiceId != source.id) {
+        continue;
+      }
+      invoiceDiscount += returned.invoiceDiscount;
+      for (final line in returned.lines) {
+        final originalLineId = line.originalPurchaseLineId;
+        if (originalLineId == null) continue;
+        quantities[originalLineId] =
+            (quantities[originalLineId] ?? 0) + line.quantity.value;
+        lineDiscounts[originalLineId] =
+            (lineDiscounts[originalLineId] ?? Money.zero(source.currency)) +
+                line.lineDiscount;
+      }
+    }
+    return (
+      quantities: quantities,
+      lineDiscounts: lineDiscounts,
+      invoiceDiscount: invoiceDiscount,
+    );
+  }
+
+  List<_PurchaseReturnLineDraft> _returnDraftsFor(
+    PurchaseInvoice source, {
+    PurchaseInvoice? currentReturn,
+  }) {
+    final usage = _returnUsage(
+      source,
+      excludingReturnId: currentReturn?.id,
+    );
+    final currentLines = <EntityId, PurchaseInvoiceLine>{};
+    if (currentReturn != null) {
+      for (final line in currentReturn.lines) {
+        final originalLineId = line.originalPurchaseLineId;
+        if (originalLineId != null) currentLines[originalLineId] = line;
+      }
+    }
+    return [
+      for (final sourceLine in source.lines)
+        _PurchaseReturnLineDraft(
+          sourceLine: sourceLine,
+          previouslyReturnedQuantity: usage.quantities[sourceLine.id] ?? 0,
+          previouslyReturnedDiscount: usage.lineDiscounts[sourceLine.id] ??
+              Money.zero(source.currency),
+          maximumQuantity: sourceLine.quantity.value -
+              (usage.quantities[sourceLine.id] ?? 0),
+          itemCode: sourceLine.itemCodeSnapshot.isNotEmpty
+              ? sourceLine.itemCodeSnapshot
+              : _itemOptions
+                      .where(
+                        (item) => item.id == sourceLine.itemId.value,
+                      )
+                      .firstOrNull
+                      ?.code ??
+                  '',
+          itemName: sourceLine.itemNameSnapshot.isNotEmpty
+              ? sourceLine.itemNameSnapshot
+              : _itemOptions
+                      .where(
+                        (item) => item.id == sourceLine.itemId.value,
+                      )
+                      .firstOrNull
+                      ?.name ??
+                  '',
+          returnLineId: currentLines[sourceLine.id]?.id,
+          warehouseId: (currentLines[sourceLine.id]?.warehouseId ??
+                  sourceLine.warehouseId)
+              .value,
+          warehouseName: _warehouseNamesById[
+                  (currentLines[sourceLine.id]?.warehouseId ??
+                          sourceLine.warehouseId)
+                      .value] ??
+              sourceLine.warehouseNameSnapshot,
+          quantityText: '${currentLines[sourceLine.id]?.quantity.value ?? 0}',
+        ),
+    ];
+  }
+
+  void _selectOriginalPurchaseInvoice(_PurchaseInvoiceViewData selection) {
+    final source = selection.source;
+    if (source.isReturn) return;
+    final supplier = _supplierOptions
+        .where((party) => party.entityId == source.supplierId)
+        .firstOrNull;
+    _setPurchaseState(() {
+      _selectedOriginalPurchaseInvoiceId = source.id;
+      _originalInvoiceController.text =
+          'قائمة شراء رقم ${source.documentNumber}';
+      _selectedSupplierId = source.supplierId;
+      _supplierNameController.text = selection.supplierName;
+      _warehouseId = source.lines.first.warehouseId.value;
+      _currency = source.currency.code;
+      _exchangeRateController.text = _formatExchangeRate(source.exchangeRate);
+      final signedBalance = source.currency == AppCurrency.iqd
+          ? supplier?.iqdBalance
+          : supplier?.usdBalance;
+      _balanceBeforeInvoice = signedBalance?.absolute.majorUnits ?? 0;
+      _paymentType = 'آجل';
+      _nonCashPaidText = '0';
+      _paidController.text = '0';
+      _expensesController.text = '0';
+      _invoiceDiscountController.text = '0';
+      _discountPercentageController.text = '0';
+      _returnLines = _returnDraftsFor(source);
+      _activeItems = const [];
+      _tableDataVersion++;
+      _syncCalculatedFields();
+      _refreshSelectionState();
+    });
+  }
+
+  void _changeOriginalPurchaseInvoiceText(String _) {
+    if (_selectedOriginalPurchaseInvoiceId == null) return;
+    _setPurchaseState(() {
+      _selectedOriginalPurchaseInvoiceId = null;
+      _returnLines = const [];
+      _activeItems = const [];
+      _tableDataVersion++;
+      _syncCalculatedFields();
+      _refreshSelectionState();
+    });
+  }
+
+  void _changeReturnLines(List<_PurchaseReturnLineDraft> lines) {
+    _setPurchaseState(() {
+      _returnLines = List.unmodifiable(lines);
+      _syncCalculatedFields();
+      _refreshSelectionState();
+    });
+  }
+
+  Money _currentReturnInvoiceDiscount() {
+    final source = _storedPurchase(_selectedOriginalPurchaseInvoiceId);
+    if (source == null) return Money.zero(AppCurrency.parse(_currency));
+    final usage = _returnUsage(
+      source,
+      excludingReturnId: _selectedInvoice?.source.isReturn == true
+          ? _selectedInvoice!.entityId
+          : null,
+    );
+    final quantities = Map<EntityId, int>.of(usage.quantities);
+    for (final draft in _returnLines) {
+      quantities[draft.sourceLine.id] =
+          (quantities[draft.sourceLine.id] ?? 0) + draft.effectiveQuantity;
+    }
+    return PurchaseReturnPolicy.invoiceDiscount(
+      source: source,
+      totalReturnedQuantities: quantities,
+      discountAlreadyReturned: usage.invoiceDiscount,
+    );
+  }
+
+  void _syncReturnActiveItems() {
+    final selectedDrafts = _returnLines
+        .where((draft) => draft.effectiveQuantity > 0)
+        .toList(growable: false);
+    final source = _storedPurchase(_selectedOriginalPurchaseInvoiceId);
+    final primaryWarehouseId = selectedDrafts.firstOrNull?.warehouseId ??
+        source?.defaultWarehouseId.value;
+    if (primaryWarehouseId != null &&
+        _warehouseNamesById.containsKey(primaryWarehouseId)) {
+      _warehouseId = primaryWarehouseId;
+    }
+    _activeItems = List.unmodifiable([
+      for (final draft in selectedDrafts)
+        AppPurchaseInvoiceTableRowData(
+          lineId: draft.returnLineId?.value,
+          itemId: draft.sourceLine.itemId.value,
+          code: draft.itemCode,
+          name: draft.itemName,
+          warehouseId: draft.warehouseId,
+          warehouse: draft.warehouseName,
+          quantity: '${draft.effectiveQuantity}',
+          container: '0',
+          purchasePrice: _formatMoney(draft.sourceLine.purchasePrice),
+          discount: _formatMoney(draft.lineDiscount),
+          salePrice: _formatMoney(draft.sourceLine.salePrice),
+        ),
+    ]);
+  }
+
   void _loadInvoice(_PurchaseInvoiceViewData invoice) {
     _isApplyingFormState = true;
     _selectedInvoice = invoice;
@@ -157,15 +377,33 @@ extension _PurchaseFormState on _PurchaseScreenState {
     _invoiceDiscountController.text = invoice.invoiceDiscount;
     _discountPercentageController.text = invoice.discountPercentage;
     _discountInputSource = _PurchaseDiscountInputSource.amount;
-    _balanceBeforeInvoice =
-        (AppFormatters.parseNumber(invoice.currentBalance) ?? 0) -
-            (AppFormatters.parseNumber(invoice.remaining) ?? 0);
+    final currentBalance =
+        AppFormatters.parseNumber(invoice.currentBalance) ?? 0;
+    final remaining = AppFormatters.parseNumber(invoice.remaining) ?? 0;
+    _balanceBeforeInvoice = invoice.source.isReturn
+        ? currentBalance + remaining
+        : currentBalance - remaining;
     _nonCashPaidText =
         invoice.paymentType == 'نقدي' ? '0' : invoice.paid;
     _paidController.text = _nonCashPaidText;
-    _activeItems = List<AppPurchaseInvoiceTableRowData>.unmodifiable(
-      invoice.items,
-    );
+    if (invoice.source.isReturn) {
+      final source = _storedPurchase(invoice.source.originalPurchaseInvoiceId);
+      _selectedOriginalPurchaseInvoiceId = source?.id;
+      _originalInvoiceController.text = source == null
+          ? ''
+          : 'قائمة شراء رقم ${source.documentNumber}';
+      _returnLines = source == null
+          ? const []
+          : _returnDraftsFor(source, currentReturn: invoice.source);
+      _syncReturnActiveItems();
+    } else {
+      _selectedOriginalPurchaseInvoiceId = null;
+      _originalInvoiceController.clear();
+      _returnLines = const [];
+      _activeItems = List<AppPurchaseInvoiceTableRowData>.unmodifiable(
+        invoice.items,
+      );
+    }
     _syncCalculatedFields();
     _tableDataVersion++;
     _isApplyingFormState = false;
@@ -186,6 +424,8 @@ extension _PurchaseFormState on _PurchaseScreenState {
     _exchangeRateController.text = _defaultExchangeRate;
     _supplierNameController.clear();
     _selectedSupplierId = null;
+    _selectedOriginalPurchaseInvoiceId = null;
+    _originalInvoiceController.clear();
     _notesController.clear();
     _expensesController.text = '0';
     _invoiceDiscountController.text = '0';
@@ -194,12 +434,15 @@ extension _PurchaseFormState on _PurchaseScreenState {
     _balanceBeforeInvoice = 0;
     _nonCashPaidText = '0';
     _paidController.text = '0';
-    _activeItems = [
-      AppPurchaseInvoiceTableRowData(
-        warehouseId: _defaultWarehouseId,
-        warehouse: _defaultWarehouseName,
-      ),
-    ];
+    _activeItems = _isPurchaseReturn
+        ? const []
+        : [
+            AppPurchaseInvoiceTableRowData(
+              warehouseId: _defaultWarehouseId,
+              warehouse: _defaultWarehouseName,
+            ),
+          ];
+    _returnLines = const [];
     _syncCalculatedFields();
     _tableDataVersion++;
     _isApplyingFormState = false;
@@ -216,13 +459,31 @@ extension _PurchaseFormState on _PurchaseScreenState {
         exchangeRate: _exchangeRateController.text,
         supplierName: _supplierNameController.text,
         supplierId: _selectedSupplierId?.value,
+        originalPurchaseInvoiceId:
+            _selectedOriginalPurchaseInvoiceId?.value,
         notes: _notesController.text,
         expenses: _expensesController.text,
         invoiceDiscount: _invoiceDiscountController.text,
         discountPercentage: _discountPercentageController.text,
         paid: _paidController.text,
-        itemsSignature: _itemsSignature(_activeItems),
+        itemsSignature: _isPurchaseReturn
+            ? _returnItemsSignature(_returnLines)
+            : _itemsSignature(_activeItems),
       );
+
+  String _returnItemsSignature(Iterable<_PurchaseReturnLineDraft> lines) {
+    return lines
+        .map(
+          (line) => [
+            line.sourceLine.id.value,
+            line.returnLineId?.value ?? '',
+            line.warehouseId,
+            line.quantityText,
+            '${line.maximumQuantity}',
+          ].join('\u001f'),
+        )
+        .join('\u001e');
+  }
 
   String _itemsSignature(
     Iterable<AppPurchaseInvoiceTableRowData> items,
@@ -299,6 +560,27 @@ extension _PurchaseFormState on _PurchaseScreenState {
     if (_purchaseType == value) return;
     _setPurchaseState(() {
       _purchaseType = value;
+      _selectedOriginalPurchaseInvoiceId = null;
+      _originalInvoiceController.clear();
+      _returnLines = const [];
+      if (value == 'إرجاع') {
+        _activeItems = const [];
+        _paymentType = 'آجل';
+        _nonCashPaidText = '0';
+        _paidController.text = '0';
+        _expensesController.text = '0';
+        _invoiceDiscountController.text = '0';
+        _discountPercentageController.text = '0';
+      } else {
+        _activeItems = [
+          AppPurchaseInvoiceTableRowData(
+            warehouseId: _defaultWarehouseId,
+            warehouse: _defaultWarehouseName,
+          ),
+        ];
+      }
+      _tableDataVersion++;
+      _syncCalculatedFields();
       _refreshSelectionState();
     });
   }
@@ -316,6 +598,7 @@ extension _PurchaseFormState on _PurchaseScreenState {
   }
 
   void _changeCurrency(String value) {
+    if (_isPurchaseReturn) return;
     if (_currency == value) return;
     _setPurchaseState(() {
       final wasApplyingFormState = _isApplyingFormState;
@@ -388,6 +671,16 @@ extension _PurchaseFormState on _PurchaseScreenState {
     final wasApplyingFormState = _isApplyingFormState;
     _isApplyingFormState = true;
     try {
+      if (_isPurchaseReturn) {
+        _syncReturnActiveItems();
+        _setControllerText(_expensesController, '0');
+        final returnDiscount = _currentReturnInvoiceDiscount();
+        _setControllerText(
+          _invoiceDiscountController,
+          _formatMoney(returnDiscount),
+        );
+        _discountInputSource = _PurchaseDiscountInputSource.amount;
+      }
       var quantity = 0;
       num rowDiscount = 0;
       num lineBaseTotal = 0;
@@ -505,7 +798,9 @@ extension _PurchaseFormState on _PurchaseScreenState {
 
       final unpaid = _paymentType == 'نقدي' ? 0 : total - paid;
       final remaining = unpaid < 0 ? 0 : unpaid;
-      final currentBalance = _balanceBeforeInvoice + remaining;
+      final currentBalance = _isPurchaseReturn
+          ? (_balanceBeforeInvoice - remaining).abs()
+          : _balanceBeforeInvoice + remaining;
       _setControllerText(
         _totalController,
         AppFormatters.moneyByCurrency(total, _currency),
@@ -555,6 +850,50 @@ extension _PurchaseFormState on _PurchaseScreenState {
     if (!_warehouseNamesById.containsKey(_warehouseId)) {
       AppToast.showWarning(context, 'اختر مخزناً موجوداً');
       return false;
+    }
+    if (_isPurchaseReturn) {
+      final source = _storedPurchase(_selectedOriginalPurchaseInvoiceId);
+      if (source == null || source.isReturn) {
+        AppToast.showWarning(context, 'اختر قائمة الشراء الأصلية للمرتجع');
+        return false;
+      }
+      final returnTimestamp = DateTime(
+        _invoiceDateTime.year,
+        _invoiceDateTime.month,
+        _invoiceDateTime.day,
+        _invoiceDateTime.hour,
+        _invoiceDateTime.minute,
+      );
+      final sourceTimestamp = source.date.atTime(
+        hour: source.minuteOfDay ~/ Duration.minutesPerHour,
+        minute: source.minuteOfDay % Duration.minutesPerHour,
+      );
+      if (returnTimestamp.isBefore(sourceTimestamp)) {
+        AppToast.showWarning(
+          context,
+          'لا يمكن أن يسبق المرتجع قائمة الشراء الأصلية',
+        );
+        return false;
+      }
+      if (_returnLines.any((line) => !line.hasValidQuantity)) {
+        AppToast.showWarning(
+          context,
+          'إحدى كميات المرتجع تتجاوز الكمية المتاحة',
+        );
+        return false;
+      }
+      if (!_returnLines.any((line) => line.quantity > 0)) {
+        AppToast.showWarning(context, 'أدخل كمية مرتجعة لمادة واحدة على الأقل');
+        return false;
+      }
+      if (_returnLines.any(
+        (line) =>
+            line.quantity > 0 &&
+            !_warehouseNamesById.containsKey(line.warehouseId),
+      )) {
+        AppToast.showWarning(context, 'اختر مخزناً موجوداً لكل سطر مرتجع');
+        return false;
+      }
     }
 
     final meaningfulItems = _activeItems
@@ -617,6 +956,9 @@ extension _PurchaseFormState on _PurchaseScreenState {
   }
 
   PurchaseInvoice _domainInvoiceFromForm({required EntityId entityId}) {
+    if (_isPurchaseReturn) {
+      return _domainReturnInvoiceFromForm(entityId: entityId);
+    }
     final items = List<AppPurchaseInvoiceTableRowData>.unmodifiable(
       _activeItems.where(
         (item) =>
@@ -679,6 +1021,60 @@ extension _PurchaseFormState on _PurchaseScreenState {
       expenses: Money.parse(_expensesController.text, currency),
       invoiceDiscount: Money.parse(_invoiceDiscountController.text, currency),
       paid: Money.parse(_paidController.text, currency),
+      balanceAfterInvoice:
+          Money.parse(_currentBalanceController.text, currency),
+      notes: _notesController.text.trim(),
+    );
+  }
+
+  PurchaseInvoice _domainReturnInvoiceFromForm({required EntityId entityId}) {
+    final source = _storedPurchase(_selectedOriginalPurchaseInvoiceId)!;
+    final currency = source.currency;
+    final newLineNonce = DateTime.now().microsecondsSinceEpoch;
+    final selectedDrafts = _returnLines
+        .where((draft) => draft.quantity > 0)
+        .toList(growable: false);
+    final lines = <PurchaseInvoiceLine>[];
+    for (var index = 0; index < selectedDrafts.length; index++) {
+      final draft = selectedDrafts[index];
+      lines.add(
+        PurchaseInvoiceLine(
+          id: draft.returnLineId ??
+              EntityId('${entityId.value}-line-$newLineNonce-${index + 1}'),
+          itemId: draft.sourceLine.itemId,
+          warehouseId: EntityId(draft.warehouseId),
+          quantity: WholeQuantity(draft.quantity),
+          containerQuantity: WholeQuantity(0),
+          purchasePrice: draft.sourceLine.purchasePrice,
+          lineDiscount: draft.lineDiscount,
+          salePrice: draft.sourceLine.salePrice,
+          originalPurchaseLineId: draft.sourceLine.id,
+          itemCodeSnapshot: draft.itemCode,
+          itemNameSnapshot: draft.itemName,
+          warehouseNameSnapshot:
+              _warehouseNamesById[draft.warehouseId] ?? draft.warehouseName,
+        ),
+      );
+    }
+    return PurchaseInvoice(
+      id: entityId,
+      documentNumber: int.parse(_invoiceNumberController.text),
+      date: BusinessDate.fromDateTime(_invoiceDateTime),
+      minuteOfDay: _invoiceDateTime.hour * 60 + _invoiceDateTime.minute,
+      supplierId: source.supplierId,
+      supplierNameSnapshot: _supplierNameController.text.trim(),
+      defaultWarehouseId: EntityId(_warehouseId),
+      currency: currency,
+      exchangeRate: source.exchangeRate,
+      purchaseKind: PurchaseTransactionKind.returnPurchase,
+      settlementKind: _paymentType == 'نقدي'
+          ? PurchaseSettlementKind.cash
+          : PurchaseSettlementKind.credit,
+      lines: lines,
+      expenses: Money.zero(currency),
+      invoiceDiscount: _currentReturnInvoiceDiscount(),
+      paid: Money.parse(_paidController.text, currency),
+      originalPurchaseInvoiceId: source.id,
       balanceAfterInvoice:
           Money.parse(_currentBalanceController.text, currency),
       notes: _notesController.text.trim(),

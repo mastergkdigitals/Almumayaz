@@ -9,8 +9,10 @@ enum CashboxVoucherType {
 
 enum CashboxVoucherSourceKind {
   salesInvoice,
+  salesReturn,
   purchaseInvoice,
   installmentPayment,
+  expense,
 }
 
 /// Immutable identity of a system-generated cashbox posting.
@@ -22,12 +24,17 @@ class CashboxVoucherSource {
   const CashboxVoucherSource({
     required this.kind,
     required this.sourceId,
-    required this.partyId,
+    this.partyId,
   });
 
   final CashboxVoucherSourceKind kind;
   final EntityId sourceId;
-  final EntityId partyId;
+  /// Optional Party associated with the source workflow.
+  ///
+  /// Invoice/return/installment sources always carry one. A paid expense may
+  /// deliberately have no supplier, so forcing a fabricated Party reference
+  /// here would make the Cashbox projection dishonest.
+  final EntityId? partyId;
 }
 
 extension CashboxVoucherTypeLabel on CashboxVoucherType {

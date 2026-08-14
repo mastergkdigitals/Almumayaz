@@ -7,7 +7,7 @@ final List<ReportRowDefinition> purchaseInvoiceDemoRows =
     date: DateTime(2026, 7, 27),
     filterValues: const {
       'warehouse': 'main',
-      'supplier': 'karrada',
+      'supplier': 'rafidain',
       'purchaseType': 'return',
       'paymentType': 'cash',
       'currency': 'IQD',
@@ -15,8 +15,9 @@ final List<ReportRowDefinition> purchaseInvoiceDemoRows =
     cells: const [
       '1',
       '103',
+      '101',
       '2026/07/27',
-      'مجهز الكرادة',
+      'شركة الرافدين للتجهيز',
       'الرئيسي',
       'إرجاع',
       'نقدي',
@@ -40,6 +41,7 @@ final List<ReportRowDefinition> purchaseInvoiceDemoRows =
     cells: const [
       '2',
       '102',
+      '',
       '2026/07/26',
       'شركة التجارة العالمية',
       'المنصور',
@@ -65,16 +67,17 @@ final List<ReportRowDefinition> purchaseInvoiceDemoRows =
     cells: const [
       '3',
       '101',
+      '',
       '2026/07/25',
       'شركة الرافدين للتجهيز',
       'الرصافة',
       'محلي',
       'آجل',
       'دينار',
-      '150,000',
+      '240,000',
       '0',
-      '150,000',
-      '2',
+      '240,000',
+      '3',
     ],
   ),
 ]);

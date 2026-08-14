@@ -17,6 +17,14 @@ final ReportDefinition salesInvoicesReportDefinition = ReportDefinition(
       metrics: _salesMetrics,
       columns: _salesColumns,
     ),
+    ReportVariantDefinition(
+      id: 'returns',
+      label: 'مرتجعات المبيعات',
+      icon: Icons.assignment_return_rounded,
+      filters: _salesReturnFilters,
+      metrics: _salesReturnMetrics,
+      columns: _salesReturnColumns,
+    ),
   ],
 );
 
@@ -154,4 +162,113 @@ const List<ReportColumnDefinition> _salesColumns = [
     numeric: true,
     spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
   ),
+];
+
+const List<ReportFilterDefinition> _salesReturnFilters = [
+  ReportFilterDefinition.dateRange(id: 'period', label: 'الفترة'),
+  ReportFilterDefinition.dropdown(
+    id: 'customer',
+    label: 'الزبون',
+    icon: Icons.person_rounded,
+    options: [ReportFilterOption('all', 'الكل')],
+  ),
+  ReportFilterDefinition.dropdown(
+    id: 'currency',
+    label: 'العملة',
+    icon: Icons.currency_exchange_rounded,
+    options: _currencyOptions,
+  ),
+];
+
+const List<ReportMetricDefinition> _salesReturnMetrics = [
+  ReportMetricDefinition(
+    label: 'عدد المرتجعات - دينار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
+  ReportMetricDefinition(
+    label: 'الإجمالي - دينار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+    spreadsheetDecimalPlaces: 0,
+  ),
+  ReportMetricDefinition(
+    label: 'المسترد - دينار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+    spreadsheetDecimalPlaces: 0,
+  ),
+  ReportMetricDefinition(
+    label: 'المضاف للرصيد - دينار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+    spreadsheetDecimalPlaces: 0,
+  ),
+  ReportMetricDefinition(
+    label: 'عدد المرتجعات - دولار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
+  ReportMetricDefinition(
+    label: 'الإجمالي - دولار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+    spreadsheetDecimalPlaces: 2,
+  ),
+  ReportMetricDefinition(
+    label: 'المسترد - دولار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+    spreadsheetDecimalPlaces: 2,
+  ),
+  ReportMetricDefinition(
+    label: 'المضاف للرصيد - دولار',
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+    spreadsheetDecimalPlaces: 2,
+  ),
+];
+
+const List<ReportColumnDefinition> _salesReturnColumns = [
+  ReportColumnDefinition(
+    label: 'ت',
+    numeric: true,
+    flex: 0.5,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
+  ReportColumnDefinition(
+    label: 'رقم المرتجع',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
+  ReportColumnDefinition(
+    label: 'القائمة الأصلية',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
+  ReportColumnDefinition(
+    label: 'التاريخ',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.date,
+  ),
+  ReportColumnDefinition(label: 'الزبون', flex: 1.4),
+  ReportColumnDefinition(label: 'العملة'),
+  ReportColumnDefinition(
+    label: 'الإجمالي',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+  ),
+  ReportColumnDefinition(
+    label: 'المسترد',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+  ),
+  ReportColumnDefinition(
+    label: 'المضاف للرصيد',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.decimal,
+  ),
+  ReportColumnDefinition(
+    label: 'الكمية',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
+  ReportColumnDefinition(
+    label: 'عدد المواد',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
+  ReportColumnDefinition(label: 'الملاحظات', flex: 1.5),
 ];

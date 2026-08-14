@@ -88,10 +88,33 @@ List<int> allocateInvoiceTotalMinorUnits({
 
 /// Integer division rounded to the nearest value, with halves away from zero.
 int divideAndRoundHalfAwayFromZero(int numerator, int denominator) {
+  return multiplyDivideAndRoundHalfAwayFromZero(
+    numerator,
+    1,
+    denominator,
+  );
+}
+
+/// Multiplies before dividing, without overflowing an intermediate [int].
+///
+/// The result is rounded to the nearest integer, with exact halves away from
+/// zero. The mathematically rounded result must still fit in an [int].
+int multiplyDivideAndRoundHalfAwayFromZero(
+  int multiplicand,
+  int multiplier,
+  int denominator,
+) {
   if (denominator <= 0) {
     throw ArgumentError.value(denominator, 'denominator', 'Must be positive');
   }
-  final sign = numerator < 0 ? -1 : 1;
-  final absolute = numerator.abs();
-  return sign * ((absolute + denominator ~/ 2) ~/ denominator);
+  final product = BigInt.from(multiplicand) * BigInt.from(multiplier);
+  final absolute = product.abs();
+  final rounded =
+      (absolute + BigInt.from(denominator ~/ 2)) ~/ BigInt.from(denominator);
+  final signed = product.isNegative ? -rounded : rounded;
+  final result = signed.toInt();
+  if (BigInt.from(result) != signed) {
+    throw RangeError('Rounded multiply/divide result does not fit in an int');
+  }
+  return result;
 }

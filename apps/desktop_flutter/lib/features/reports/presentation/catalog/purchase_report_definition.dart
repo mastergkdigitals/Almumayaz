@@ -136,6 +136,11 @@ const List<ReportColumnDefinition> _purchaseColumns = [
     spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
   ),
   ReportColumnDefinition(
+    label: 'القائمة الأصلية',
+    numeric: true,
+    spreadsheetCellKind: ReportSpreadsheetCellKind.integer,
+  ),
+  ReportColumnDefinition(
     label: 'التاريخ',
     numeric: true,
     spreadsheetCellKind: ReportSpreadsheetCellKind.date,
