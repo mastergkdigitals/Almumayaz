@@ -579,43 +579,49 @@ void main() {
     testWidgets('rapid activity is coalesced and never fills the audit log',
         (tester) async {
       final store = AppStore.demo();
-      addTearDown(store.dispose);
-      await store.signIn(
-        SignInCredentials(username: 'admin', password: 'password'),
-      );
-      final authentication =
-          store.services.authentication as DemoAuthenticationService;
-      final before = (await authentication.currentSession())!.lastActivityAt;
+      try {
+        await store.signIn(
+          SignInCredentials(username: 'admin', password: 'password'),
+        );
+        final authentication =
+            store.services.authentication as DemoAuthenticationService;
+        final before = (await authentication.currentSession())!.lastActivityAt;
 
-      await store.recordActivity();
-      final afterFirst =
-          (await authentication.currentSession())!.lastActivityAt;
-      expect(afterFirst.compareTo(before), greaterThan(0));
-      await Future.wait([
-        for (var index = 0; index < 20; index++) store.recordActivity(),
-      ]);
-      expect(
-        (await authentication.currentSession())!.lastActivityAt,
-        afterFirst,
-      );
+        await store.recordActivity();
+        final afterFirst =
+            (await authentication.currentSession())!.lastActivityAt;
+        expect(afterFirst.compareTo(before), greaterThan(0));
+        await Future.wait([
+          for (var index = 0; index < 20; index++) store.recordActivity(),
+        ]);
+        expect(
+          (await authentication.currentSession())!.lastActivityAt,
+          afterFirst,
+        );
 
-      await tester.pump(const Duration(milliseconds: 1100));
-      await store.recordActivity();
-      expect(
-        (await authentication.currentSession())!
-            .lastActivityAt
-            .compareTo(afterFirst),
-        greaterThan(0),
-      );
-      final audit = await store.services.audit.search(
-        AuditQuery(limit: 1000),
-      );
-      expect(
-        audit.records.where(
-          (record) => record.action == AuditAction.activity,
-        ),
-        isEmpty,
-      );
+        await tester.pump(const Duration(milliseconds: 1100));
+        await store.recordActivity();
+        expect(
+          (await authentication.currentSession())!
+              .lastActivityAt
+              .compareTo(afterFirst),
+          greaterThan(0),
+        );
+        final audit = await store.services.audit.search(
+          AuditQuery(limit: 1000),
+        );
+        expect(
+          audit.records.where(
+            (record) => record.action == AuditAction.activity,
+          ),
+          isEmpty,
+        );
+      } finally {
+        // Widget-test fake timers are verified before addTearDown callbacks.
+        // Dispose here so both the idle deadline and activity cooldown are
+        // cancelled inside the test callback, even when an assertion fails.
+        store.dispose();
+      }
     });
 
     test('clear carries permanent history and advances audit identities',

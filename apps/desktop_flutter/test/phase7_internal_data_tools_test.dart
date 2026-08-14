@@ -348,13 +348,14 @@ void main() {
 
     test('local sign-out during transition audit prevents the final swap',
         () async {
-      late _BlockingAuditWriter replacementWriter;
+      final replacementWriterReady = Completer<_BlockingAuditWriter>();
       AppDataComposition builder(AppDataProfile profile) {
         final composition = AppDataComposition.demo(profile);
         if (profile != AppDataProfile.cleared) return composition;
-        replacementWriter = _BlockingAuditWriter(
+        final replacementWriter = _BlockingAuditWriter(
           composition.services.auditWriter,
         );
+        replacementWriterReady.complete(replacementWriter);
         return AppDataComposition(
           repositories: composition.repositories,
           services: _copyServicesWithAuditWriter(
@@ -371,6 +372,7 @@ void main() {
       final servicesBefore = store.services;
 
       final clear = store.clearAllData();
+      final replacementWriter = await replacementWriterReady.future;
       await replacementWriter.started.future;
       await store.signOut();
       replacementWriter.release.complete();

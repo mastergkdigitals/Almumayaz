@@ -192,8 +192,13 @@ void main() {
 
     await tester.tap(find.byKey(const Key('usersSecurityTab_logs')));
     await tester.pumpAndSettle();
+    final userFilterFinder = find.ancestor(
+      of: find.byKey(const Key('settingsSecurityLogUserField')),
+      matching: find.byType(AppDropdownField<String>),
+    );
+    expect(userFilterFinder, findsOneWidget);
     final userFilter = tester.widget<AppDropdownField<String>>(
-      find.byKey(const Key('settingsSecurityLogUserField')),
+      userFilterFinder,
     );
     expect(userFilter.value, 'demo-user-2');
     expect(
@@ -235,13 +240,23 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    final detailsDialog = find.byKey(
+      const Key('settingsAuditDetailsDialog_demo-audit-20'),
+    );
+    expect(detailsDialog, findsOneWidget);
     expect(find.text('معرّف سجل التدقيق:'), findsOneWidget);
     expect(find.text('demo-audit-20'), findsOneWidget);
     expect(find.text('التاريخ والوقت:'), findsOneWidget);
     expect(find.text('معرّف المستخدم:'), findsOneWidget);
     expect(find.text('demo-user-1'), findsWidgets);
     expect(find.text('عنوان IP:'), findsOneWidget);
-    expect(find.text('192.168.1.10'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: detailsDialog,
+        matching: find.text('192.168.1.10'),
+      ),
+      findsOneWidget,
+    );
     expect(find.text('عنوان MAC:'), findsOneWidget);
     expect(find.text('00-11-22-33-44-55'), findsOneWidget);
     expect(find.text('الحالة: نشط'), findsWidgets);
