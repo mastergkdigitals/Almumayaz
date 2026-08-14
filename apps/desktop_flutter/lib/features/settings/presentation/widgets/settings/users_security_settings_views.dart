@@ -472,11 +472,16 @@ extension _UsersSecuritySettingsSectionViews
         : requestedEnd;
     final pageCount = _auditTotalCount == 0
         ? 1
-        : ((_auditTotalCount - 1) ~/ _auditPageSize) + 1;
-    final currentPage = (_auditOffset ~/ _auditPageSize) + 1;
+        : ((_auditTotalCount - 1) ~/
+                _UsersSecuritySettingsSectionState._auditPageSize) +
+            1;
+    final currentPage =
+        (_auditOffset ~/ _UsersSecuritySettingsSectionState._auditPageSize) + 1;
     final lastPageOffset = _auditTotalCount == 0
         ? 0
-        : ((_auditTotalCount - 1) ~/ _auditPageSize) * _auditPageSize;
+        : ((_auditTotalCount - 1) ~/
+                _UsersSecuritySettingsSectionState._auditPageSize) *
+            _UsersSecuritySettingsSectionState._auditPageSize;
     final countText = 'عدد النتائج: $_auditTotalCount';
     final pageText = 'عرض $resultStart–$resultEnd من $_auditTotalCount — '
         'الصفحة $currentPage من $pageCount';
@@ -772,11 +777,20 @@ extension _UsersSecuritySettingsSectionViews
                   ? () => _openAuditPage(0)
                   : null,
               onPrevious: !_isAuditLoading && _auditOffset > 0
-                  ? () => _openAuditPage(_auditOffset - _auditPageSize)
+                  ? () => _openAuditPage(
+                        _auditOffset -
+                            _UsersSecuritySettingsSectionState._auditPageSize,
+                      )
                   : null,
               onNext: !_isAuditLoading &&
-                      _auditOffset + _auditPageSize < _auditTotalCount
-                  ? () => _openAuditPage(_auditOffset + _auditPageSize)
+                      _auditOffset +
+                              _UsersSecuritySettingsSectionState
+                                  ._auditPageSize <
+                          _auditTotalCount
+                  ? () => _openAuditPage(
+                        _auditOffset +
+                            _UsersSecuritySettingsSectionState._auditPageSize,
+                      )
                   : null,
               onLast: !_isAuditLoading && _auditOffset < lastPageOffset
                   ? () => _openAuditPage(lastPageOffset)

@@ -11,7 +11,7 @@ AuditActor? captureAuditActor(
   try {
     if (provider != null) return provider();
     if (writer is AuditActorSnapshotProvider) {
-      return writer.captureAuditActor();
+      return (writer as AuditActorSnapshotProvider).captureAuditActor();
     }
   } on Object {
     // Actor context is optional for generic/test writers. The writer can still
