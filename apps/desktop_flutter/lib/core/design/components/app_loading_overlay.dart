@@ -34,36 +34,38 @@ class AppLoadingOverlay extends StatelessWidget {
         if (isLoading)
           Positioned.fill(
             key: overlayKey,
-            child: AbsorbPointer(
-              child: ColoredBox(
-                color: AppColors.textPrimary.withAlpha(72),
-                child: Center(
-                  child: Semantics(
-                    container: true,
-                    excludeSemantics: true,
-                    liveRegion: true,
-                    label: message,
-                    child: Container(
-                      constraints: const BoxConstraints(minWidth: 180),
-                      padding: const EdgeInsets.all(AppSpacing.lg),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(AppRadii.lg),
-                        boxShadow: AppShadows.soft,
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const AppLoadingIndicator(
-                            size: 40,
-                            strokeWidth: 4,
-                          ),
-                          const SizedBox(height: AppSpacing.md),
-                          Text(
-                            message,
-                            style: AppTypography.sectionTitle,
-                          ),
-                        ],
+            child: BlockSemantics(
+              child: AbsorbPointer(
+                child: ColoredBox(
+                  color: AppColors.textPrimary.withAlpha(72),
+                  child: Center(
+                    child: Semantics(
+                      container: true,
+                      excludeSemantics: true,
+                      liveRegion: true,
+                      label: message,
+                      child: Container(
+                        constraints: const BoxConstraints(minWidth: 180),
+                        padding: const EdgeInsets.all(AppSpacing.lg),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(AppRadii.lg),
+                          boxShadow: AppShadows.soft,
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const AppLoadingIndicator(
+                              size: 40,
+                              strokeWidth: 4,
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            Text(
+                              message,
+                              style: AppTypography.sectionTitle,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),

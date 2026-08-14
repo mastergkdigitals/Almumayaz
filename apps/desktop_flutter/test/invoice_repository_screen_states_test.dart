@@ -141,7 +141,6 @@ void main() {
   testWidgets('Sales save uses the shared inaccessible busy overlay',
       (tester) async {
     final semantics = tester.ensureSemantics();
-    addTearDown(semantics.dispose);
     final base = AppRepositories.demo();
     final saving = Completer<SalesInvoice>();
     late SalesInvoice submitted;
@@ -186,6 +185,7 @@ void main() {
     saving.complete(submitted);
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('salesBusyOverlay')), findsNothing);
+    semantics.dispose();
   });
 
   testWidgets('Purchase shows loading then ordered repository data',
@@ -314,7 +314,6 @@ void main() {
   testWidgets('Purchase save uses the shared inaccessible busy overlay',
       (tester) async {
     final semantics = tester.ensureSemantics();
-    addTearDown(semantics.dispose);
     final base = AppRepositories.demo();
     final saving = Completer<PurchaseInvoice>();
     late PurchaseInvoice submitted;
@@ -361,6 +360,7 @@ void main() {
     saving.complete(submitted);
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('purchaseBusyOverlay')), findsNothing);
+    semantics.dispose();
   });
 }
 

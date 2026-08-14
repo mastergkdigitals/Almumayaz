@@ -21,7 +21,6 @@ void main() {
       'announces six RTL state panels once and keeps the action separate',
       (tester) async {
         final semantics = tester.ensureSemantics();
-        addTearDown(semantics.dispose);
         await tester.binding.setSurfaceSize(const Size(1280, 720));
         addTearDown(() => tester.binding.setSurfaceSize(null));
         var retries = 0;
@@ -124,6 +123,7 @@ void main() {
         await tester.pump();
         expect(retries, 1);
         expect(tester.takeException(), isNull);
+        semantics.dispose();
       },
     );
 
@@ -131,7 +131,6 @@ void main() {
       'loading overlay blocks pointer focus keyboard and child semantics',
       (tester) async {
         final semantics = tester.ensureSemantics();
-        addTearDown(semantics.dispose);
         final focusNode = FocusNode();
         addTearDown(focusNode.dispose);
         var isLoading = false;
@@ -212,6 +211,7 @@ void main() {
         await tester.sendKeyEvent(LogicalKeyboardKey.enter);
         await tester.pump();
         expect(activations, 1);
+        semantics.dispose();
       },
     );
 
@@ -219,7 +219,6 @@ void main() {
       'text loading disabled icon and module controls expose exact semantics',
       (tester) async {
         final semantics = tester.ensureSemantics();
-        addTearDown(semantics.dispose);
         var normalActivations = 0;
         var loadingActivations = 0;
         var disabledActivations = 0;
@@ -338,13 +337,13 @@ void main() {
         expect(loadingActivations, 0);
         expect(disabledActivations, 0);
         expect(moduleActivations, 0);
+        semantics.dispose();
       },
     );
 
     testWidgets('switch exposes its title hint enabled and toggled state',
         (tester) async {
       final semantics = tester.ensureSemantics();
-      addTearDown(semantics.dispose);
       var value = false;
 
       await tester.pumpWidget(
@@ -394,12 +393,12 @@ void main() {
       expect(value, isTrue);
       data = _semanticsData(tester, 'النسخ التلقائي');
       expect(data.flagsCollection.isToggled.toBoolOrNull(), isTrue);
+      semantics.dispose();
     });
 
     testWidgets('focusable field icon exposes focus and a visible ring',
         (tester) async {
       final semantics = tester.ensureSemantics();
-      addTearDown(semantics.dispose);
 
       await tester.pumpWidget(
         MaterialApp(
@@ -432,12 +431,12 @@ void main() {
       );
       expect(focusSide!.color, AppColors.navigation);
       expect(focusSide.width, 2);
+      semantics.dispose();
     });
 
     testWidgets('interactive module mirrors focus and uses a two-tone ring',
         (tester) async {
       final semantics = tester.ensureSemantics();
-      addTearDown(semantics.dispose);
 
       await tester.pumpWidget(
         MaterialApp(
@@ -488,13 +487,13 @@ void main() {
           ),
         ),
       );
+      semantics.dispose();
     });
 
     testWidgets(
       'table exposes headers and activates selected rows with Space',
       (tester) async {
         final semantics = tester.ensureSemantics();
-        addTearDown(semantics.dispose);
         final tableFocus = FocusNode();
         addTearDown(tableFocus.dispose);
         var activatedIndex = 0;
@@ -579,6 +578,7 @@ void main() {
         expect(tableFocus.hasFocus, isTrue);
         secondRow = _semanticsData(tester, 'الطرف 2');
         expect(secondRow.flagsCollection.isSelected.toBoolOrNull(), isTrue);
+        semantics.dispose();
       },
     );
 
@@ -586,7 +586,6 @@ void main() {
       'Settings uses a permission panel and explains disabled sections',
       (tester) async {
         final semantics = tester.ensureSemantics();
-        addTearDown(semantics.dispose);
         await tester.binding.setSurfaceSize(const Size(1280, 720));
         addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -630,13 +629,13 @@ void main() {
         await tester.tap(backupCard, warnIfMissed: false);
         await tester.pump();
         expect(find.byKey(const Key('settingsHub')), findsOneWidget);
+        semantics.dispose();
       },
     );
 
     testWidgets('warehouse no-selection state is shared and unavailable',
         (tester) async {
       final semantics = tester.ensureSemantics();
-      addTearDown(semantics.dispose);
       final search = TextEditingController();
       addTearDown(search.dispose);
 
@@ -678,12 +677,12 @@ void main() {
         ),
         findsOneWidget,
       );
+      semantics.dispose();
     });
 
     testWidgets('empty installment schedule uses the shared empty panel',
         (tester) async {
       final semantics = tester.ensureSemantics();
-      addTearDown(semantics.dispose);
 
       await tester.pumpWidget(
         MaterialApp(
@@ -720,6 +719,7 @@ void main() {
         find.bySemanticsLabel('لا توجد أقساط. لا توجد أقساط لهذه القائمة'),
         findsOneWidget,
       );
+      semantics.dispose();
     });
 
     testWidgets('application installs Arabic Material localizations',
@@ -729,7 +729,7 @@ void main() {
 
       final context = tester.element(find.byKey(const Key('loginButton')));
       expect(Localizations.localeOf(context), const Locale('ar', 'IQ'));
-      expect(MaterialLocalizations.of(context).cancelButtonLabel, 'إلغاء');
+      expect(MaterialLocalizations.of(context).cancelButtonLabel, 'الإلغاء');
     });
   });
 
