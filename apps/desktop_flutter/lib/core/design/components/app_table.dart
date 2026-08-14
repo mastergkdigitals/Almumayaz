@@ -35,12 +35,14 @@ class AppTableRow {
     this.onTap,
     this.selected = false,
     this.rowKey,
+    this.semanticLabel,
   });
 
   final List<Widget> cells;
   final VoidCallback? onTap;
   final bool selected;
   final Key? rowKey;
+  final String? semanticLabel;
 }
 
 class AppDataTable extends StatefulWidget {
@@ -67,6 +69,7 @@ class AppDataTable extends StatefulWidget {
     this.borderRadius = AppRadii.lg,
     this.alternatingRowColor,
     this.selectedRowColor,
+    this.semanticLabel,
   });
 
   final List<AppTableColumn> columns;
@@ -90,6 +93,7 @@ class AppDataTable extends StatefulWidget {
   final double borderRadius;
   final Color? alternatingRowColor;
   final Color? selectedRowColor;
+  final String? semanticLabel;
 
   @override
   State<AppDataTable> createState() => _AppDataTableState();
@@ -111,11 +115,17 @@ class _AppDataTableState extends State<AppDataTable> {
   void initState() {
     super.initState();
     _keyboardSelectionIndex = _selectedRowIndex(widget.rows);
+    _focusNode.addListener(_handleFocusChanged);
   }
 
   @override
   void didUpdateWidget(covariant AppDataTable oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.focusNode != widget.focusNode) {
+      (oldWidget.focusNode ?? _internalFocusNode)
+          .removeListener(_handleFocusChanged);
+      _focusNode.addListener(_handleFocusChanged);
+    }
     final oldSelectedIndex = _selectedRowIndex(oldWidget.rows);
     final selectedIndex = _selectedRowIndex(widget.rows);
     if (selectedIndex != oldSelectedIndex) {
@@ -132,10 +142,15 @@ class _AppDataTableState extends State<AppDataTable> {
 
   @override
   void dispose() {
+    _focusNode.removeListener(_handleFocusChanged);
     _internalVerticalScrollController.dispose();
     _horizontalScrollController.dispose();
     _internalFocusNode.dispose();
     super.dispose();
+  }
+
+  void _handleFocusChanged() {
+    if (mounted) setState(() {});
   }
 
   KeyEventResult _handleKeyEvent(FocusNode _, KeyEvent event) {
@@ -160,7 +175,8 @@ class _AppDataTableState extends State<AppDataTable> {
       return KeyEventResult.handled;
     }
     if (event.logicalKey == LogicalKeyboardKey.enter ||
-        event.logicalKey == LogicalKeyboardKey.numpadEnter) {
+        event.logicalKey == LogicalKeyboardKey.numpadEnter ||
+        event.logicalKey == LogicalKeyboardKey.space) {
       final index = _keyboardSelectionIndex ??
           _selectedRowIndex(widget.rows) ??
           0;
@@ -253,69 +269,82 @@ class _AppDataTableState extends State<AppDataTable> {
         index: FlexColumnWidth(widget.columns[index].flex),
     };
 
-    return Focus(
-      focusNode: _focusNode,
-      onKeyEvent: _handleKeyEvent,
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: borderRadius,
-          boxShadow: widget.showShadow ? AppShadows.soft : null,
-        ),
-        foregroundDecoration: BoxDecoration(
-          borderRadius: borderRadius,
-          border: Border.all(color: effectiveBorderColor, width: 1.4),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final availableWidth = constraints.hasBoundedWidth
-                ? constraints.maxWidth
-                : widget.minimumColumnWidth * widget.columns.length;
-            final tableWidth = math.max(
-              availableWidth,
-              widget.minimumColumnWidth * widget.columns.length,
-            );
+    return Semantics(
+      container: true,
+      explicitChildNodes: true,
+      label: widget.semanticLabel ?? 'جدول البيانات',
+      value: 'عدد الصفوف: ${widget.rows.length}',
+      child: Focus(
+        focusNode: _focusNode,
+        onKeyEvent: _handleKeyEvent,
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: borderRadius,
+            boxShadow: widget.showShadow ? AppShadows.soft : null,
+          ),
+          foregroundDecoration: BoxDecoration(
+            borderRadius: borderRadius,
+            border: Border.all(
+              color: _focusNode.hasFocus
+                  ? AppColors.navigation
+                  : effectiveBorderColor,
+              width: _focusNode.hasFocus ? 2 : 1.4,
+            ),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final availableWidth = constraints.hasBoundedWidth
+                  ? constraints.maxWidth
+                  : widget.minimumColumnWidth * widget.columns.length;
+              final tableWidth = math.max(
+                availableWidth,
+                widget.minimumColumnWidth * widget.columns.length,
+              );
 
-            return SizedBox(
-              height: widget.height,
-              child: Scrollbar(
-                controller: _horizontalScrollController,
-                thumbVisibility: true,
-                scrollbarOrientation: ScrollbarOrientation.bottom,
-                child: SingleChildScrollView(
+              return SizedBox(
+                height: widget.height,
+                child: Scrollbar(
                   controller: _horizontalScrollController,
-                  scrollDirection: Axis.horizontal,
-                  child: SizedBox(
-                    width: tableWidth,
-                    height: widget.height,
-                    child: Column(
-                      children: [
-                        _TableHeader(
-                          columns: widget.columns,
-                          columnWidths: columnWidths,
-                          height: widget.headerHeight,
-                          accentColor: widget.accentColor,
-                          borderColor: effectiveBorderColor,
-                          backgroundColor: widget.headerBackgroundColor,
-                          foregroundColor: widget.headerForegroundColor,
-                          horizontalPadding: widget.cellHorizontalPadding,
-                          showColumnDividers: widget.showColumnDividers,
-                        ),
-                        Expanded(
-                          child: _buildBody(
-                            columnWidths,
-                            effectiveBorderColor,
-                            effectiveSelectedRowColor,
+                  thumbVisibility: true,
+                  scrollbarOrientation: ScrollbarOrientation.bottom,
+                  child: SingleChildScrollView(
+                    controller: _horizontalScrollController,
+                    scrollDirection: Axis.horizontal,
+                    child: SizedBox(
+                      width: tableWidth,
+                      height: widget.height,
+                      child: Column(
+                        children: [
+                          _TableHeader(
+                            columns: widget.columns,
+                            columnWidths: columnWidths,
+                            height: widget.headerHeight,
+                            accentColor: widget.accentColor,
+                            borderColor: effectiveBorderColor,
+                            backgroundColor: widget.headerBackgroundColor,
+                            foregroundColor: widget.headerForegroundColor,
+                            horizontalPadding:
+                                widget.cellHorizontalPadding,
+                            showColumnDividers:
+                                widget.showColumnDividers,
                           ),
-                        ),
-                      ],
+                          Expanded(
+                            child: _buildBody(
+                              columnWidths,
+                              effectiveBorderColor,
+                              effectiveSelectedRowColor,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
     );
@@ -356,7 +385,15 @@ class _AppDataTableState extends State<AppDataTable> {
               : _keyboardSelectionIndex == index;
           return Semantics(
             container: true,
+            excludeSemantics: row.semanticLabel != null,
+            label: row.semanticLabel,
+            value: 'الصف ${index + 1} من ${widget.rows.length}',
             selected: selected,
+            button: row.onTap != null,
+            enabled: row.onTap == null ? null : true,
+            onTap: row.onTap == null
+                ? null
+                : () => _selectAndActivate(index, row.onTap!),
             child: _TableBodyRow(
               columns: widget.columns,
               row: row,
@@ -454,12 +491,15 @@ class _TableHeader extends StatelessWidget {
                           alignment: _alignmentForTextAlign(
                             columns[index].effectiveTextAlign,
                           ),
-                          child: Text(
-                            columns[index].label,
-                            textAlign:
-                                columns[index].effectiveTextAlign,
-                            style: AppTypography.tableHeader.copyWith(
-                              color: foregroundColor,
+                          child: Semantics(
+                            header: true,
+                            child: Text(
+                              columns[index].label,
+                              textAlign:
+                                  columns[index].effectiveTextAlign,
+                              style: AppTypography.tableHeader.copyWith(
+                                color: foregroundColor,
+                              ),
                             ),
                           ),
                         ),
@@ -513,6 +553,7 @@ class _TableBodyRow extends StatelessWidget {
           : backgroundColor ?? AppColors.surface,
       child: InkWell(
         onTap: onActivate,
+        excludeFromSemantics: true,
         canRequestFocus: false,
         mouseCursor: onActivate == null
             ? SystemMouseCursors.basic

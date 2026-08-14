@@ -123,27 +123,41 @@ class AppTooltipIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppTooltip(
-      tooltipKey: tooltipKey,
-      message: tooltip,
-      child: Semantics(
-        button: true,
-        enabled: onPressed != null,
-        label: tooltip,
-        child: AppButton(
-          label: '',
-          icon: icon,
-          flipIconHorizontally: flipIconHorizontally,
-          variant: variant,
-          backgroundColor: backgroundColor,
-          foregroundColor: foregroundColor,
-          width: size,
-          height: size,
-          padding: EdgeInsets.zero,
-          iconSize: iconSize,
-          borderRadius: borderRadius,
-          onPressed: onPressed,
-        ),
+    return Focus(
+      canRequestFocus: false,
+      skipTraversal: true,
+      includeSemantics: false,
+      child: Builder(
+        builder: (context) {
+          final isFocusable = onPressed != null;
+          return AppTooltip(
+            tooltipKey: tooltipKey,
+            message: tooltip,
+            child: Semantics(
+              container: true,
+              excludeSemantics: true,
+              button: true,
+              enabled: isFocusable,
+              focused: isFocusable ? Focus.of(context).hasFocus : null,
+              label: tooltip,
+              onTap: onPressed,
+              child: AppButton(
+                label: '',
+                icon: icon,
+                flipIconHorizontally: flipIconHorizontally,
+                variant: variant,
+                backgroundColor: backgroundColor,
+                foregroundColor: foregroundColor,
+                width: size,
+                height: size,
+                padding: EdgeInsets.zero,
+                iconSize: iconSize,
+                borderRadius: borderRadius,
+                onPressed: onPressed,
+              ),
+            ),
+          );
+        },
       ),
     );
   }

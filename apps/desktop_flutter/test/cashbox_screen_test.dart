@@ -616,7 +616,10 @@ void main() {
     expect(find.byKey(const Key('cashboxQuickSubaccountDialog')), findsNothing);
     final toast = find.byKey(const Key('appToast'));
     expect(toast, findsOneWidget);
-    expect(tester.widget<SnackBar>(toast).backgroundColor, AppColors.orange);
+    expect(
+      tester.widget<SnackBar>(toast).backgroundColor,
+      AppColors.warningStrong,
+    );
     expect(
       find.descendant(
         of: toast,

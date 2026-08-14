@@ -215,6 +215,10 @@ class _SettingsHubRow extends StatelessWidget {
               icon: sections[index].icon,
               colors: sections[index].palette.gradient,
               shadowColor: sections[index].palette.shadow,
+              disabledReason: canManageSettings ||
+                      sections[index] == _SettingsSection.usersSecurity
+                  ? null
+                  : 'تتطلب صلاحية إدارة الإعدادات',
               onTap: canManageSettings ||
                       sections[index] == _SettingsSection.usersSecurity
                   ? () => onOpenSection(sections[index])
@@ -235,12 +239,11 @@ class _SettingsPermissionNotice extends StatelessWidget {
     return Center(
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: 620),
-        child: AppInfoBanner(
+        child: AppStatePanel(
           key: Key('settingsManagePermissionRequired'),
+          type: AppStateType.permissionDenied,
+          title: 'ليست لديك الصلاحية المطلوبة',
           message: 'تتطلب هذه الصفحة صلاحية إدارة الإعدادات',
-          icon: Icons.lock_outline_rounded,
-          foregroundColor: AppColors.warning,
-          backgroundColor: AppColors.warningSurface,
         ),
       ),
     );
@@ -255,12 +258,11 @@ class _SettingsViewPermissionNotice extends StatelessWidget {
     return Center(
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: 620),
-        child: AppInfoBanner(
+        child: AppStatePanel(
           key: Key('settingsViewPermissionRequired'),
+          type: AppStateType.permissionDenied,
+          title: 'تعذر عرض الإعدادات',
           message: 'ليست لديك صلاحية عرض الإعدادات',
-          icon: Icons.lock_outline_rounded,
-          foregroundColor: AppColors.danger,
-          backgroundColor: AppColors.dangerSurface,
         ),
       ),
     );

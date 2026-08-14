@@ -188,10 +188,13 @@ class _HeaderText extends StatelessWidget {
       crossAxisAlignment:
           centered ? CrossAxisAlignment.center : CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          textAlign: centered ? TextAlign.center : TextAlign.start,
-          style: AppTypography.screenTitle.copyWith(fontSize: 24),
+        Semantics(
+          header: true,
+          child: Text(
+            title,
+            textAlign: centered ? TextAlign.center : TextAlign.start,
+            style: AppTypography.screenTitle.copyWith(fontSize: 24),
+          ),
         ),
         if (subtitle != null) ...[
           const SizedBox(height: AppSpacing.xs),

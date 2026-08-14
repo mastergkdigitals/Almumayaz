@@ -74,32 +74,6 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _authenticationError = null);
   }
 
-  void _focusNextField() {
-    _keyHoldGuard.runOnce(
-      keys: {LogicalKeyboardKey.tab},
-      action: () {
-        if (_usernameFocusNode.hasFocus) {
-          _passwordFocusNode.requestFocus();
-        } else {
-          _usernameFocusNode.requestFocus();
-        }
-      },
-    );
-  }
-
-  void _focusPreviousField() {
-    _keyHoldGuard.runOnce(
-      keys: {LogicalKeyboardKey.tab},
-      action: () {
-        if (_passwordFocusNode.hasFocus) {
-          _usernameFocusNode.requestFocus();
-        } else {
-          _passwordFocusNode.requestFocus();
-        }
-      },
-    );
-  }
-
   void _submitUsername() {
     _keyHoldGuard.runOnce(
       keys: _enterKeys,
@@ -145,18 +119,14 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildForm(BuildContext context) {
     return Form(
       key: _formKey,
-      child: CallbackShortcuts(
-        bindings: {
-          const SingleActivator(LogicalKeyboardKey.tab): _focusNextField,
-          const SingleActivator(LogicalKeyboardKey.tab, shift: true):
-              _focusPreviousField,
-        },
-        child: FocusTraversalGroup(
-          policy: OrderedTraversalPolicy(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
+      child: FocusTraversalGroup(
+        policy: OrderedTraversalPolicy(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Semantics(
+              header: true,
+              child: Text(
                 'تسجيل الدخول',
                 textAlign: TextAlign.center,
                 style: Theme.of(context)
@@ -164,89 +134,95 @@ class _LoginScreenState extends State<LoginScreen> {
                     .headlineMedium
                     ?.copyWith(fontWeight: FontWeight.w700),
               ),
-              const SizedBox(height: AppSpacing.sm),
-              const Text(
-                'أدخل بيانات المستخدم للوصول إلى النظام',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            const Text(
+              'أدخل بيانات المستخدم للوصول إلى النظام',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: AppSpacing.xl),
+            FocusTraversalOrder(
+              order: const NumericFocusOrder(1),
+              child: AppTextField(
+                fieldKey: const Key('usernameField'),
+                controller: _username,
+                label: 'اسم المستخدم',
+                icon: Icons.person_outline_rounded,
+                focusNode: _usernameFocusNode,
+                autofocus: true,
+                textInputAction: TextInputAction.next,
+                enabled: !_isAuthenticating,
+                onChanged: (_) => _clearAuthenticationError(),
+                onSubmitted: (_) => _submitUsername(),
+                validator: (value) =>
+                    value == null || value.trim().isEmpty
+                        ? 'أدخل اسم المستخدم'
+                        : null,
               ),
-              const SizedBox(height: AppSpacing.xl),
-              FocusTraversalOrder(
-                order: const NumericFocusOrder(1),
-                child: AppTextField(
-                  fieldKey: const Key('usernameField'),
-                  controller: _username,
-                  label: 'اسم المستخدم',
-                  icon: Icons.person_outline_rounded,
-                  focusNode: _usernameFocusNode,
-                  autofocus: true,
-                  textInputAction: TextInputAction.next,
-                  enabled: !_isAuthenticating,
-                  onChanged: (_) => _clearAuthenticationError(),
-                  onSubmitted: (_) => _submitUsername(),
-                  validator: (value) =>
-                      value == null || value.trim().isEmpty
-                          ? 'أدخل اسم المستخدم'
-                          : null,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            FocusTraversalOrder(
+              order: const NumericFocusOrder(2),
+              child: AppTextField(
+                fieldKey: const Key('passwordField'),
+                controller: _password,
+                label: 'كلمة المرور',
+                icon: Icons.lock_outline_rounded,
+                focusNode: _passwordFocusNode,
+                obscureText: _hidePassword,
+                enabled: !_isAuthenticating,
+                onChanged: (_) => _clearAuthenticationError(),
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _submitPassword(),
+                suffixIcon: AppFieldIconButton(
+                  buttonKey: const Key('passwordVisibilityButton'),
+                  icon: _hidePassword
+                      ? Icons.visibility_off_rounded
+                      : Icons.visibility_rounded,
+                  tooltip: _hidePassword
+                      ? 'إظهار كلمة المرور'
+                      : 'إخفاء كلمة المرور',
+                  canRequestFocus: true,
+                  onPressed: () =>
+                      setState(() => _hidePassword = !_hidePassword),
                 ),
+                validator: (value) => value == null || value.isEmpty
+                    ? 'أدخل كلمة المرور'
+                    : null,
               ),
+            ),
+            if (_authenticationError != null) ...[
               const SizedBox(height: AppSpacing.md),
-              FocusTraversalOrder(
-                order: const NumericFocusOrder(2),
-                child: AppTextField(
-                  fieldKey: const Key('passwordField'),
-                  controller: _password,
-                  label: 'كلمة المرور',
-                  icon: Icons.lock_outline_rounded,
-                  focusNode: _passwordFocusNode,
-                  obscureText: _hidePassword,
-                  enabled: !_isAuthenticating,
-                  onChanged: (_) => _clearAuthenticationError(),
-                  textInputAction: TextInputAction.done,
-                  onSubmitted: (_) => _submitPassword(),
-                  suffixIcon: AppFieldIconButton(
-                    buttonKey: const Key('passwordVisibilityButton'),
-                    icon: _hidePassword
-                        ? Icons.visibility_off_rounded
-                        : Icons.visibility_rounded,
-                    onPressed: () =>
-                        setState(() => _hidePassword = !_hidePassword),
-                  ),
-                  validator: (value) => value == null || value.isEmpty
-                      ? 'أدخل كلمة المرور'
-                      : null,
-                ),
-              ),
-              if (_authenticationError != null) ...[
-                const SizedBox(height: AppSpacing.md),
-                AppInfoBanner(
-                  key: const Key('loginAuthenticationError'),
-                  message: _authenticationError!,
-                  icon: Icons.error_outline_rounded,
-                  foregroundColor: AppColors.danger,
-                  backgroundColor: AppColors.dangerSurface,
-                  textAlign: TextAlign.center,
-                ),
-              ],
-              const SizedBox(height: AppSpacing.lg),
-              ExcludeFocus(
-                child: AppButton(
-                  key: const Key('loginButton'),
-                  label: 'دخول',
-                  icon: Icons.login_rounded,
-                  width: double.infinity,
-                  isLoading: _isAuthenticating,
-                  onPressed: _isAuthenticating ? null : _login,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              const AppInfoBanner(
-                message: 'نسخة تجريبية محلية — بيانات الدخول غير معروضة',
-                icon: null,
+              AppInfoBanner(
+                key: const Key('loginAuthenticationError'),
+                message: _authenticationError!,
+                icon: Icons.error_outline_rounded,
+                foregroundColor: AppColors.dangerForeground,
+                backgroundColor: AppColors.dangerSurface,
                 textAlign: TextAlign.center,
+                announce: true,
               ),
             ],
-          ),
+            const SizedBox(height: AppSpacing.lg),
+            FocusTraversalOrder(
+              order: const NumericFocusOrder(3),
+              child: AppButton(
+                key: const Key('loginButton'),
+                label: 'دخول',
+                icon: Icons.login_rounded,
+                width: double.infinity,
+                isLoading: _isAuthenticating,
+                onPressed: _isAuthenticating ? null : _login,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            const AppInfoBanner(
+              message: 'نسخة تجريبية محلية — بيانات الدخول غير معروضة',
+              icon: null,
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
       ),
     );

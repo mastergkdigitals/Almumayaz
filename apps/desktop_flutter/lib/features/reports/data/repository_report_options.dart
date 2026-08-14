@@ -126,7 +126,7 @@ String _availableLabel(String? live, String snapshot) {
   final liveValue = live?.trim() ?? '';
   if (liveValue.isNotEmpty) return liveValue;
   final snapshotValue = snapshot.trim();
-  return snapshotValue.isEmpty ? 'سجل مفقود' : snapshotValue;
+  return snapshotValue.isEmpty ? 'محذوف' : snapshotValue;
 }
 
 String _firstWarehouseSnapshot(List<SalesInvoiceLine> lines) =>

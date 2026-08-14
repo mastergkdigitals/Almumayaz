@@ -137,6 +137,56 @@ void main() {
     expect(_fieldValue(tester, 'salesInvoiceNumberField'), '101');
   });
 
+  testWidgets('Sales save uses the shared inaccessible busy overlay',
+      (tester) async {
+    final semantics = tester.ensureSemantics();
+    addTearDown(semantics.dispose);
+    final base = AppRepositories.demo();
+    final saving = Completer<SalesInvoice>();
+    late SalesInvoice submitted;
+    final store = AppStore(
+      repositories: _withSales(
+        base,
+        _SalesRepositoryOverride(
+          delegate: base.sales,
+          load: base.sales.getAll,
+          replace: (invoice) {
+            submitted = invoice;
+            return saving.future;
+          },
+        ),
+      ),
+    );
+
+    await _openFeature(
+      tester,
+      store: store,
+      dashboardKey: 'dashboardCard_sales',
+    );
+    await tester.enterText(
+      find.byKey(const Key('salesNotesField')),
+      'حفظ معلّق',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('salesUpdateButton')));
+    await tester.pump();
+
+    expect(find.byKey(const Key('salesBusyOverlay')), findsOneWidget);
+    expect(
+      tester.widget<AppScreenShell>(find.byKey(const Key('salesScreen'))).onBack,
+      isNull,
+    );
+    expect(
+      find.bySemanticsLabel('جاري حفظ قائمة البيع'),
+      findsOneWidget,
+    );
+    expect(find.bySemanticsLabel('تحديث'), findsNothing);
+
+    saving.complete(submitted);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('salesBusyOverlay')), findsNothing);
+  });
+
   testWidgets('Purchase shows loading then ordered repository data',
       (tester) async {
     final base = AppRepositories.demo();
@@ -259,6 +309,58 @@ void main() {
     expect(find.byKey(const Key('purchaseErrorState')), findsNothing);
     expect(_fieldValue(tester, 'purchaseInvoiceNumberField'), '101');
   });
+
+  testWidgets('Purchase save uses the shared inaccessible busy overlay',
+      (tester) async {
+    final semantics = tester.ensureSemantics();
+    addTearDown(semantics.dispose);
+    final base = AppRepositories.demo();
+    final saving = Completer<PurchaseInvoice>();
+    late PurchaseInvoice submitted;
+    final store = AppStore(
+      repositories: _withPurchases(
+        base,
+        _PurchaseRepositoryOverride(
+          delegate: base.purchases,
+          load: base.purchases.getAll,
+          replace: (invoice) {
+            submitted = invoice;
+            return saving.future;
+          },
+        ),
+      ),
+    );
+
+    await _openFeature(
+      tester,
+      store: store,
+      dashboardKey: 'dashboardCard_purchases',
+    );
+    await tester.enterText(
+      find.byKey(const Key('purchaseNotesField')),
+      'حفظ معلّق',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('purchaseUpdateButton')));
+    await tester.pump();
+
+    expect(find.byKey(const Key('purchaseBusyOverlay')), findsOneWidget);
+    expect(
+      tester
+          .widget<AppScreenShell>(find.byKey(const Key('purchaseScreen')))
+          .onBack,
+      isNull,
+    );
+    expect(
+      find.bySemanticsLabel('جاري حفظ قائمة الشراء'),
+      findsOneWidget,
+    );
+    expect(find.bySemanticsLabel('تحديث'), findsNothing);
+
+    saving.complete(submitted);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('purchaseBusyOverlay')), findsNothing);
+  });
 }
 
 AppRepositories _withSales(
@@ -357,10 +459,12 @@ class _SalesRepositoryOverride implements SalesRepository {
   const _SalesRepositoryOverride({
     required this.delegate,
     required this.load,
+    this.replace,
   });
 
   final SalesRepository delegate;
   final Future<List<SalesInvoice>> Function() load;
+  final Future<SalesInvoice> Function(SalesInvoice)? replace;
 
   @override
   Future<List<SalesInvoice>> getAll() => load();
@@ -389,7 +493,7 @@ class _SalesRepositoryOverride implements SalesRepository {
 
   @override
   Future<SalesInvoice> replaceInvoice(SalesInvoice invoice) =>
-      delegate.replaceInvoice(invoice);
+      replace?.call(invoice) ?? delegate.replaceInvoice(invoice);
 
   @override
   Future<void> deleteInvoicePermanently(EntityId id) =>
@@ -400,10 +504,12 @@ class _PurchaseRepositoryOverride implements PurchaseRepository {
   const _PurchaseRepositoryOverride({
     required this.delegate,
     required this.load,
+    this.replace,
   });
 
   final PurchaseRepository delegate;
   final Future<List<PurchaseInvoice>> Function() load;
+  final Future<PurchaseInvoice> Function(PurchaseInvoice)? replace;
 
   @override
   Future<List<PurchaseInvoice>> getAll() => load();
@@ -433,7 +539,7 @@ class _PurchaseRepositoryOverride implements PurchaseRepository {
 
   @override
   Future<PurchaseInvoice> replaceInvoice(PurchaseInvoice invoice) =>
-      delegate.replaceInvoice(invoice);
+      replace?.call(invoice) ?? delegate.replaceInvoice(invoice);
 
   @override
   Future<void> deleteInvoicePermanently(EntityId id) =>

@@ -410,7 +410,7 @@ void main() {
     await tester.pump();
     _expectToast(
       tester,
-      color: AppColors.green,
+      color: AppColors.successStrong,
       message: 'تم تحديث قائمة البيع',
     );
     await _finishToast(tester);
@@ -729,7 +729,7 @@ void main() {
     await tester.pump();
     _expectToast(
       tester,
-      color: AppColors.green,
+      color: AppColors.successStrong,
       message: 'تم تحديث قائمة البيع',
     );
 
@@ -870,7 +870,7 @@ void main() {
     await tester.pump();
     _expectToast(
       tester,
-      color: AppColors.green,
+      color: AppColors.successStrong,
       message: 'تم تحديث قائمة البيع',
     );
     await _finishToast(tester);
@@ -884,7 +884,7 @@ void main() {
     await tester.pump();
     _expectToast(
       tester,
-      color: AppColors.orange,
+      color: AppColors.warningStrong,
       message: 'تم التراجع عن التغييرات',
     );
     expect(_fieldValue(tester, 'salesNotesField'), 'ملاحظة محدثة');

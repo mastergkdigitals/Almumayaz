@@ -189,6 +189,7 @@ class _AppButtonState extends State<AppButton> {
           );
 
     ButtonStyle withoutShadow(ButtonStyle style) {
+      final restingSide = style.side;
       return style.copyWith(
         elevation: const WidgetStatePropertyAll<double>(0),
         shadowColor:
@@ -213,6 +214,15 @@ class _AppButtonState extends State<AppButton> {
               : SystemMouseCursors.click,
         ),
         splashFactory: NoSplash.splashFactory,
+        side: WidgetStateProperty.resolveWith<BorderSide?>((states) {
+          if (states.contains(WidgetState.focused)) {
+            return const BorderSide(
+              color: AppColors.navigation,
+              width: 2,
+            );
+          }
+          return restingSide?.resolve(states);
+        }),
         shape: widget.borderRadius == null
             ? null
             : WidgetStatePropertyAll<OutlinedBorder>(
@@ -273,7 +283,7 @@ class _AppButtonState extends State<AppButton> {
               );
             }
             if (states.contains(WidgetState.focused)) {
-              return BorderSide(color: focusRing);
+              return BorderSide(color: focusRing, width: 2);
             }
             if (states.contains(WidgetState.pressed) ||
                 states.contains(WidgetState.hovered)) {
@@ -303,7 +313,7 @@ class _AppButtonState extends State<AppButton> {
           style: withoutShadow(
             ElevatedButton.styleFrom(
               backgroundColor:
-                  widget.backgroundColor ?? AppColors.green,
+                  widget.backgroundColor ?? AppColors.successStrong,
               foregroundColor:
                   widget.foregroundColor ?? AppColors.onStrong,
             ),
@@ -315,7 +325,7 @@ class _AppButtonState extends State<AppButton> {
           style: withoutShadow(
             ElevatedButton.styleFrom(
               backgroundColor:
-                  widget.backgroundColor ?? AppColors.orange,
+                  widget.backgroundColor ?? AppColors.warningStrong,
               foregroundColor:
                   widget.foregroundColor ?? AppColors.onStrong,
             ),
@@ -344,13 +354,14 @@ class _AppButtonState extends State<AppButton> {
               backgroundColor:
                   widget.backgroundColor ?? AppColors.surface,
               disabledBackgroundColor: AppColors.disabledSurface,
-            ).copyWith(
-              side: WidgetStateProperty.resolveWith<BorderSide?>(
-                (states) => BorderSide(
-                  color: states.contains(WidgetState.disabled)
-                      ? AppColors.disabled
-                      : (widget.foregroundColor ?? AppColors.navigation),
-                ),
+            ),
+          ).copyWith(
+            side: WidgetStateProperty.resolveWith<BorderSide?>(
+              (states) => BorderSide(
+                color: states.contains(WidgetState.disabled)
+                    ? AppColors.disabled
+                    : (widget.foregroundColor ?? AppColors.navigation),
+                width: states.contains(WidgetState.focused) ? 2 : 1,
               ),
             ),
           ),
@@ -385,6 +396,19 @@ class _AppButtonState extends State<AppButton> {
           child: content,
         ),
     };
+    final accessibleButton = widget.isLoading
+        ? Semantics(
+            container: true,
+            excludeSemantics: true,
+            liveRegion: true,
+            button: true,
+            enabled: false,
+            label: hasLabel
+                ? '${widget.label}، جاري التنفيذ'
+                : 'جاري التنفيذ',
+            child: button,
+          )
+        : button;
 
     final usesNavigationInteraction =
         widget.variant == AppButtonVariant.navigation;
@@ -427,7 +451,7 @@ class _AppButtonState extends State<AppButton> {
           child: SizedBox(
             width: widget.width,
             height: widget.height,
-            child: button,
+            child: accessibleButton,
           ),
         ),
       ),

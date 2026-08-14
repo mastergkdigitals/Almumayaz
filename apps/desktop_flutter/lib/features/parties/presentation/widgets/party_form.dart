@@ -199,26 +199,6 @@ class _PartyFormState extends State<PartyForm> {
     _keyHoldGuard.runOnce(keys: _enterKeys, action: move);
   }
 
-  void _moveWithTab({required bool backwards}) {
-    _keyHoldGuard.runOnce(
-      keys: {LogicalKeyboardKey.tab},
-      action: () {
-        final nodes = _orderedFocusNodes;
-        final currentIndex =
-            nodes.indexWhere((focusNode) => focusNode.hasFocus);
-        if (currentIndex < 0) {
-          (backwards ? nodes.last : nodes.first).requestFocus();
-          return;
-        }
-
-        final targetIndex = backwards
-            ? (currentIndex - 1).clamp(0, nodes.length - 1)
-            : (currentIndex + 1).clamp(0, nodes.length - 1);
-        nodes[targetIndex.toInt()].requestFocus();
-      },
-    );
-  }
-
   List<OperationalMasterDataRecord> get _branchOptions {
     final workplaceId = widget.workplaceId;
     if (workplaceId == null) return const [];
@@ -243,270 +223,262 @@ class _PartyFormState extends State<PartyForm> {
 
     return KeyedSubtree(
       key: const Key('partyForm'),
-      child: CallbackShortcuts(
-        bindings: {
-          const SingleActivator(LogicalKeyboardKey.tab):
-              () => _moveWithTab(backwards: false),
-          const SingleActivator(LogicalKeyboardKey.tab, shift: true):
-              () => _moveWithTab(backwards: true),
-        },
-        child: FocusTraversalGroup(
-          policy: OrderedTraversalPolicy(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final compact = constraints.maxWidth < 1100;
-                  return Column(
-                    children: [
-                      _FieldsWrap(
-                        columns: compact ? 3 : 5,
-                        children: [
-                          AppReadOnlyField(
-                            fieldKey: const Key('partyNumberField'),
-                            controller: controllers.number,
-                            label: 'رقم الطرف',
-                            icon: Icons.tag_rounded,
-                            accentColor: accentColor,
-                          ),
-                          AppReadOnlyField(
-                            fieldKey: const Key('partyDateField'),
-                            controller: controllers.date,
-                            label: 'التاريخ',
-                            icon: Icons.calendar_month_rounded,
-                            accentColor: accentColor,
-                          ),
-                          AppTimeField(
-                            fieldKey: const Key('partyTimeField'),
-                            label: 'الوقت',
-                            value: TimeOfDay.fromDateTime(widget.createdAt),
-                            accentColor: accentColor,
-                          ),
-                          AppReadOnlyField(
-                            fieldKey: const Key('partyBalanceIqdField'),
-                            controller: controllers.balanceIqd,
-                            label: 'الرصيد دينار',
-                            icon: Icons.payments_rounded,
-                            accentColor: accentColor,
-                            textDirection: TextDirection.rtl,
-                            textAlign: TextAlign.right,
-                          ),
-                          AppReadOnlyField(
-                            fieldKey: const Key('partyBalanceUsdField'),
-                            controller: controllers.balanceUsd,
-                            label: 'الرصيد دولار',
-                            icon: Icons.attach_money_rounded,
-                            accentColor: accentColor,
-                            textDirection: TextDirection.rtl,
-                            textAlign: TextAlign.right,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      _FieldsWrap(
-                        columns: 2,
-                        children: [
-                          _TraversalField(
-                            order: 1,
-                            child: AppTextField(
-                              fieldKey: const Key('partyNameField'),
-                              controller: controllers.name,
-                              label: 'الاسم',
-                              errorText: _nameErrorText,
-                              icon: Icons.person_rounded,
-                              accentColor: accentColor,
-                              focusNode: _nameFocusNode,
-                              textInputAction: TextInputAction.next,
-                              onSubmitted: _submitName,
-                            ),
-                          ),
-                          _TraversalField(
-                            order: 2,
-                            child: AppDropdownField<PartyType>(
-                              fieldKey: const Key('partyTypeField'),
-                              label: 'نوع الطرف',
-                              icon: Icons.category_rounded,
-                              accentColor: accentColor,
-                              focusNode: _typeFocusNode,
-                              keyHoldGuard: _keyHoldGuard,
-                              useIntrinsicHeight: true,
-                              value: partyType,
-                              options: [
-                                for (final type in PartyType.values)
-                                  AppDropdownOption(
-                                    value: type,
-                                    label: type.label,
-                                  ),
-                              ],
-                              onChanged: onPartyTypeChanged,
-                              onSubmitted: (_) => _moveFrom(
-                                _typeFocusNode,
-                                guardKeyHold: false,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      _FieldsWrap(
-                        columns: 2,
-                        children: [
-                          _TraversalField(
-                            order: 3,
-                            child: AppAutocompleteField<
-                                OperationalMasterDataRecord>(
-                              fieldKey: const Key('partyWorkplaceField'),
-                              controller: controllers.workplace,
-                              label: 'جهة العمل',
-                              icon: Icons.business_rounded,
-                              accentColor: accentColor,
-                              focusNode: _workplaceFocusNode,
-                              options: widget.workplaces,
-                              displayStringForOption: (value) => value.name,
-                              searchTermsForOption: (value) => [
-                                value.name,
-                                '${value.number}',
-                              ],
-                              optionSubtitle: (value) =>
-                                  'رقم ${value.number}',
-                              onSelected: _selectWorkplace,
-                              onChanged: (_) =>
-                                  widget.onWorkplaceChanged(null),
-                              createActionLabel: 'إضافة جهة عمل جديدة',
-                              onCreateRequested: widget.onCreateWorkplace ==
-                                      null
-                                  ? null
-                                  : () => widget.onCreateWorkplace!(
-                                        controllers.workplace.text,
-                                      ),
-                              onSubmitted: (_) =>
-                                  _moveFrom(_workplaceFocusNode),
-                            ),
-                          ),
-                          _TraversalField(
-                            order: 4,
-                            child: AppAutocompleteField<
-                                OperationalMasterDataRecord>(
-                              fieldKey: const Key('partyBranchField'),
-                              controller: controllers.branch,
-                              label: 'الفرع',
-                              icon: Icons.account_tree_rounded,
-                              accentColor: accentColor,
-                              focusNode: _branchFocusNode,
-                              options: _branchOptions,
-                              displayStringForOption: (value) => value.name,
-                              searchTermsForOption: (value) => [
-                                value.name,
-                                '${value.number}',
-                              ],
-                              optionSubtitle: (value) =>
-                                  'رقم ${value.number}',
-                              onSelected: _selectBranch,
-                              onChanged: (_) =>
-                                  widget.onBranchChanged(null),
-                              createActionLabel: 'إضافة فرع جديد',
-                              onCreateRequested: widget.onCreateBranch == null
-                                  ? null
-                                  : () => widget.onCreateBranch!(
-                                        controllers.branch.text,
-                                      ),
-                              onSubmitted: (_) =>
-                                  _moveFrom(_branchFocusNode),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      _FieldsWrap(
-                        columns: 2,
-                        children: [
-                          _TraversalField(
-                            order: 5,
-                            child: AppPhoneField(
-                              fieldKey: const Key('partyPhoneField'),
-                              controller: controllers.phone,
-                              label: 'رقم الهاتف',
-                              icon: Icons.phone_rounded,
-                              accentColor: accentColor,
-                              focusNode: _phoneFocusNode,
-                              onSubmitted: (_) =>
-                                  _moveFrom(_phoneFocusNode),
-                            ),
-                          ),
-                          _TraversalField(
-                            order: 6,
-                            child: AppPhoneField(
-                              fieldKey: const Key(
-                                'partyAlternatePhoneField',
-                              ),
-                              controller: controllers.alternatePhone,
-                              label: 'هاتف إضافي',
-                              icon: Icons.phone_in_talk_rounded,
-                              accentColor: accentColor,
-                              focusNode: _alternatePhoneFocusNode,
-                              onSubmitted: (_) =>
-                                  _moveFrom(_alternatePhoneFocusNode),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      _FieldsWrap(
-                        columns: 2,
-                        children: [
-                          _TraversalField(
-                            order: 7,
-                            child: AppAutocompleteField<String>(
-                              fieldKey: const Key('partyCityField'),
-                              controller: controllers.city,
-                              label: 'المدينة',
-                              icon: Icons.location_city_rounded,
-                              accentColor: accentColor,
-                              focusNode: _cityFocusNode,
-                              options: widget.cities,
-                              displayStringForOption: (value) => value,
-                              onSelected: (_) => _moveFrom(_cityFocusNode),
-                              onSubmitted: (_) =>
-                                  _moveFrom(_cityFocusNode),
-                            ),
-                          ),
-                          _TraversalField(
-                            order: 8,
-                            child: AppTextField(
-                              fieldKey: const Key('partyAddressField'),
-                              controller: controllers.address,
-                              label: 'العنوان',
-                              icon: Icons.location_on_rounded,
-                              accentColor: accentColor,
-                              focusNode: _addressFocusNode,
-                              textInputAction: TextInputAction.next,
-                              onSubmitted: (_) =>
-                                  _moveFrom(_addressFocusNode),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      _TraversalField(
-                        order: 9,
-                        child: AppTextField(
-                          fieldKey: const Key('partyNotesField'),
-                          controller: controllers.notes,
-                          label: 'الملاحظات',
-                          icon: Icons.notes_rounded,
-                          focusNode: _notesFocusNode,
-                          textInputAction: TextInputAction.done,
-                          onEditingComplete: () {},
-                          onSubmitted: (_) {},
+      child: FocusTraversalGroup(
+        policy: OrderedTraversalPolicy(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxWidth < 1100;
+                return Column(
+                  children: [
+                    _FieldsWrap(
+                      columns: compact ? 3 : 5,
+                      children: [
+                        AppReadOnlyField(
+                          fieldKey: const Key('partyNumberField'),
+                          controller: controllers.number,
+                          label: 'رقم الطرف',
+                          icon: Icons.tag_rounded,
+                          accentColor: accentColor,
                         ),
+                        AppReadOnlyField(
+                          fieldKey: const Key('partyDateField'),
+                          controller: controllers.date,
+                          label: 'التاريخ',
+                          icon: Icons.calendar_month_rounded,
+                          accentColor: accentColor,
+                        ),
+                        AppTimeField(
+                          fieldKey: const Key('partyTimeField'),
+                          label: 'الوقت',
+                          value: TimeOfDay.fromDateTime(widget.createdAt),
+                          accentColor: accentColor,
+                        ),
+                        AppReadOnlyField(
+                          fieldKey: const Key('partyBalanceIqdField'),
+                          controller: controllers.balanceIqd,
+                          label: 'الرصيد دينار',
+                          icon: Icons.payments_rounded,
+                          accentColor: accentColor,
+                          textDirection: TextDirection.rtl,
+                          textAlign: TextAlign.right,
+                        ),
+                        AppReadOnlyField(
+                          fieldKey: const Key('partyBalanceUsdField'),
+                          controller: controllers.balanceUsd,
+                          label: 'الرصيد دولار',
+                          icon: Icons.attach_money_rounded,
+                          accentColor: accentColor,
+                          textDirection: TextDirection.rtl,
+                          textAlign: TextAlign.right,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    _FieldsWrap(
+                      columns: 2,
+                      children: [
+                        _TraversalField(
+                          order: 1,
+                          child: AppTextField(
+                            fieldKey: const Key('partyNameField'),
+                            controller: controllers.name,
+                            label: 'الاسم',
+                            errorText: _nameErrorText,
+                            icon: Icons.person_rounded,
+                            accentColor: accentColor,
+                            focusNode: _nameFocusNode,
+                            textInputAction: TextInputAction.next,
+                            onSubmitted: _submitName,
+                          ),
+                        ),
+                        _TraversalField(
+                          order: 2,
+                          child: AppDropdownField<PartyType>(
+                            fieldKey: const Key('partyTypeField'),
+                            label: 'نوع الطرف',
+                            icon: Icons.category_rounded,
+                            accentColor: accentColor,
+                            focusNode: _typeFocusNode,
+                            keyHoldGuard: _keyHoldGuard,
+                            useIntrinsicHeight: true,
+                            value: partyType,
+                            options: [
+                              for (final type in PartyType.values)
+                                AppDropdownOption(
+                                  value: type,
+                                  label: type.label,
+                                ),
+                            ],
+                            onChanged: onPartyTypeChanged,
+                            onSubmitted: (_) => _moveFrom(
+                              _typeFocusNode,
+                              guardKeyHold: false,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    _FieldsWrap(
+                      columns: 2,
+                      children: [
+                        _TraversalField(
+                          order: 3,
+                          child: AppAutocompleteField<
+                              OperationalMasterDataRecord>(
+                            fieldKey: const Key('partyWorkplaceField'),
+                            controller: controllers.workplace,
+                            label: 'جهة العمل',
+                            icon: Icons.business_rounded,
+                            accentColor: accentColor,
+                            focusNode: _workplaceFocusNode,
+                            options: widget.workplaces,
+                            displayStringForOption: (value) => value.name,
+                            searchTermsForOption: (value) => [
+                              value.name,
+                              '${value.number}',
+                            ],
+                            optionSubtitle: (value) =>
+                                'رقم ${value.number}',
+                            onSelected: _selectWorkplace,
+                            onChanged: (_) =>
+                                widget.onWorkplaceChanged(null),
+                            createActionLabel: 'إضافة جهة عمل جديدة',
+                            onCreateRequested: widget.onCreateWorkplace ==
+                                    null
+                                ? null
+                                : () => widget.onCreateWorkplace!(
+                                      controllers.workplace.text,
+                                    ),
+                            onSubmitted: (_) =>
+                                _moveFrom(_workplaceFocusNode),
+                          ),
+                        ),
+                        _TraversalField(
+                          order: 4,
+                          child: AppAutocompleteField<
+                              OperationalMasterDataRecord>(
+                            fieldKey: const Key('partyBranchField'),
+                            controller: controllers.branch,
+                            label: 'الفرع',
+                            icon: Icons.account_tree_rounded,
+                            accentColor: accentColor,
+                            focusNode: _branchFocusNode,
+                            options: _branchOptions,
+                            displayStringForOption: (value) => value.name,
+                            searchTermsForOption: (value) => [
+                              value.name,
+                              '${value.number}',
+                            ],
+                            optionSubtitle: (value) =>
+                                'رقم ${value.number}',
+                            onSelected: _selectBranch,
+                            onChanged: (_) =>
+                                widget.onBranchChanged(null),
+                            createActionLabel: 'إضافة فرع جديد',
+                            onCreateRequested: widget.onCreateBranch == null
+                                ? null
+                                : () => widget.onCreateBranch!(
+                                      controllers.branch.text,
+                                    ),
+                            onSubmitted: (_) =>
+                                _moveFrom(_branchFocusNode),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    _FieldsWrap(
+                      columns: 2,
+                      children: [
+                        _TraversalField(
+                          order: 5,
+                          child: AppPhoneField(
+                            fieldKey: const Key('partyPhoneField'),
+                            controller: controllers.phone,
+                            label: 'رقم الهاتف',
+                            icon: Icons.phone_rounded,
+                            accentColor: accentColor,
+                            focusNode: _phoneFocusNode,
+                            onSubmitted: (_) =>
+                                _moveFrom(_phoneFocusNode),
+                          ),
+                        ),
+                        _TraversalField(
+                          order: 6,
+                          child: AppPhoneField(
+                            fieldKey: const Key(
+                              'partyAlternatePhoneField',
+                            ),
+                            controller: controllers.alternatePhone,
+                            label: 'هاتف إضافي',
+                            icon: Icons.phone_in_talk_rounded,
+                            accentColor: accentColor,
+                            focusNode: _alternatePhoneFocusNode,
+                            onSubmitted: (_) =>
+                                _moveFrom(_alternatePhoneFocusNode),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    _FieldsWrap(
+                      columns: 2,
+                      children: [
+                        _TraversalField(
+                          order: 7,
+                          child: AppAutocompleteField<String>(
+                            fieldKey: const Key('partyCityField'),
+                            controller: controllers.city,
+                            label: 'المدينة',
+                            icon: Icons.location_city_rounded,
+                            accentColor: accentColor,
+                            focusNode: _cityFocusNode,
+                            options: widget.cities,
+                            displayStringForOption: (value) => value,
+                            onSelected: (_) => _moveFrom(_cityFocusNode),
+                            onSubmitted: (_) =>
+                                _moveFrom(_cityFocusNode),
+                          ),
+                        ),
+                        _TraversalField(
+                          order: 8,
+                          child: AppTextField(
+                            fieldKey: const Key('partyAddressField'),
+                            controller: controllers.address,
+                            label: 'العنوان',
+                            icon: Icons.location_on_rounded,
+                            accentColor: accentColor,
+                            focusNode: _addressFocusNode,
+                            textInputAction: TextInputAction.next,
+                            onSubmitted: (_) =>
+                                _moveFrom(_addressFocusNode),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    _TraversalField(
+                      order: 9,
+                      child: AppTextField(
+                        fieldKey: const Key('partyNotesField'),
+                        controller: controllers.notes,
+                        label: 'الملاحظات',
+                        icon: Icons.notes_rounded,
+                        focusNode: _notesFocusNode,
+                        textInputAction: TextInputAction.done,
+                        onEditingComplete: () {},
+                        onSubmitted: (_) {},
                       ),
-                    ],
-                  );
-                },
-              ),
-            ],
-          ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ],
         ),
       ),
     );

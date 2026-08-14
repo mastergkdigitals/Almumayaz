@@ -12,10 +12,11 @@ void main() {
 
     final overlay = find.byType(AppLoadingOverlay);
     expect(overlay, findsOneWidget);
-    expect(
+    final pointerGates = tester.widgetList<AbsorbPointer>(
       find.descendant(of: overlay, matching: find.byType(AbsorbPointer)),
-      findsOneWidget,
     );
+    expect(pointerGates, hasLength(2));
+    expect(pointerGates.every((gate) => gate.absorbing), isTrue);
     expect(find.text('جاري حفظ البيانات'), findsOneWidget);
   });
 
@@ -27,8 +28,8 @@ void main() {
 
     const toastButtons = <String, Color>{
       'designSaveToastButton': AppColors.blue,
-      'designUpdateToastButton': AppColors.green,
-      'designUndoToastButton': AppColors.orange,
+      'designUpdateToastButton': AppColors.successStrong,
+      'designUndoToastButton': AppColors.warningStrong,
       'designDeleteToastButton': AppColors.red,
     };
 
@@ -91,7 +92,7 @@ void main() {
         matching: find.byIcon(Icons.link_off_rounded),
       ),
     );
-    expect(icon.color, AppColors.orange);
+    expect(icon.color, AppColors.warningForeground);
 
     final panelContainer = tester.widget<Container>(
       find.descendant(
@@ -101,7 +102,10 @@ void main() {
     );
     final decoration = panelContainer.decoration! as BoxDecoration;
     expect(decoration.color, AppColors.warningSurface);
-    expect(decoration.border!.top.color, AppColors.orange.withAlpha(72));
+    expect(
+      decoration.border!.top.color,
+      AppColors.warningForeground.withAlpha(72),
+    );
   });
 
   testWidgets('maps repository data states to shared state panels',

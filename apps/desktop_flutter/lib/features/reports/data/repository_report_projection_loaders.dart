@@ -177,26 +177,27 @@ extension _RepositoryReportProjectionLoaders
     final rows = <ReportRowDefinition>[];
     for (final entry in entries) {
       final item = itemById[entry.balance.itemId];
-      if (item == null) continue;
       rows.add(
         ReportRowDefinition(
           id: entry.balance.id.value,
           filterValues: {
             'warehouse': entry.warehouse.entityId.value,
-            'product': item.entityId.value,
-            'group': item.groupEntityId.value,
-            'type': item.typeEntityId.value,
+            'product': entry.balance.itemId.value,
+            if (item != null) ...{
+              'group': item.groupEntityId.value,
+              'type': item.typeEntityId.value,
+            },
             'stockState': entry.balance.quantity.value > 0
                 ? 'available'
                 : 'out',
           },
-          searchTerms: [item.barcode],
+          searchTerms: [if (item != null) item.barcode],
           cells: [
             '${rows.length + 1}',
-            item.code,
-            item.name,
-            item.groupName,
-            item.typeName,
+            _availableLabel(item?.code, ''),
+            _availableLabel(item?.name, ''),
+            _availableLabel(item?.groupName, ''),
+            _availableLabel(item?.typeName, ''),
             entry.warehouse.name,
             AppFormatters.quantity(entry.balance.quantity.value),
           ],

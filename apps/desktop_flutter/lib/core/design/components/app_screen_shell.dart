@@ -85,10 +85,13 @@ class AppScreenHeader extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  title,
-                  textAlign: TextAlign.center,
-                  style: AppTypography.screenTitle,
+                Semantics(
+                  header: true,
+                  child: Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: AppTypography.screenTitle,
+                  ),
                 ),
                 if (subtitle != null)
                   Text(

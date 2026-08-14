@@ -38,7 +38,9 @@ extension _PurchaseViewState on _PurchaseScreenState {
         key: const Key('purchaseScreen'),
         title: 'المشتريات',
         backgroundColor: tint,
-        onBack: _isDocumentActionRunning ? null : _attemptBack,
+        onBack: _isRepositoryBusy || _isDocumentActionRunning
+            ? null
+            : _attemptBack,
         onSearch: !isEditorReady ||
                 _isRepositoryBusy ||
                 _isDocumentActionRunning
@@ -60,9 +62,13 @@ extension _PurchaseViewState on _PurchaseScreenState {
           child: AbsorbPointer(
             key: const Key('purchaseDocumentActionAbsorber'),
             absorbing: _isDocumentActionRunning,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
+            child: AppLoadingOverlay(
+              isLoading: _isRepositoryBusy,
+              message: 'جاري حفظ قائمة الشراء',
+              overlayKey: const Key('purchaseBusyOverlay'),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
         ColoredBox(
           key: const Key('purchaseTintBackground'),
           color: tint,
@@ -399,15 +405,8 @@ extension _PurchaseViewState on _PurchaseScreenState {
                   errorStateKey: const Key('purchaseErrorState'),
                 ),
               ),
-            if (_isRepositoryBusy)
-              AbsorbPointer(
-                child: ColoredBox(
-                  key: const Key('purchaseBusyOverlay'),
-                  color: AppColors.textPrimary.withAlpha(20),
-                  child: const Center(child: CircularProgressIndicator()),
-                ),
+                ],
               ),
-              ],
             ),
           ),
         ),

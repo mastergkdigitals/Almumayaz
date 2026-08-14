@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../app_formatters.dart';
 import '../app_tokens.dart';
 import 'app_button.dart';
+import 'app_feedback.dart';
 import 'app_module_dialog.dart';
 import 'app_table.dart';
 import 'app_text_fields.dart';
@@ -172,10 +173,10 @@ class _InstallmentScheduleDialogBodyState
             accentColor: widget.accentColor,
             minimumColumnWidth: 128,
             onKeyboardSelectionChanged: _select,
-            emptyState: const Text(
-              'لا توجد أقساط لهذه القائمة',
-              textAlign: TextAlign.center,
-              style: AppTypography.sectionTitle,
+            emptyState: const AppStatePanel(
+              type: AppStateType.empty,
+              title: 'لا توجد أقساط',
+              message: 'لا توجد أقساط لهذه القائمة',
             ),
             columns: const [
               AppTableColumn(label: 'رقم القسط', numeric: true),

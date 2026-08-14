@@ -24,6 +24,16 @@ abstract final class AppColors {
   static const info = blue;
   static const disabled = grey;
 
+  // Accessible foregrounds for text and meaningful icons on pale status
+  // surfaces. Brand colors remain available for decorative accents.
+  static const successForeground = Color(0xFF166534);
+  static const warningForeground = Color(0xFF9A3412);
+  static const dangerForeground = Color(0xFF991B1B);
+  static const infoForeground = Color(0xFF1E40AF);
+  static const neutralForeground = Color(0xFF334155);
+  static const successStrong = Color(0xFF15803D);
+  static const warningStrong = Color(0xFFC2410C);
+
   static const headerBackground = Colors.white;
   static const headerBorder = Color(0xFFE4E0D7);
   static const infoSurface = Color(0xFFDBEAFE);

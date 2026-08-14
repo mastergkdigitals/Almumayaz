@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app_tokens.dart';
+import 'app_header_button.dart';
 
 /// Shared gradient card used to enter a top-level application module.
 class AppModuleCard extends StatefulWidget {
@@ -11,8 +12,12 @@ class AppModuleCard extends StatefulWidget {
     required this.shadowColor,
     this.imageAsset,
     this.onTap,
+    this.disabledReason,
     super.key,
-  });
+  }) : assert(
+          onTap == null || disabledReason == null,
+          'An interactive module card cannot also be disabled.',
+        );
 
   final String title;
   final IconData icon;
@@ -20,6 +25,7 @@ class AppModuleCard extends StatefulWidget {
   final Color shadowColor;
   final String? imageAsset;
   final VoidCallback? onTap;
+  final String? disabledReason;
 
   @override
   State<AppModuleCard> createState() => _AppModuleCardState();
@@ -33,6 +39,10 @@ class _AppModuleCardState extends State<AppModuleCard> {
   @override
   Widget build(BuildContext context) {
     final interactive = widget.onTap != null;
+    final disabledReason = widget.disabledReason?.trim();
+    final disabled = !interactive &&
+        disabledReason != null &&
+        disabledReason.isNotEmpty;
     final lift = interactive && _hovered && !_pressed ? -4.0 : 0.0;
     final scale = _pressed
         ? 0.985
@@ -40,9 +50,22 @@ class _AppModuleCardState extends State<AppModuleCard> {
             ? 1.01
             : 1.0;
 
-    return Semantics(
-      button: interactive,
+    final gradientColors = disabled
+        ? <Color>[
+            Color.lerp(AppColors.textPrimary, AppColors.grey, 0.58)!,
+            AppColors.grey,
+          ]
+        : widget.colors;
+
+    final card = Semantics(
+      container: true,
+      excludeSemantics: true,
+      button: interactive || disabled,
+      enabled: interactive || disabled ? interactive : null,
+      focused: interactive ? _focused : null,
       label: widget.title,
+      hint: disabled ? 'غير متاح. $disabledReason' : null,
+      onTap: widget.onTap,
       child: AnimatedScale(
         scale: scale,
         duration: const Duration(milliseconds: 140),
@@ -56,14 +79,21 @@ class _AppModuleCardState extends State<AppModuleCard> {
             gradient: LinearGradient(
               begin: Alignment.topRight,
               end: Alignment.bottomLeft,
-              colors: widget.colors,
+              colors: gradientColors,
             ),
             border: _focused
                 ? Border.all(color: AppColors.onStrong, width: 2)
                 : null,
             boxShadow: [
+              if (_focused)
+                const BoxShadow(
+                  color: AppColors.navigation,
+                  blurRadius: 0,
+                  spreadRadius: 2,
+                ),
               BoxShadow(
-                color: widget.shadowColor.withValues(
+                color: (disabled ? AppColors.grey : widget.shadowColor)
+                    .withValues(
                   alpha: _hovered ? 0.24 : 0.16,
                 ),
                 blurRadius: _hovered ? 24 : 16,
@@ -91,7 +121,9 @@ class _AppModuleCardState extends State<AppModuleCard> {
               onFocusChange: (value) => setState(() => _focused = value),
               mouseCursor: interactive
                   ? SystemMouseCursors.click
-                  : SystemMouseCursors.basic,
+                  : disabled
+                      ? SystemMouseCursors.forbidden
+                      : SystemMouseCursors.basic,
               child: Stack(
                 children: [
                   _DecorativeIcon(
@@ -130,11 +162,11 @@ class _AppModuleCardState extends State<AppModuleCard> {
                           width: 66,
                           height: 66,
                           decoration: BoxDecoration(
-                            color: AppColors.onStrong.withValues(alpha: 0.18),
+                            color: AppColors.textPrimary,
                             borderRadius: BorderRadius.circular(AppRadii.lg),
                             border: Border.all(
                               color:
-                                  AppColors.onStrong.withValues(alpha: 0.25),
+                                  AppColors.onStrong.withValues(alpha: 0.45),
                             ),
                           ),
                           child: _ModuleCardIdentity(
@@ -145,15 +177,27 @@ class _AppModuleCardState extends State<AppModuleCard> {
                         const SizedBox(height: AppSpacing.md),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 18),
-                          child: Text(
-                            widget.title,
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AppColors.onStrong,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: AppColors.textPrimary,
+                              borderRadius: BorderRadius.circular(AppRadii.sm),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.sm,
+                                vertical: AppSpacing.xs,
+                              ),
+                              child: Text(
+                                widget.title,
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: AppColors.onStrong,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -167,6 +211,10 @@ class _AppModuleCardState extends State<AppModuleCard> {
         ),
       ),
     );
+
+    return disabled
+        ? AppTooltip(message: disabledReason!, child: card)
+        : card;
   }
 }
 

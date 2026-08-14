@@ -603,7 +603,7 @@ void main() {
       tester.widget<SnackBar>(
         find.byKey(const Key('appToast')),
       ).backgroundColor,
-      AppColors.green,
+      AppColors.successStrong,
     );
     expect(
       find.descendant(

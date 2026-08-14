@@ -92,7 +92,7 @@ void main() {
     expect(_hasTextFocus(tester, notes), isTrue);
   });
 
-  testWidgets('keeps Tab inside the party form and stops at notes',
+  testWidgets('tabs through the ordered fields and then leaves the party form',
       (tester) async {
     await _openParties(tester);
 
@@ -100,15 +100,13 @@ void main() {
     final type = find.byKey(const Key('partyTypeField'));
     final workplace = find.byKey(const Key('partyWorkplaceField'));
     final notes = find.byKey(const Key('partyNotesField'));
+    final form = find.byKey(const Key('partyForm'));
 
     await tester.tap(name);
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.tab);
-    await tester.sendKeyRepeatEvent(LogicalKeyboardKey.tab);
-    await tester.sendKeyRepeatEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
     await tester.pump();
 
     expect(tester.widget<InkWell>(type).focusNode?.hasFocus, isTrue);
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.tab);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.tab);
     await tester.pump();
@@ -120,11 +118,10 @@ void main() {
     await tester.pump();
     expect(_hasTextFocus(tester, notes), isTrue);
 
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.tab);
-    await tester.sendKeyRepeatEvent(LogicalKeyboardKey.tab);
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
     await tester.pump();
-    expect(_hasTextFocus(tester, notes), isTrue);
+    expect(_hasTextFocus(tester, notes), isFalse);
+    expect(_hasFocusWithin(tester, form), isFalse);
   });
 
   testWidgets('runs guarded Enter and Tab actions once per physical press',
@@ -298,6 +295,14 @@ bool _hasTextFocus(WidgetTester tester, Finder field) {
       )
       .focusNode
       .hasFocus;
+}
+
+bool _hasFocusWithin(WidgetTester tester, Finder control) {
+  return tester
+      .widgetList<Focus>(
+        find.descendant(of: control, matching: find.byType(Focus)),
+      )
+      .any((focus) => focus.focusNode.hasFocus);
 }
 
 InputDecoration _fieldDecoration(WidgetTester tester, Finder field) {

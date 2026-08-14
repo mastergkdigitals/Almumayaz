@@ -126,7 +126,9 @@ class WarehouseInventoryPanel extends StatelessWidget {
                 ),
             ],
             emptyState: AppStatePanel(
-              type: AppStateType.empty,
+              type: warehouse == null
+                  ? AppStateType.unavailable
+                  : AppStateType.empty,
               title: warehouse == null
                   ? 'اختر مخزناً من القائمة'
                   : materialCount == 0

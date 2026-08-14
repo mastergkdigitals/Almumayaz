@@ -1,5 +1,10 @@
 import 'package:erp/core/app_state/app_repositories.dart';
+import 'package:erp/core/data/app_repository.dart';
 import 'package:erp/core/domain/business_values.dart';
+import 'package:erp/features/items/domain/item.dart';
+import 'package:erp/features/items/domain/item_repository.dart';
+import 'package:erp/features/parties/domain/party.dart';
+import 'package:erp/features/parties/domain/party_repository.dart';
 import 'package:erp/features/purchases/domain/purchase_invoice.dart';
 import 'package:erp/features/reports/application/report_data_snapshot_service.dart';
 import 'package:erp/features/reports/application/report_rows_service.dart';
@@ -280,6 +285,90 @@ void main() {
     expect(row.filterValues['destinationWarehouse'], destination.id);
     expect(row.filterValues['product'], 'item-001');
   });
+
+  test('current stock keeps orphan balances with stable deleted labels',
+      () async {
+    final base = AppRepositories.demo();
+    final removedItemId = EntityId('item-001');
+    final balance = (await base.warehouses.getInventory(
+      EntityId('warehouse-001'),
+    ))
+        .firstWhere((candidate) => candidate.itemId == removedItemId);
+    final staleService = RepositoryReportDataService(
+      _replaceRepositories(
+        base,
+        items: _ItemsMissingIds(base.items, {removedItemId}),
+      ),
+      clock: () => DateTime(2026, 8, 13),
+    );
+
+    final snapshot = await _snapshot(
+      staleService,
+      'inventory',
+      variantId: 'currentStock',
+    );
+    final row = snapshot.rows.firstWhere(
+      (candidate) => candidate.filterValues['product'] == removedItemId.value,
+    );
+
+    expect(row.id, balance.id.value);
+    expect(row.filterValues['product'], removedItemId.value);
+    expect(row.cells.sublist(1, 5), everyElement('محذوف'));
+  });
+
+  test('party balances distinguish absent references from stale references',
+      () async {
+    final base = AppRepositories.demo();
+    final withoutReference = _party(
+      id: 'phase8-party-no-reference',
+      number: 901,
+      name: 'طرف بلا جهة',
+    );
+    final legacySnapshot = _party(
+      id: 'phase8-party-legacy',
+      number: 902,
+      name: 'طرف ببيانات قديمة',
+      workplace: '  جهة قديمة  ',
+      branch: '  فرع قديم  ',
+    );
+    final staleReference = _party(
+      id: 'phase8-party-stale-reference',
+      number: 903,
+      name: 'طرف بمرجع محذوف',
+    );
+    final parties = _PartiesProjection(
+      base.parties,
+      values: [withoutReference, legacySnapshot, staleReference],
+      references: {
+        staleReference.entityId: PartyMasterDataReferences(
+          workplaceId: EntityId('phase8-missing-workplace'),
+          branchId: EntityId('phase8-missing-branch'),
+        ),
+      },
+    );
+    final staleService = RepositoryReportDataService(
+      _replaceRepositories(base, parties: parties),
+      clock: () => DateTime(2026, 8, 13),
+    );
+
+    final snapshot = await _snapshot(staleService, 'partyBalances');
+    final noReferenceRow = snapshot.rows.firstWhere(
+      (row) => row.id == withoutReference.id,
+    );
+    final legacyRow = snapshot.rows.firstWhere(
+      (row) => row.id == legacySnapshot.id,
+    );
+    final staleRow = snapshot.rows.firstWhere(
+      (row) => row.id == staleReference.id,
+    );
+
+    expect(noReferenceRow.cells[4], '—');
+    expect(noReferenceRow.cells[5], '—');
+    expect(legacyRow.cells[4], 'جهة قديمة');
+    expect(legacyRow.cells[5], 'فرع قديم');
+    expect(staleRow.cells[4], 'محذوف');
+    expect(staleRow.cells[5], 'محذوف');
+  });
 }
 
 Future<ReportDataSnapshot> _snapshot(
@@ -303,4 +392,168 @@ int _stockQuantity(
         candidate.filterValues['product'] == itemId.value,
   );
   return int.parse(row.cells[6].replaceAll(',', ''));
+}
+
+AppRepositories _replaceRepositories(
+  AppRepositories base, {
+  PartyRepository? parties,
+  ItemRepository? items,
+}) {
+  return AppRepositories(
+    parties: parties ?? base.parties,
+    items: items ?? base.items,
+    warehouses: base.warehouses,
+    inventoryCosts: base.inventoryCosts,
+    cashbox: base.cashbox,
+    sales: base.sales,
+    purchases: base.purchases,
+    installments: base.installments,
+    businessSettings: base.businessSettings,
+    deviceSettings: base.deviceSettings,
+    operationalMasterData: base.operationalMasterData,
+  );
+}
+
+Party _party({
+  required String id,
+  required int number,
+  required String name,
+  String workplace = '',
+  String branch = '',
+}) {
+  return Party(
+    id: id,
+    number: number,
+    createdAt: DateTime(2026, 8, 13),
+    name: name,
+    type: PartyType.customer,
+    workplace: workplace,
+    branch: branch,
+    phone: '',
+    alternatePhone: '',
+    city: '',
+    address: '',
+    notes: '',
+    balanceIqd: 0,
+    balanceUsd: 0,
+  );
+}
+
+class _ItemsMissingIds implements ItemRepository {
+  const _ItemsMissingIds(this._delegate, this._removedIds);
+
+  final ItemRepository _delegate;
+  final Set<EntityId> _removedIds;
+
+  @override
+  Future<List<Item>> getAll() async => [
+        for (final item in await _delegate.getAll())
+          if (!_removedIds.contains(item.entityId)) item,
+      ];
+
+  @override
+  Future<Item?> getById(EntityId id) =>
+      _removedIds.contains(id)
+          ? Future<Item?>.value()
+          : _delegate.getById(id);
+
+  @override
+  Future<Item> save(Item value) => _delegate.save(value);
+
+  @override
+  Future<DeleteDecision> canDelete(EntityId id) => _delegate.canDelete(id);
+
+  @override
+  Future<void> delete(EntityId id) => _delegate.delete(id);
+
+  @override
+  Future<List<Item>> search(String query) async => [
+        for (final item in await _delegate.search(query))
+          if (!_removedIds.contains(item.entityId)) item,
+      ];
+
+  @override
+  Future<List<ItemGroup>> getGroups() => _delegate.getGroups();
+
+  @override
+  Future<List<ItemType>> getTypes({EntityId? groupId}) =>
+      _delegate.getTypes(groupId: groupId);
+
+  @override
+  Future<Item> quickCreate(ItemQuickCreateRequest request) =>
+      _delegate.quickCreate(request);
+}
+
+class _PartiesProjection implements PartyRepository {
+  const _PartiesProjection(
+    this._delegate, {
+    required this.values,
+    required this.references,
+  });
+
+  final PartyRepository _delegate;
+  final List<Party> values;
+  final Map<EntityId, PartyMasterDataReferences> references;
+
+  @override
+  Future<List<Party>> getAll() async => List<Party>.unmodifiable(values);
+
+  @override
+  Future<Party?> getById(EntityId id) async {
+    for (final party in values) {
+      if (party.entityId == id) return party;
+    }
+    return null;
+  }
+
+  @override
+  Future<Party> save(Party value) => _delegate.save(value);
+
+  @override
+  Future<DeleteDecision> canDelete(EntityId id) => _delegate.canDelete(id);
+
+  @override
+  Future<void> delete(EntityId id) => _delegate.delete(id);
+
+  @override
+  Future<List<Party>> search(String query) async => [
+        for (final party in values)
+          if (party.searchText.contains(query.toLowerCase())) party,
+      ];
+
+  @override
+  Future<Party?> findByName(String name) async {
+    for (final party in values) {
+      if (party.name == name) return party;
+    }
+    return null;
+  }
+
+  @override
+  Future<Party> saveWithMasterData(
+    Party party,
+    PartyMasterDataReferences references,
+  ) =>
+      _delegate.saveWithMasterData(party, references);
+
+  @override
+  Future<PartyMasterDataReferences?> getMasterDataReferences(
+    EntityId partyId,
+  ) async =>
+      references[partyId];
+
+  @override
+  Future<bool> referencesMasterData(EntityId masterDataId) async =>
+      references.values.any(
+        (value) =>
+            value.workplaceId == masterDataId ||
+            value.branchId == masterDataId,
+      );
+
+  @override
+  Future<int> nextPartyNumber() => _delegate.nextPartyNumber();
+
+  @override
+  Future<Party> quickCreate(PartyQuickCreateRequest request) =>
+      _delegate.quickCreate(request);
 }

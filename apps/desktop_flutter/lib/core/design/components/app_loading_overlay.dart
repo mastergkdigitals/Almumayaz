@@ -9,24 +9,38 @@ class AppLoadingOverlay extends StatelessWidget {
     required this.child,
     super.key,
     this.message = 'جاري التحميل',
+    this.overlayKey,
   });
 
   final bool isLoading;
   final Widget child;
   final String message;
+  final Key? overlayKey;
 
   @override
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        child,
+        ExcludeSemantics(
+          excluding: isLoading,
+          child: ExcludeFocus(
+            excluding: isLoading,
+            child: AbsorbPointer(
+              absorbing: isLoading,
+              child: child,
+            ),
+          ),
+        ),
         if (isLoading)
           Positioned.fill(
+            key: overlayKey,
             child: AbsorbPointer(
               child: ColoredBox(
                 color: AppColors.textPrimary.withAlpha(72),
                 child: Center(
                   child: Semantics(
+                    container: true,
+                    excludeSemantics: true,
                     liveRegion: true,
                     label: message,
                     child: Container(

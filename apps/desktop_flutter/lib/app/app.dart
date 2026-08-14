@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import '../core/app_state/app_store.dart';
 import '../core/config/app_configuration.dart';
@@ -117,6 +118,8 @@ class _AppCompositionHostState extends State<_AppCompositionHost> {
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light(),
           locale: const Locale('ar', 'IQ'),
+          supportedLocales: const [Locale('ar', 'IQ')],
+          localizationsDelegates: GlobalMaterialLocalizations.delegates,
           builder: (context, child) => Directionality(
             textDirection: TextDirection.rtl,
             child: Overlay.wrap(

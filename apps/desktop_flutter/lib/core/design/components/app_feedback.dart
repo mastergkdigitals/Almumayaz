@@ -17,11 +17,11 @@ class AppStatusBadge extends StatelessWidget {
   final AppStatusTone tone;
 
   Color get _foreground => switch (tone) {
-        AppStatusTone.success => AppColors.green,
-        AppStatusTone.warning => AppColors.orange,
-        AppStatusTone.danger => AppColors.red,
-        AppStatusTone.info => AppColors.blue,
-        AppStatusTone.neutral => AppColors.grey,
+        AppStatusTone.success => AppColors.successForeground,
+        AppStatusTone.warning => AppColors.warningForeground,
+        AppStatusTone.danger => AppColors.dangerForeground,
+        AppStatusTone.info => AppColors.infoForeground,
+        AppStatusTone.neutral => AppColors.neutralForeground,
       };
 
   Color get _background => switch (tone) {
@@ -63,9 +63,10 @@ class AppInfoBanner extends StatelessWidget {
     required this.message,
     super.key,
     this.icon = Icons.info_rounded,
-    this.foregroundColor = AppColors.blue,
+    this.foregroundColor = AppColors.infoForeground,
     this.backgroundColor = AppColors.infoSurface,
     this.textAlign = TextAlign.start,
+    this.announce = false,
   });
 
   final String message;
@@ -73,10 +74,11 @@ class AppInfoBanner extends StatelessWidget {
   final Color foregroundColor;
   final Color backgroundColor;
   final TextAlign textAlign;
+  final bool announce;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final banner = Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: backgroundColor,
@@ -103,10 +105,25 @@ class AppInfoBanner extends StatelessWidget {
         ],
       ),
     );
+    if (!announce) return banner;
+    return Semantics(
+      container: true,
+      liveRegion: true,
+      label: message,
+      excludeSemantics: true,
+      child: banner,
+    );
   }
 }
 
-enum AppStateType { empty, missingReference, error, loading }
+enum AppStateType {
+  empty,
+  missingReference,
+  error,
+  loading,
+  permissionDenied,
+  unavailable,
+}
 
 class AppStatePanel extends StatelessWidget {
   const AppStatePanel({
@@ -129,22 +146,29 @@ class AppStatePanel extends StatelessWidget {
         AppStateType.missingReference => Icons.link_off_rounded,
         AppStateType.error => Icons.error_outline_rounded,
         AppStateType.loading => Icons.hourglass_top_rounded,
+        AppStateType.permissionDenied => Icons.lock_outline_rounded,
+        AppStateType.unavailable => Icons.block_rounded,
       };
 
   Color get _color => switch (type) {
-        AppStateType.empty => AppColors.grey,
-        AppStateType.missingReference => AppColors.orange,
-        AppStateType.error => AppColors.red,
-        AppStateType.loading => AppColors.blue,
+        AppStateType.empty => AppColors.neutralForeground,
+        AppStateType.missingReference => AppColors.warningForeground,
+        AppStateType.error => AppColors.dangerForeground,
+        AppStateType.loading => AppColors.infoForeground,
+        AppStateType.permissionDenied => AppColors.dangerForeground,
+        AppStateType.unavailable => AppColors.neutralForeground,
       };
 
-  Color get _surfaceColor => type == AppStateType.missingReference
-      ? AppColors.warningSurface
-      : AppColors.surface;
+  Color get _surfaceColor => switch (type) {
+        AppStateType.empty => AppColors.neutralSurface,
+        AppStateType.missingReference => AppColors.warningSurface,
+        AppStateType.error || AppStateType.permissionDenied =>
+          AppColors.dangerSurface,
+        AppStateType.loading => AppColors.infoSurface,
+        AppStateType.unavailable => AppColors.disabledSurface,
+      };
 
-  Color get _borderColor => type == AppStateType.missingReference
-      ? AppColors.orange.withAlpha(72)
-      : AppColors.border;
+  Color get _borderColor => _color.withAlpha(72);
 
   @override
   Widget build(BuildContext context) {
@@ -158,17 +182,33 @@ class AppStatePanel extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (type == AppStateType.loading)
-            const AppLoadingIndicator(size: 40, strokeWidth: 4)
-          else
-            Icon(_icon, size: 40, color: _color),
-          const SizedBox(height: AppSpacing.md),
-          Text(title, style: AppTypography.sectionTitle),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: AppColors.textSecondary),
+          Semantics(
+            container: true,
+            liveRegion: true,
+            label: '$title. $message',
+            excludeSemantics: true,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (type == AppStateType.loading)
+                  const AppLoadingIndicator(size: 40, strokeWidth: 4)
+                else
+                  Icon(_icon, size: 40, color: _color),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  title,
+                  style: AppTypography.sectionTitle.copyWith(color: _color),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.neutralForeground,
+                  ),
+                ),
+              ],
+            ),
           ),
           if (actionLabel != null && onAction != null) ...[
             const SizedBox(height: AppSpacing.md),
@@ -194,7 +234,7 @@ abstract final class AppToast {
     _show(
       context,
       message,
-      AppColors.green,
+      AppColors.successStrong,
       Icons.check_circle_rounded,
       messenger: messenger,
     );
@@ -222,7 +262,7 @@ abstract final class AppToast {
     _show(
       context,
       message,
-      AppColors.orange,
+      AppColors.warningStrong,
       Icons.warning_rounded,
       messenger: messenger,
     );

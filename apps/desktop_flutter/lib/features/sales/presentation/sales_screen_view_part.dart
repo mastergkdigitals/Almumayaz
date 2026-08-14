@@ -38,7 +38,9 @@ extension _SalesScreenViewPart on _SalesScreenState {
         key: const Key('salesScreen'),
         title: 'المبيعات',
         backgroundColor: tint,
-        onBack: _isDocumentActionRunning ? null : _attemptBack,
+        onBack: _isRepositoryBusy || _isDocumentActionRunning
+            ? null
+            : _attemptBack,
         onSearch: !isEditorReady ||
                 _isRepositoryBusy ||
                 _isDocumentActionRunning
@@ -60,9 +62,13 @@ extension _SalesScreenViewPart on _SalesScreenState {
           child: AbsorbPointer(
             key: const Key('salesDocumentActionAbsorber'),
             absorbing: _isDocumentActionRunning,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
+            child: AppLoadingOverlay(
+              isLoading: _isRepositoryBusy,
+              message: 'جاري حفظ قائمة البيع',
+              overlayKey: const Key('salesBusyOverlay'),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
         ColoredBox(
           key: const Key('salesTintBackground'),
           color: tint,
@@ -391,15 +397,8 @@ extension _SalesScreenViewPart on _SalesScreenState {
                   errorStateKey: const Key('salesErrorState'),
                 ),
               ),
-            if (_isRepositoryBusy)
-              AbsorbPointer(
-                child: ColoredBox(
-                  key: const Key('salesBusyOverlay'),
-                  color: AppColors.textPrimary.withAlpha(20),
-                  child: const Center(child: CircularProgressIndicator()),
-                ),
+                ],
               ),
-              ],
             ),
           ),
         ),

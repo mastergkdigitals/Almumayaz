@@ -160,8 +160,8 @@ class _AppTypedConfirmationDialogState
                           : Icons.restore_rounded,
                       color:
                           widget.confirmVariant == AppButtonVariant.danger
-                          ? AppColors.danger
-                          : AppColors.warning,
+                          ? AppColors.dangerForeground
+                          : AppColors.warningForeground,
                       size: 46,
                     ),
                     const SizedBox(height: AppSpacing.md),
@@ -186,8 +186,8 @@ class _AppTypedConfirmationDialogState
                       icon: Icons.keyboard_rounded,
                       foregroundColor:
                           widget.confirmVariant == AppButtonVariant.danger
-                          ? AppColors.danger
-                          : AppColors.warning,
+                          ? AppColors.dangerForeground
+                          : AppColors.warningForeground,
                       backgroundColor:
                           widget.confirmVariant == AppButtonVariant.danger
                           ? AppColors.dangerSurface
@@ -218,8 +218,9 @@ class _AppTypedConfirmationDialogState
                       AppInfoBanner(
                         message: _errorMessage!,
                         icon: Icons.error_outline_rounded,
-                        foregroundColor: AppColors.danger,
+                        foregroundColor: AppColors.dangerForeground,
                         backgroundColor: AppColors.dangerSurface,
+                        announce: true,
                       ),
                     ],
                     if (_isBusy) ...[
@@ -229,6 +230,7 @@ class _AppTypedConfirmationDialogState
                         container: true,
                         liveRegion: true,
                         label: widget.progressMessage,
+                        excludeSemantics: true,
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [

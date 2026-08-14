@@ -13,6 +13,7 @@ class AppFieldIconButton extends StatelessWidget {
     this.buttonKey,
     this.tooltip,
     this.color = AppColors.textSecondary,
+    this.canRequestFocus = false,
   });
 
   final IconData icon;
@@ -20,6 +21,7 @@ class AppFieldIconButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final Key? buttonKey;
   final Color color;
+  final bool canRequestFocus;
 
   @override
   Widget build(BuildContext context) {
@@ -39,6 +41,15 @@ class AppFieldIconButton extends StatelessWidget {
             const WidgetStatePropertyAll<Color>(Colors.transparent),
         overlayColor:
             const WidgetStatePropertyAll<Color>(Colors.transparent),
+        side: WidgetStateProperty.resolveWith<BorderSide?>((states) {
+          if (states.contains(WidgetState.focused)) {
+            return const BorderSide(
+              color: AppColors.navigation,
+              width: 2,
+            );
+          }
+          return BorderSide.none;
+        }),
         mouseCursor: WidgetStateProperty.resolveWith<MouseCursor?>(
           (states) => states.contains(WidgetState.disabled)
               ? SystemMouseCursors.basic
@@ -50,19 +61,30 @@ class AppFieldIconButton extends StatelessWidget {
     final visualButton = message == null || message.isEmpty
         ? button
         : AppTooltip(message: message, child: button);
-    final accessibleButton = message == null || message.isEmpty
-        ? visualButton
-        : Semantics(
-            container: true,
-            excludeSemantics: true,
-            label: message,
-            button: true,
-            enabled: onPressed != null,
-            onTap: onPressed,
-            child: visualButton,
-          );
-
-    return ExcludeFocus(child: accessibleButton);
+    return ExcludeFocus(
+      excluding: !canRequestFocus,
+      child: Focus(
+        canRequestFocus: false,
+        skipTraversal: true,
+        includeSemantics: false,
+        child: Builder(
+          builder: (context) {
+            if (message == null || message.isEmpty) return visualButton;
+            final isFocusable = canRequestFocus && onPressed != null;
+            return Semantics(
+              container: true,
+              excludeSemantics: true,
+              label: message,
+              button: true,
+              enabled: onPressed != null,
+              focused: isFocusable ? Focus.of(context).hasFocus : null,
+              onTap: onPressed,
+              child: visualButton,
+            );
+          },
+        ),
+      ),
+    );
   }
 }
 

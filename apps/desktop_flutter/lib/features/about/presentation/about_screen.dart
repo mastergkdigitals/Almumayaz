@@ -201,7 +201,7 @@ class _InternalDataTools extends StatelessWidget {
             message:
                 'أدوات داخلية لمدير النظام فقط. كل عملية تستبدل بيانات التطبيق وتنهي الجلسة الحالية.',
             icon: Icons.info_outline_rounded,
-            foregroundColor: AppColors.orange,
+            foregroundColor: AppColors.warningForeground,
             backgroundColor: AppColors.warningSurface,
           ),
           const SizedBox(height: AppSpacing.md),

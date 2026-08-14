@@ -83,6 +83,24 @@ class DesignGalleryFeedbackGroup extends StatelessWidget {
                   message: 'يرجى الانتظار قليلاً.',
                 ),
               ),
+              const SizedBox(
+                width: 360,
+                child: AppStatePanel(
+                  key: Key('designPermissionDeniedState'),
+                  type: AppStateType.permissionDenied,
+                  title: 'ليس لديك صلاحية',
+                  message: 'تواصل مع مدير النظام لطلب الصلاحية المطلوبة.',
+                ),
+              ),
+              const SizedBox(
+                width: 360,
+                child: AppStatePanel(
+                  key: Key('designUnavailableState'),
+                  type: AppStateType.unavailable,
+                  title: 'الميزة غير متاحة',
+                  message: 'فعّل المتطلب المرتبط ثم حاول مرة أخرى.',
+                ),
+              ),
             ],
           ),
         ),

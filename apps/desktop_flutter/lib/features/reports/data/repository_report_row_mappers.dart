@@ -132,8 +132,8 @@ ReportRowDefinition _transferRow(
 }) {
   final items = [
     for (final line in transfer.lines)
-      '${_availableLabel(itemById[line.itemId]?.code, line.itemId.value)} - '
-          '${_availableLabel(itemById[line.itemId]?.name, 'سجل مفقود')} '
+      '${_availableLabel(itemById[line.itemId]?.code, '')} - '
+          '${_availableLabel(itemById[line.itemId]?.name, '')} '
           '(${line.quantity.value})',
   ];
   return ReportRowDefinition(
@@ -157,11 +157,11 @@ ReportRowDefinition _transferRow(
       _date(transfer.createdAt.value.toLocal()),
       _availableLabel(
         warehouseById[transfer.fromWarehouseId]?.name,
-        'سجل مفقود',
+        '',
       ),
       _availableLabel(
         warehouseById[transfer.toWarehouseId]?.name,
-        'سجل مفقود',
+        '',
       ),
       items.join('، '),
     ],
@@ -249,8 +249,12 @@ ReportRowDefinition _partyBalanceRow(
       '${party.number}',
       party.name,
       party.type.label,
-      _availableLabel(workplaceName, party.workplace),
-      _availableLabel(branchName, party.branch),
+      workplaceEntityId == null && party.workplace.trim().isEmpty
+          ? '—'
+          : _availableLabel(workplaceName, party.workplace),
+      branchEntityId == null && party.branch.trim().isEmpty
+          ? '—'
+          : _availableLabel(branchName, party.branch),
       party.phone,
       party.city,
       _money(party.iqdBalance.absolute),

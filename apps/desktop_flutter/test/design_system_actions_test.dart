@@ -44,12 +44,12 @@ void main() {
       'designActionUpdate': (
         Icons.update_rounded,
         AppButtonVariant.success,
-        AppColors.green,
+        AppColors.successStrong,
       ),
       'designActionUndo': (
         Icons.undo_rounded,
         AppButtonVariant.warning,
-        AppColors.orange,
+        AppColors.warningStrong,
       ),
       'designActionDelete': (
         Icons.delete_rounded,
@@ -442,11 +442,11 @@ void main() {
     );
     expect(
       updateButton.style?.backgroundColor?.resolve(<WidgetState>{}),
-      AppColors.green,
+      AppColors.successStrong,
     );
     expect(
       undoButton.style?.backgroundColor?.resolve(<WidgetState>{}),
-      AppColors.orange,
+      AppColors.warningStrong,
     );
 
     await tester.tap(find.byKey(const Key('designActionBarDelete')));

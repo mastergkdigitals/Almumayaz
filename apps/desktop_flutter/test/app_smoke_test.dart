@@ -64,41 +64,36 @@ void main() {
     expect(visibilityIcon().icon, Icons.visibility_rounded);
   });
 
-  testWidgets('keeps login keyboard focus on fields and submits password',
+  testWidgets('tabs through login visibility and submits from the button',
       (tester) async {
     await tester.pumpWidget(const AlmumayazApp());
     await tester.pump();
 
     final username = find.byKey(const Key('usernameField'));
     final password = find.byKey(const Key('passwordField'));
+    final visibility = find.byKey(const Key('passwordVisibilityButton'));
+    final submit = find.byKey(const Key('loginButton'));
 
     expect(_editableText(tester, username).focusNode.hasFocus, isTrue);
-
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.tab);
-    await tester.sendKeyRepeatEvent(LogicalKeyboardKey.tab);
-    await tester.sendKeyRepeatEvent(LogicalKeyboardKey.tab);
-    await tester.pump();
-    expect(_editableText(tester, password).focusNode.hasFocus, isTrue);
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.tab);
-
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
-    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
-    await tester.pump();
-    expect(_editableText(tester, username).focusNode.hasFocus, isTrue);
-
-    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-    await tester.pump();
-    expect(_editableText(tester, username).focusNode.hasFocus, isTrue);
-
     await tester.enterText(username, 'admin');
-    await tester.testTextInput.receiveAction(TextInputAction.next);
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
     await tester.pump();
     expect(_editableText(tester, password).focusNode.hasFocus, isTrue);
 
     await tester.enterText(password, 'password');
-    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pump();
+    expect(_hasFocusWithin(tester, visibility), isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.space);
+    await tester.pump();
+    expect(_editableText(tester, password).obscureText, isFalse);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pump();
+    expect(_hasFocusWithin(tester, submit), isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('dashboardCard_parties')), findsOneWidget);
@@ -316,4 +311,12 @@ EditableText _editableText(WidgetTester tester, Finder field) {
   return tester.widget<EditableText>(
     find.descendant(of: field, matching: find.byType(EditableText)),
   );
+}
+
+bool _hasFocusWithin(WidgetTester tester, Finder control) {
+  return tester
+      .widgetList<Focus>(
+        find.descendant(of: control, matching: find.byType(Focus)),
+      )
+      .any((focus) => focus.focusNode.hasFocus);
 }
