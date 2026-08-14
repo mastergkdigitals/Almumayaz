@@ -87,7 +87,7 @@ class ReportHeaderBar extends StatelessWidget {
             isSelected: (variant, selected) => variant.id == selected.id,
             wrap: false,
             notifyWhenSelected: true,
-            minWidth: 154,
+            minWidth: 140,
             height: AppControlHeights.compact,
           ),
         ],

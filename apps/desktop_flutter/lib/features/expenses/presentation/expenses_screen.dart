@@ -570,6 +570,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   : DocumentExportFormat.excel,
             );
       if (!mounted) return;
+      setState(() => _isOutputting = false);
       await AppDocumentOutputDialog.show(
         context,
         result: result,
@@ -580,7 +581,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     } catch (_) {
       if (mounted) AppToast.showError(context, 'تعذر تجهيز مخرج المصروف');
     } finally {
-      if (mounted) setState(() => _isOutputting = false);
+      if (mounted && _isOutputting) {
+        setState(() => _isOutputting = false);
+      }
     }
   }
 

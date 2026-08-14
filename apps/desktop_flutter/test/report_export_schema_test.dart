@@ -248,6 +248,14 @@ void main() {
         rows: rows,
         fallbackMetrics: variant.metrics,
       );
+      final schemaRows = rows.isEmpty
+          ? [
+              ReportRowDefinition(
+                id: 'schema-${report.id}-${variant.id}',
+                cells: List<String>.filled(variant.columns.length, ''),
+              ),
+            ]
+          : rows;
       final request = ReportOutputRequestFactory.create(
         reportTitle: report.title,
         variantLabel: variant.label,
@@ -256,7 +264,7 @@ void main() {
             variant.columns.map((column) => column.spreadsheetCellKind),
         columnSpreadsheetDecimalPlaces:
             variant.columns.map((column) => column.spreadsheetDecimalPlaces),
-        rows: rows,
+        rows: schemaRows,
         metrics: metrics,
       );
 

@@ -25,6 +25,13 @@ void main() {
     );
     expect(find.byKey(const Key('purchaseReturnLinesTable')), findsOneWidget);
     expect(find.byKey(const Key('purchaseItemsTable')), findsNothing);
+    await tester.scrollUntilVisible(
+      find.byKey(
+        const Key('purchaseReturnQuantity-purchase-line-1013'),
+      ),
+      80,
+      scrollable: find.byKey(const Key('purchaseReturnLinesRows')),
+    );
     expect(
       _fieldValue(
         tester,

@@ -61,11 +61,38 @@ class ExpensesTable extends StatelessWidget {
             ],
           ),
       ],
-      emptyState: const AppStatePanel(
-        type: AppStateType.empty,
-        title: 'لا توجد مصاريف',
-        message: 'غيّر كلمات البحث أو أضف مصروفاً جديداً.',
-      ),
+      emptyState: const _ExpensesEmptyState(),
+    );
+  }
+}
+
+class _ExpensesEmptyState extends StatelessWidget {
+  const _ExpensesEmptyState();
+
+  static const _expandedMinimumHeight = 176.0;
+  static const _message =
+      'لا توجد مصاريف. غيّر كلمات البحث أو أضف مصروفاً جديداً.';
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxHeight < _expandedMinimumHeight) {
+          return const AppInfoBanner(
+            message: _message,
+            icon: Icons.inbox_rounded,
+            foregroundColor: AppColors.neutralForeground,
+            backgroundColor: AppColors.neutralSurface,
+            textAlign: TextAlign.center,
+            announce: true,
+          );
+        }
+        return const AppStatePanel(
+          type: AppStateType.empty,
+          title: 'لا توجد مصاريف',
+          message: 'غيّر كلمات البحث أو أضف مصروفاً جديداً.',
+        );
+      },
     );
   }
 }
