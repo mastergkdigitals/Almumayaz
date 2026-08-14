@@ -4,6 +4,7 @@ extension _PurchaseDocumentState on _PurchaseScreenState {
   DocumentOutputRequest _purchaseDocumentRequest() {
     final supplierName = _supplierNameController.text.trim();
     final isReturn = _isPurchaseReturn;
+    final currency = AppCurrency.parse(_currency);
     final source = _storedPurchase(_selectedOriginalPurchaseInvoiceId);
     return DocumentOutputRequest(
       title: isReturn
@@ -88,19 +89,19 @@ extension _PurchaseDocumentState on _PurchaseScreenState {
                 label: 'سعر المصدر',
                 isPrice: true,
                 spreadsheetCellKind: DocumentSpreadsheetCellKind.decimal,
-                spreadsheetDecimalPlaces: _currency.decimalPlaces,
+                spreadsheetDecimalPlaces: currency.decimalPlaces,
               ),
               DocumentColumn(
                 label: 'خصم السطر',
                 isPrice: true,
                 spreadsheetCellKind: DocumentSpreadsheetCellKind.decimal,
-                spreadsheetDecimalPlaces: _currency.decimalPlaces,
+                spreadsheetDecimalPlaces: currency.decimalPlaces,
               ),
               DocumentColumn(
                 label: 'قيمة السطر',
                 isPrice: true,
                 spreadsheetCellKind: DocumentSpreadsheetCellKind.decimal,
-                spreadsheetDecimalPlaces: _currency.decimalPlaces,
+                spreadsheetDecimalPlaces: currency.decimalPlaces,
               ),
             ]
           : const [

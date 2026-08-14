@@ -431,8 +431,7 @@ void main() {
     final repositories = AppRepositories.demo();
     final sale = (await repositories.sales.getAll()).first;
     final purchase = (await repositories.purchases.getAll()).firstWhere(
-      (invoice) =>
-          invoice.id == const EntityId('purchase-invoice-102'),
+      (invoice) => invoice.id == EntityId('purchase-invoice-102'),
     );
 
     await repositories.sales.deleteInvoicePermanently(sale.id);

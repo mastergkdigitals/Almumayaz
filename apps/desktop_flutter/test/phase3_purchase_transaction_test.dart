@@ -661,8 +661,7 @@ void main() {
       () async {
     final repositories = AppRepositories.demo();
     final seeded = (await repositories.purchases.getAll()).firstWhere(
-      (invoice) =>
-          invoice.id == const EntityId('purchase-invoice-102'),
+      (invoice) => invoice.id == EntityId('purchase-invoice-102'),
     );
     final quantities = _aggregateQuantities(seeded);
     final stockBefore = <_InventoryKey, int>{};

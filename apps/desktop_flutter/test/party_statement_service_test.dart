@@ -234,8 +234,7 @@ void main() {
   test('combines sale, purchase, and manual cashbox movements by party id',
       () async {
     final template = (await repositories.purchases.getAll()).firstWhere(
-      (invoice) =>
-          invoice.id == const EntityId('purchase-invoice-101'),
+      (invoice) => invoice.id == EntityId('purchase-invoice-101'),
     );
     await repositories.purchases.createInvoice(
       PurchaseInvoice(
