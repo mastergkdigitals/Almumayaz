@@ -5,34 +5,56 @@ import 'package:flutter/widgets.dart';
 import '../../features/authentication/domain/session_models.dart';
 import '../../features/permissions/domain/permission_models.dart';
 import '../domain/business_values.dart';
+import '../services/service_failure.dart';
+import 'app_data_composition.dart';
+import 'app_data_profile.dart';
 import 'app_repositories.dart';
 import 'app_services.dart';
 
 class AppStore extends ChangeNotifier {
   AppStore({
-    required this.repositories,
+    required AppRepositories repositories,
     AppServices? services,
-  }) : services = services ?? AppServices.demo();
+    bool internalToolsEnabled = true,
+    AppDataCompositionBuilder? compositionBuilder,
+  })  : _repositories = repositories,
+        _services = services ?? AppServices.demo(),
+        _internalToolsEnabled = internalToolsEnabled,
+        _compositionBuilder =
+            compositionBuilder ?? AppDataComposition.demo;
 
-  factory AppStore.demo() {
+  factory AppStore.demo({
+    bool internalToolsEnabled = true,
+    AppDataCompositionBuilder? compositionBuilder,
+  }) {
+    final builder = compositionBuilder ?? AppDataComposition.demo;
+    final composition = builder(AppDataProfile.originalDemo);
     return AppStore(
-      repositories: AppRepositories.demo(),
-      services: AppServices.demo(),
+      repositories: composition.repositories,
+      services: composition.services,
+      internalToolsEnabled: internalToolsEnabled,
+      compositionBuilder: builder,
     );
   }
 
-  factory AppStore.desktop() {
-    final repositories = AppRepositories.demo();
+  factory AppStore.desktop({
+    bool internalToolsEnabled = true,
+    AppDataCompositionBuilder? compositionBuilder,
+  }) {
+    final builder = compositionBuilder ?? AppDataComposition.desktop;
+    final composition = builder(AppDataProfile.originalDemo);
     return AppStore(
-      repositories: repositories,
-      services: AppServices.desktop(
-        deviceSettings: repositories.deviceSettings,
-      ),
+      repositories: composition.repositories,
+      services: composition.services,
+      internalToolsEnabled: internalToolsEnabled,
+      compositionBuilder: builder,
     );
   }
 
-  final AppRepositories repositories;
-  final AppServices services;
+  AppRepositories _repositories;
+  AppServices _services;
+  final bool _internalToolsEnabled;
+  final AppDataCompositionBuilder _compositionBuilder;
   AppSession? _session;
   AutoLockPolicy? _autoLockPolicy;
   Timer? _idleTimer;
@@ -42,23 +64,37 @@ class AppStore extends ChangeNotifier {
   bool _idleMonitoringEnabled = true;
   bool _hasAuthenticated = false;
   bool _initialHydrationAvailable = true;
+  bool _isSystemUserSession = false;
+  bool _isReplacingData = false;
   bool _isDisposed = false;
   int _sessionGeneration = 0;
   int _activitySyncGeneration = 0;
   int _revision = 0;
+  int _dataGeneration = 0;
 
+  AppRepositories get repositories => _repositories;
+  AppServices get services => _services;
   AppSession? get session => _session;
   bool get requiresAuthentication =>
       _hasAuthenticated && _session?.state != SessionState.active;
   int get revision => _revision;
+  int get dataGeneration => _dataGeneration;
+  bool get isReplacingData => _isReplacingData;
+  bool get canManageInternalData =>
+      _internalToolsEnabled &&
+      _session?.state == SessionState.active &&
+      _isSystemUserSession &&
+      allows('settings', PermissionAction.manage);
 
   Future<AppSession> signIn(SignInCredentials credentials) async {
     _initialHydrationAvailable = false;
     final generation = ++_sessionGeneration;
     final session = await services.authentication.signIn(credentials);
     final policy = await _loadAutoLockPolicy();
+    final user = await services.users.getById(session.userId);
     _requireCurrentSessionOperation(generation);
     _session = session;
+    _isSystemUserSession = user?.isSystemUser ?? false;
     _hasAuthenticated = true;
     _autoLockPolicy = policy;
     _resetActivitySyncThrottle();
@@ -83,6 +119,7 @@ class AppStore extends ChangeNotifier {
     }
     if (!_isCurrentSessionOperation(generation)) return;
     _session = null;
+    _isSystemUserSession = false;
     _hasAuthenticated = false;
     notifyListeners();
   }
@@ -123,6 +160,7 @@ class AppStore extends ChangeNotifier {
           session.state != SessionState.locked) {
         if (!belongsToExpectedSession) {
           _session = null;
+          _isSystemUserSession = false;
           _hasAuthenticated = true;
           notifyListeners();
         }
@@ -160,6 +198,7 @@ class AppStore extends ChangeNotifier {
     _session = authoritative?.id == expectedSessionId
         ? authoritative
         : null;
+    if (_session == null) _isSystemUserSession = false;
     if (_session == null || _session!.state != SessionState.active) {
       _idleTimer?.cancel();
       _resetActivitySyncThrottle();
@@ -178,12 +217,14 @@ class AppStore extends ChangeNotifier {
         expectedSessionId,
         password,
       );
+      final user = await services.users.getById(session.userId);
       _requireCurrentSessionOperation(generation);
       final belongsToExpectedSession = session.id == expectedSessionId;
       if (!belongsToExpectedSession ||
           session.state != SessionState.active) {
         if (!belongsToExpectedSession) {
           _session = null;
+          _isSystemUserSession = false;
           _hasAuthenticated = true;
           notifyListeners();
         }
@@ -192,6 +233,7 @@ class AppStore extends ChangeNotifier {
         );
       }
       _session = session;
+      _isSystemUserSession = user?.isSystemUser ?? false;
       _hasAuthenticated = true;
       _resetActivitySyncThrottle();
       _scheduleIdleLock();
@@ -247,6 +289,7 @@ class AppStore extends ChangeNotifier {
         // different user). Never adopt it into this store; fail closed and
         // require an explicit sign-in instead.
         _session = isSameAuthoritativeSession ? latest : null;
+        if (_session == null) _isSystemUserSession = false;
         if (_session == null || _session!.state != SessionState.active) {
           _idleTimer?.cancel();
           _resetActivitySyncThrottle();
@@ -304,12 +347,19 @@ class AppStore extends ChangeNotifier {
       final policy = authoritativeSessionIsExpected && session != null
           ? await _loadAutoLockPolicy()
           : _autoLockPolicy;
+      final user = authoritativeSessionIsExpected && session != null
+          ? await services.users.getById(session.userId)
+          : null;
       _requireCurrentSessionOperation(generation);
       _initialHydrationAvailable = false;
       // Hydration may adopt the first authoritative session. Once this store
       // has participated in authentication, a different session must never be
       // adopted implicitly (for example after another user signs in).
       _session = authoritativeSessionIsExpected ? session : null;
+      _isSystemUserSession =
+          authoritativeSessionIsExpected && session != null
+              ? user?.isSystemUser ?? false
+              : false;
       if (authoritativeSessionIsExpected && session != null) {
         _hasAuthenticated = true;
         _autoLockPolicy = policy;
@@ -377,6 +427,128 @@ class AppStore extends ChangeNotifier {
     _activitySyncCoolingDown = false;
   }
 
+  Future<void> clearAllData() => replaceData(AppDataProfile.cleared);
+
+  Future<void> restoreDemoData() =>
+      replaceData(AppDataProfile.originalDemo);
+
+  /// Replaces the entire live data/service graph in one synchronous commit.
+  ///
+  /// Construction and every authorization read finish before any live field
+  /// changes. A construction or authorization failure therefore leaves the
+  /// old composition, session, revision, and generation untouched.
+  Future<void> replaceData(AppDataProfile profile) async {
+    if (_isReplacingData) {
+      throw const ServiceFailure(
+        kind: ServiceFailureKind.conflict,
+        code: 'data_replacement_in_progress',
+        message: 'توجد عملية مسح أو استعادة بيانات قيد التنفيذ',
+      );
+    }
+    _isReplacingData = true;
+    var committed = false;
+    try {
+      if (!_internalToolsEnabled) {
+        throw const ServiceFailure(
+          kind: ServiceFailureKind.permissionDenied,
+          code: 'internal_tools_unavailable',
+          message: 'هذه الأداة متاحة في النسخة الداخلية فقط',
+        );
+      }
+      final activeSession = _session;
+      if (activeSession == null ||
+          activeSession.state != SessionState.active) {
+        throw const ServiceFailure(
+          kind: ServiceFailureKind.authenticationRequired,
+          code: 'active_session_required',
+          message: 'يجب تسجيل الدخول بحساب نشط لتنفيذ هذه العملية',
+        );
+      }
+      final authorizationGeneration = _sessionGeneration;
+      if (!activeSession.allows(
+        PermissionCode(
+          module: 'settings',
+          action: PermissionAction.manage,
+        ),
+      )) {
+        throw const ServiceFailure(
+          kind: ServiceFailureKind.permissionDenied,
+          code: 'settings_manage_required',
+          message: 'تتطلب هذه العملية صلاحية إدارة الإعدادات',
+        );
+      }
+      final authoritativeSession =
+          await services.authentication.currentSession();
+      final authorizedUser = await services.users.getById(
+        activeSession.userId,
+      );
+      if (!_isCurrentSessionOperation(authorizationGeneration) ||
+          _session?.id != activeSession.id ||
+          _session?.state != SessionState.active) {
+        throw const ServiceFailure(
+          kind: ServiceFailureKind.authenticationRequired,
+          code: 'active_session_required',
+          message: 'انتهت الجلسة؛ سجل الدخول ثم أعد المحاولة',
+        );
+      }
+      if (authoritativeSession == null ||
+          authoritativeSession.id != activeSession.id ||
+          authoritativeSession.userId != activeSession.userId ||
+          authoritativeSession.state != SessionState.active ||
+          !authoritativeSession.allows(
+            PermissionCode(
+              module: 'settings',
+              action: PermissionAction.manage,
+            ),
+          )) {
+        throw const ServiceFailure(
+          kind: ServiceFailureKind.authenticationRequired,
+          code: 'authoritative_session_required',
+          message: 'انتهت الجلسة؛ سجل الدخول ثم أعد المحاولة',
+        );
+      }
+      if (authorizedUser?.isSystemUser != true) {
+        throw const ServiceFailure(
+          kind: ServiceFailureKind.permissionDenied,
+          code: 'system_user_required',
+          message: 'تتطلب هذه العملية مستخدم النظام المحمي',
+        );
+      }
+
+      // This callback is deliberately synchronous: it prepares a completely
+      // independent graph before the no-fail assignment block below.
+      final replacement = _compositionBuilder(profile);
+      // This synchronous compare-and-revoke is the final authorization gate.
+      // With no await between it and the assignments, an external lock,
+      // sign-out, or session replacement cannot race the destructive commit.
+      if (!_services.revokeSessionForDataReplacement(activeSession)) {
+        throw const ServiceFailure(
+          kind: ServiceFailureKind.authenticationRequired,
+          code: 'authoritative_session_required',
+          message: 'انتهت الجلسة؛ سجل الدخول ثم أعد المحاولة',
+        );
+      }
+
+      _idleTimer?.cancel();
+      _resetActivitySyncThrottle();
+      _sessionGeneration++;
+      _repositories = replacement.repositories;
+      _services = replacement.services;
+      _session = null;
+      _isSystemUserSession = false;
+      _autoLockPolicy = null;
+      _hasAuthenticated = false;
+      _initialHydrationAvailable = false;
+      _revision++;
+      _dataGeneration++;
+      _isReplacingData = false;
+      committed = true;
+      notifyListeners();
+    } finally {
+      if (!committed) _isReplacingData = false;
+    }
+  }
+
   /// Feature controllers call this after a repository mutation when they are
   /// migrated. It gives cross-module listeners one lightweight invalidation
   /// signal without coupling repositories to presentation state.
@@ -415,10 +587,12 @@ class AppStoreProvider extends StatefulWidget {
   const AppStoreProvider({
     super.key,
     this.store,
+    this.internalToolsEnabled = true,
     required this.child,
   });
 
   final AppStore? store;
+  final bool internalToolsEnabled;
   final Widget child;
 
   @override
@@ -438,14 +612,20 @@ class _AppStoreProviderState extends State<AppStoreProvider> {
   @override
   void didUpdateWidget(AppStoreProvider oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.store == widget.store) return;
+    if (oldWidget.store == widget.store &&
+        oldWidget.internalToolsEnabled == widget.internalToolsEnabled) {
+      return;
+    }
     if (_ownsStore) _store.dispose();
     _setStore(widget.store);
   }
 
   void _setStore(AppStore? suppliedStore) {
     _ownsStore = suppliedStore == null;
-    _store = suppliedStore ?? AppStore.demo();
+    _store = suppliedStore ??
+        AppStore.demo(
+          internalToolsEnabled: widget.internalToolsEnabled,
+        );
   }
 
   @override

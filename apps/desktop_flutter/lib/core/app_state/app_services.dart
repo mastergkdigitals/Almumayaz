@@ -1,5 +1,6 @@
 import '../../features/audit_log/domain/audit_repository.dart';
 import '../../features/authentication/data/demo_authentication_service.dart';
+import '../../features/authentication/data/demo_identity_state.dart';
 import '../../features/authentication/domain/authentication_service.dart';
 import '../../features/authentication/domain/session_models.dart';
 import '../../features/backup_restore/data/demo_backup_services.dart';
@@ -17,6 +18,7 @@ import '../../features/settings/domain/settings_repository.dart';
 import '../../features/users/domain/user_repository.dart';
 import '../printing/desktop_document_output_service.dart';
 import '../printing/document_output_service.dart';
+import 'app_data_profile.dart';
 
 const almumayazWindowsDeviceId = 'demo-windows-device';
 
@@ -48,8 +50,14 @@ class AppServices {
     this.reportOutput = const DemoReportOutputService(),
   });
 
-  factory AppServices.demo() {
-    final identity = DemoIdentityServiceBundle(startsAuthenticated: false);
+  factory AppServices.demo({
+    AppDataProfile profile = AppDataProfile.originalDemo,
+  }) {
+    final isCleared = profile == AppDataProfile.cleared;
+    final identity = DemoIdentityServiceBundle(
+      startsAuthenticated: false,
+      state: isCleared ? DemoIdentityState.bootstrap() : null,
+    );
     final googleDriveBackups = DemoGoogleDriveBackupService();
     return AppServices(
       authentication: identity.authentication,
@@ -59,11 +67,13 @@ class AppServices {
       backupConfiguration: DemoBackupConfigurationRepository(),
       backups: DemoBackupService(
         googleDriveService: googleDriveBackups,
+        initialHistory: isCleared ? const <BackupRecord>[] : null,
       ),
       backupFileSelection: DemoBackupFileSelectionService(),
       googleDriveBackups: googleDriveBackups,
       archiveSecurity: DemoArchiveSecurityService(),
       archive: DemoArchiveRepository(
+        initialDocuments: isCleared ? const <ArchiveDocument>[] : null,
         currentUserId: () {
           final session = identity.state.currentSession;
           if (session == null || session.state != SessionState.active) {
@@ -84,8 +94,13 @@ class AppServices {
 
   factory AppServices.desktop({
     required DeviceSettingsRepository deviceSettings,
+    AppDataProfile profile = AppDataProfile.originalDemo,
   }) {
-    final identity = DemoIdentityServiceBundle(startsAuthenticated: false);
+    final isCleared = profile == AppDataProfile.cleared;
+    final identity = DemoIdentityServiceBundle(
+      startsAuthenticated: false,
+      state: isCleared ? DemoIdentityState.bootstrap() : null,
+    );
     final googleDriveBackups = DemoGoogleDriveBackupService();
     final documentOutput = DesktopDocumentOutputService(
       settingsLoader: () async {
@@ -114,11 +129,13 @@ class AppServices {
       backupConfiguration: DemoBackupConfigurationRepository(),
       backups: DemoBackupService(
         googleDriveService: googleDriveBackups,
+        initialHistory: isCleared ? const <BackupRecord>[] : null,
       ),
       backupFileSelection: const DesktopBackupFileSelectionService(),
       googleDriveBackups: googleDriveBackups,
       archiveSecurity: DemoArchiveSecurityService(),
       archive: DemoArchiveRepository(
+        initialDocuments: isCleared ? const <ArchiveDocument>[] : null,
         currentUserId: () {
           final session = identity.state.currentSession;
           if (session == null || session.state != SessionState.active) {
@@ -156,4 +173,15 @@ class AppServices {
   final AuditRepository audit;
   final DocumentOutputService documentOutput;
   final ReportOutputService reportOutput;
+
+  /// Revokes the discarded demo identity graph during the no-fail swap.
+  /// API-backed compositions revoke their authoritative session server-side;
+  /// clearing the store session remains the client-side fail-closed boundary.
+  bool revokeSessionForDataReplacement(AppSession expectedSession) {
+    final adapter = authentication;
+    if (adapter is DemoAuthenticationService) {
+      return adapter.revokeForDataReplacement(expectedSession);
+    }
+    return false;
+  }
 }

@@ -13,7 +13,9 @@ void main() {
   runApp(
     AlmumayazApp(
       configuration: configuration,
-      store: AppStore.desktop(),
+      store: AppStore.desktop(
+        internalToolsEnabled: configuration.edition == AppEdition.internal,
+      ),
     ),
   );
   WidgetsBinding.instance.addPostFrameCallback((_) {

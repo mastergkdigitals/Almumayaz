@@ -45,6 +45,11 @@ void main() {
     expect(find.byKey(const Key('aboutScreen')), findsOneWidget);
     expect(find.byKey(const Key('openDesignSystemGallery')), findsNothing);
     expect(find.text('دليل نظام التصميم'), findsNothing);
+    expect(find.byKey(const Key('aboutInternalDataTools')), findsNothing);
+    expect(find.byKey(const Key('aboutRestoreDemoDataButton')), findsNothing);
+    expect(find.byKey(const Key('aboutDeleteAllDataButton')), findsNothing);
+    expect(find.text('استعادة البيانات التجريبية'), findsNothing);
+    expect(find.text('حذف جميع البيانات'), findsNothing);
   });
 }
 

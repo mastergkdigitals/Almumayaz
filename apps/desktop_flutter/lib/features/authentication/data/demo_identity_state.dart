@@ -17,8 +17,12 @@ class DemoIdentityState {
     Iterable<AppUser>? initialUsers,
     Iterable<AppRole>? initialRoles,
     Iterable<AuditRecord>? initialAuditRecords,
+    Map<EntityId, DemoPasswordCredential>? initialCredentials,
     AutoLockPolicy? initialPolicy,
     AuditTimestamp Function()? clock,
+    int nextUserSequenceFallback = 4,
+    int nextRoleSequenceFallback = 5,
+    int nextAuditSequenceFallback = 6,
   })  : usersById = {
           for (final user in initialUsers ?? demoIdentityUsers()) user.id: user,
         },
@@ -34,14 +38,66 @@ class DemoIdentityState {
               idleTimeout: const Duration(minutes: 15),
             ),
         _clock = clock ?? _DemoIdentityClock().call {
-    if (initialUsers == null) {
+    if (initialCredentials != null) {
+      credentialsByUserId.addAll(initialCredentials);
+    } else if (initialUsers == null) {
       credentialsByUserId.addAll(_seedCredentials());
     }
-    _nextUserSequence = _nextSequence(usersById.keys, fallback: 4);
-    _nextRoleSequence = _nextSequence(rolesById.keys, fallback: 5);
+    _nextUserSequence = _nextSequence(
+      usersById.keys,
+      fallback: nextUserSequenceFallback,
+    );
+    _nextRoleSequence = _nextSequence(
+      rolesById.keys,
+      fallback: nextRoleSequenceFallback,
+    );
     _nextAuditSequence = _nextSequence(
       auditRecords.map((record) => record.id),
-      fallback: 6,
+      fallback: nextAuditSequenceFallback,
+    );
+  }
+
+  /// Minimal identity seed retained after an internal full-data clear.
+  ///
+  /// It intentionally contains no session or audit trail, but preserves the
+  /// protected administrator credential so the application is recoverable
+  /// immediately after the successful operation signs the current user out.
+  factory DemoIdentityState.bootstrap({
+    AuditTimestamp Function()? clock,
+  }) {
+    final administratorId = EntityId.demo('user', 1);
+    final administratorRoleId = EntityId.demo('role', 1);
+    return DemoIdentityState(
+      initialUsers: [
+        AppUser(
+          id: administratorId,
+          fullName: 'مدير النظام',
+          username: 'admin',
+          roleIds: {administratorRoleId},
+          status: UserAccountStatus.active,
+          isSystemUser: true,
+          lastLoginAt: null,
+        ),
+      ],
+      initialRoles: [
+        AppRole(
+          id: administratorRoleId,
+          name: 'مدير النظام',
+          permissions: _permissionsFor(
+            modules: _demoModules,
+            actions: PermissionAction.values,
+          ),
+          isSystemRole: true,
+        ),
+      ],
+      initialAuditRecords: const [],
+      initialCredentials: {
+        administratorId: _seedCredentials()[administratorId]!,
+      },
+      nextUserSequenceFallback: 2,
+      nextRoleSequenceFallback: 2,
+      nextAuditSequenceFallback: 1,
+      clock: clock,
     );
   }
 

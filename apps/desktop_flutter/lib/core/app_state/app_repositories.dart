@@ -2,12 +2,14 @@ import '../../features/cashbox/data/demo_cashbox_repository.dart';
 import '../../features/cashbox/domain/cashbox_repository.dart';
 import '../../features/cashbox/domain/cashbox_voucher.dart';
 import '../../features/items/data/demo_item_repository.dart';
+import '../../features/items/domain/item.dart';
 import '../../features/items/domain/item_repository.dart';
 import '../../features/installments/application/installment_schedule_builder.dart';
 import '../../features/installments/data/demo_installment_repository.dart';
 import '../../features/installments/domain/installment_plan.dart';
 import '../../features/installments/domain/installment_repository.dart';
 import '../../features/parties/data/demo_party_repository.dart';
+import '../../features/parties/domain/party.dart';
 import '../../features/parties/domain/party_repository.dart';
 import '../../features/purchases/data/demo_purchase_repository.dart';
 import '../../features/purchases/domain/purchase_invoice.dart';
@@ -18,13 +20,18 @@ import '../../features/sales/domain/sales_repository.dart';
 import '../../features/settings/data/demo_operational_settings_repositories.dart';
 import '../../features/settings/domain/operational_master_data.dart';
 import '../../features/settings/domain/operational_master_data_repository.dart';
+import '../../features/settings/domain/settings_models.dart';
 import '../../features/settings/domain/settings_repository.dart';
 import '../../features/warehouses/data/demo_warehouse_repository.dart';
 import '../../features/warehouses/data/demo_inventory_cost_repository.dart';
 import '../../features/warehouses/domain/inventory_cost_repository.dart';
+import '../../features/warehouses/domain/inventory_cost.dart';
+import '../../features/warehouses/domain/inventory_records.dart';
+import '../../features/warehouses/domain/warehouse.dart';
 import '../../features/warehouses/domain/warehouse_repository.dart';
 import '../data/demo_transaction_runner.dart';
 import '../domain/business_values.dart';
+import 'app_data_profile.dart';
 import 'demo_invoice_effects_coordinator.dart';
 
 /// One composition root for every repository used by the desktop app.
@@ -47,7 +54,16 @@ class AppRepositories {
     required this.operationalMasterData,
   });
 
-  factory AppRepositories.demo() {
+  factory AppRepositories.demo() =>
+      AppRepositories.forProfile(AppDataProfile.originalDemo);
+
+  /// Builds a complete, internally coherent repository graph off-line.
+  ///
+  /// The cleared profile deliberately keeps no business or master records.
+  /// Deterministic settings may therefore point at missing records so the
+  /// ordinary missing-reference screen states remain testable.
+  factory AppRepositories.forProfile(AppDataProfile profile) {
+    final isCleared = profile == AppDataProfile.cleared;
     final transactionRunner = DemoTransactionRunner();
     late DemoOperationalMasterDataRepository masterData;
     late DemoPartyRepository parties;
@@ -59,12 +75,17 @@ class AppRepositories {
     late DemoPurchaseRepository purchases;
     late DemoInstallmentRepository installments;
     late DemoBusinessSettingsRepository businessSettings;
-    final seededSales = demoSalesInvoices();
-    final seededPurchases = demoPurchaseInvoices();
-    final seededTransfers = demoInventoryTransfers();
-    final seededManualCashbox = demoCashboxVouchers();
+    final seededSales = isCleared ? <SalesInvoice>[] : demoSalesInvoices();
+    final seededPurchases =
+        isCleared ? <PurchaseInvoice>[] : demoPurchaseInvoices();
+    final seededTransfers =
+        isCleared ? <InventoryTransfer>[] : demoInventoryTransfers();
+    final seededManualCashbox =
+        isCleared ? <CashboxVoucher>[] : demoCashboxVouchers();
 
     masterData = DemoOperationalMasterDataRepository(
+      initialValues:
+          isCleared ? const <OperationalMasterDataRecord>[] : null,
       transactionRunner: transactionRunner,
       isExternallyReferenced: (id) async {
         final record = await masterData.getById(id);
@@ -96,6 +117,9 @@ class AppRepositories {
     );
 
     parties = DemoPartyRepository(
+      initialValues: isCleared ? const <Party>[] : null,
+      initialMasterDataReferences:
+          isCleared ? const <EntityId, PartyMasterDataReferences>{} : null,
       masterData: masterData,
       transactionRunner: transactionRunner,
       isReferenced: (partyId) async {
@@ -114,6 +138,7 @@ class AppRepositories {
     );
 
     items = DemoItemRepository(
+      initialValues: isCleared ? const <Item>[] : null,
       masterData: masterData,
       transactionRunner: transactionRunner,
       isReferenced: (itemId) async {
@@ -132,11 +157,15 @@ class AppRepositories {
     );
 
     inventoryCosts = DemoInventoryCostRepository(
+      openingBalances:
+          isCleared ? const <InventoryCostBalance>[] : null,
       purchases: seededPurchases,
       sales: seededSales,
       transfers: seededTransfers,
     );
     warehouses = DemoWarehouseRepository(
+      initialValues: isCleared ? const <Warehouse>[] : null,
+      initialInventory: isCleared ? const <InventoryBalance>[] : null,
       initialTransfers: seededTransfers,
       transactionRunner: transactionRunner,
       inventoryCostEffects: inventoryCosts,
@@ -179,6 +208,15 @@ class AppRepositories {
       masterData: masterData,
       parties: parties,
       transactionRunner: transactionRunner,
+      openingBalance: isCleared
+          ? const CashboxBalanceSnapshot(
+              iqd: Money.fromMinorUnits(0, AppCurrency.iqd),
+              usd: Money.fromMinorUnits(0, AppCurrency.usd),
+            )
+          : const CashboxBalanceSnapshot(
+              iqd: Money.fromMinorUnits(9800000, AppCurrency.iqd),
+              usd: Money.fromMinorUnits(450000, AppCurrency.usd),
+            ),
     );
 
     Future<bool> partyExists(EntityId id) async =>
@@ -239,7 +277,9 @@ class AppRepositories {
       purchases: purchases,
       installments: installments,
       businessSettings: businessSettings,
-      deviceSettings: DemoDeviceSettingsRepository(),
+      deviceSettings: DemoDeviceSettingsRepository(
+        initialValues: isCleared ? const <DeviceSettings>[] : null,
+      ),
       operationalMasterData: masterData,
     );
   }

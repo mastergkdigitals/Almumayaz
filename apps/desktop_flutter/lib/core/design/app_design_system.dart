@@ -28,3 +28,4 @@ export 'components/app_shortcuts.dart';
 export 'components/app_statement_dialog.dart';
 export 'components/app_statement_report_dialog.dart';
 export 'components/app_table.dart';
+export 'components/app_typed_confirmation_dialog.dart';

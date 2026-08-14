@@ -202,14 +202,24 @@ class DemoBackupService implements BackupService {
   DemoBackupService({
     GoogleDriveBackupService? googleDriveService,
     AuditTimestamp Function()? clock,
+    Iterable<BackupRecord>? initialHistory,
   })  : _googleDriveService = googleDriveService,
         _clock = clock ?? _DemoBackupClock().call,
-        _history = _initialHistory();
+        _history = List<BackupRecord>.of(
+          initialHistory ?? _initialHistory(),
+        ) {
+    for (final record in _history) {
+      final sequence = int.tryParse(record.id.value.split('-').last);
+      if (sequence != null && sequence >= _nextSequence) {
+        _nextSequence = sequence + 1;
+      }
+    }
+  }
 
   final GoogleDriveBackupService? _googleDriveService;
   final AuditTimestamp Function() _clock;
   final List<BackupRecord> _history;
-  int _nextSequence = 4;
+  int _nextSequence = 1;
 
   @override
   Future<List<BackupRecord>> listHistory() async =>

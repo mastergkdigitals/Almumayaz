@@ -25,20 +25,24 @@ class DemoIdentityServiceBundle {
     required this.administration,
   });
 
-  factory DemoIdentityServiceBundle({bool startsAuthenticated = true}) {
-    final state = DemoIdentityState();
+  factory DemoIdentityServiceBundle({
+    bool startsAuthenticated = true,
+    DemoIdentityState? state,
+  }) {
+    final resolvedState = state ?? DemoIdentityState();
     return DemoIdentityServiceBundle._(
-      state: state,
-      users: DemoUserRepository(state: state),
-      roles: DemoRoleRepository(state: state),
-      audit: DemoAuditRepository(state: state),
-      auditWriter: DemoIdentityAuditWriter(state: state),
+      state: resolvedState,
+      users: DemoUserRepository(state: resolvedState),
+      roles: DemoRoleRepository(state: resolvedState),
+      audit: DemoAuditRepository(state: resolvedState),
+      auditWriter: DemoIdentityAuditWriter(state: resolvedState),
       authentication: DemoAuthenticationService(
-        state: state,
+        state: resolvedState,
         startsAuthenticated: startsAuthenticated,
       ),
-      sessionPolicies: DemoSessionPolicyRepository(state: state),
-      administration: DemoSecurityAdministrationService(state: state),
+      sessionPolicies: DemoSessionPolicyRepository(state: resolvedState),
+      administration:
+          DemoSecurityAdministrationService(state: resolvedState),
     );
   }
 
@@ -83,6 +87,27 @@ class DemoAuthenticationService implements AuthenticationService {
   final DemoIdentityState _state;
 
   DemoIdentityState get identityState => _state;
+
+  /// No-fail synchronous revocation used by an atomic whole-data swap.
+  ///
+  /// It emits no audit record because the old identity graph is discarded in
+  /// the same uninterrupted commit and the replacement owns its own history.
+  bool revokeForDataReplacement(AppSession expectedSession) {
+    final current = _state.currentSession;
+    final requiredPermission = PermissionCode(
+      module: 'settings',
+      action: PermissionAction.manage,
+    );
+    if (current == null ||
+        current.id != expectedSession.id ||
+        current.userId != expectedSession.userId ||
+        current.state != SessionState.active ||
+        !current.allows(requiredPermission)) {
+      return false;
+    }
+    _state.currentSession = null;
+    return true;
+  }
 
   @override
   Future<AppSession?> currentSession() async => _state.currentSession;
